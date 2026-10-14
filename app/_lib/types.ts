@@ -50,12 +50,21 @@ export interface BlankBlock extends BlockBase {
   points: number;
 }
 
+// A sub-question of an open question: "1a)", "1b)"...
+export interface OpenPart {
+  text: string;
+  lines: number;
+  answer: string;
+  points: number;
+}
+
 export interface OpenBlock extends BlockBase {
   type: "open";
   text: string;
   lines: number; // answer lines for the student
   answer: string; // model answer (correction sheet)
-  points: number;
+  points: number; // total (= sum of the parts when there are parts)
+  parts?: OpenPart[]; // missing in files from older versions
 }
 
 // ---- Content blocks ----
@@ -88,6 +97,17 @@ export interface TableBlock extends BlockBase {
   header: boolean; // first row in bold
 }
 
+// A function graph drawn from formulas typed by the teacher, e.g. "x^2 - 2".
+export interface GraphBlock extends BlockBase {
+  type: "graph";
+  functions: string[]; // up to 3 curves
+  xMin: number;
+  xMax: number;
+  yMin: number;
+  yMax: number;
+  grid: boolean;
+}
+
 export type HeaderStyle = "classic" | "modern" | "minimal";
 
 export interface HeaderFields {
@@ -107,7 +127,7 @@ export interface HeaderBlock extends BlockBase {
 }
 
 export type QuestionBlock = McqBlock | TrueFalseBlock | BlankBlock | OpenBlock;
-export type Block = QuestionBlock | TextBlock | EquationBlock | ImageBlock | TableBlock | HeaderBlock;
+export type Block = QuestionBlock | TextBlock | EquationBlock | ImageBlock | TableBlock | GraphBlock | HeaderBlock;
 export type BlockType = Block["type"];
 
 // The editable fields of any one block type, all optional (used for changes and presets).

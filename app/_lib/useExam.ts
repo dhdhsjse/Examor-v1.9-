@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { PAGE_HEIGHT, PAGE_MARGIN, PAGE_WIDTH } from "./a4";
 import { blockHeight } from "./blockLayout";
-import { blockHeights, createBlock, nextFreeY, type BlockPreset } from "./blocks";
+import { blockHeights, createBlock, nextFreeY, pushDownOverlaps, type BlockPreset } from "./blocks";
 import { newId } from "./id";
 import { renderEquation, type RenderedEquation } from "./math";
 import { saveAutosave } from "./storage";
@@ -14,6 +14,14 @@ import type { Block, BlockData, BlockLayout, BlockType, EquationBlock, ExamDoc, 
 export interface RevealRequest {
   pageId: string;
   n: number;
+}
+
+// Where to put a new block. `corner` = (x, y) is its top-left corner instead of its center.
+export interface DropPoint {
+  pageIndex: number;
+  x: number;
+  y: number;
+  corner?: boolean;
 }
 
 // A change to a block. `layout` can be partial.
@@ -90,7 +98,7 @@ export function useExam(initial: ExamDoc) {
     (b: EquationBlock, latex = b.latex) => {
       renderEquation(latex)
         .then((r) => updateBlock(b.id, equationPatch(b, r), { silent: true }))
-        .catch(() => {});
+        .catch((e) => console.error("Equation drawing failed:", String(e), e?.stack));
     },
     [updateBlock],
   );
@@ -98,7 +106,7 @@ export function useExam(initial: ExamDoc) {
   // Add a block. With `at`: dropped at that spot. Without: stacked on the page in view,
   // or the next page with room, or a new page.
   const addBlock = useCallback(
-    (type: BlockType, preset: BlockPreset = {}, at?: { pageIndex: number; x: number; y: number }) => {
+    (type: BlockType, preset: BlockPreset = {}, at?: DropPoint) => {
       const lang = doc.meta.lang;
       const block = createBlock(type, lang, "", preset);
       const h = blockHeight(block, 1, lang);
@@ -110,8 +118,8 @@ export function useExam(initial: ExamDoc) {
         block.layout = {
           ...block.layout,
           pageId: page.id,
-          x: clamp(at.x - w / 2, 0, PAGE_WIDTH - w),
-          y: clamp(at.y - Math.min(h, 40) / 2, 0, PAGE_HEIGHT - h),
+          x: clamp(at.corner ? at.x : at.x - w / 2, 0, PAGE_WIDTH - w),
+          y: clamp(at.corner ? at.y - 10 : at.y - Math.min(h, 40) / 2, 0, PAGE_HEIGHT - h),
         };
       } else {
         const heights = blockHeights(doc);
@@ -139,15 +147,20 @@ export function useExam(initial: ExamDoc) {
     [doc, activePage, commit, refreshEquation],
   );
 
+  // Drop a block somewhere; blocks it lands on are pushed down below it.
   const moveBlock = useCallback(
-    (id: string, pageId: string, x: number, y: number) => updateBlock(id, { layout: { pageId, x, y } }),
-    [updateBlock],
+    (id: string, pageId: string, x: number, y: number) =>
+      commit((d) => {
+        const moved = { ...d, blocks: d.blocks.map((b) => (b.id === id ? ({ ...b, layout: { ...b.layout, pageId, x, y } } as Block) : b)) };
+        return { ...moved, blocks: pushDownOverlaps(moved.blocks, id, blockHeights(moved), PAGE_HEIGHT) };
+      }),
+    [commit],
   );
 
   const deleteBlock = useCallback(
     (id: string) => {
       commit((d) => ({ ...d, blocks: d.blocks.filter((b) => b.id !== id) }));
-      setSelectedId(null);
+      setSelectedId((cur) => (cur === id ? null : cur));
     },
     [commit],
   );

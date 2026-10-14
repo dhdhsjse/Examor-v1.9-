@@ -1,22 +1,27 @@
 "use client";
 
 import { useRef } from "react";
-import { blankAnswers } from "@/app/_lib/blockLayout";
-import type { BlankBlock, McqBlock, OpenBlock, QuestionBlock, TrueFalseBlock } from "@/app/_lib/types";
+import { blankAnswers, partLabel } from "@/app/_lib/blockLayout";
+import { patchPart } from "@/app/_lib/blocks";
+import type { BlankBlock, Lang, McqBlock, OpenBlock, OpenPart, QuestionBlock, TrueFalseBlock } from "@/app/_lib/types";
 import type { BlockPatch } from "@/app/_lib/useExam";
 import { AddRowButton, Field, NumberInput, RemoveButton, TextArea, TextInput } from "./fields";
 
 export type OnChange = (patch: BlockPatch, field: string) => void;
 
 // Question text + points (same for every question type).
-export function QuestionBasics({ b, onChange }: { b: QuestionBlock; onChange: OnChange }) {
+export function QuestionBasics({ b, onChange, lockPoints }: { b: QuestionBlock; onChange: OnChange; lockPoints?: boolean }) {
   return (
     <>
-      <Field label="Question">
+      <Field label="Question" hint="Tip: you can also double-click the text on the page and type there.">
         <TextArea value={b.text} onChange={(text) => onChange({ text }, "text")} rows={3} />
       </Field>
-      <Field label="Points">
-        <NumberInput value={b.points} min={0} max={100} step={0.5} onChange={(points) => onChange({ points }, "points")} />
+      <Field label="Points" hint={lockPoints ? "Total of the sub-questions." : undefined}>
+        {lockPoints ? (
+          <span className="text-sm font-semibold text-ink">{b.points}</span>
+        ) : (
+          <NumberInput value={b.points} min={0} max={100} step={0.5} onChange={(points) => onChange({ points }, "points")} />
+        )}
       </Field>
     </>
   );
@@ -124,15 +129,54 @@ export function BlankEditor({ b, onChange }: { b: BlankBlock; onChange: OnChange
   );
 }
 
-export function OpenEditor({ b, onChange }: { b: OpenBlock; onChange: OnChange }) {
+export function OpenEditor({ b, onChange, number, lang }: { b: OpenBlock; onChange: OnChange; number: number; lang: Lang }) {
+  const parts = b.parts ?? [];
+  const setPart = (i: number, patch: Partial<OpenPart>, field: string) => onChange(patchPart(parts, i, patch), `part${i}-${field}`);
+
+  // The first sub-question takes the place of the main answer lines.
+  const addPart = () => {
+    const next = [...parts, { text: "", lines: 2, answer: "", points: 1 }];
+    onChange({ parts: next, points: next.reduce((s, p) => s + p.points, 0), ...(parts.length ? {} : { lines: 0 }) }, "parts");
+  };
+  const removePart = (i: number) => {
+    const next = parts.filter((_, k) => k !== i);
+    onChange({ parts: next, ...(next.length ? { points: next.reduce((s, p) => s + p.points, 0) } : { lines: 4 }) }, "parts");
+  };
+
   return (
     <>
-      <QuestionBasics b={b} onChange={onChange} />
-      <Field label="Answer lines">
+      <QuestionBasics b={b} onChange={onChange} lockPoints={parts.length > 0} />
+      <Field label="Answer lines" hint={parts.length ? "Lines right under the question (often 0 when there are sub-questions)." : undefined}>
         <NumberInput value={b.lines} min={0} max={30} onChange={(lines) => onChange({ lines }, "lines")} />
       </Field>
-      <Field label="Model answer" hint="Shown only on the correction sheet.">
-        <TextArea value={b.answer} onChange={(answer) => onChange({ answer }, "answer")} rows={4} />
+      {(b.lines > 0 || !parts.length) && (
+        <Field label="Model answer" hint="Shown only on the correction sheet.">
+          <TextArea value={b.answer} onChange={(answer) => onChange({ answer }, "answer")} rows={3} />
+        </Field>
+      )}
+
+      <Field label="Sub-questions" hint="Split the question into parts: 1a), 1b)… Each part has its own lines, points and answer.">
+        <div className="flex flex-col gap-2">
+          {parts.map((p, i) => (
+            <div key={i} className="flex flex-col gap-1.5 rounded-lg border border-line bg-subtle/60 p-2">
+              <div className="flex items-center gap-1.5">
+                <span className="w-9 shrink-0 text-xs font-bold text-indigo-600">{partLabel(number, i, lang)}</span>
+                <TextInput value={p.text} placeholder="Sub-question…" onChange={(text) => setPart(i, { text }, "text")} />
+                <RemoveButton onClick={() => removePart(i)} />
+              </div>
+              <div className="flex items-center gap-2 pl-10 text-[11px] text-muted">
+                Lines
+                <NumberInput value={p.lines} min={0} max={20} onChange={(lines) => setPart(i, { lines }, "lines")} />
+                Points
+                <NumberInput value={p.points} min={0} max={100} step={0.5} onChange={(points) => setPart(i, { points }, "points")} />
+              </div>
+              <div className="pl-10">
+                <TextInput value={p.answer} placeholder="Answer (correction sheet)…" onChange={(answer) => setPart(i, { answer }, "answer")} />
+              </div>
+            </div>
+          ))}
+          {parts.length < 8 && <AddRowButton onClick={addPart}>Add sub-question</AddRowButton>}
+        </div>
       </Field>
     </>
   );

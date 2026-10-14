@@ -2,9 +2,10 @@
 
 import type Konva from "konva";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { PAGE_HEIGHT, PAGE_WIDTH } from "@/app/_lib/a4";
+import { CONTENT_WIDTH, PAGE_HEIGHT, PAGE_MARGIN, PAGE_WIDTH } from "@/app/_lib/a4";
+import { focusMathfield } from "@/app/_lib/activeMathfield";
 import { blockHeights, isQuestion, questionNumbers } from "@/app/_lib/blocks";
-import { newId } from "@/app/_lib/id";
+import { editRegions, fieldKey, fieldPatch, fieldValue, type EditField } from "@/app/_lib/editRegions";import { newId } from "@/app/_lib/id";
 import { preloadImages, readImageFile } from "@/app/_lib/images";
 import { BUILTIN_ASSETS, svgUrl, type Asset, type AssetKind } from "@/app/_lib/library";
 import { stageToPdf } from "@/app/_lib/pdf";
@@ -13,15 +14,16 @@ import { ALL_CYCLES, type Subject } from "@/app/_lib/subjects";
 import { buildDoc, templateById } from "@/app/_lib/templates";
 import { assetToBlock, type ToolAction } from "@/app/_lib/tools";
 import type { Block, ExamDoc, ViewMode } from "@/app/_lib/types";
-import { useExam } from "@/app/_lib/useExam";
+import { useExam, type DropPoint } from "@/app/_lib/useExam";
 import ExportRenderer from "./canvas/ExportRenderer";
 import Inspector from "./inspector/Inspector";
 import LeftPanel from "./LeftPanel";
 import LibraryPanel from "./library/LibraryPanel";
-import RightPanel, { type RightTab } from "./RightPanel";
+import MathKeyboard from "./math/MathKeyboard";import RightPanel, { type RightTab } from "./RightPanel";
 import TemplatePicker from "./templates/TemplatePicker";
 import TopBar from "./TopBar";
-import Workspace from "./workspace/Workspace";
+import type { CanvasTool } from "./workspace/ToolRail";
+import Workspace, { type Editing } from "./workspace/Workspace";
 
 interface ExportJob {
   doc: ExamDoc;
@@ -30,6 +32,7 @@ interface ExportJob {
 }
 
 const fileName = (title: string) => title.replace(/[\\/:*?"<>|]+/g, "").trim() || "exam";
+const KEYBOARD_KEY = "examBuilder.mathKeyboard";
 
 // The main screen: top bar, toolbox (left), pages (center), properties + library (right).
 export default function Editor() {
@@ -52,6 +55,16 @@ export default function Editor() {
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const eqTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const [tool, setTool] = useState<CanvasTool>("select");
+  const [editing, setEditing] = useState<Editing | null>(null);
+  const [session, setSession] = useState(0); // +1 for each new/opened exam (resets the zoom)
+  const [mathKb, setMathKb] = useState(() => {
+    try {
+      return localStorage.getItem(KEYBOARD_KEY) !== "0";
+    } catch {
+      return true;
+    }
+  });
 
   const heights = useMemo(() => blockHeights(doc), [doc]);
   const numbers = useMemo(() => questionNumbers(doc.blocks, doc.pages), [doc]);
@@ -107,7 +120,7 @@ export default function Editor() {
 
   // ---- Tools (click in the toolbox, or drop on the page) ----
 
-  const runTool = (action: ToolAction, at?: { pageIndex: number; x: number; y: number }) => {
+  const runTool = (action: ToolAction, at?: DropPoint) => {
     switch (action.kind) {
       case "block":
         exam.addBlock(action.type, action.preset, at);
@@ -129,6 +142,56 @@ export default function Editor() {
         setLibrary((l) => ({ kind: "diagram", n: l.n + 1 }));
         break;
     }
+  };
+
+  // ---- Typing directly on the page ----
+
+  const toggleKeyboard = (open = !mathKb) => {
+    setMathKb(open);
+    try {
+      localStorage.setItem(KEYBOARD_KEY, open ? "1" : "0");
+    } catch {}
+  };
+
+  // Double-click (or T tool click) on a block. `field` = which text; null = a block without text.
+  const startEdit = (id: string, field: EditField | null) => {
+    select(id);
+    const block = doc.blocks.find((b) => b.id === id);
+    if (field) setEditing({ id, field });
+    else if (block?.type === "equation") {
+      toggleKeyboard(true);
+      setTimeout(focusMathfield, 80);
+    }
+  };
+
+  const editChange = (value: string) => {
+    const block = editing && doc.blocks.find((b) => b.id === editing.id);
+    if (!editing || !block) return;
+    exam.updateBlock(block.id, fieldPatch(block, editing.field, value), { key: `${block.id}:inline:${fieldKey(editing.field)}` });
+  };
+
+  // Tab / Shift+Tab: jump to the next / previous text of the same block.
+  const editNext = (back: boolean) => {
+    const block = editing && doc.blocks.find((b) => b.id === editing.id);
+    if (!editing || !block) return;
+    const fields = editRegions(block, numbers.get(block.id) ?? 1, doc.meta.lang).map((r) => r.field);
+    const i = fields.findIndex((f) => fieldKey(f) === fieldKey(editing.field));
+    const next = fields[(i + (back ? -1 : 1) + fields.length) % fields.length];
+    if (next) setEditing({ id: block.id, field: next });
+  };
+
+  // Finished typing. A new text from the T tool that stayed empty is removed.
+  const editDone = (id: string) => {
+    const block = doc.blocks.find((b) => b.id === id);
+    if (editing?.id === id && editing.created && block && !fieldValue(block, editing.field).trim()) exam.deleteBlock(id);
+    setEditing((cur) => (cur?.id === id ? null : cur));
+  };
+
+  // T tool on empty paper: a new paragraph starting where the teacher clicked.
+  const createText = (at: DropPoint) => {
+    const width = Math.max(160, Math.min(CONTENT_WIDTH, PAGE_WIDTH - PAGE_MARGIN - at.x));
+    const block = exam.addBlock("text", { style: "body", text: "", width }, at);
+    setEditing({ id: block.id, field: { kind: "text" }, created: true });
   };
 
   // Equation typed in MathLive: save the LaTeX now, redraw it shortly after.
@@ -156,6 +219,8 @@ export default function Editor() {
     const opened = parseExamFile(await file.text());
     if (!opened) return notify("This file is not an Exam Builder file");
     exam.replaceDoc(opened);
+    setEditing(null);
+    setSession((s) => s + 1);
     notify(`Opened “${opened.meta.title}”`);
   };
 
@@ -215,6 +280,11 @@ export default function Editor() {
         exam.deleteBlock(selected.id);
       } else if (key === "escape") {
         exam.setSelectedId(null);
+        setTool("select");
+      } else if (!mod && key === "t") {
+        setTool("text");
+      } else if (!mod && key === "v") {
+        setTool("select");
       } else if (selected && key.startsWith("arrow")) {
         // Arrow keys nudge the selected block (Shift = 10px).
         e.preventDefault();
@@ -254,8 +324,9 @@ export default function Editor() {
       <div className="flex min-h-0 flex-1">
         <LeftPanel subject={subject} pageCount={stats.pages} questionCount={stats.questions} totalPoints={stats.points} onTool={runTool} />
 
-        <main className="min-w-0 flex-1">
+        <main className="relative min-w-0 flex-1">
           <Workspace
+            key={session}
             doc={doc}
             heights={heights}
             numbers={numbers}
@@ -263,6 +334,15 @@ export default function Editor() {
             selectedId={selectedId}
             activePage={exam.activePage}
             reveal={exam.reveal}
+            tool={tool}
+            editing={editing}
+            onToolChange={setTool}
+            onPatch={(id, patch, field) => exam.updateBlock(id, patch, { key: `${id}:${field}` })}
+            onEditStart={startEdit}
+            onEditChange={editChange}
+            onEditNext={editNext}
+            onEditDone={editDone}
+            onCreateText={createText}
             onSelect={select}
             onMove={exam.moveBlock}
             onResize={(id, layout) => exam.updateBlock(id, { layout })}
@@ -271,6 +351,15 @@ export default function Editor() {
             onActivePageChange={exam.setActivePage}
             onDropItem={runTool}
           />
+
+          {/* Math keyboard while an equation is selected */}
+          {selected?.type === "equation" && mathKb && (
+            <div className="pointer-events-none absolute inset-x-0 bottom-16 z-40 flex justify-center px-4">
+              <div className="w-full max-w-[720px]">
+                <MathKeyboard onClose={() => toggleKeyboard(false)} />
+              </div>
+            </div>
+          )}
         </main>
 
         <RightPanel
@@ -279,6 +368,9 @@ export default function Editor() {
           properties={
             <Inspector
               block={selected}
+              number={selected ? (numbers.get(selected.id) ?? 1) : 1}
+              keyboardOpen={mathKb}
+              onToggleKeyboard={() => toggleKeyboard()}
               meta={doc.meta}
               stats={stats}
               onChange={(id, patch, field) => exam.updateBlock(id, patch, { key: `${id}:${field}` })}
@@ -310,6 +402,8 @@ export default function Editor() {
           onClose={() => setPicker({ open: false, mustPick: false })}
           onPick={(t) => {
             exam.newFromTemplate(t);
+            setEditing(null);
+            setSession((s) => s + 1);
             setPicker({ open: false, mustPick: false });
           }}
         />

@@ -3,8 +3,11 @@
 import type Konva from "konva";
 import { useState } from "react";
 import { Group, Rect } from "react-konva";
+import { clickTargets, editRegions, type EditField } from "@/app/_lib/editRegions";
 import type { Block, Lang, ViewMode } from "@/app/_lib/types";
+import type { BlockPatch } from "@/app/_lib/useExam";
 import { EquationView, ImageView, TableView, TextView } from "./blocks/ContentViews";
+import { GraphView } from "./blocks/GraphView";
 import HeaderView from "./blocks/HeaderView";
 import { BlankView, McqView, OpenView, TrueFalseView } from "./blocks/QuestionViews";
 
@@ -25,14 +28,18 @@ interface Props {
   mode: ViewMode;
   selected: boolean;
   interactive: boolean; // false when exporting
+  textTool: boolean; // "T" tool: one click starts typing
   onSelect: () => void;
+  onDragStart: () => void;
   onDragMove: (x: number, y: number) => { x: number; y: number };
   onDragEnd: (x: number, y: number) => void;
   onResize: (r: ResizeResult) => void;
+  onEdit: (field: EditField | null) => void; // null = block without text (equation, image...)
+  onPatch: (patch: BlockPatch) => void;
 }
 
 // What to draw inside the block.
-function Content({ block, number, lang, mode }: Pick<Props, "block" | "number" | "lang" | "mode">) {
+function Content({ block, number, lang, mode, interactive }: Pick<Props, "block" | "number" | "lang" | "mode" | "interactive">) {
   switch (block.type) {
     case "mcq":
       return <McqView b={block} n={number} lang={lang} mode={mode} />;
@@ -47,25 +54,29 @@ function Content({ block, number, lang, mode }: Pick<Props, "block" | "number" |
     case "table":
       return <TableView b={block} lang={lang} />;
     case "equation":
-      return <EquationView b={block} />;
+      // An empty equation is only a hint on screen: it is not printed.
+      return interactive || block.latex.trim() ? <EquationView b={block} /> : null;
     case "image":
       return <ImageView b={block} />;
+    case "graph":
+      return <GraphView b={block} />;
     case "header":
       return <HeaderView b={block} lang={lang} mode={mode} />;
   }
 }
 
+const setCursor = (e: Konva.KonvaEventObject<MouseEvent>, cursor: string) => {
+  const stage = e.target.getStage();
+  if (stage) stage.container().style.cursor = cursor;
+};
+
 // One block on the canvas: handles select, hover, drag and resize. Draws its content inside.
 export default function BlockNode(props: Props) {
-  const { block, x, y, height, selected, interactive, onSelect, onDragMove, onDragEnd, onResize } = props;
+  const { block, x, y, height, selected, interactive, textTool, onSelect, onDragMove, onDragEnd, onResize, onEdit } = props;
   const [hover, setHover] = useState(false);
   const width = block.layout.width;
   const media = block.type === "image" || block.type === "equation";
-
-  const setCursor = (e: Konva.KonvaEventObject<MouseEvent>, cursor: string) => {
-    const stage = e.target.getStage();
-    if (stage) stage.container().style.cursor = cursor;
-  };
+  const moveCursor = textTool ? "text" : "move";
 
   // Resizing scales the group; turn that scale into a real width/height.
   const handleTransformEnd = (e: Konva.KonvaEventObject<Event>) => {
@@ -81,17 +92,21 @@ export default function BlockNode(props: Props) {
       id={block.id}
       x={x}
       y={y}
-      draggable={interactive}
+      draggable={interactive && !textTool}
       listening={interactive}
       onMouseDown={onSelect}
       onTap={onSelect}
-      onDragStart={(e) => e.target.moveToTop()}
+      onDblClick={() => onEdit(null)}
+      onDragStart={(e) => {
+        e.target.moveToTop();
+        props.onDragStart();
+      }}
       onDragMove={(e) => e.target.position(onDragMove(e.target.x(), e.target.y()))}
       onDragEnd={(e) => onDragEnd(e.target.x(), e.target.y())}
       onTransformEnd={handleTransformEnd}
       onMouseEnter={(e) => {
         setHover(true);
-        setCursor(e, "move");
+        setCursor(e, moveCursor);
       }}
       onMouseLeave={(e) => {
         setHover(false);
@@ -108,7 +123,50 @@ export default function BlockNode(props: Props) {
         dash={[4, 3]}
         cornerRadius={4}
       />
-      <Content block={block} number={props.number} lang={props.lang} mode={props.mode} />
+      <Content block={block} number={props.number} lang={props.lang} mode={props.mode} interactive={interactive} />
+
+      {/* Invisible areas on top of the texts: double-click (or click with the T tool) to type there */}
+      {interactive &&
+        editRegions(block, props.number, props.lang).map((r, k) => (
+          <Rect
+            key={`e${k}`}
+            x={r.x - 2}
+            y={r.y - 1}
+            width={r.width + 4}
+            height={Math.max(r.height, 16) + 2}
+            fill="transparent"
+            stroke={hover && (textTool || selected) ? "#e0e7ff" : undefined}
+            strokeWidth={1}
+            cornerRadius={3}
+            onMouseEnter={(e) => setCursor(e, textTool || selected ? "text" : moveCursor)}
+            onMouseLeave={(e) => setCursor(e, moveCursor)}
+            onClick={(e) => {
+              if (!textTool) return;
+              e.cancelBubble = true;
+              onEdit(r.field);
+            }}
+            onDblClick={(e) => {
+              e.cancelBubble = true;
+              onEdit(r.field);
+            }}
+          />
+        ))}
+
+      {/* Click a circle / box to set the correct answer */}
+      {interactive &&
+        clickTargets(block, props.number, props.lang).map((t, k) => (
+          <Rect
+            key={`c${k}`}
+            x={t.x}
+            y={t.y}
+            width={t.width}
+            height={t.height}
+            fill="transparent"
+            onMouseEnter={(e) => setCursor(e, "pointer")}
+            onMouseLeave={(e) => setCursor(e, moveCursor)}
+            onClick={() => props.onPatch(t.patch)}
+          />
+        ))}
     </Group>
   );
 }

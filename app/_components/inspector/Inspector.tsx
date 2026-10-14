@@ -13,6 +13,7 @@ const TYPE_NAMES: Record<Block["type"], string> = {
   open: "Open question",
   text: "Text",
   table: "Table",
+  graph: "Function graph",
   equation: "Equation",
   image: "Image",
   header: "Exam header",
@@ -20,6 +21,7 @@ const TYPE_NAMES: Record<Block["type"], string> = {
 
 interface Props {
   block: Block | undefined;
+  number: number; // question number of the selected block
   meta: ExamMeta;
   stats: { questions: number; points: number; pages: number };
   onChange: (id: string, patch: BlockPatch, field: string) => void;
@@ -29,6 +31,8 @@ interface Props {
   onReplaceImage: (id: string) => void;
   onMeta: (patch: Partial<ExamMeta>, key?: string) => void;
   onChangeTemplate: () => void;
+  keyboardOpen: boolean;
+  onToggleKeyboard: () => void;
 }
 
 // Right panel "Properties": edits the selected block, or the exam settings if nothing is selected.
@@ -52,6 +56,10 @@ export default function Inspector(props: Props) {
       </div>
       <ContentEditorSwitch
         block={block}
+        number={props.number}
+        lang={props.meta.lang}
+        keyboardOpen={props.keyboardOpen}
+        onToggleKeyboard={props.onToggleKeyboard}
         onChange={(patch, field) => props.onChange(block.id, patch, field)}
         onLatex={(latex) => props.onLatex(block, latex)}
         onReplaceImage={() => props.onReplaceImage(block.id)}
@@ -100,6 +108,8 @@ function ExamSettings({ meta, stats, onMeta, onChangeTemplate }: Props) {
         <p>Del — delete · Ctrl+D — duplicate</p>
         <p>Ctrl+Z / Ctrl+Y — undo / redo</p>
         <p>Ctrl+S — save · Ctrl+wheel — zoom</p>
+        <p>Double-click a text on the page — type there</p>
+        <p>T — text tool · V — select tool</p>
       </div>
     </div>
   );

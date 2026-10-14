@@ -26,7 +26,7 @@ const asset = (assetId: string): ToolAction => ({ kind: "asset", assetId });
 // Extra tools for each subject.
 const SUBJECT_TOOLS: Record<SchoolSubject, Tool[]> = {
   Math: [
-    { label: "Function graph", icon: <Icon.GraphIcon />, action: asset("math-parabola") },
+    { label: "Function graph", icon: <Icon.GraphIcon />, action: block("graph") },
     { label: "Geometry", icon: <Icon.GeometryIcon />, action: asset("math-triangle") },
     { label: "Number line", icon: <Icon.NumberLineIcon />, action: asset("math-numberline") },
     { label: "Fraction", icon: <Icon.FractionIcon />, action: block("equation", { latex: "\\frac{a}{b}+\\frac{c}{d}=\\frac{\\ldots}{\\ldots}" }) },
@@ -76,6 +76,7 @@ const SHARED: ToolGroup[] = [
       { label: "Paragraph", icon: <Icon.RtlTextIcon />, action: block("text", { style: "body" }) },
       { label: "Equation", icon: <Icon.EquationIcon />, action: block("equation") },
       { label: "Table", icon: <Icon.TableIcon />, action: block("table") },
+      { label: "Graph", icon: <Icon.GraphIcon />, action: block("graph") },
       { label: "Image", icon: <Icon.ImageIcon />, action: { kind: "importImage" } },
       { label: "Diagram", icon: <Icon.DiagramIcon />, action: { kind: "library" } },
       { label: "Exam header", icon: <Icon.HeaderIcon />, action: block("header") },

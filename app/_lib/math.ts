@@ -7,6 +7,8 @@ let converter: Promise<Converter> | null = null;
 // Load MathJax only the first time an equation is used (it is big).
 function getConverter(): Promise<Converter> {
   converter ??= (async () => {
+    // MathJax reads its version from this global; without it, it calls Node's `require` and fails in the app.
+    (globalThis as { PACKAGE_VERSION?: string }).PACKAGE_VERSION ??= "3.2.1";
     const [{ mathjax }, { TeX }, { SVG }, { liteAdaptor }, { RegisterHTMLHandler }, { AllPackages }] = await Promise.all([
       import("mathjax-full/js/mathjax.js"),
       import("mathjax-full/js/input/tex.js"),
@@ -34,7 +36,8 @@ export interface RenderedEquation {
 
 export async function renderEquation(latex: string): Promise<RenderedEquation> {
   const convert = await getConverter();
-  let svg = convert(latex.trim() || "\\square");
+  // An empty equation shows a light hint box, so it can still be seen and clicked on the page.
+  let svg = convert(latex.trim() || "\\color{#a1a1aa}{\\boxed{\\text{ Équation }}}");
   if (!svg.includes('xmlns="http://www.w3.org/2000/svg"')) {
     svg = svg.replace("<svg", '<svg xmlns="http://www.w3.org/2000/svg"');
   }

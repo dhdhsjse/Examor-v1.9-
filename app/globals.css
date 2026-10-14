@@ -58,6 +58,11 @@ body {
   border-color: #818cf8;
   outline: 2px solid #e0e7ff;
 }
+/* We use our own math keyboard: hide MathLive's keyboard and menu buttons. */
+.equation-host math-field::part(virtual-keyboard-toggle),
+.equation-host math-field::part(menu-toggle) {
+  display: none;
+}
 
 /* Soft dot grid behind the pages, like a design tool. */
 .workspace-dots {

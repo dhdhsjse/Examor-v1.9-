@@ -1,0 +1,185 @@
+// Keys of the math keyboard, grouped in tabs, chosen for writing exam questions.
+// `latex` is inserted in the equation: #? = a box to fill, #0 = the selected part,
+// #@ = the thing just before the cursor (so "x" then "x²" gives x²).
+
+export interface MathKey {
+  latex: string;
+  title: string;
+  label?: string; // drawn with this LaTeX instead of `latex` (for long templates)
+  wide?: boolean;
+}
+
+export interface MathTab {
+  id: string;
+  name: string;
+  keys: MathKey[];
+}
+
+const k = (latex: string, title: string, extra: Partial<MathKey> = {}): MathKey => ({ latex, title, ...extra });
+
+export const MATH_TABS: MathTab[] = [
+  {
+    id: "basic",
+    name: "Basics",
+    keys: [
+      k("\\frac{#0}{#?}", "Fraction"),
+      k("#@^{2}", "Squared"),
+      k("#@^{#?}", "Power"),
+      k("#@_{#?}", "Index"),
+      k("\\sqrt{#0}", "Square root"),
+      k("\\sqrt[#?]{#0}", "n-th root"),
+      k("\\left(#0\\right)", "Parentheses"),
+      k("\\left[#0\\right]", "Brackets"),
+      k("\\left|#0\\right|", "Absolute value"),
+      k("\\times", "Times"),
+      k("\\div", "Divide"),
+      k("\\cdot", "Dot"),
+      k("\\pm", "Plus or minus"),
+      k("=", "Equals"),
+      k("\\neq", "Not equal"),
+      k("\\approx", "Approximately"),
+      k("<", "Less than"),
+      k(">", "Greater than"),
+      k("\\leq", "Less or equal"),
+      k("\\geq", "Greater or equal"),
+      k("\\pi", "Pi"),
+      k("\\infty", "Infinity"),
+      k("^{\\circ}", "Degrees"),
+      k("\\%", "Percent"),
+      k("\\ldots", "Dots (for the student to fill)"),
+    ],
+  },
+  {
+    id: "analysis",
+    name: "Functions & limits",
+    keys: [
+      k("f(x)=", "f(x) ="),
+      k("\\lim_{x\\to #?}", "Limit when x → a"),
+      k("\\lim_{x\\to+\\infty}", "Limit at +∞"),
+      k("\\lim_{x\\to-\\infty}", "Limit at −∞"),
+      k("\\lim_{x\\to #?^{+}}", "Limit on the right"),
+      k("\\lim_{x\\to #?^{-}}", "Limit on the left"),
+      k("f'(x)", "Derivative"),
+      k("f''(x)", "Second derivative"),
+      k("\\frac{\\mathrm{d}#?}{\\mathrm{d}x}", "d/dx"),
+      k("\\int_{#?}^{#?}#?\\,\\mathrm{d}x", "Integral"),
+      k("\\left[#?\\right]_{#?}^{#?}", "Bracket [F(x)] from a to b"),
+      k("\\sum_{k=#?}^{#?}#?", "Sum"),
+      k("\\ln\\left(#0\\right)", "Natural log"),
+      k("\\log\\left(#0\\right)", "Log base 10"),
+      k("e^{#?}", "Exponential"),
+      k("\\sin\\left(#0\\right)", "Sine"),
+      k("\\cos\\left(#0\\right)", "Cosine"),
+      k("\\tan\\left(#0\\right)", "Tangent"),
+      k("u_{n}", "Sequence uₙ"),
+      k("u_{n+1}", "Next term"),
+      k("\\left(u_{n}\\right)_{n\\in\\mathbb{N}}", "Sequence (uₙ)"),
+      k("#@!", "Factorial"),
+      k("\\binom{#?}{#?}", "Binomial"),
+      k("\\to", "Tends to"),
+    ],
+  },
+  {
+    id: "sets",
+    name: "Sets & logic",
+    keys: [
+      k("\\in", "Belongs to"),
+      k("\\notin", "Does not belong to"),
+      k("\\subset", "Subset"),
+      k("\\cup", "Union"),
+      k("\\cap", "Intersection"),
+      k("\\emptyset", "Empty set"),
+      k("\\mathbb{N}", "Natural numbers"),
+      k("\\mathbb{Z}", "Integers"),
+      k("\\mathbb{Q}", "Rationals"),
+      k("\\mathbb{R}", "Real numbers"),
+      k("\\mathbb{R}^{*}", "Non-zero reals"),
+      k("\\left[#?;#?\\right]", "Closed interval"),
+      k("\\left]#?;#?\\right[", "Open interval"),
+      k("\\left[#?;+\\infty\\right[", "Interval to +∞"),
+      k("\\left]-\\infty;#?\\right]", "Interval from −∞"),
+      k("\\left\\{#?\\right\\}", "Set { }"),
+      k("\\Rightarrow", "Implies"),
+      k("\\Leftrightarrow", "Equivalent"),
+      k("\\forall", "For all"),
+      k("\\exists", "There exists"),
+      k("\\begin{cases}#?\\\\#?\\end{cases}", "System of equations"),
+    ],
+  },
+  {
+    id: "geometry",
+    name: "Geometry",
+    keys: [
+      k("\\overrightarrow{#?}", "Vector AB"),
+      k("\\vec{#?}", "Vector u"),
+      k("\\left\\Vert#?\\right\\Vert", "Norm"),
+      k("\\widehat{#?}", "Angle"),
+      k("\\overline{#?}", "Bar"),
+      k("\\parallel", "Parallel"),
+      k("\\perp", "Perpendicular"),
+      k("\\triangle", "Triangle"),
+      k("^{\\circ}", "Degrees"),
+      k("\\left(#?;#?\\right)", "Coordinates (x ; y)"),
+      k("\\begin{pmatrix}#?\\\\#?\\end{pmatrix}", "Column vector"),
+      k("\\cos\\left(#0\\right)", "Cosine"),
+      k("\\sin\\left(#0\\right)", "Sine"),
+      k("\\tan\\left(#0\\right)", "Tangent"),
+      k("\\pi", "Pi"),
+      k("\\mathrm{cm}^{2}", "cm²"),
+      k("\\mathrm{cm}^{3}", "cm³"),
+    ],
+  },
+  {
+    id: "physics",
+    name: "Greek & physics",
+    keys: [
+      k("\\alpha", "alpha"),
+      k("\\beta", "beta"),
+      k("\\gamma", "gamma"),
+      k("\\delta", "delta"),
+      k("\\Delta", "Delta"),
+      k("\\theta", "theta"),
+      k("\\lambda", "lambda"),
+      k("\\mu", "mu"),
+      k("\\rho", "rho"),
+      k("\\sigma", "sigma"),
+      k("\\varphi", "phi"),
+      k("\\omega", "omega"),
+      k("\\Omega", "Ohm"),
+      k("\\times10^{#?}", "× 10ⁿ"),
+      k("\\,\\mathrm{#?}", "Unit (m, kg, s…)"),
+      k("\\,\\mathrm{m\\cdot s^{-1}}", "m·s⁻¹"),
+      k("\\vec{F}", "Force"),
+      k("\\rightarrow", "Reaction arrow"),
+      k("\\rightleftharpoons", "Equilibrium"),
+      k("#@^{#?+}", "Positive ion"),
+      k("#@^{#?-}", "Negative ion"),
+    ],
+  },
+  {
+    id: "templates",
+    name: "Ready formulas",
+    keys: [
+      k("x=\\frac{-b\\pm\\sqrt{\\Delta}}{2a}", "Quadratic formula", { wide: true }),
+      k("\\Delta=b^2-4ac", "Discriminant", { wide: true }),
+      k("ax^2+bx+c=0", "Quadratic equation", { wide: true }),
+      k("\\begin{cases}#?x+#?y=#?\\\\#?x+#?y=#?\\end{cases}", "System of 2 equations", { wide: true, label: "\\begin{cases}ax+by=c\\\\a'x+b'y=c'\\end{cases}" }),
+      k("f(x)=\\begin{cases}#? & \\text{si } x\\geq #?\\\\#? & \\text{si } x<#?\\end{cases}", "Piecewise function", {
+        wide: true,
+        label: "f(x)=\\begin{cases}\\ldots & x\\geq a\\\\\\ldots & x<a\\end{cases}",
+      }),
+      k("\\lim_{x\\to+\\infty}f(x)=#?", "Limit of f", { wide: true }),
+      k("\\lim_{x\\to #?}\\frac{f(x)-f(#?)}{x-#?}", "Derivative (definition)", { wide: true, label: "\\lim_{x\\to a}\\frac{f(x)-f(a)}{x-a}" }),
+      k("\\int_{#?}^{#?}f(x)\\,\\mathrm{d}x", "Integral of f", { wide: true }),
+      k("u_{n+1}=#?u_{n}+#?", "Recurrent sequence", { wide: true, label: "u_{n+1}=a\\,u_{n}+b" }),
+      k("BC^2=AB^2+AC^2", "Pythagoras", { wide: true }),
+      k("\\frac{AM}{AB}=\\frac{AN}{AC}=\\frac{MN}{BC}", "Thales", { wide: true }),
+      k("U=R\\cdot I", "Ohm's law", { wide: true }),
+      k("\\sum\\vec{F}=m\\vec{a}", "Newton's 2nd law", { wide: true }),
+      k("v=\\frac{d}{t}", "Speed", { wide: true }),
+    ],
+  },
+];
+
+// LaTeX drawn on a key: boxes to fill are shown as small squares.
+export const keyLabel = (key: MathKey) => (key.label ?? key.latex).replace(/#\?|#0|#@/g, "\\square");

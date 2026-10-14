@@ -1,15 +1,26 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type DragEvent } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type DragEvent } from "react";
 import { PAGE_HEIGHT, PAGE_WIDTH } from "@/app/_lib/a4";
+import { isQuestion } from "@/app/_lib/blocks";
+import type { EditField } from "@/app/_lib/editRegions";
 import { LABEL_SPACE, pageAt, pageTop, stackHeight } from "@/app/_lib/pageStack";
 import { DRAG_MIME, type ToolAction } from "@/app/_lib/tools";
 import type { BlockLayout, ExamDoc, ViewMode } from "@/app/_lib/types";
-import type { RevealRequest } from "@/app/_lib/useExam";
+import type { BlockPatch, DropPoint, RevealRequest } from "@/app/_lib/useExam";
 import { useZoom } from "@/app/_lib/useZoom";
 import ExamCanvas from "../canvas/ExamCanvas";
+import AnswerBar from "./AnswerBar";
+import InlineEditor from "./InlineEditor";
 import PageStrip from "./PageStrip";
+import ToolRail, { type CanvasTool } from "./ToolRail";
 import ZoomBar from "./ZoomBar";
+
+export interface Editing {
+  id: string;
+  field: EditField;
+  created?: boolean; // new text from the T tool (removed if left empty)
+}
 
 interface Props {
   doc: ExamDoc;
@@ -19,26 +30,83 @@ interface Props {
   selectedId: string | null;
   activePage: number;
   reveal: RevealRequest | null;
+  tool: CanvasTool;
+  editing: Editing | null;
+  onToolChange: (tool: CanvasTool) => void;
   onSelect: (id: string | null) => void;
   onMove: (id: string, pageId: string, x: number, y: number) => void;
   onResize: (id: string, layout: Partial<BlockLayout>) => void;
+  onPatch: (id: string, patch: BlockPatch, field: string) => void;
+  onEditStart: (id: string, field: EditField | null) => void;
+  onEditChange: (value: string) => void;
+  onEditNext: (back: boolean) => void;
+  onEditDone: (id: string) => void;
+  onCreateText: (at: DropPoint) => void;
   onAddPage: () => void;
   onDeletePage: (pageId: string) => void;
   onActivePageChange: (index: number) => void;
-  onDropItem: (action: ToolAction, at: { pageIndex: number; x: number; y: number }) => void;
+  onDropItem: (action: ToolAction, at: DropPoint) => void;
 }
+
+const ANSWER_BAR_KEY = "examBuilder.answerBarOpen";
 
 // Page thumbnails on the left, the zoomable page stack in the center, zoom bottom-right.
 export default function Workspace(props: Props) {
-  const { doc, heights, numbers, mode, selectedId, activePage, reveal } = props;
+  const { doc, heights, numbers, mode, selectedId, activePage, reveal, editing } = props;
   const { pages } = doc;
   const scrollRef = useRef<HTMLDivElement>(null);
   const stackRef = useRef<HTMLDivElement>(null);
   const [viewport, setViewport] = useState({ width: 0, height: 0 });
   const [showGuides, setShowGuides] = useState(true);
   const [dropHover, setDropHover] = useState(false);
+  const [dragging, setDragging] = useState(false);
+  const [answerOpen, setAnswerOpen] = useState(() => {
+    try {
+      return localStorage.getItem(ANSWER_BAR_KEY) !== "0";
+    } catch {
+      return true;
+    }
+  });
   const { zoom, fitMode, setZoom, fitPage } = useZoom(viewport);
   const height = stackHeight(pages.length);
+  const pageIndex = (pageId: string) => Math.max(0, pages.findIndex((p) => p.id === pageId));
+
+  // ---- Zoom that keeps the same spot of the page under the screen center (or the mouse) ----
+
+  const anchor = useRef<{ x: number; y: number; sx: number; sy: number } | null>(null);
+
+  const keepAnchor = (sx?: number, sy?: number) => {
+    const el = scrollRef.current;
+    const stack = stackRef.current;
+    if (!el || !stack) return;
+    const ax = sx ?? el.clientWidth / 2;
+    const ay = sy ?? el.clientHeight / 2;
+    anchor.current = {
+      x: (el.scrollLeft + ax - stack.offsetLeft) / zoom,
+      y: (el.scrollTop + ay - stack.offsetTop) / zoom,
+      sx: ax,
+      sy: ay,
+    };
+  };
+  const zoomTo = (z: number, sx?: number, sy?: number) => {
+    keepAnchor(sx, sy);
+    setZoom(z);
+  };
+  const fitTo = () => {
+    keepAnchor();
+    fitPage();
+  };
+
+  // After the new zoom is drawn: scroll so the remembered spot is back where it was.
+  useLayoutEffect(() => {
+    const el = scrollRef.current;
+    const stack = stackRef.current;
+    const a = anchor.current;
+    anchor.current = null;
+    if (!el || !stack || !a) return;
+    el.scrollLeft = a.x * zoom + stack.offsetLeft - a.sx;
+    el.scrollTop = a.y * zoom + stack.offsetTop - a.sy;
+  }, [zoom]);
 
   // Smoothly scroll so page `i` (with its label) is at the top.
   const scrollToPage = useCallback(
@@ -84,18 +152,19 @@ export default function Workspace(props: Props) {
     return () => observer.disconnect();
   }, []);
 
-  // Ctrl + mouse wheel zooms in/out.
+  // Ctrl + mouse wheel zooms in/out around the mouse.
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
     const onWheel = (e: WheelEvent) => {
       if (!e.ctrlKey) return;
       e.preventDefault();
-      setZoom(zoom * (e.deltaY < 0 ? 1.1 : 1 / 1.1));
+      const r = el.getBoundingClientRect();
+      zoomTo(zoom * (e.deltaY < 0 ? 1.1 : 1 / 1.1), e.clientX - r.left, e.clientY - r.top);
     };
     el.addEventListener("wheel", onWheel, { passive: false });
     return () => el.removeEventListener("wheel", onWheel);
-  }, [zoom, setZoom]);
+  });
 
   // Drag & drop from the toolbox or the library onto a page.
   const handleDragOver = (e: DragEvent) => {
@@ -113,9 +182,21 @@ export default function Workspace(props: Props) {
     const rect = stack.getBoundingClientRect();
     const x = (e.clientX - rect.left) / zoom;
     const y = (e.clientY - rect.top) / zoom;
-    const pageIndex = pageAt(y, pages.length);
-    props.onDropItem(JSON.parse(raw) as ToolAction, { pageIndex, x, y: y - pageTop(pageIndex) });
+    const i = pageAt(y, pages.length);
+    props.onDropItem(JSON.parse(raw) as ToolAction, { pageIndex: i, x, y: y - pageTop(i) });
   };
+
+  const toggleAnswerBar = () => {
+    setAnswerOpen(!answerOpen);
+    try {
+      localStorage.setItem(ANSWER_BAR_KEY, answerOpen ? "0" : "1");
+    } catch {}
+  };
+
+  const editBlock = editing ? doc.blocks.find((b) => b.id === editing.id) : undefined;
+  const selected = doc.blocks.find((b) => b.id === selectedId);
+  const question = selected && isQuestion(selected) && !dragging ? selected : undefined;
+  const blockTop = (b: { layout: BlockLayout }) => pageTop(pageIndex(b.layout.pageId)) + b.layout.y;
 
   return (
     <div className="flex h-full">
@@ -172,12 +253,52 @@ export default function Workspace(props: Props) {
                     zoom={zoom}
                     showGuides={showGuides}
                     selectedId={selectedId}
+                    textTool={props.tool === "text"}
                     onSelect={props.onSelect}
                     onMove={props.onMove}
                     onResize={props.onResize}
+                    onEdit={props.onEditStart}
+                    onPatch={(id, patch) => props.onPatch(id, patch, "click")}
+                    onDragging={setDragging}
+                    onCreateText={(at) => props.onCreateText({ ...at, corner: true })}
                   />
                 </div>
+
+                {/* Typing directly on the page */}
+                {editing && editBlock && (
+                  <InlineEditor
+                    block={editBlock}
+                    field={editing.field}
+                    number={numbers.get(editBlock.id) ?? 1}
+                    lang={doc.meta.lang}
+                    top={blockTop(editBlock)}
+                    onChange={props.onEditChange}
+                    onNext={props.onEditNext}
+                    onDone={() => props.onEditDone(editBlock.id)}
+                  />
+                )}
               </div>
+
+              {/* Green answer bar under the selected question (screen size, not zoomed) */}
+              {question && (
+                <div
+                  className="pointer-events-none absolute z-30"
+                  style={{
+                    left: question.layout.x * zoom,
+                    top: (blockTop(question) + (heights.get(question.id) ?? 0)) * zoom + 6,
+                    width: Math.max(300, question.layout.width * zoom),
+                  }}
+                >
+                  <AnswerBar
+                    block={question}
+                    number={numbers.get(question.id) ?? 1}
+                    lang={doc.meta.lang}
+                    open={answerOpen}
+                    onToggle={toggleAnswerBar}
+                    onPatch={(patch, field) => props.onPatch(question.id, patch, field)}
+                  />
+                </div>
+              )}
             </div>
 
             {/* Small "add page" below the last page */}
@@ -190,14 +311,19 @@ export default function Workspace(props: Props) {
           </div>
         </div>
 
+        {/* Select / Text tools (top-left) */}
+        <div className="pointer-events-none absolute top-3 left-3">
+          <ToolRail tool={props.tool} onChange={props.onToolChange} />
+        </div>
+
         {/* Zoom (bottom-right) */}
         <div className="pointer-events-none absolute right-4 bottom-4">
           <ZoomBar
             zoom={zoom}
             fitMode={fitMode}
             showGuides={showGuides}
-            onZoom={setZoom}
-            onFitPage={fitPage}
+            onZoom={(z) => zoomTo(z)}
+            onFitPage={fitTo}
             onToggleGuides={() => setShowGuides(!showGuides)}
           />
         </div>

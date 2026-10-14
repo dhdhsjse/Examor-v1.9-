@@ -2,7 +2,8 @@ import { CONTENT_WIDTH, PAGE_MARGIN } from "./a4";
 import { blockHeight } from "./blockLayout";
 import { newId } from "./id";
 import { EX_PX } from "./math";
-import type { Block, BlockData, BlockLayout, BlockType, ExamDoc, HeaderStyle, Lang, Page, QuestionBlock, TextStyle } from "./types";
+import type { Block, BlockData, BlockLayout, BlockType, ExamDoc, HeaderStyle, Lang, OpenPart, Page, QuestionBlock, TextStyle } from "./types";
+import type { BlockPatch } from "./useExam";
 
 export const QUESTION_TYPES: BlockType[] = ["mcq", "truefalse", "blank", "open"];
 export const isQuestion = (b: Block): b is QuestionBlock => QUESTION_TYPES.includes(b.type);
@@ -32,7 +33,7 @@ const DEFAULTS = {
   },
 };
 
-export const DEFAULT_LATEX = "x = \\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}";
+export const DEFAULT_LATEX = ""; // new equations start empty: the teacher types right away
 
 // Partial data used to customize a new block (from a tool preset or a library asset).
 export type BlockPreset = BlockData & { width?: number; height?: number };
@@ -54,6 +55,11 @@ export function createBlock(type: BlockType, lang: Lang, pageId: string, preset:
     layout.width = 20 * EX_PX;
     layout.height = 4 * EX_PX;
   }
+  // Graphs have a fixed size (resized with the corner handles).
+  if (type === "graph" && width === undefined) {
+    layout.width = 320;
+    layout.height = 320;
+  }
 
   const base = (() => {
     switch (type) {
@@ -69,7 +75,7 @@ export function createBlock(type: BlockType, lang: Lang, pageId: string, preset:
       case "blank":
         return { type, text: d.blank.text, content: d.blank.content, points: 2 };
       case "open":
-        return { type, text: d.open.text, lines: 4, answer: "", points: 3 };
+        return { type, text: d.open.text, lines: 4, answer: "", points: 3, parts: [] };
       case "text": {
         const style = (data as { style?: TextStyle }).style ?? "heading";
         return { type, text: style === "body" ? d.paragraph : d.text, style };
@@ -80,6 +86,8 @@ export function createBlock(type: BlockType, lang: Lang, pageId: string, preset:
         return { type, latex: DEFAULT_LATEX, svg: "", exW: 20, exH: 4 };
       case "image":
         return { type, src: "", ratio: 1 };
+      case "graph":
+        return { type, functions: ["x^2 - 2"], xMin: -5, xMax: 5, yMin: -4, yMax: 6, grid: true };
       case "header":
         return { type, style: "classic" as HeaderStyle, fields: defaultHeaderFields(lang) };
     }
@@ -116,4 +124,39 @@ export function blockHeights(doc: ExamDoc): Map<string, number> {
 export function nextFreeY(blocks: Block[], heights: Map<string, number>): number {
   const gap = 14;
   return blocks.reduce((bottom, b) => Math.max(bottom, b.layout.y + (heights.get(b.id) ?? 0) + gap), PAGE_MARGIN);
+}
+
+// Change one sub-question; the question's points stay the sum of its parts.
+export function patchPart(parts: OpenPart[], i: number, patch: Partial<OpenPart>): BlockPatch {
+  const next = parts.map((p, k) => (k === i ? { ...p, ...patch } : p));
+  return { parts: next, points: next.reduce((s, p) => s + p.points, 0) };
+}
+
+// After a block is dropped: blocks it covers are pushed down below it (and so on),
+// so nothing overlaps and the reading order (question numbers) matches what you see.
+export function pushDownOverlaps(blocks: Block[], movedId: string, heights: Map<string, number>, pageHeight: number): Block[] {
+  const gap = 14;
+  const moved = blocks.find((b) => b.id === movedId);
+  if (!moved) return blocks;
+  const h = (b: Block) => heights.get(b.id) ?? 0;
+  const sideBySide = (a: Block, b: Block) => a.layout.x + a.layout.width <= b.layout.x || b.layout.x + b.layout.width <= a.layout.x;
+  const samePage = blocks.filter((b) => b.layout.pageId === moved.layout.pageId && !sideBySide(b, moved) && b.id !== movedId);
+
+  // A block that starts higher but reaches into the dropped one: the dropped one goes below it.
+  let y = moved.layout.y;
+  for (const b of [...samePage].sort((a, c) => a.layout.y - c.layout.y)) {
+    if (b.layout.y < y && b.layout.y + h(b) > y) y = b.layout.y + h(b) + gap;
+  }
+  y = Math.min(y, pageHeight - h(moved));
+
+  // Blocks below are pushed down one after the other.
+  const placed = new Map<string, number>([[movedId, y]]);
+  let bottom = y + h(moved);
+  for (const b of samePage.filter((b) => b.layout.y >= moved.layout.y).sort((a, c) => a.layout.y - c.layout.y)) {
+    if (b.layout.y >= bottom) break; // not covered: the rest stays where it is
+    const ny = Math.min(bottom + gap, pageHeight - h(b));
+    placed.set(b.id, ny);
+    bottom = ny + h(b);
+  }
+  return blocks.map((b) => (placed.has(b.id) && placed.get(b.id) !== b.layout.y ? { ...b, layout: { ...b.layout, y: placed.get(b.id)! } } : b));
 }

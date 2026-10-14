@@ -1,12 +1,15 @@
 "use client";
 
 import type Konva from "konva";
-import { useEffect, useRef, useState, type RefObject } from "react";
+import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { Layer, Line, Rect, Stage, Transformer } from "react-konva";
 import { PAGE_HEIGHT, PAGE_MARGIN, PAGE_WIDTH } from "@/app/_lib/a4";
+import { questionNumbers } from "@/app/_lib/blocks";
+import type { EditField } from "@/app/_lib/editRegions";
 import { pageAt, pageTop, stackHeight } from "@/app/_lib/pageStack";
 import { snapBox, type Guide } from "@/app/_lib/snapping";
 import type { Block, BlockLayout, ExamDoc, ViewMode } from "@/app/_lib/types";
+import type { BlockPatch } from "@/app/_lib/useExam";
 import BlockNode, { type ResizeResult } from "./BlockNode";
 
 const SNAP_PX = 6; // snap distance on screen, in pixels
@@ -27,6 +30,11 @@ interface Props {
   onSelect?: (id: string | null) => void;
   onMove?: (id: string, pageId: string, x: number, y: number) => void;
   onResize?: (id: string, layout: Partial<BlockLayout>) => void;
+  textTool?: boolean;
+  onEdit?: (id: string, field: EditField | null) => void;
+  onPatch?: (id: string, patch: BlockPatch) => void;
+  onDragging?: (dragging: boolean) => void;
+  onCreateText?: (at: { pageIndex: number; x: number; y: number }) => void;
 }
 
 const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(v, max));
@@ -34,11 +42,18 @@ const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(v,
 // All pages on ONE Konva stage (real A4 size: 794 x 1123 per page), so blocks can be
 // dragged from one page to another. Zoom is applied by CSS outside.
 export default function ExamCanvas(props: Props) {
-  const { doc, heights, numbers, mode, zoom, showGuides, selectedId, interactive = true, stageRef } = props;
+  const { doc, heights, mode, zoom, showGuides, selectedId, interactive = true, stageRef } = props;
   const { pages, blocks, meta } = doc;
   const layerRef = useRef<Konva.Layer>(null);
   const trRef = useRef<Konva.Transformer>(null);
   const [snap, setSnap] = useState<{ page: number; guides: Guide[] } | null>(null);
+  // Where the dragged block would land, so question numbers update while dragging.
+  const [dragAt, setDragAt] = useState<{ id: string; pageId: string; y: number } | null>(null);
+  const numbers = useMemo(() => {
+    if (!dragAt) return props.numbers;
+    const moved = blocks.map((b) => (b.id === dragAt.id ? { ...b, layout: { ...b.layout, pageId: dragAt.pageId, y: dragAt.y } } : b));
+    return questionNumbers(moved, pages);
+  }, [dragAt, props.numbers, blocks, pages]);
   const height = stackHeight(pages.length);
   const pageIndex = new Map(pages.map((p, i) => [p.id, i]));
   const selected = interactive ? blocks.find((b) => b.id === selectedId) : undefined;
@@ -75,16 +90,17 @@ export default function ExamCanvas(props: Props) {
     const box = { x, y: y - top, width: b.layout.width, height: h };
     const snapped = guidesOn ? snapBox(box, others, SNAP_PX / zoom) : { ...box, guides: [] };
     setSnap({ page: i, guides: snapped.guides });
-    return {
-      x: clamp(snapped.x, 0, PAGE_WIDTH - b.layout.width),
-      y: top + clamp(snapped.y, 0, PAGE_HEIGHT - h),
-    };
+    const pos = { x: clamp(snapped.x, 0, PAGE_WIDTH - b.layout.width), y: clamp(snapped.y, 0, PAGE_HEIGHT - h) };
+    if (dragAt?.pageId !== pages[i].id || dragAt.y !== pos.y) setDragAt({ id: b.id, pageId: pages[i].id, y: pos.y });
+    return { x: pos.x, y: top + pos.y };
   };
 
   // Drop: save which page the block landed on and its position on that page.
   const handleDragEnd = (b: Block, x: number, y: number) => {
     const i = pageAt(y + (heights.get(b.id) ?? 0) / 2, pages.length);
     setSnap(null);
+    setDragAt(null);
+    props.onDragging?.(false);
     props.onMove?.(b.id, pages[i].id, x, y - pageTop(i));
   };
 
@@ -92,27 +108,36 @@ export default function ExamCanvas(props: Props) {
   const handleResize = (b: Block, r: ResizeResult) => {
     const width = clamp(r.width, 40, PAGE_WIDTH);
     const ratio = b.type === "image" ? b.ratio : b.type === "equation" ? b.exW / Math.max(0.1, b.exH) : 0;
-    const h = ratio ? width / ratio : (heights.get(b.id) ?? 0);
+    const graph = b.type === "graph"; // graphs can change shape freely
+    const h = graph ? clamp(r.height, 80, PAGE_HEIGHT) : ratio ? width / ratio : (heights.get(b.id) ?? 0);
     const i = pageAt(r.y + h / 2, pages.length);
     props.onResize?.(b.id, {
       pageId: pages[i].id,
       x: clamp(r.x, 0, PAGE_WIDTH - width),
       y: clamp(r.y - pageTop(i), 0, PAGE_HEIGHT - h),
       width,
-      ...(ratio ? { height: h } : {}),
+      ...(ratio || graph ? { height: h } : {}),
     });
   };
 
   const media = selected?.type === "image" || selected?.type === "equation";
+  const corners = media || selected?.type === "graph";
 
   return (
     <Stage
       ref={stageRef}
       width={PAGE_WIDTH}
       height={height}
-      // Clicking empty paper or the gap between pages clears the selection.
+      // Clicking empty paper clears the selection (with the T tool: starts a new text there).
       onMouseDown={(e) => {
-        if (e.target === e.target.getStage() || e.target.name() === "paper") props.onSelect?.(null);
+        if (e.target !== e.target.getStage() && e.target.name() !== "paper") return;
+        props.onSelect?.(null);
+        const p = e.target.getStage()?.getPointerPosition();
+        if (props.textTool && p && e.target.name() === "paper") {
+          e.evt.preventDefault(); // keep the focus in the new text box
+          const i = pageAt(p.y, pages.length);
+          props.onCreateText?.({ pageIndex: i, x: p.x, y: p.y - pageTop(i) });
+        }
       }}
     >
       <Layer ref={layerRef}>
@@ -132,7 +157,11 @@ export default function ExamCanvas(props: Props) {
             mode={mode}
             selected={b.id === selectedId}
             interactive={interactive}
+            textTool={!!props.textTool}
             onSelect={() => props.onSelect?.(b.id)}
+            onDragStart={() => props.onDragging?.(true)}
+            onEdit={(field) => props.onEdit?.(b.id, field)}
+            onPatch={(patch) => props.onPatch?.(b.id, patch)}
             onDragMove={(x, y) => handleDragMove(b, x, y)}
             onDragEnd={(x, y) => handleDragEnd(b, x, y)}
             onResize={(r) => handleResize(b, r)}
@@ -160,7 +189,7 @@ export default function ExamCanvas(props: Props) {
             rotateEnabled={false}
             keepRatio={media}
             enabledAnchors={
-              selected?.type === "header" ? [] : media ? ["top-left", "top-right", "bottom-left", "bottom-right"] : ["middle-left", "middle-right"]
+              selected?.type === "header" ? [] : corners ? ["top-left", "top-right", "bottom-left", "bottom-right"] : ["middle-left", "middle-right"]
             }
             flipEnabled={false}
             borderStroke={ACCENT}

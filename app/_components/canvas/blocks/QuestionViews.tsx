@@ -11,6 +11,7 @@ import {
   layoutMcq,
   layoutOpen,
   layoutTrueFalse,
+  type AnswerArea,
 } from "@/app/_lib/blockLayout";
 import { isRtl, words } from "@/app/_lib/i18n";
 import type { BlankBlock, Lang, McqBlock, OpenBlock, TrueFalseBlock, ViewMode } from "@/app/_lib/types";
@@ -160,22 +161,27 @@ export function OpenView({ b, n, lang, mode }: ViewProps<OpenBlock>) {
   return (
     <>
       <Title lines={L.title.lines} y={L.title.y} width={w} rtl={rtl} />
-      {/* Dotted answer lines */}
-      {Array.from({ length: L.lineCount }, (_, i) => {
-        const y = L.linesY + (i + 1) * ANSWER_LINE - 4;
-        return <Line key={i} points={[PAD, y, w - PAD, y]} stroke="#9ca3af" strokeWidth={1} dash={[2, 4]} listening={false} />;
+      <Answer area={L.main} keyMode={mode === "key"} rtl={rtl} />
+      {L.parts.map((p, i) => (
+        <Group key={i}>
+          <Lines lines={p.text.lines} x={p.area.x} y={p.text.y} width={p.area.width} size={BODY.size} line={BODY.line} rtl={rtl} />
+          <Answer area={p.area} keyMode={mode === "key"} rtl={rtl} />
+        </Group>
+      ))}
+    </>
+  );
+}
+
+// Dotted lines for the student; the model answer in green on the correction sheet.
+function Answer({ area, keyMode, rtl }: { area: AnswerArea; keyMode: boolean; rtl: boolean }) {
+  return (
+    <>
+      {Array.from({ length: area.count }, (_, i) => {
+        const y = area.y + (i + 1) * ANSWER_LINE - 4;
+        return <Line key={i} points={[area.x, y, area.x + area.width, y]} stroke="#9ca3af" strokeWidth={1} dash={[2, 4]} listening={false} />;
       })}
-      {mode === "key" && b.answer.trim() && (
-        <Lines
-          lines={L.answer.lines}
-          x={PAD}
-          y={L.linesY - 4}
-          width={w - PAD * 2}
-          size={BODY.size}
-          line={ANSWER_LINE}
-          color={KEY}
-          rtl={rtl}
-        />
+      {keyMode && area.text.lines.join("").trim() && (
+        <Lines lines={area.text.lines} x={area.x} y={area.y - 4} width={area.width} size={BODY.size} line={ANSWER_LINE} color={KEY} rtl={rtl} />
       )}
     </>
   );

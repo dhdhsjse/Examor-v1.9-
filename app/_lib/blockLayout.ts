@@ -1,4 +1,4 @@
-import { optionLabel, words } from "./i18n";
+import { isRtl, optionLabel, words } from "./i18n";
 import { wrapText } from "./measure";
 import type {
   BlankBlock,
@@ -90,12 +90,37 @@ export function layoutBlank(b: BlankBlock, n: number, lang: Lang) {
   return { title, exam, key, height: y + Math.max(exam.height, key.height) + PAD };
 }
 
+// Dotted answer lines (and the model answer for the key) starting at `y`.
+function answerArea(answer: string, lines: number, x: number, width: number, y: number) {
+  const text = box(answer, width, { size: BODY.size, line: ANSWER_LINE }, false, y);
+  const count = Math.max(lines, answer.trim() ? text.lines.length : 0);
+  return { text, x, y, width, count, height: count * ANSWER_LINE };
+}
+
+export type AnswerArea = ReturnType<typeof answerArea>;
+export const PART_INDENT = 18;
+
+// "1a)" in French, "1-أ)" in Arabic.
+export function partLabel(n: number, i: number, lang: Lang): string {
+  return lang === "ar" ? `${n}-${optionLabel(i, lang)})` : `${n}${String.fromCharCode(97 + i)})`;
+}
+
 export function layoutOpen(b: OpenBlock, n: number, lang: Lang) {
   const title = box(questionTitle(b, n, lang), inner(b), TITLE, true, PAD);
-  const y = PAD + title.height + GAP;
-  const answer = box(b.answer, inner(b), { size: BODY.size, line: ANSWER_LINE }, false, y);
-  const lineCount = Math.max(b.lines, b.answer.trim() ? answer.lines.length : 0);
-  return { title, answer, linesY: y, lineCount, height: y + lineCount * ANSWER_LINE + PAD };
+  let y = PAD + title.height + GAP;
+  const main = answerArea(b.answer, b.lines, PAD, inner(b), y);
+  y += main.height;
+  // Sub-questions: label + text, then their own answer lines.
+  const parts = (b.parts ?? []).map((p, i) => {
+    const pts = p.points > 0 ? ` ${words(lang).pts(p.points)}` : "";
+    const text = box(`${partLabel(n, i, lang)} ${p.text}${pts}`, inner(b) - PART_INDENT, BODY, false, y + 4);
+    y = text.y + text.height;
+    // The indent is on the right in Arabic.
+    const area = answerArea(p.answer, p.lines, isRtl(lang) ? PAD : PAD + PART_INDENT, inner(b) - PART_INDENT, y);
+    y += area.height;
+    return { text, area };
+  });
+  return { title, main, parts, height: y + PAD };
 }
 
 export function layoutText(b: TextBlock) {
@@ -138,6 +163,7 @@ export function blockHeight(b: Block, n: number, lang: Lang): number {
       return HEADER_HEIGHT[b.style];
     case "equation":
     case "image":
+    case "graph":
       return b.layout.height;
   }
 }
