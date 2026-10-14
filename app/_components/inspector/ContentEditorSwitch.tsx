@@ -10,6 +10,7 @@ interface Props {
   block: Block;
   number: number;
   lang: Lang;
+  totalPoints: number; // of all questions (header score)
   onChange: OnChange;
   onLatex: (latex: string) => void;
   onReplaceImage: () => void;
@@ -18,7 +19,7 @@ interface Props {
 }
 
 // Picks the right editor for the selected block type.
-export function ContentEditorSwitch({ block, number, lang, onChange, onLatex, onReplaceImage, keyboardOpen, onToggleKeyboard }: Props) {
+export function ContentEditorSwitch({ block, number, lang, totalPoints, onChange, onLatex, onReplaceImage, keyboardOpen, onToggleKeyboard }: Props) {
   switch (block.type) {
     case "mcq":
       return <McqEditor b={block} onChange={onChange} />;
@@ -31,7 +32,7 @@ export function ContentEditorSwitch({ block, number, lang, onChange, onLatex, on
     case "text":
       return <TextEditor b={block} onChange={onChange} />;
     case "table":
-      return <TableEditor b={block} onChange={onChange} />;
+      return <TableEditor b={block} lang={lang} onChange={onChange} />;
     case "equation":
       return <EquationEditor b={block} onLatex={onLatex} keyboardOpen={keyboardOpen} onToggleKeyboard={onToggleKeyboard} />;
     case "image":
@@ -39,6 +40,6 @@ export function ContentEditorSwitch({ block, number, lang, onChange, onLatex, on
     case "graph":
       return <GraphEditor b={block} onChange={onChange} />;
     case "header":
-      return <HeaderEditor b={block} onChange={onChange} />;
+      return <HeaderEditor b={block} totalPoints={totalPoints} onChange={onChange} />;
   }
 }

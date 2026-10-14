@@ -5,6 +5,7 @@ import { mathCommand } from "@/app/_lib/activeMathfield";
 import { svgUrl } from "@/app/_lib/library";
 import { renderEquation } from "@/app/_lib/math";
 import { MATH_TABS, keyLabel, type MathKey } from "@/app/_lib/mathKeys";
+import { useT } from "@/app/_lib/uiLang";
 
 const TAB_KEY = "examBuilder.mathTab";
 const labelCache = new Map<string, string>();
@@ -32,6 +33,7 @@ function KeyFace({ latex }: { latex: string }) {
 
 // Floating keyboard under the pages while an equation is selected. "×" closes it.
 export default function MathKeyboard({ onClose }: { onClose: () => void }) {
+  const t = useT();
   const [tabId, setTabId] = useState(() => {
     try {
       return localStorage.getItem(TAB_KEY) ?? "basic";
@@ -39,7 +41,7 @@ export default function MathKeyboard({ onClose }: { onClose: () => void }) {
       return "basic";
     }
   });
-  const tab = MATH_TABS.find((t) => t.id === tabId) ?? MATH_TABS[0];
+  const tab = MATH_TABS.find((x) => x.id === tabId) ?? MATH_TABS[0];
 
   const pickTab = (id: string) => {
     setTabId(id);
@@ -60,19 +62,19 @@ export default function MathKeyboard({ onClose }: { onClose: () => void }) {
       {/* Tabs + close */}
       <div className="flex items-center gap-1 border-b border-line bg-subtle/70 px-2 py-1.5">
         <div className="flex min-w-0 flex-1 gap-1 overflow-x-auto">
-          {MATH_TABS.map((t) => (
+          {MATH_TABS.map((x) => (
             <button
-              key={t.id}
-              onClick={() => pickTab(t.id)}
+              key={x.id}
+              onClick={() => pickTab(x.id)}
               className={`shrink-0 rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
-                t.id === tab.id ? "bg-white text-indigo-600 shadow-sm ring-1 ring-line" : "text-muted hover:text-ink"
+                x.id === tab.id ? "bg-white text-indigo-600 shadow-sm ring-1 ring-line" : "text-muted hover:text-ink"
               }`}
             >
-              {t.name}
+              {t(x.name)}
             </button>
           ))}
         </div>
-        <button onClick={onClose} title="Close the keyboard" className="grid size-7 shrink-0 place-items-center rounded-md text-muted hover:bg-red-50 hover:text-red-600">
+        <button onClick={onClose} title={t("Close the keyboard")} className="grid size-7 shrink-0 place-items-center rounded-md text-muted hover:bg-red-50 hover:text-red-600">
           <svg width="11" height="11" viewBox="0 0 10 10" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
             <path d="M2 2l6 6M8 2L2 8" />
           </svg>
@@ -80,7 +82,7 @@ export default function MathKeyboard({ onClose }: { onClose: () => void }) {
       </div>
 
       {/* Keys */}
-      <div className="grid min-h-0 grid-cols-[repeat(auto-fill,minmax(58px,1fr))] gap-1.5 overflow-y-auto p-2.5">
+      <div className="grid min-h-0 grid-cols-[repeat(auto-fill,minmax(58px,1fr))] gap-1.5 overflow-y-auto p-2.5" dir="ltr">
         {tab.keys.map((key) => (
           <button
             key={key.latex + key.title}
@@ -98,11 +100,11 @@ export default function MathKeyboard({ onClose }: { onClose: () => void }) {
 
       {/* Editing keys */}
       <div className="flex items-center gap-1.5 border-t border-line px-2.5 py-1.5 text-xs">
-        <EditKey title="Move left" onClick={() => mathCommand("moveToPreviousChar")}>◀</EditKey>
-        <EditKey title="Move right" onClick={() => mathCommand("moveToNextChar")}>▶</EditKey>
-        <EditKey title="Delete" onClick={() => mathCommand("deleteBackward")}>⌫ Delete</EditKey>
-        <EditKey title="Undo" onClick={() => mathCommand("undo")}>↶ Undo</EditKey>
-        <span className="ml-auto text-[11px] text-faint">Tip: you can also type — x^2, sqrt, pi, lim…</span>
+        <EditKey title={t("Move left")} onClick={() => mathCommand("moveToPreviousChar")}>◀</EditKey>
+        <EditKey title={t("Move right")} onClick={() => mathCommand("moveToNextChar")}>▶</EditKey>
+        <EditKey title={t("Delete")} onClick={() => mathCommand("deleteBackward")}>⌫ {t("Delete")}</EditKey>
+        <EditKey title={t("Undo")} onClick={() => mathCommand("undo")}>↶ {t("Undo")}</EditKey>
+        <span className="ms-auto text-[11px] text-faint">{t("Tip: you can also type — x^2, sqrt, pi, lim…")}</span>
       </div>
     </div>
   );

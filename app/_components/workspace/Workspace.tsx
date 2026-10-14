@@ -7,6 +7,7 @@ import type { EditField } from "@/app/_lib/editRegions";
 import { LABEL_SPACE, pageAt, pageTop, stackHeight } from "@/app/_lib/pageStack";
 import { DRAG_MIME, type ToolAction } from "@/app/_lib/tools";
 import type { BlockLayout, ExamDoc, ViewMode } from "@/app/_lib/types";
+import { useT } from "@/app/_lib/uiLang";
 import type { BlockPatch, DropPoint, RevealRequest } from "@/app/_lib/useExam";
 import { useZoom } from "@/app/_lib/useZoom";
 import ExamCanvas from "../canvas/ExamCanvas";
@@ -20,6 +21,7 @@ export interface Editing {
   id: string;
   field: EditField;
   created?: boolean; // new text from the T tool (removed if left empty)
+  selectAll?: boolean; // new block: its starting text is selected, so typing replaces it
 }
 
 interface Props {
@@ -40,6 +42,7 @@ interface Props {
   onEditStart: (id: string, field: EditField | null) => void;
   onEditChange: (value: string) => void;
   onEditNext: (back: boolean) => void;
+  onEditEnter: () => void;
   onEditDone: (id: string) => void;
   onCreateText: (at: DropPoint) => void;
   onAddPage: () => void;
@@ -52,6 +55,7 @@ const ANSWER_BAR_KEY = "examBuilder.answerBarOpen";
 
 // Page thumbnails on the left, the zoomable page stack in the center, zoom bottom-right.
 export default function Workspace(props: Props) {
+  const t = useT();
   const { doc, heights, numbers, mode, selectedId, activePage, reveal, editing } = props;
   const { pages } = doc;
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -67,7 +71,10 @@ export default function Workspace(props: Props) {
       return true;
     }
   });
-  const { zoom, fitMode, setZoom, fitPage } = useZoom(viewport);
+  const { zoom, fitMode, setZoom, fitPage, fitWidth } = useZoom(viewport);
+  const [panReady, setPanReady] = useState(false); // Space held: drag to move around
+  const [panning, setPanning] = useState(false);
+  const pan = useRef<{ x: number; y: number; left: number; top: number } | null>(null);
   const height = stackHeight(pages.length);
   const pageIndex = (pageId: string) => Math.max(0, pages.findIndex((p) => p.id === pageId));
 
@@ -92,9 +99,10 @@ export default function Workspace(props: Props) {
     keepAnchor(sx, sy);
     setZoom(z);
   };
-  const fitTo = () => {
+  const fitTo = (width = false) => {
     keepAnchor();
-    fitPage();
+    if (width) fitWidth();
+    else fitPage();
   };
 
   // After the new zoom is drawn: scroll so the remembered spot is back where it was.
@@ -152,18 +160,53 @@ export default function Workspace(props: Props) {
     return () => observer.disconnect();
   }, []);
 
-  // Ctrl + mouse wheel zooms in/out around the mouse.
+  // Ctrl + mouse wheel (or a touchpad pinch) zooms smoothly around the mouse.
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
     const onWheel = (e: WheelEvent) => {
-      if (!e.ctrlKey) return;
+      if (!e.ctrlKey && !e.metaKey) return;
       e.preventDefault();
       const r = el.getBoundingClientRect();
-      zoomTo(zoom * (e.deltaY < 0 ? 1.1 : 1 / 1.1), e.clientX - r.left, e.clientY - r.top);
+      const step = e.deltaMode === 1 ? e.deltaY * 30 : e.deltaY; // lines → pixels
+      const factor = Math.exp(-Math.max(-120, Math.min(120, step)) * 0.0022);
+      zoomTo(zoom * factor, e.clientX - r.left, e.clientY - r.top);
     };
     el.addEventListener("wheel", onWheel, { passive: false });
     return () => el.removeEventListener("wheel", onWheel);
+  });
+
+  // Keyboard: Ctrl + / Ctrl − zoom, Ctrl 0 fits the page, Ctrl 1 = 100%. Space + drag moves around.
+  useEffect(() => {
+    const typing = (e: KeyboardEvent) => {
+      const el = e.target as HTMLElement;
+      return el.isContentEditable || ["INPUT", "TEXTAREA", "SELECT", "MATH-FIELD"].includes(el.tagName);
+    };
+    const onDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && !e.altKey) {
+        if (e.key === "=" || e.key === "+") zoomTo(zoom * 1.2);
+        else if (e.key === "-" || e.key === "_") zoomTo(zoom / 1.2);
+        else if (e.key === "0") fitTo();
+        else if (e.key === "1") zoomTo(1);
+        else return;
+        e.preventDefault();
+      } else if (e.code === "Space" && !typing(e)) {
+        e.preventDefault();
+        setPanReady(true);
+      }
+    };
+    const onUp = (e: KeyboardEvent) => {
+      if (e.code === "Space") {
+        setPanReady(false);
+        pan.current = null;
+      }
+    };
+    window.addEventListener("keydown", onDown);
+    window.addEventListener("keyup", onUp);
+    return () => {
+      window.removeEventListener("keydown", onDown);
+      window.removeEventListener("keyup", onUp);
+    };
   });
 
   // Drag & drop from the toolbox or the library onto a page.
@@ -213,6 +256,7 @@ export default function Workspace(props: Props) {
       <div className="relative min-w-0 flex-1">
         <div
           ref={scrollRef}
+          dir="ltr"
           onScroll={handleScroll}
           className="workspace-dots absolute inset-0 overflow-auto"
           // Clicking the grey area clears the selection.
@@ -274,6 +318,8 @@ export default function Workspace(props: Props) {
                     top={blockTop(editBlock)}
                     onChange={props.onEditChange}
                     onNext={props.onEditNext}
+                    onEnter={props.onEditEnter}
+                    selectAll={!!editing.selectAll}
                     onDone={() => props.onEditDone(editBlock.id)}
                   />
                 )}
@@ -296,6 +342,7 @@ export default function Workspace(props: Props) {
                     open={answerOpen}
                     onToggle={toggleAnswerBar}
                     onPatch={(patch, field) => props.onPatch(question.id, patch, field)}
+                    onEdit={(field) => props.onEditStart(question.id, field)}
                   />
                 </div>
               )}
@@ -306,24 +353,49 @@ export default function Workspace(props: Props) {
               onClick={props.onAddPage}
               className="flex items-center gap-1.5 rounded-full border border-slate-300/80 bg-white/70 px-3 py-1 text-xs font-medium text-muted backdrop-blur transition-colors hover:border-indigo-300 hover:text-indigo-600"
             >
-              <span className="text-sm leading-none">+</span> Add page
+              <span className="text-sm leading-none">+</span> {t("Add page")}
             </button>
           </div>
         </div>
 
-        {/* Select / Text tools (top-left) */}
-        <div className="pointer-events-none absolute top-3 left-3">
-          <ToolRail tool={props.tool} onChange={props.onToolChange} />
-        </div>
+        {/* Space held: a layer that catches the mouse to drag the view around */}
+        {panReady && (
+          <div
+            className={`absolute inset-0 z-40 ${panning ? "cursor-grabbing" : "cursor-grab"}`}
+            onMouseDown={(e) => {
+              const el = scrollRef.current;
+              if (!el) return;
+              pan.current = { x: e.clientX, y: e.clientY, left: el.scrollLeft, top: el.scrollTop };
+              setPanning(true);
+            }}
+            onMouseMove={(e) => {
+              const el = scrollRef.current;
+              const p = pan.current;
+              if (!el || !p) return;
+              el.scrollLeft = p.left - (e.clientX - p.x);
+              el.scrollTop = p.top - (e.clientY - p.y);
+            }}
+            onMouseUp={() => {
+              pan.current = null;
+              setPanning(false);
+            }}
+            onMouseLeave={() => {
+              pan.current = null;
+              setPanning(false);
+            }}
+          />
+        )}
 
-        {/* Zoom (bottom-right) */}
-        <div className="pointer-events-none absolute right-4 bottom-4">
+        {/* Select / Text tools + zoom (bottom-right, away from the "Page 1 of 2" labels) */}
+        <div className="pointer-events-none absolute right-4 bottom-4 flex items-center gap-2" dir="ltr">
+          <ToolRail tool={props.tool} onChange={props.onToolChange} />
           <ZoomBar
             zoom={zoom}
             fitMode={fitMode}
             showGuides={showGuides}
             onZoom={(z) => zoomTo(z)}
-            onFitPage={fitTo}
+            onFitPage={() => fitTo()}
+            onFitWidth={() => fitTo(true)}
             onToggleGuides={() => setShowGuides(!showGuides)}
           />
         </div>
@@ -342,6 +414,7 @@ function PageFrame({ index, total, zoom, active, keyMode, onClick }: {
   keyMode: boolean;
   onClick: () => void;
 }) {
+  const t = useT();
   const top = pageTop(index);
   return (
     <>
@@ -362,8 +435,8 @@ function PageFrame({ index, total, zoom, active, keyMode, onClick }: {
           padding: `${2 / zoom}px ${6 / zoom}px`,
         }}
       >
-        Page {index + 1} <span className="text-faint">of {total}</span>
-        {keyMode && <span className="text-emerald-600"> · Correction</span>}
+        {t("Page")} {index + 1} <span className="text-faint">{t("of {n}", { n: total })}</span>
+        {keyMode && <span className="text-emerald-600"> · {t("Correction")}</span>}
       </button>
     </>
   );

@@ -1,7 +1,7 @@
 "use client";
 
 import type Konva from "konva";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Group, Rect } from "react-konva";
 import { clickTargets, editRegions, type EditField } from "@/app/_lib/editRegions";
 import type { Block, Lang, ViewMode } from "@/app/_lib/types";
@@ -10,6 +10,7 @@ import { EquationView, ImageView, TableView, TextView } from "./blocks/ContentVi
 import { GraphView } from "./blocks/GraphView";
 import HeaderView from "./blocks/HeaderView";
 import { BlankView, McqView, OpenView, TrueFalseView } from "./blocks/QuestionViews";
+import { TableHandles } from "./blocks/TableHandles";
 
 export interface ResizeResult {
   x: number;
@@ -26,6 +27,8 @@ interface Props {
   number: number;
   lang: Lang;
   mode: ViewMode;
+  totalPoints: number; // for the header score
+  zoom: number;
   selected: boolean;
   interactive: boolean; // false when exporting
   textTool: boolean; // "T" tool: one click starts typing
@@ -39,7 +42,7 @@ interface Props {
 }
 
 // What to draw inside the block.
-function Content({ block, number, lang, mode, interactive }: Pick<Props, "block" | "number" | "lang" | "mode" | "interactive">) {
+function Content({ block, number, lang, mode, interactive, totalPoints }: Pick<Props, "block" | "number" | "lang" | "mode" | "interactive" | "totalPoints">) {
   switch (block.type) {
     case "mcq":
       return <McqView b={block} n={number} lang={lang} mode={mode} />;
@@ -61,7 +64,7 @@ function Content({ block, number, lang, mode, interactive }: Pick<Props, "block"
     case "graph":
       return <GraphView b={block} />;
     case "header":
-      return <HeaderView b={block} lang={lang} mode={mode} />;
+      return <HeaderView b={block} lang={lang} mode={mode} totalPoints={totalPoints} />;
   }
 }
 
@@ -74,6 +77,8 @@ const setCursor = (e: Konva.KonvaEventObject<MouseEvent>, cursor: string) => {
 export default function BlockNode(props: Props) {
   const { block, x, y, height, selected, interactive, textTool, onSelect, onDragMove, onDragEnd, onResize, onEdit } = props;
   const [hover, setHover] = useState(false);
+  // Was the block already selected when the mouse went down? Then one click on a text types in it.
+  const wasSelected = useRef(false);
   const width = block.layout.width;
   const media = block.type === "image" || block.type === "equation";
   const moveCursor = textTool ? "text" : "move";
@@ -94,7 +99,10 @@ export default function BlockNode(props: Props) {
       y={y}
       draggable={interactive && !textTool}
       listening={interactive}
-      onMouseDown={onSelect}
+      onMouseDown={() => {
+        wasSelected.current = selected;
+        onSelect();
+      }}
       onTap={onSelect}
       onDblClick={() => onEdit(null)}
       onDragStart={(e) => {
@@ -123,9 +131,10 @@ export default function BlockNode(props: Props) {
         dash={[4, 3]}
         cornerRadius={4}
       />
-      <Content block={block} number={props.number} lang={props.lang} mode={props.mode} interactive={interactive} />
+      <Content block={block} number={props.number} lang={props.lang} mode={props.mode} interactive={interactive} totalPoints={props.totalPoints} />
 
-      {/* Invisible areas on top of the texts: double-click (or click with the T tool) to type there */}
+      {/* Invisible areas on top of the texts: double-click, click a selected block (or click with
+          the T tool) to type there */}
       {interactive &&
         editRegions(block, props.number, props.lang).map((r, k) => (
           <Rect
@@ -141,7 +150,7 @@ export default function BlockNode(props: Props) {
             onMouseEnter={(e) => setCursor(e, textTool || selected ? "text" : moveCursor)}
             onMouseLeave={(e) => setCursor(e, moveCursor)}
             onClick={(e) => {
-              if (!textTool) return;
+              if (!textTool && !wasSelected.current) return;
               e.cancelBubble = true;
               onEdit(r.field);
             }}
@@ -167,6 +176,11 @@ export default function BlockNode(props: Props) {
             onClick={() => props.onPatch(t.patch)}
           />
         ))}
+
+      {/* Drag the lines of the selected table to resize its columns and rows */}
+      {interactive && selected && !textTool && block.type === "table" && (
+        <TableHandles b={block} lang={props.lang} zoom={props.zoom} onPatch={props.onPatch} />
+      )}
     </Group>
   );
 }

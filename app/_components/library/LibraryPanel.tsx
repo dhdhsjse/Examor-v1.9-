@@ -4,6 +4,7 @@ import { useState } from "react";
 import { BUILTIN_ASSETS, matchesFilter, svgUrl, type Asset, type AssetKind, type LibraryFilter } from "@/app/_lib/library";
 import { ALL_CYCLES, CYCLES, SUBJECTS, type Cycle, type SchoolSubject, type Subject } from "@/app/_lib/subjects";
 import { DRAG_MIME } from "@/app/_lib/tools";
+import { useT } from "@/app/_lib/uiLang";
 
 interface Props {
   subject: Subject; // top-bar subject = default subject filter
@@ -27,6 +28,7 @@ const KINDS: { value: AssetKind | "all"; label: string }[] = [
 // Smart library: diagrams, tables and imported images, filtered by cycle / year / subject.
 // Click an item to add it, or drag it onto the page.
 export default function LibraryPanel({ subject, initialKind, userAssets, onUse, onImport, onDeleteUserAsset }: Props) {
+  const t = useT();
   const [filter, setFilter] = useState<LibraryFilter>({
     query: "",
     cycle: "all",
@@ -36,7 +38,10 @@ export default function LibraryPanel({ subject, initialKind, userAssets, onUse, 
   });
   const set = (patch: Partial<LibraryFilter>) => setFilter((f) => ({ ...f, ...patch }));
   const years = filter.cycle === "all" ? ALL_CYCLES.flatMap((c) => CYCLES[c].years) : CYCLES[filter.cycle].years;
-  const items = [...userAssets, ...BUILTIN_ASSETS].filter((a) => matchesFilter(a, filter));
+  // Search in English and in the app's language.
+  const items = [...userAssets, ...BUILTIN_ASSETS].filter(
+    (a) => matchesFilter(a, { ...filter, query: "" }) && (!filter.query.trim() || matchesFilter(a, filter) || t(a.name).toLowerCase().includes(filter.query.trim().toLowerCase())),
+  );
 
   return (
     <div className="flex h-full flex-col">
@@ -45,15 +50,15 @@ export default function LibraryPanel({ subject, initialKind, userAssets, onUse, 
           <input
             value={filter.query}
             onChange={(e) => set({ query: e.target.value })}
-            placeholder="Search library..."
+            placeholder={t("Search library...")}
             className="h-7 min-w-0 flex-1 rounded-md border border-line bg-subtle px-2 text-xs outline-none focus:border-indigo-300 focus:bg-white"
           />
           <button
             onClick={onImport}
-            title="Import an image from your computer"
+            title={t("Import an image from your computer")}
             className="h-7 shrink-0 rounded-md bg-indigo-600 px-2.5 text-[11px] font-semibold text-white hover:bg-indigo-700"
           >
-            + Import
+            + {t("Import")}
           </button>
         </div>
 
@@ -63,17 +68,17 @@ export default function LibraryPanel({ subject, initialKind, userAssets, onUse, 
             value={filter.cycle}
             onChange={(e) => set({ cycle: e.target.value as Cycle | "all", year: "all" })}
             className={selectCls}
-            aria-label="Cycle"
+            aria-label={t("Cycle")}
           >
-            <option value="all">All cycles</option>
+            <option value="all">{t("All cycles")}</option>
             {ALL_CYCLES.map((c) => (
               <option key={c} value={c}>
-                {CYCLES[c].label}
+                {t(CYCLES[c].label)}
               </option>
             ))}
           </select>
-          <select value={filter.year} onChange={(e) => set({ year: e.target.value })} className={selectCls} aria-label="Year">
-            <option value="all">All years</option>
+          <select value={filter.year} onChange={(e) => set({ year: e.target.value })} className={selectCls} aria-label={t("Year")}>
+            <option value="all">{t("All years")}</option>
             {years.map((y) => (
               <option key={y} value={y}>
                 {y}
@@ -84,12 +89,12 @@ export default function LibraryPanel({ subject, initialKind, userAssets, onUse, 
             value={filter.subject}
             onChange={(e) => set({ subject: e.target.value as SchoolSubject | "all" })}
             className={selectCls}
-            aria-label="Subject"
+            aria-label={t("Subject")}
           >
-            <option value="all">All subjects</option>
+            <option value="all">{t("All subjects")}</option>
             {SUBJECTS.filter((s) => s !== "General").map((s) => (
               <option key={s} value={s}>
-                {s}
+                {t(s)}
               </option>
             ))}
           </select>
@@ -104,7 +109,7 @@ export default function LibraryPanel({ subject, initialKind, userAssets, onUse, 
                 filter.kind === k.value ? "bg-amber-100 text-amber-800" : "text-muted hover:bg-subtle"
               }`}
             >
-              {k.label}
+              {t(k.label)}
             </button>
           ))}
         </div>
@@ -116,8 +121,8 @@ export default function LibraryPanel({ subject, initialKind, userAssets, onUse, 
         ))}
         {items.length === 0 && (
           <p className="col-span-2 pt-8 text-center text-xs text-faint">
-            Nothing matches these filters.
-            {filter.kind === "image" && " Click “+ Import” to add your own images."}
+            {t("Nothing matches these filters.")}
+            {filter.kind === "image" && ` ${t("Click “+ Import” to add your own images.")}`}
           </p>
         )}
       </div>
@@ -126,6 +131,9 @@ export default function LibraryPanel({ subject, initialKind, userAssets, onUse, 
 }
 
 function AssetCard({ asset, onUse, onDelete }: { asset: Asset; onUse: (a: Asset) => void; onDelete?: (id: string) => void }) {
+  const t = useT();
+  // Built-in items have English names (translated); imported images keep their file name.
+  const name = asset.id.startsWith("user-") ? asset.name : t(asset.name);
   return (
     <div className="group relative">
       <button
@@ -135,19 +143,21 @@ function AssetCard({ asset, onUse, onDelete }: { asset: Asset; onUse: (a: Asset)
           e.dataTransfer.effectAllowed = "copy";
         }}
         onClick={() => onUse(asset)}
-        title={`${asset.name} — click or drag onto the page`}
-        className="flex w-full flex-col overflow-hidden rounded-lg border border-line bg-white text-left transition hover:-translate-y-0.5 hover:border-amber-300 hover:shadow-md"
+        title={t("{label} — click or drag onto the page", { label: name })}
+        className="flex w-full flex-col overflow-hidden rounded-lg border border-line bg-white text-start transition hover:-translate-y-0.5 hover:border-amber-300 hover:shadow-md"
       >
         <div className="grid h-20 w-full place-items-center bg-subtle p-2">
           <AssetPreview asset={asset} />
         </div>
-        <span className="truncate px-2 py-1.5 text-[11px] font-medium text-ink">{asset.name}</span>
+        <span className="truncate px-2 py-1.5 text-[11px] font-medium text-ink" dir="auto">
+          {name}
+        </span>
       </button>
       {onDelete && (
         <button
           onClick={() => onDelete(asset.id)}
-          title="Remove from library"
-          className="absolute top-1 right-1 hidden size-5 place-items-center rounded-full bg-white text-faint shadow ring-1 ring-black/10 group-hover:grid hover:text-red-600"
+          title={t("Remove from library")}
+          className="absolute top-1 end-1 hidden size-5 place-items-center rounded-full bg-white text-faint shadow ring-1 ring-black/10 group-hover:grid hover:text-red-600"
         >
           ×
         </button>

@@ -1,5 +1,7 @@
 "use client";
 
+import { useT } from "@/app/_lib/uiLang";
+
 // "select" = click to select and drag blocks. "text" = like the T tool in Photoshop:
 // click a text to type in it, or click empty paper to write a new text there.
 export type CanvasTool = "select" | "text";
@@ -27,20 +29,21 @@ const TOOLS: { id: CanvasTool; label: string; key: string; icon: React.ReactNode
   },
 ];
 
-// Small floating toolbar at the top-left of the pages.
+// Small floating toolbar next to the zoom bar (bottom-right), away from the page labels.
 export default function ToolRail({ tool, onChange }: { tool: CanvasTool; onChange: (tool: CanvasTool) => void }) {
+  const t = useT();
   return (
-    <div className="pointer-events-auto flex flex-col gap-0.5 rounded-lg border border-white/70 bg-white/80 p-1 shadow-[0_6px_20px_-6px_rgba(16,24,40,0.25)] backdrop-blur-md">
-      {TOOLS.map((t) => (
+    <div className="pointer-events-auto flex gap-0.5 rounded-lg border border-white/70 bg-white/80 p-1 shadow-[0_6px_20px_-6px_rgba(16,24,40,0.25)] backdrop-blur-md">
+      {TOOLS.map((tl) => (
         <button
-          key={t.id}
-          onClick={() => onChange(t.id)}
-          title={`${t.label} (${t.key})`}
-          className={`grid size-8 place-items-center rounded-md transition-colors ${
-            tool === t.id ? "bg-indigo-600 text-white shadow-sm" : "text-muted hover:bg-black/5 hover:text-ink"
+          key={tl.id}
+          onClick={() => onChange(tl.id)}
+          title={`${t(tl.label)} (${tl.key})`}
+          className={`grid size-7 place-items-center rounded-md transition-colors ${
+            tool === tl.id ? "bg-indigo-600 text-white shadow-sm" : "text-muted hover:bg-black/5 hover:text-ink"
           }`}
         >
-          {t.icon}
+          {tl.icon}
         </button>
       ))}
     </div>

@@ -14,6 +14,54 @@ const SAMPLES = 600;
 // Round tick labels nicely: 0.5, 2, -1.5 (no 0.30000000004).
 const fmt = (v: number) => String(Math.round(v * 1000) / 1000).replace("-", "−");
 
+const LABEL_W = 22;
+const LABEL_H = 14;
+
+// Where to write "Cf", "Cg", "Ch": a spot along each curve (preferably towards its right end)
+// whose label box doesn't touch another label or another curve.
+function curveLabels(curves: number[][][], W: number, H: number) {
+  const placed: { x: number; y: number }[] = [];
+  const points = curves.map((pieces) =>
+    pieces.flatMap((p) => {
+      const out: [number, number][] = [];
+      for (let i = 0; i < p.length; i += 2) out.push([p[i], p[i + 1]]);
+      return out;
+    }),
+  );
+  const hitsLabel = (x: number, y: number) =>
+    placed.some((o) => x < o.x + LABEL_W + 4 && o.x < x + LABEL_W + 4 && y < o.y + LABEL_H + 2 && o.y < y + LABEL_H + 2);
+  // How many points of the OTHER curves fall inside the label box.
+  const crowd = (k: number, x: number, y: number) =>
+    points.reduce((n, pts, j) => (j === k ? n : n + pts.filter(([px, py]) => px > x - 3 && px < x + LABEL_W + 3 && py > y - 3 && py < y + LABEL_H + 3).length), 0);
+
+  return points.map((pts, k) => {
+    const visible = pts.filter(([, py]) => py > 12 && py < H - 12);
+    if (!visible.length) return null;
+    let best: { x: number; y: number; score: number } | null = null;
+    // Try spots from the right end backwards, above and below the curve.
+    for (const share of [0.85, 0.7, 0.95, 0.55, 0.4, 0.25, 0.1]) {
+      const [px, py] = visible[Math.min(visible.length - 1, Math.floor(visible.length * share))];
+      for (const dy of [-16, 4]) {
+        const x = Math.min(Math.max(0, px + 4), W - LABEL_W);
+        const y = Math.min(Math.max(0, py + dy), H - LABEL_H);
+        if (hitsLabel(x, y)) continue;
+        const score = crowd(k, x, y);
+        if (!best || score < best.score) best = { x, y, score };
+        if (score === 0) break;
+      }
+      if (best?.score === 0) break;
+    }
+    // Every spot is taken (curves on top of each other): stack the name in the top-right corner.
+    for (let y = 4; !best && y < H - LABEL_H; y += LABEL_H + 2) {
+      const x = W - LABEL_W - 16;
+      if (!hitsLabel(x, y)) best = { x, y, score: 0 };
+    }
+    if (!best) return null;
+    placed.push(best);
+    return { k, x: best.x, y: best.y };
+  });
+}
+
 // Axes, grid and the curves of the teacher's formulas, drawn in the block's box.
 export function GraphView({ b }: { b: GraphBlock }) {
   const { width: W, height: H } = b.layout;
@@ -110,17 +158,10 @@ export function GraphView({ b }: { b: GraphBlock }) {
         {curves.map((pieces, k) =>
           pieces.map((pts, j) => <Line key={`c${k}-${j}`} points={pts} stroke={CURVE_COLORS[k]} strokeWidth={2} lineJoin="round" lineCap="round" />),
         )}
-        {/* Curve names (Cf, Cg...) near the right end of each curve */}
-        {curves.map((pieces, k) => {
-          const visible = pieces.flatMap((p) => {
-            const pts: [number, number][] = [];
-            for (let i = 0; i < p.length; i += 2) if (p[i + 1] > 12 && p[i + 1] < H - 12) pts.push([p[i], p[i + 1]]);
-            return pts;
-          });
-          const at = visible[Math.floor(visible.length * 0.85)];
-          if (!at) return null;
-          return <Text key={`n${k}`} {...text} fontSize={12} fontStyle="bold" fill={CURVE_COLORS[k]} x={Math.min(at[0] + 4, W - 24)} y={Math.max(0, at[1] - 16)} text={`C${NAMES[k]}`} />;
-        })}
+        {/* Curve names (Cf, Cg...) next to their curve, never on top of each other */}
+        {curveLabels(curves, W, H).map((l) =>
+          l ? <Text key={`n${l.k}`} {...text} fontSize={12} fontStyle="bold" fill={CURVE_COLORS[l.k]} x={l.x} y={l.y} text={`C${NAMES[l.k]}`} /> : null,
+        )}
       </Group>
       <Rect width={W} height={H} stroke="#9ca3af" strokeWidth={0.8} />
     </Group>

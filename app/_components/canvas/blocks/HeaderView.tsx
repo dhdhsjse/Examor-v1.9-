@@ -10,12 +10,15 @@ interface Props {
   b: HeaderBlock;
   lang: Lang;
   mode: ViewMode;
+  totalPoints: number;
 }
 
 const DOTS = "....................................";
+// Keep "/ 20" left-to-right inside Arabic text (otherwise it shows as "20 /").
+const ltr = (s: string) => `⁦${s}⁩`;
 
 // The exam header from the template (3 styles). Mirrors itself for Arabic.
-export default function HeaderView({ b, lang, mode }: Props) {
+export default function HeaderView({ b, lang, mode, totalPoints }: Props) {
   const W = b.layout.width;
   const H = HEADER_HEIGHT[b.style];
   const rtl = isRtl(lang);
@@ -27,17 +30,22 @@ export default function HeaderView({ b, lang, mode }: Props) {
   // x of a box placed at `x` (measured from the start side).
   const at = (x: number, w: number) => (rtl ? W - x - w : x);
   const sub = [f.subject, f.level, f.duration].filter(Boolean).join("  ·  ");
+  // Graded out of: the total of the questions when the teacher asked for it.
+  const outOf = f.autoOutOf && totalPoints > 0 ? totalPoints : f.outOf;
 
   if (b.style === "modern") {
+    const cx = rtl ? 56 : W - 56; // center of the score circle
     return (
       <>
         <Rect width={W} height={84} fill="#eef2ff" cornerRadius={10} listening={false} />
         <OneLine text={title} x={at(18, W - 150)} y={14} width={W - 150} size={21} bold color="#312e81" rtl={rtl} />
         <OneLine text={sub} x={at(18, W - 150)} y={46} width={W - 150} size={13} color="#4338ca" rtl={rtl} />
         <OneLine text={[f.school, f.year].filter(Boolean).join("  —  ")} x={at(18, W - 150)} y={65} width={W - 150} size={11} color="#6366f1" rtl={rtl} />
-        <Circle x={rtl ? 56 : W - 56} y={42} radius={32} fill="#ffffff" stroke="#6366f1" strokeWidth={1.5} listening={false} />
-        <OneLine text={t.score} x={(rtl ? 56 : W - 56) - 30} y={22} width={60} size={10} color={MUTED} rtl={rtl} align="center" />
-        <OneLine text={`/ ${f.outOf}`} x={(rtl ? 56 : W - 56) - 30} y={40} width={60} size={15} bold color="#312e81" rtl={rtl} align="center" />
+        <Circle x={cx} y={42} radius={32} fill="#ffffff" stroke="#6366f1" strokeWidth={1.5} listening={false} />
+        <OneLine text={t.score} x={cx - 30} y={18} width={60} size={10} color={MUTED} rtl={rtl} align="center" />
+        {/* Room to write the grade, then "/20" */}
+        <Line points={[cx - 24, 55, cx - 2, 55]} stroke="#a5b4fc" strokeWidth={1} dash={[2, 2]} listening={false} />
+        <OneLine text={`/${outOf}`} x={cx - 1} y={39} width={32} size={outOf >= 100 ? 13 : 16} bold color="#312e81" rtl={false} align="left" />
         <OneLine text={`${t.name} : ${DOTS}${DOTS}      ${t.class} : ${DOTS}`} x={0} y={102} width={W} size={13} rtl={rtl} />
       </>
     );
@@ -52,7 +60,7 @@ export default function HeaderView({ b, lang, mode }: Props) {
         <OneLine text={sub} x={0} y={50} width={W} size={12} color={MUTED} rtl={rtl} align="center" />
         <Line points={[0, 74, W, 74]} stroke={INK} strokeWidth={1} listening={false} />
         <OneLine text={`${t.name} : ${DOTS}${DOTS}`} x={at(0, W * 0.62)} y={88} width={W * 0.62} size={13} rtl={rtl} align={start} />
-        <OneLine text={`${t.score} : ........ / ${f.outOf}`} x={at(W * 0.62, W * 0.38)} y={88} width={W * 0.38} size={13} bold rtl={rtl} align={end} />
+        <OneLine text={`${t.score} : ${ltr(`........ / ${outOf}`)}`} x={at(W * 0.62, W * 0.38)} y={88} width={W * 0.38} size={13} bold rtl={rtl} align={end} />
       </>
     );
   }
@@ -79,7 +87,7 @@ export default function HeaderView({ b, lang, mode }: Props) {
       <OneLine text={`${t.name} : ${DOTS}${DOTS}`} x={at(10, W * 0.75 - 20)} y={r1 + 12} width={W * 0.75 - 20} size={13} rtl={rtl} />
       <OneLine text={`${t.class} : ${DOTS}`} x={at(10, W * 0.75 - 20)} y={r1 + 34} width={W * 0.75 - 20} size={13} rtl={rtl} />
       <OneLine text={t.score} x={at(W * 0.75, W * 0.25)} y={r1 + 8} width={W * 0.25} size={12} bold rtl={rtl} align="center" />
-      <OneLine text={`....... / ${f.outOf}`} x={at(W * 0.75, W * 0.25)} y={r1 + 32} width={W * 0.25} size={14} rtl={rtl} align="center" />
+      <OneLine text={`....... / ${outOf}`} x={at(W * 0.75, W * 0.25)} y={r1 + 32} width={W * 0.25} size={14} rtl={false} align="center" />
     </>
   );
 }

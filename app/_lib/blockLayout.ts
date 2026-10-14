@@ -129,19 +129,37 @@ export function layoutText(b: TextBlock) {
   return { text: t, height: t.height + PAD };
 }
 
-export function layoutTable(b: TableBlock) {
+export const TABLE_MIN_COL = 24;
+
+// Width of each column in px (the teacher can drag the lines; missing = equal columns).
+export function tableColumnWidths(b: TableBlock): number[] {
   const cols = Math.max(1, b.cells[0]?.length ?? 1);
-  const colW = b.layout.width / cols;
+  const w = b.layout.width;
+  const shares = b.colWidths?.length === cols ? b.colWidths : null;
+  const sum = shares ? shares.reduce((s, v) => s + v, 0) : 0;
+  return Array.from({ length: cols }, (_, c) => (shares && sum > 0 ? (shares[c] / sum) * w : w / cols));
+}
+
+// `rtl`: the first column is on the right (Arabic).
+export function layoutTable(b: TableBlock, rtl = false) {
+  const w = b.layout.width;
+  const colW = tableColumnWidths(b);
+  let acc = 0;
+  const colX = colW.map((cw) => {
+    const x = rtl ? w - acc - cw : acc;
+    acc += cw;
+    return x;
+  });
   let y = 0;
   const rows = b.cells.map((row, r) => {
     const bold = b.header && r === 0;
-    const cells = row.map((c) => box(c, colW - 12, BODY, bold, 0));
-    const h = Math.max(TABLE_MIN_ROW, ...cells.map((c) => c.height + 8));
+    const cells = row.map((c, k) => box(c, (colW[k] ?? colW[0]) - 12, BODY, bold, 0));
+    const h = Math.max(TABLE_MIN_ROW, b.rowHeights?.[r] ?? 0, ...cells.map((c) => c.height + 8));
     const out = { y, height: h, cells, bold };
     y += h;
     return out;
   });
-  return { colW, rows, height: y };
+  return { colX, colW, rows, height: y };
 }
 
 // Height of any block (used for stacking, snapping and thumbnails).
@@ -158,7 +176,7 @@ export function blockHeight(b: Block, n: number, lang: Lang): number {
     case "text":
       return layoutText(b).height;
     case "table":
-      return layoutTable(b).height;
+      return layoutTable(b, isRtl(lang)).height;
     case "header":
       return HEADER_HEIGHT[b.style];
     case "equation":

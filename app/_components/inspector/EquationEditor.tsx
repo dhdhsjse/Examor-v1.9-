@@ -4,6 +4,7 @@ import type { MathfieldElement } from "mathlive";
 import { useEffect, useRef } from "react";
 import { mathCommand, setActiveMathfield } from "@/app/_lib/activeMathfield";
 import type { EquationBlock } from "@/app/_lib/types";
+import { useT } from "@/app/_lib/uiLang";
 import { Field } from "./fields";
 
 interface VirtualKeyboard {
@@ -19,6 +20,7 @@ interface Props {
 
 // The equation field (MathLive). The buttons are on our own math keyboard under the pages.
 export default function EquationEditor({ b, onLatex, keyboardOpen, onToggleKeyboard }: Props) {
+  const t = useT();
   const hostRef = useRef<HTMLDivElement>(null);
   const mfRef = useRef<MathfieldElement | null>(null);
   const onLatexRef = useRef(onLatex);
@@ -62,8 +64,8 @@ export default function EquationEditor({ b, onLatex, keyboardOpen, onToggleKeybo
 
   return (
     <>
-      <Field label="Equation" hint="Type here, or use the math keyboard under the pages.">
-        <div ref={hostRef} className="equation-host" />
+      <Field label={t("Equation")} hint={t("Type here, or use the math keyboard under the pages.")}>
+        <div ref={hostRef} className="equation-host" dir="ltr" />
       </Field>
       <div className="flex gap-1.5">
         <button
@@ -77,7 +79,7 @@ export default function EquationEditor({ b, onLatex, keyboardOpen, onToggleKeybo
             <rect x="1.5" y="3.5" width="13" height="9" rx="1.5" />
             <path d="M4 6.5h1M7.5 6.5h1M11 6.5h1M5 9.5h6" strokeLinecap="round" />
           </svg>
-          {keyboardOpen ? "Hide math keyboard" : "Show math keyboard"}
+          {keyboardOpen ? t("Hide math keyboard") : t("Show math keyboard")}
         </button>
         <button
           type="button"
@@ -88,11 +90,11 @@ export default function EquationEditor({ b, onLatex, keyboardOpen, onToggleKeybo
           }}
           className="rounded-md border border-line px-2.5 py-1.5 text-xs font-medium text-muted hover:border-red-200 hover:bg-red-50 hover:text-red-600"
         >
-          Clear
+          {t("Clear")}
         </button>
       </div>
       <p className="text-[10px] leading-snug text-faint">
-        Tip: double-click the equation on the page to edit it. Resize it with the corner handles.
+        {t("Tip: double-click the equation on the page to edit it. Resize it with the corner handles.")}
       </p>
     </>
   );

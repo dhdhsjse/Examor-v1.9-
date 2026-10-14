@@ -95,6 +95,8 @@ export interface TableBlock extends BlockBase {
   type: "table";
   cells: string[][];
   header: boolean; // first row in bold
+  colWidths?: number[]; // share of the width of each column (missing = equal columns)
+  rowHeights?: number[]; // minimum height of each row in px (0 or missing = fits the text)
 }
 
 // A function graph drawn from formulas typed by the teacher, e.g. "x^2 - 2".
@@ -118,6 +120,7 @@ export interface HeaderFields {
   duration: string;
   year: string;
   outOf: number; // score is "... / outOf"
+  autoOutOf?: boolean; // use the total points of the questions instead of `outOf`
 }
 
 export interface HeaderBlock extends BlockBase {

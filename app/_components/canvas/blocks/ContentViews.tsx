@@ -27,12 +27,10 @@ export function TextView({ b, lang }: { b: TextBlock; lang: Lang }) {
 }
 
 export function TableView({ b, lang }: { b: TableBlock; lang: Lang }) {
-  const L = layoutTable(b);
-  const rtl = isRtl(lang);
-  const w = b.layout.width;
-  const cols = b.cells[0]?.length ?? 1;
   // In Arabic the first column is on the right.
-  const colLeft = (c: number) => (rtl ? w - (c + 1) * L.colW : c * L.colW);
+  const rtl = isRtl(lang);
+  const L = layoutTable(b, rtl);
+  const w = b.layout.width;
 
   return (
     <Group listening={false}>
@@ -44,9 +42,9 @@ export function TableView({ b, lang }: { b: TableBlock; lang: Lang }) {
             <Lines
               key={c}
               lines={cell.lines}
-              x={colLeft(c) + 6}
+              x={L.colX[c] + 6}
               y={row.y + (row.height - cell.height) / 2}
-              width={L.colW - 12}
+              width={L.colW[c] - 12}
               size={BODY.size}
               line={BODY.line}
               bold={row.bold}
@@ -56,9 +54,8 @@ export function TableView({ b, lang }: { b: TableBlock; lang: Lang }) {
           ))}
         </Group>
       ))}
-      {Array.from({ length: cols - 1 }, (_, c) => (
-        <Line key={c} points={[(c + 1) * L.colW, 0, (c + 1) * L.colW, L.height]} stroke={INK} strokeWidth={1} />
-      ))}
+      {/* A line on the left edge of every column, except at the table's own edge */}
+      {L.colX.map((x, c) => x > 0.5 && <Line key={c} points={[x, 0, x, L.height]} stroke={INK} strokeWidth={1} />)}
       <Rect width={w} height={L.height} stroke={INK} strokeWidth={1.2} />
     </Group>
   );

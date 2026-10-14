@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { TEMPLATES, type Template } from "@/app/_lib/templates";
+import { useT } from "@/app/_lib/uiLang";
 
 interface Props {
   canClose: boolean; // false on first launch: a template must be chosen
@@ -11,6 +12,7 @@ interface Props {
 
 // Full-screen window to start a new exam from a ready-made layout.
 export default function TemplatePicker({ canClose, onPick, onClose }: Props) {
+  const tr = useT();
   useEffect(() => {
     if (!canClose) return;
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
@@ -23,11 +25,11 @@ export default function TemplatePicker({ canClose, onPick, onClose }: Props) {
       <div className="flex max-h-full w-full max-w-4xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
         <div className="flex items-start justify-between border-b border-line px-6 py-4">
           <div>
-            <h2 className="text-lg font-semibold text-ink">Start a new exam</h2>
-            <p className="text-xs text-muted">Pick a ready layout — you can change everything afterwards.</p>
+            <h2 className="text-lg font-semibold text-ink">{tr("Start a new exam")}</h2>
+            <p className="text-xs text-muted">{tr("Pick a ready layout — you can change everything afterwards.")}</p>
           </div>
           {canClose && (
-            <button onClick={onClose} className="grid size-8 place-items-center rounded-md text-muted hover:bg-subtle hover:text-ink" title="Close (Esc)">
+            <button onClick={onClose} className="grid size-8 place-items-center rounded-md text-muted hover:bg-subtle hover:text-ink" title={tr("Close (Esc)")}>
               ✕
             </button>
           )}
@@ -38,7 +40,7 @@ export default function TemplatePicker({ canClose, onPick, onClose }: Props) {
             <button
               key={t.id}
               onClick={() => onPick(t)}
-              className="group flex flex-col overflow-hidden rounded-xl border border-line bg-white text-left transition hover:-translate-y-0.5 hover:border-indigo-300 hover:shadow-lg"
+              className="group flex flex-col overflow-hidden rounded-xl border border-line bg-white text-start transition hover:-translate-y-0.5 hover:border-indigo-300 hover:shadow-lg"
             >
               <div className="bg-subtle p-3">
                 <MiniPage t={t} />
@@ -52,7 +54,7 @@ export default function TemplatePicker({ canClose, onPick, onClose }: Props) {
                     {t.lang === "ar" ? "AR" : "FR"}
                   </span>
                 </div>
-                <span className="text-[11px] leading-snug text-muted">{t.description}</span>
+                <span className="text-[11px] leading-snug text-muted">{tr(t.description)}</span>
               </div>
             </button>
           ))}
@@ -64,6 +66,7 @@ export default function TemplatePicker({ canClose, onPick, onClose }: Props) {
 
 // A tiny drawing of the template's page.
 function MiniPage({ t }: { t: Template }) {
+  const tr = useT();
   const rtl = t.lang === "ar";
   const bar = (w: string, extra = "") => <div className={`h-1 rounded-full bg-slate-300 ${extra}`} style={{ width: w }} />;
 
@@ -107,7 +110,7 @@ function MiniPage({ t }: { t: Template }) {
             </div>
           ))
         ) : (
-          <div className="pt-6 text-center text-[9px] text-faint">{t.header ? "" : "Empty page"}</div>
+          <div className="pt-6 text-center text-[9px] text-faint">{t.header ? "" : tr("Empty page")}</div>
         )}
       </div>
     </div>

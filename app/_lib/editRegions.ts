@@ -140,14 +140,13 @@ export function editRegions(b: Block, n: number, lang: Lang): EditRegion[] {
       ];
     }
     case "table": {
-      const L = layoutTable(b);
-      const colLeft = (c: number) => (rtl ? w - (c + 1) * L.colW : c * L.colW);
+      const L = layoutTable(b, rtl);
       return L.rows.flatMap((row, r) =>
         row.cells.map((_, c) => ({
           field: { kind: "cell", r, c } as EditField,
-          x: colLeft(c) + 6,
+          x: L.colX[c] + 6,
           y: row.y + 4,
-          width: L.colW - 12,
+          width: L.colW[c] - 12,
           height: row.height - 8,
           size: BODY.size,
           line: BODY.line,

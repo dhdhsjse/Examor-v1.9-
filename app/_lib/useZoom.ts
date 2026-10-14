@@ -3,30 +3,35 @@
 import { useCallback, useState } from "react";
 import { PAGE_HEIGHT, PAGE_WIDTH } from "./a4";
 
-export const ZOOM_MIN = 0.25;
-export const ZOOM_MAX = 2;
-export const ZOOM_PRESETS = [0.5, 0.65, 0.75, 1, 1.5];
+export const ZOOM_MIN = 0.1;
+export const ZOOM_MAX = 4;
+export const ZOOM_PRESETS = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 2, 3, 4];
 export const DEFAULT_ZOOM = 0.65;
 
-const clamp = (z: number) => Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, z));
+export type FitMode = "page" | "width" | null;
 
-// Zoom level of the workspace. "fit" follows the window size; otherwise a fixed value.
+export const clampZoom = (z: number) => Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, z));
+
+// Zoom level of the workspace: any value between 10% and 400%, or "fit" to the window.
 export function useZoom(viewport: { width: number; height: number }) {
-  const [fitMode, setFitMode] = useState(false);
+  const [fitMode, setFitMode] = useState<FitMode>(null);
   const [custom, setCustom] = useState(DEFAULT_ZOOM);
 
-  // Zoom that shows one whole page inside the visible area.
-  const fit = viewport.width
-    ? clamp(Math.min((viewport.width - 80) / PAGE_WIDTH, (viewport.height - 60) / PAGE_HEIGHT))
-    : DEFAULT_ZOOM;
+  // Zoom that shows one whole page (or the page width) inside the visible area.
+  const fit = !viewport.width
+    ? DEFAULT_ZOOM
+    : fitMode === "width"
+      ? clampZoom((viewport.width - 80) / PAGE_WIDTH)
+      : clampZoom(Math.min((viewport.width - 80) / PAGE_WIDTH, (viewport.height - 60) / PAGE_HEIGHT));
   const zoom = fitMode ? fit : custom;
 
   const setZoom = useCallback((z: number) => {
-    setFitMode(false);
-    setCustom(clamp(Math.round(z * 100) / 100));
+    setFitMode(null);
+    setCustom(clampZoom(Math.round(z * 1000) / 1000));
   }, []);
 
-  const fitPage = useCallback(() => setFitMode(true), []);
+  const fitPage = useCallback(() => setFitMode("page"), []);
+  const fitWidth = useCallback(() => setFitMode("width"), []);
 
-  return { zoom, fitMode, setZoom, fitPage };
+  return { zoom, fitMode, setZoom, fitPage, fitWidth };
 }

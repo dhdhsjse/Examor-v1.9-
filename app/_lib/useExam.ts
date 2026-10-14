@@ -27,6 +27,9 @@ export interface DropPoint {
 // A change to a block. `layout` can be partial.
 export type BlockPatch = BlockData & { layout?: Partial<BlockLayout> };
 
+// Autosave state shown in the top bar.
+export type SaveState = { status: "saved" | "saving" | "error"; at: number | null };
+
 interface History {
   past: ExamDoc[];
   present: ExamDoc;
@@ -48,6 +51,7 @@ export function useExam(initial: ExamDoc) {
   const [activePage, setActivePage] = useState(0); // page currently in view
   const [reveal, setReveal] = useState<RevealRequest | null>(null);
   const lastEdit = useRef<{ key: string; time: number } | null>(null);
+  const [save, setSave] = useState<SaveState>({ status: "saved", at: null });
   const doc = hist.present;
 
   const revealPage = (pageId: string) => setReveal((r) => ({ pageId, n: (r?.n ?? 0) + 1 }));
@@ -74,10 +78,16 @@ export function useExam(initial: ExamDoc) {
     setHist((h) => (h.future.length ? { past: [...h.past, h.present], present: h.future[0], future: h.future.slice(1) } : h));
   }, []);
 
-  // Autosave shortly after each change.
+  // Autosave shortly after each change (the top bar shows "Saving…" then "Saved ✓").
+  const firstDoc = useRef(doc);
   useEffect(() => {
-    const t = setTimeout(() => saveAutosave(doc), 400);
-    return () => clearTimeout(t);
+    if (doc === firstDoc.current) return; // just opened: nothing new to save
+    const pending = setTimeout(() => setSave((s) => (s.status === "saving" ? s : { ...s, status: "saving" })), 0);
+    const t = setTimeout(() => setSave({ status: saveAutosave(doc) ? "saved" : "error", at: Date.now() }), 400);
+    return () => {
+      clearTimeout(pending);
+      clearTimeout(t);
+    };
   }, [doc]);
 
   const updateBlock = useCallback(
@@ -226,6 +236,7 @@ export function useExam(initial: ExamDoc) {
     activePage,
     setActivePage,
     reveal,
+    save,
     canUndo: hist.past.length > 0,
     canRedo: hist.future.length > 0,
     undo,

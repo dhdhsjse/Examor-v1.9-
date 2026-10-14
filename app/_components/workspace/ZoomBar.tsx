@@ -1,23 +1,33 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ZOOM_PRESETS } from "@/app/_lib/useZoom";
+import { useT } from "@/app/_lib/uiLang";
+import { ZOOM_MAX, ZOOM_MIN, ZOOM_PRESETS, clampZoom, type FitMode } from "@/app/_lib/useZoom";
 
 interface Props {
   zoom: number;
-  fitMode: boolean;
+  fitMode: FitMode;
   showGuides: boolean;
   onZoom: (z: number) => void;
   onFitPage: () => void;
+  onFitWidth: () => void;
   onToggleGuides: () => void;
 }
 
 const iconBtn =
   "grid size-7 place-items-center rounded-md text-muted transition-colors hover:bg-black/5 hover:text-ink";
 
-// Slim frosted bar (bottom-right): guides toggle, − zoom% +, and a preset dropdown.
-export default function ZoomBar({ zoom, fitMode, showGuides, onZoom, onFitPage, onToggleGuides }: Props) {
+// The slider is logarithmic: 10% → 100% takes the same room as 100% → 400%... roughly.
+const LOG_MIN = Math.log(ZOOM_MIN);
+const LOG_MAX = Math.log(ZOOM_MAX);
+const toSlider = (z: number) => Math.round(((Math.log(z) - LOG_MIN) / (LOG_MAX - LOG_MIN)) * 1000);
+const fromSlider = (v: number) => Math.exp(LOG_MIN + (v / 1000) * (LOG_MAX - LOG_MIN));
+
+// Slim frosted bar (bottom-right): guides toggle, − slider +, a typed % and a preset menu.
+export default function ZoomBar({ zoom, fitMode, showGuides, onZoom, onFitPage, onFitWidth, onToggleGuides }: Props) {
+  const t = useT();
   const [open, setOpen] = useState(false);
+  const [draft, setDraft] = useState<string | null>(null); // the % being typed
   const menuRef = useRef<HTMLDivElement>(null);
   const percent = Math.round(zoom * 100);
 
@@ -36,11 +46,18 @@ export default function ZoomBar({ zoom, fitMode, showGuides, onZoom, onFitPage, 
     setOpen(false);
   };
 
+  // Typed value: any whole or decimal percentage, e.g. "137" or "137%".
+  const commitDraft = () => {
+    const v = parseFloat((draft ?? "").replace(",", "."));
+    if (Number.isFinite(v) && v > 0) onZoom(clampZoom(v / 100));
+    setDraft(null);
+  };
+
   return (
     <div className="pointer-events-auto flex items-center gap-0.5 rounded-lg border border-white/70 bg-white/80 p-1 shadow-[0_6px_20px_-6px_rgba(16,24,40,0.25)] backdrop-blur-md">
       <button
         onClick={onToggleGuides}
-        title="Guides and snapping"
+        title={t("Guides and snapping")}
         className={`grid size-7 place-items-center rounded-md transition-colors ${
           showGuides ? "bg-indigo-50 text-indigo-600" : "text-muted hover:bg-black/5"
         }`}
@@ -53,56 +70,86 @@ export default function ZoomBar({ zoom, fitMode, showGuides, onZoom, onFitPage, 
 
       <div className="mx-1 h-4 w-px bg-line" />
 
-      <button className={iconBtn} onClick={() => onZoom(zoom - 0.1)} title="Zoom out">
+      <button className={iconBtn} onClick={() => onZoom(zoom / 1.2)} title={`${t("Zoom out")} (Ctrl −)`}>
         <svg width="12" height="12" viewBox="0 0 12 12" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
           <path d="M2.5 6h7" />
         </svg>
       </button>
 
-      {/* Zoom % opens the preset menu */}
-      <div ref={menuRef} className="relative">
-        <button
-          onClick={() => setOpen(!open)}
-          className="flex h-7 w-16 items-center justify-center gap-1 rounded-md text-xs font-semibold tabular-nums text-ink hover:bg-black/5"
-        >
-          {percent}%
-          <svg width="8" height="8" viewBox="0 0 8 8" fill="currentColor" className="text-faint">
+      <input
+        type="range"
+        min={0}
+        max={1000}
+        value={toSlider(zoom)}
+        onChange={(e) => onZoom(fromSlider(Number(e.target.value)))}
+        title={t("Drag to zoom")}
+        aria-label={t("Zoom")}
+        className="h-1 w-24 cursor-pointer accent-indigo-600"
+      />
+
+      <button className={iconBtn} onClick={() => onZoom(zoom * 1.2)} title={`${t("Zoom in")} (Ctrl +)`}>
+        <svg width="12" height="12" viewBox="0 0 12 12" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
+          <path d="M2.5 6h7M6 2.5v7" />
+        </svg>
+      </button>
+
+      {/* Type any % — the arrow opens the presets */}
+      <div ref={menuRef} className="relative flex items-center">
+        <input
+          value={draft ?? `${percent}%`}
+          onFocus={(e) => {
+            setDraft(String(percent));
+            requestAnimationFrame(() => e.target.select());
+          }}
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={commitDraft}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") e.currentTarget.blur();
+            if (e.key === "Escape") {
+              setDraft(null);
+              requestAnimationFrame(() => (document.activeElement as HTMLElement | null)?.blur());
+            }
+          }}
+          title={t("Type a zoom level")}
+          className="h-7 w-12 rounded-md bg-transparent text-center text-xs font-semibold tabular-nums text-ink outline-none hover:bg-black/5 focus:bg-white focus:ring-2 focus:ring-indigo-200"
+        />
+        <button onClick={() => setOpen(!open)} className="grid h-7 w-4 place-items-center rounded-md text-faint hover:bg-black/5" title={t("Zoom presets")}>
+          <svg width="8" height="8" viewBox="0 0 8 8" fill="currentColor">
             <path d="M1 2.5h6L4 6z" />
           </svg>
         </button>
 
         {open && (
-          <div className="absolute right-0 bottom-full mb-2 w-32 rounded-lg border border-line bg-white p-1 text-xs shadow-lg">
-            <MenuItem active={fitMode} onClick={() => pick(onFitPage)}>Fit page</MenuItem>
+          <div className="absolute end-0 bottom-full mb-2 w-36 rounded-lg border border-line bg-white p-1 text-xs shadow-lg">
+            <MenuItem active={fitMode === "page"} onClick={() => pick(onFitPage)} hint="Ctrl 0">
+              {t("Fit page")}
+            </MenuItem>
+            <MenuItem active={fitMode === "width"} onClick={() => pick(onFitWidth)}>
+              {t("Fit width")}
+            </MenuItem>
             <div className="my-1 h-px bg-line" />
             {ZOOM_PRESETS.map((z) => (
-              <MenuItem key={z} active={!fitMode && zoom === z} onClick={() => pick(() => onZoom(z))}>
+              <MenuItem key={z} active={!fitMode && Math.abs(zoom - z) < 0.001} onClick={() => pick(() => onZoom(z))} hint={z === 1 ? "Ctrl 1" : undefined}>
                 {z * 100}%
               </MenuItem>
             ))}
           </div>
         )}
       </div>
-
-      <button className={iconBtn} onClick={() => onZoom(zoom + 0.1)} title="Zoom in">
-        <svg width="12" height="12" viewBox="0 0 12 12" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
-          <path d="M2.5 6h7M6 2.5v7" />
-        </svg>
-      </button>
     </div>
   );
 }
 
-function MenuItem({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+function MenuItem({ active, onClick, hint, children }: { active: boolean; onClick: () => void; hint?: string; children: React.ReactNode }) {
   return (
     <button
       onClick={onClick}
-      className={`flex w-full items-center justify-between rounded-md px-2.5 py-1.5 text-left hover:bg-subtle ${
+      className={`flex w-full items-center justify-between rounded-md px-2.5 py-1.5 text-start hover:bg-subtle ${
         active ? "font-semibold text-indigo-600" : "text-ink"
       }`}
     >
       {children}
-      {active && <span>✓</span>}
+      {active ? <span>✓</span> : hint && <span className="text-[10px] text-faint">{hint}</span>}
     </button>
   );
 }

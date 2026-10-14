@@ -11,7 +11,8 @@ export interface Tool {
 }
 
 export interface ToolGroup {
-  title: string;
+  title: string; // English: translated when shown
+  subject?: SchoolSubject; // the subject group (title = "<subject> tools")
   tone: Tone;
   tools: Tool[];
 }
@@ -88,5 +89,5 @@ const SHARED: ToolGroup[] = [
 // "General" shows only the shared groups.
 export function getToolGroups(subject: Subject): ToolGroup[] {
   if (subject === "General") return SHARED;
-  return [{ title: `${subject} tools`, tone: "emerald", tools: SUBJECT_TOOLS[subject] }, ...SHARED];
+  return [{ title: `${subject} tools`, subject, tone: "emerald", tools: SUBJECT_TOOLS[subject] }, ...SHARED];
 }

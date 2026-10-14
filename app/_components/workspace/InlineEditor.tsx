@@ -5,6 +5,7 @@ import { editRegions, fieldKey, fieldValue, type EditField } from "@/app/_lib/ed
 import { isRtl } from "@/app/_lib/i18n";
 import { FONT_FAMILY } from "@/app/_lib/measure";
 import type { Block, Lang } from "@/app/_lib/types";
+import { useT } from "@/app/_lib/uiLang";
 
 interface Props {
   block: Block;
@@ -15,11 +16,17 @@ interface Props {
   onChange: (value: string) => void;
   onDone: () => void;
   onNext: (back: boolean) => void; // Tab: go to the next text of the block
+  onEnter: () => void; // Enter in a list item (option, statement, part): add the next one
+  selectAll: boolean; // select the starting text, so typing replaces it
 }
 
 // A text box placed exactly over a text of the page, so the teacher types "on the paper".
 // It sits inside the zoomed layer, so its sizes are real page pixels.
-export default function InlineEditor({ block, field, number, lang, top, onChange, onDone, onNext }: Props) {
+// Fields where Enter adds a new item below (like a bullet list).
+const LIST_FIELDS = ["option", "statement", "part"];
+
+export default function InlineEditor({ block, field, number, lang, top, onChange, onDone, onNext, onEnter, selectAll }: Props) {
+  const t = useT();
   const ref = useRef<HTMLTextAreaElement>(null);
   const region = editRegions(block, number, lang).find((r) => fieldKey(r.field) === fieldKey(field));
   const value = fieldValue(block, field);
@@ -32,13 +39,16 @@ export default function InlineEditor({ block, field, number, lang, top, onChange
     el.style.height = `${el.scrollHeight}px`;
   }, [value, region?.width]);
 
-  // Focus once, with the cursor at the end.
+  // Focus once, with the cursor at the end (or everything selected for a new block).
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
     el.focus();
-    el.setSelectionRange(el.value.length, el.value.length);
-  }, [block.id, field]);
+    if (selectAll) el.select();
+    else el.setSelectionRange(el.value.length, el.value.length);
+    // Only when another text starts being edited.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [block.id, fieldKey(field)]);
 
   if (!region) return null;
 
@@ -49,12 +59,15 @@ export default function InlineEditor({ block, field, number, lang, top, onChange
       dir={isRtl(lang) ? "rtl" : "auto"}
       rows={1}
       spellCheck={false}
-      placeholder={region.answer ? "Model answer…" : "Type here…"}
+      placeholder={region.answer ? t("Model answer…") : t("Type here…")}
       onChange={(e) => onChange(e.target.value)}
       onBlur={onDone}
       onMouseDown={(e) => e.stopPropagation()}
       onKeyDown={(e) => {
-        if (e.key === "Escape" || (e.key === "Enter" && (e.ctrlKey || (!region.multiline && !e.shiftKey)))) {
+        if (e.key === "Enter" && !e.shiftKey && !e.ctrlKey && LIST_FIELDS.includes(field.kind)) {
+          e.preventDefault();
+          onEnter();
+        } else if (e.key === "Escape" || (e.key === "Enter" && (e.ctrlKey || (!region.multiline && !e.shiftKey)))) {
           e.preventDefault();
           onDone();
         } else if (e.key === "Tab") {
