@@ -173,3 +173,58 @@ export const PenLinesIcon = () => (
     <path d="M11.5 10.5L15 4l-1.5-1-3.5 6.5z" />
   </svg>
 );
+
+export const HeadingIcon = () => (
+  <svg {...base}>
+    <path d="M4 3.5v11M14 3.5v11M4 9h10" />
+  </svg>
+);
+
+export const HeaderIcon = () => (
+  <svg {...base}>
+    <rect x="2.5" y="2.5" width="13" height="5" rx="1" />
+    <path d="M2.5 11h13M2.5 14.5h8" />
+  </svg>
+);
+
+// --- Top bar ---
+
+export const UndoIcon = () => (
+  <svg {...base} width={15} height={15}>
+    <path d="M6.5 4L3 7.5 6.5 11" />
+    <path d="M3.5 7.5h7a4 4 0 010 8H8" />
+  </svg>
+);
+
+export const RedoIcon = () => (
+  <svg {...base} width={15} height={15}>
+    <path d="M11.5 4L15 7.5 11.5 11" />
+    <path d="M14.5 7.5h-7a4 4 0 000 8H10" />
+  </svg>
+);
+
+export const DownloadIcon = () => (
+  <svg {...base} width={14} height={14}>
+    <path d="M9 2.5v9M5 7.5l4 4 4-4M3 15h12" />
+  </svg>
+);
+
+export const FileIcon = () => (
+  <svg {...base} width={15} height={15}>
+    <path d="M10 2.5H5a1.5 1.5 0 00-1.5 1.5v10A1.5 1.5 0 005 15.5h8a1.5 1.5 0 001.5-1.5V7z" />
+    <path d="M10 2.5V7h4.5" />
+  </svg>
+);
+
+export const TrashIcon = () => (
+  <svg {...base} width={14} height={14}>
+    <path d="M3 5h12M7 5V3.5h4V5M5 5l.8 10h6.4L13 5" />
+  </svg>
+);
+
+export const CopyIcon = () => (
+  <svg {...base} width={14} height={14}>
+    <rect x="6" y="6" width="9" height="9" rx="1.5" />
+    <path d="M12 6V4.5A1.5 1.5 0 0010.5 3h-6A1.5 1.5 0 003 4.5v6A1.5 1.5 0 004.5 12H6" />
+  </svg>
+);

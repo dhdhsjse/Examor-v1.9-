@@ -1,5 +1,5 @@
-import Editor from "./_components/Editor";
+import ClientApp from "./_components/ClientApp";
 
 export default function Home() {
-  return <Editor />;
+  return <ClientApp />;
 }

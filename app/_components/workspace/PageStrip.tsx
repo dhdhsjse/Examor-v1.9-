@@ -2,8 +2,7 @@
 
 import { useState } from "react";
 import { PAGE_HEIGHT, PAGE_WIDTH } from "@/app/_lib/a4";
-import { mcqHeight } from "@/app/_lib/questions";
-import type { Page, Question } from "@/app/_lib/types";
+import type { Block, Page } from "@/app/_lib/types";
 
 const THUMB_W = 40;
 const SCALE = THUMB_W / PAGE_WIDTH;
@@ -11,10 +10,12 @@ const STORAGE_KEY = "examBuilder.pageStripCollapsed";
 
 interface Props {
   pages: Page[];
-  questions: Question[];
+  blocks: Block[];
+  heights: Map<string, number>;
   activeIndex: number;
   onJump: (index: number) => void;
   onAddPage: () => void;
+  onDeletePage: (pageId: string) => void;
 }
 
 // Read/save the collapsed state (localStorage can fail in some setups, so ignore errors).
@@ -32,7 +33,7 @@ function saveCollapsed(value: boolean) {
 }
 
 // Slim column of page thumbnails between the toolbox and the page. Can be collapsed.
-export default function PageStrip({ pages, questions, activeIndex, onJump, onAddPage }: Props) {
+export default function PageStrip({ pages, blocks, heights, activeIndex, onJump, onAddPage, onDeletePage }: Props) {
   const [collapsed, setCollapsed] = useState(loadCollapsed);
 
   const toggle = () => {
@@ -78,31 +79,45 @@ export default function PageStrip({ pages, questions, activeIndex, onJump, onAdd
         {pages.map((page, i) => {
           const active = i === activeIndex;
           return (
-            <button key={page.id} onClick={() => onJump(i)} className="group flex flex-col items-center gap-0.5">
-              <div
+            <div key={page.id} className="group relative flex flex-col items-center gap-0.5">
+              <button
+                onClick={() => onJump(i)}
                 style={{ width: THUMB_W, height: PAGE_HEIGHT * SCALE }}
                 className={`relative overflow-hidden rounded-[2px] bg-white shadow-sm ring-1 transition-all ${
                   active ? "ring-2 ring-indigo-500" : "ring-black/10 group-hover:ring-indigo-300"
                 }`}
               >
-                {/* Grey bars = question blocks on this page */}
-                {questions
-                  .filter((q) => q.layout.pageId === page.id)
-                  .map((q) => (
-                    <div
-                      key={q.id}
+                {/* Grey bars = blocks on this page */}
+                {blocks
+                  .filter((b) => b.layout.pageId === page.id)
+                  .map((b) => (
+                    <span
+                      key={b.id}
                       className="absolute rounded-[1px] bg-slate-300"
                       style={{
-                        left: q.layout.x * SCALE,
-                        top: q.layout.y * SCALE,
-                        width: q.layout.width * SCALE,
-                        height: mcqHeight(q) * SCALE,
+                        left: b.layout.x * SCALE,
+                        top: b.layout.y * SCALE,
+                        width: b.layout.width * SCALE,
+                        height: Math.max(1, (heights.get(b.id) ?? 0) * SCALE),
                       }}
                     />
                   ))}
-              </div>
+              </button>
               <span className={`text-[10px] font-medium ${active ? "text-indigo-600" : "text-muted"}`}>{i + 1}</span>
-            </button>
+
+              {/* Delete page (shown on hover, not for the last remaining page) */}
+              {pages.length > 1 && (
+                <button
+                  onClick={() => onDeletePage(page.id)}
+                  title="Delete page"
+                  className="absolute -top-1.5 -right-1.5 hidden size-4 place-items-center rounded-full bg-white text-faint shadow ring-1 ring-black/10 group-hover:grid hover:text-red-600"
+                >
+                  <svg width="8" height="8" viewBox="0 0 8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                    <path d="M1.5 1.5l5 5M6.5 1.5l-5 5" />
+                  </svg>
+                </button>
+              )}
+            </div>
           );
         })}
 

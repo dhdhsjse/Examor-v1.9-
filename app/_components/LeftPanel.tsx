@@ -1,24 +1,26 @@
 "use client";
 
 import { useState } from "react";
+import type { Subject } from "@/app/_lib/subjects";
+import type { ToolAction } from "@/app/_lib/tools";
 import { getToolGroups } from "./toolGroups";
 import ToolTile from "./ToolTile";
-import type { Subject } from "./TopBar";
 
 interface Props {
   subject: Subject;
   pageCount: number;
   questionCount: number;
-  onAddMcq: () => void;
+  totalPoints: number;
+  onTool: (action: ToolAction) => void;
 }
 
-// Left panel: searchable toolbox for the chosen subject. Only MCQ works for now.
-export default function LeftPanel({ subject, pageCount, questionCount, onAddMcq }: Props) {
+// Left panel: searchable toolbox for the chosen subject.
+export default function LeftPanel({ subject, pageCount, questionCount, totalPoints, onTool }: Props) {
   const [query, setQuery] = useState("");
 
   // Keep only tools whose name matches the search.
   const q = query.trim().toLowerCase();
-  const visible = getToolGroups(subject, { addMcq: onAddMcq })
+  const visible = getToolGroups(subject)
     .map((g) => ({ ...g, tools: g.tools.filter((t) => t.label.toLowerCase().includes(q)) }))
     .filter((g) => g.tools.length > 0);
 
@@ -50,7 +52,7 @@ export default function LeftPanel({ subject, pageCount, questionCount, onAddMcq 
             <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-faint">{g.title}</h3>
             <div className="grid grid-cols-2 gap-2">
               {g.tools.map((t) => (
-                <ToolTile key={t.label} icon={t.icon} label={t.label} tone={g.tone} onClick={t.onClick} />
+                <ToolTile key={t.label} icon={t.icon} label={t.label} tone={g.tone} action={t.action} onUse={onTool} />
               ))}
             </div>
           </section>
@@ -59,12 +61,15 @@ export default function LeftPanel({ subject, pageCount, questionCount, onAddMcq 
       </div>
 
       {/* Exam summary */}
-      <div className="flex items-center justify-between border-t border-line px-3.5 py-2 text-[11px] text-muted">
+      <div className="flex items-center justify-between gap-2 border-t border-line px-3.5 py-2 text-[11px] text-muted">
         <span>
-          <span className="font-semibold text-ink">{questionCount}</span> question{questionCount === 1 ? "" : "s"}
+          <b className="font-semibold text-ink">{questionCount}</b> question{questionCount === 1 ? "" : "s"}
         </span>
         <span>
-          <span className="font-semibold text-ink">{pageCount}</span> page{pageCount === 1 ? "" : "s"}
+          <b className="font-semibold text-ink">{totalPoints}</b> pts
+        </span>
+        <span>
+          <b className="font-semibold text-ink">{pageCount}</b> page{pageCount === 1 ? "" : "s"}
         </span>
       </div>
     </aside>

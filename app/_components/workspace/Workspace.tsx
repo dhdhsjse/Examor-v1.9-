@@ -1,10 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type DragEvent } from "react";
 import { PAGE_HEIGHT, PAGE_WIDTH } from "@/app/_lib/a4";
-import { LABEL_SPACE, pageTop, stackHeight } from "@/app/_lib/pageStack";
-import { questionNumbers } from "@/app/_lib/questions";
-import type { Page, Question } from "@/app/_lib/types";
+import { LABEL_SPACE, pageAt, pageTop, stackHeight } from "@/app/_lib/pageStack";
+import { DRAG_MIME, type ToolAction } from "@/app/_lib/tools";
+import type { BlockLayout, ExamDoc, ViewMode } from "@/app/_lib/types";
 import type { RevealRequest } from "@/app/_lib/useExam";
 import { useZoom } from "@/app/_lib/useZoom";
 import ExamCanvas from "../canvas/ExamCanvas";
@@ -12,26 +12,32 @@ import PageStrip from "./PageStrip";
 import ZoomBar from "./ZoomBar";
 
 interface Props {
-  pages: Page[];
-  questions: Question[];
+  doc: ExamDoc;
+  heights: Map<string, number>;
+  numbers: Map<string, number>;
+  mode: ViewMode;
   selectedId: string | null;
   activePage: number;
   reveal: RevealRequest | null;
   onSelect: (id: string | null) => void;
   onMove: (id: string, pageId: string, x: number, y: number) => void;
+  onResize: (id: string, layout: Partial<BlockLayout>) => void;
   onAddPage: () => void;
+  onDeletePage: (pageId: string) => void;
   onActivePageChange: (index: number) => void;
+  onDropItem: (action: ToolAction, at: { pageIndex: number; x: number; y: number }) => void;
 }
 
 // Page thumbnails on the left, the zoomable page stack in the center, zoom bottom-right.
 export default function Workspace(props: Props) {
-  const { pages, questions, selectedId, activePage, reveal, onSelect, onMove, onAddPage, onActivePageChange } = props;
+  const { doc, heights, numbers, mode, selectedId, activePage, reveal } = props;
+  const { pages } = doc;
   const scrollRef = useRef<HTMLDivElement>(null);
   const stackRef = useRef<HTMLDivElement>(null);
   const [viewport, setViewport] = useState({ width: 0, height: 0 });
   const [showGuides, setShowGuides] = useState(true);
+  const [dropHover, setDropHover] = useState(false);
   const { zoom, fitMode, setZoom, fitPage } = useZoom(viewport);
-  const numbers = useMemo(() => questionNumbers(questions, pages), [questions, pages]);
   const height = stackHeight(pages.length);
 
   // Smoothly scroll so page `i` (with its label) is at the top.
@@ -55,10 +61,10 @@ export default function Workspace(props: Props) {
     pages.forEach((_, i) => {
       if (stack.offsetTop + pageTop(i) * zoom <= mark) current = i;
     });
-    if (current !== activePage) onActivePageChange(current);
+    if (current !== activePage) props.onActivePageChange(current);
   };
 
-  // Scroll to a page when asked (after adding a page or a question).
+  // Scroll to a page when asked (after adding a page or a block).
   useEffect(() => {
     if (!reveal) return;
     const i = pages.findIndex((p) => p.id === reveal.pageId);
@@ -91,14 +97,36 @@ export default function Workspace(props: Props) {
     return () => el.removeEventListener("wheel", onWheel);
   }, [zoom, setZoom]);
 
+  // Drag & drop from the toolbox or the library onto a page.
+  const handleDragOver = (e: DragEvent) => {
+    if (!e.dataTransfer.types.includes(DRAG_MIME)) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "copy";
+    setDropHover(true);
+  };
+  const handleDrop = (e: DragEvent) => {
+    setDropHover(false);
+    const raw = e.dataTransfer.getData(DRAG_MIME);
+    const stack = stackRef.current;
+    if (!raw || !stack) return;
+    e.preventDefault();
+    const rect = stack.getBoundingClientRect();
+    const x = (e.clientX - rect.left) / zoom;
+    const y = (e.clientY - rect.top) / zoom;
+    const pageIndex = pageAt(y, pages.length);
+    props.onDropItem(JSON.parse(raw) as ToolAction, { pageIndex, x, y: y - pageTop(pageIndex) });
+  };
+
   return (
     <div className="flex h-full">
       <PageStrip
         pages={pages}
-        questions={questions}
+        blocks={doc.blocks}
+        heights={heights}
         activeIndex={activePage}
         onJump={scrollToPage}
-        onAddPage={onAddPage}
+        onAddPage={props.onAddPage}
+        onDeletePage={props.onDeletePage}
       />
 
       <div className="relative min-w-0 flex-1">
@@ -107,11 +135,18 @@ export default function Workspace(props: Props) {
           onScroll={handleScroll}
           className="workspace-dots absolute inset-0 overflow-auto"
           // Clicking the grey area clears the selection.
-          onMouseDown={(e) => e.target === e.currentTarget && onSelect(null)}
+          onMouseDown={(e) => e.target === e.currentTarget && props.onSelect(null)}
         >
           <div className="mx-auto flex w-fit flex-col items-center gap-4 px-10 pt-2 pb-20">
             {/* Takes the zoomed size in the layout... */}
-            <div ref={stackRef} style={{ width: PAGE_WIDTH * zoom, height: height * zoom }} className="relative">
+            <div
+              ref={stackRef}
+              style={{ width: PAGE_WIDTH * zoom, height: height * zoom }}
+              className={`relative rounded-sm transition-shadow ${dropHover ? "ring-2 ring-indigo-400/60 ring-offset-4 ring-offset-transparent" : ""}`}
+              onDragOver={handleDragOver}
+              onDragLeave={() => setDropHover(false)}
+              onDrop={handleDrop}
+            >
               {/* ...while the content inside stays at real A4 size and is scaled by CSS. */}
               <div
                 className="absolute top-0 left-0 origin-top-left"
@@ -124,19 +159,22 @@ export default function Workspace(props: Props) {
                     total={pages.length}
                     zoom={zoom}
                     active={i === activePage}
+                    keyMode={mode === "key"}
                     onClick={() => scrollToPage(i)}
                   />
                 ))}
                 <div className="absolute inset-0">
                   <ExamCanvas
-                    pages={pages}
-                    questions={questions}
+                    doc={doc}
+                    heights={heights}
                     numbers={numbers}
+                    mode={mode}
                     zoom={zoom}
                     showGuides={showGuides}
                     selectedId={selectedId}
-                    onSelect={onSelect}
-                    onMove={onMove}
+                    onSelect={props.onSelect}
+                    onMove={props.onMove}
+                    onResize={props.onResize}
                   />
                 </div>
               </div>
@@ -144,7 +182,7 @@ export default function Workspace(props: Props) {
 
             {/* Small "add page" below the last page */}
             <button
-              onClick={onAddPage}
+              onClick={props.onAddPage}
               className="flex items-center gap-1.5 rounded-full border border-slate-300/80 bg-white/70 px-3 py-1 text-xs font-medium text-muted backdrop-blur transition-colors hover:border-indigo-300 hover:text-indigo-600"
             >
               <span className="text-sm leading-none">+</span> Add page
@@ -170,17 +208,21 @@ export default function Workspace(props: Props) {
 
 // The paper shadow behind page `index` + its clickable "Page 1 of 3" label.
 // Sizes are divided by zoom so the label keeps the same size on screen.
-function PageFrame({ index, total, zoom, active, onClick }: {
+function PageFrame({ index, total, zoom, active, keyMode, onClick }: {
   index: number;
   total: number;
   zoom: number;
   active: boolean;
+  keyMode: boolean;
   onClick: () => void;
 }) {
   const top = pageTop(index);
   return (
     <>
-      <div className="paper-shadow absolute left-0 bg-white" style={{ top, width: PAGE_WIDTH, height: PAGE_HEIGHT }} />
+      <div
+        className={`paper-shadow absolute left-0 bg-white ${keyMode ? "outline-2 outline-emerald-500/50" : ""}`}
+        style={{ top, width: PAGE_WIDTH, height: PAGE_HEIGHT }}
+      />
       <button
         onClick={onClick}
         className={`absolute left-0 z-10 rounded font-medium transition-colors hover:bg-white/70 ${
@@ -195,6 +237,7 @@ function PageFrame({ index, total, zoom, active, onClick }: {
         }}
       >
         Page {index + 1} <span className="text-faint">of {total}</span>
+        {keyMode && <span className="text-emerald-600"> · Correction</span>}
       </button>
     </>
   );
