@@ -12,40 +12,37 @@ import { BUILTIN_ASSETS, svgUrl, type Asset, type AssetKind } from "@/app/_lib/l
 import { imagesToPdf, stagePageImages } from "@/app/_lib/pdf";
 import { loadAutosave, loadUserAssets, parseExamFile, pickFile, saveFile, saveUserAssets } from "@/app/_lib/storage";
 import { ALL_CYCLES, type Subject } from "@/app/_lib/subjects";
-import { buildDoc, templateById } from "@/app/_lib/templates";
+import { buildDoc, templateById, type Template } from "@/app/_lib/templates";
 import { assetToBlock, type ToolAction } from "@/app/_lib/tools";
-import type { Block, BlockType, ExamDoc, ViewMode } from "@/app/_lib/types";
+import type { Block, BlockType, ViewMode } from "@/app/_lib/types";
 import { UiProvider, loadUiLang, saveUiLang, translate, type UiLang } from "@/app/_lib/uiLang";
 import { useExam, type DropPoint } from "@/app/_lib/useExam";
 import { addVersion, type Version } from "@/app/_lib/versions";
-import ExportRenderer from "./canvas/ExportRenderer";
-import ExportPreview from "./export/ExportPreview";
-import VersionHistory from "./history/VersionHistory";
-import Inspector from "./inspector/Inspector";
-import LeftPanel from "./LeftPanel";
-import LibraryPanel from "./library/LibraryPanel";
-import MathKeyboard from "./math/MathKeyboard";
-import RightPanel, { type RightTab } from "./RightPanel";
-import TemplatePicker from "./templates/TemplatePicker";
-import TopBar from "./TopBar";
+import { appLayout } from "@/app/_features/app";
+import BarRenderer from "@/app/_features/core/BarRenderer";
+import type { BarPosition, Ctx, RightTab, Shell } from "@/app/_features/core/types";
 import type { CanvasTool } from "./workspace/ToolRail";
 import Workspace, { type Editing } from "./workspace/Workspace";
 
-interface ExportJob {
-  doc: ExamDoc;
-  mode: ViewMode;
-  resolve: (stage: Konva.Stage) => void;
-}
-
 const fileName = (title: string) => title.replace(/[\\/:*?"<>|]+/g, "").trim() || "exam";
 const KEYBOARD_KEY = "examBuilder.mathKeyboard";
+const HIDDEN_BARS_KEY = "examBuilder.hiddenBars";
+
+// Bars the user hid last time (remembered in this browser).
+function loadHiddenBars(): string[] {
+  try {
+    const saved = JSON.parse(localStorage.getItem(HIDDEN_BARS_KEY) ?? "[]");
+    return Array.isArray(saved) ? saved.filter((id): id is string => typeof id === "string") : [];
+  } catch {
+    return [];
+  }
+}
 const SNAPSHOT_EVERY = 3 * 60 * 1000; // automatic copy in the version history
 
 // New blocks of these types start with their text selected on the page, ready to type over.
 const TYPE_ON_ADD: BlockType[] = ["mcq", "truefalse", "blank", "open", "text"];
 
-// The main screen: top bar, toolbox (left), pages (center), properties + library (right).
-// Mirrored (right-to-left) when the app is in Arabic.
+// The shell: owns the state and the actions. The screen itself is drawn from appLayout (app/_features/app.ts).
 export default function Editor() {
   // Reopen the last exam (autosave), or start with the template picker.
   const [initial] = useState(() => {
@@ -58,12 +55,13 @@ export default function Editor() {
   const [uiLang, setUiLang] = useState<UiLang>(loadUiLang);
   const tr = (text: string, vars?: Record<string, string | number>) => translate(uiLang, text, vars);
   const [subject, setSubject] = useState<Subject>("General");
+  const [query, setQuery] = useState("");
   const [mode, setMode] = useState<ViewMode>("exam");
   const [tab, setTab] = useState<RightTab>("properties");
   const [library, setLibrary] = useState<{ kind: AssetKind | "all"; n: number }>({ kind: "all", n: 0 });
   const [picker, setPicker] = useState<{ open: boolean; mustPick: boolean }>({ open: initial.fresh, mustPick: initial.fresh });
   const [userAssets, setUserAssets] = useState<Asset[]>(loadUserAssets);
-  const [exportJob, setExportJob] = useState<ExportJob | null>(null);
+  const [exportJob, setExportJob] = useState<Shell["exportJob"]>(null);
   const [preview, setPreview] = useState(false);
   const [history, setHistory] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -80,6 +78,16 @@ export default function Editor() {
       return true;
     }
   });
+
+  const [hiddenBars, setHiddenBars] = useState<string[]>(loadHiddenBars);
+  const toggleBar = (id: string) =>
+    setHiddenBars((cur) => {
+      const next = cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id];
+      try {
+        localStorage.setItem(HIDDEN_BARS_KEY, JSON.stringify(next));
+      } catch {}
+      return next;
+    });
 
   const heights = useMemo(() => blockHeights(doc), [doc]);
   const numbers = useMemo(() => questionNumbers(doc.blocks, doc.pages), [doc]);
@@ -394,33 +402,94 @@ export default function Editor() {
     return () => window.removeEventListener("keydown", onKey);
   });
 
+  // ---- What the features can use ----
+
+  const shell: Shell = {
+    title: doc.meta.title,
+    setTitle: (title) => exam.setMeta({ title }, "title"),
+    setMeta: exam.setMeta,
+    selected,
+    numbers,
+    stats,
+    saveState: exam.save,
+    canUndo: exam.canUndo,
+    canRedo: exam.canRedo,
+    undo: exam.undo,
+    redo: exam.redo,
+    busy,
+    runTool: (action) => runTool(action),
+    updateBlock: (id, patch, field) => exam.updateBlock(id, patch, { key: `${id}:${field}` }),
+    onLatex,
+    deleteBlock: exam.deleteBlock,
+    duplicateBlock: exam.duplicateBlock,
+    newExam: () => setPicker({ open: true, mustPick: false }),
+    openExam: () => void open(),
+    saveExam: () => void save(),
+    showHistory: () => setHistory(true),
+    showPreview: () => setPreview(true),
+    mode,
+    setMode,
+    subject,
+    setSubject,
+    uiLang,
+    setUiLang: changeUiLang,
+    query,
+    setQuery,
+    rightTab: tab,
+    setRightTab: setTab,
+    library,
+    userAssets,
+    importImage: (addToPage) => void importImage(addToPage),
+    deleteUserAsset,
+    replaceImage: (id) => void replaceImage(id),
+    mathKeyboard: mathKb,
+    toggleMathKeyboard: (open) => toggleKeyboard(open ?? !mathKb),
+    picker,
+    openPicker: () => setPicker({ open: true, mustPick: false }),
+    closePicker: () => setPicker({ open: false, mustPick: false }),
+    pickTemplate: (template: Template) => {
+      if (!picker.mustPick) keepCopy(tr("Before starting a new exam"));
+      exam.newFromTemplate(template);
+      setEditing(null);
+      setSession((s) => s + 1);
+      setPicker({ open: false, mustPick: false });
+    },
+    preview,
+    closePreview: () => setPreview(false),
+    exportPdf: (which) => void exportPdf(which),
+    renderPages,
+    history,
+    closeHistory: () => setHistory(false),
+    restore,
+    exportJob,
+    toast,
+    hiddenBars,
+    toggleBar,
+  };
+
+  const ctx: Ctx = {
+    doc,
+    selection: selectedId,
+    activePageId: doc.pages[exam.activePage]?.id ?? "",
+    t: tr,
+    dir: uiLang === "ar" ? "rtl" : "ltr",
+    shell,
+  };
+
+  // Bars for one screen position, in order.
+  const bars = (position: BarPosition) =>
+    appLayout
+      .filter((bar) => bar.position === position)
+      .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+      .map((bar) => <BarRenderer key={bar.id} bar={bar} ctx={ctx} />);
+
   return (
     <UiProvider lang={uiLang}>
       <div className="flex h-screen flex-col bg-canvas" dir={uiLang === "ar" ? "rtl" : "ltr"}>
-        <TopBar
-          subject={subject}
-          onSubjectChange={setSubject}
-          title={doc.meta.title}
-          onTitleChange={(title) => exam.setMeta({ title }, "title")}
-          mode={mode}
-          onModeChange={setMode}
-          canUndo={exam.canUndo}
-          canRedo={exam.canRedo}
-          onUndo={exam.undo}
-          onRedo={exam.redo}
-          onNew={() => setPicker({ open: true, mustPick: false })}
-          onOpen={() => void open()}
-          onSave={() => void save()}
-          onHistory={() => setHistory(true)}
-          onPreview={() => setPreview(true)}
-          save={exam.save}
-          uiLang={uiLang}
-          onUiLang={changeUiLang}
-          busy={busy}
-        />
+        {bars("top")}
 
         <div className="flex min-h-0 flex-1">
-          <LeftPanel subject={subject} pageCount={stats.pages} questionCount={stats.questions} totalPoints={stats.points} onTool={runTool} />
+          {bars("left")}
 
           <main className="relative min-w-0 flex-1">
             <Workspace
@@ -450,84 +519,13 @@ export default function Editor() {
               onActivePageChange={exam.setActivePage}
               onDropItem={runTool}
             />
-
-            {/* Math keyboard while an equation is selected */}
-            {selected?.type === "equation" && mathKb && (
-              <div className="pointer-events-none absolute inset-x-0 bottom-16 z-40 flex justify-center px-4">
-                <div className="w-full max-w-[720px]">
-                  <MathKeyboard onClose={() => toggleKeyboard(false)} />
-                </div>
-              </div>
-            )}
+            {bars("bottom")}
           </main>
 
-          <RightPanel
-            tab={tab}
-            onTab={setTab}
-            properties={
-              <Inspector
-                block={selected}
-                number={selected ? (numbers.get(selected.id) ?? 1) : 1}
-                keyboardOpen={mathKb}
-                onToggleKeyboard={() => toggleKeyboard()}
-                meta={doc.meta}
-                stats={stats}
-                onChange={(id, patch, field) => exam.updateBlock(id, patch, { key: `${id}:${field}` })}
-                onLatex={onLatex}
-                onDelete={exam.deleteBlock}
-                onDuplicate={exam.duplicateBlock}
-                onReplaceImage={(id) => void replaceImage(id)}
-                onMeta={exam.setMeta}
-                onChangeTemplate={() => setPicker({ open: true, mustPick: false })}
-              />
-            }
-            library={
-              <LibraryPanel
-                key={`${subject}-${library.n}`}
-                subject={subject}
-                initialKind={library.kind}
-                userAssets={userAssets}
-                onUse={(a) => runTool({ kind: "asset", assetId: a.id })}
-                onImport={() => void importImage(false)}
-                onDeleteUserAsset={deleteUserAsset}
-              />
-            }
-          />
+          {bars("right")}
         </div>
 
-        {picker.open && (
-          <TemplatePicker
-            canClose={!picker.mustPick}
-            onClose={() => setPicker({ open: false, mustPick: false })}
-            onPick={(t) => {
-              if (!picker.mustPick) keepCopy(tr("Before starting a new exam"));
-              exam.newFromTemplate(t);
-              setEditing(null);
-              setSession((s) => s + 1);
-              setPicker({ open: false, mustPick: false });
-            }}
-          />
-        )}
-
-        {preview && (
-          <ExportPreview
-            doc={doc}
-            busy={busy}
-            renderPages={(m) => renderPages(m, 1.25, 0.85)}
-            onExport={(w) => void exportPdf(w)}
-            onClose={() => setPreview(false)}
-          />
-        )}
-
-        {history && <VersionHistory current={doc} onRestore={restore} onClose={() => setHistory(false)} />}
-
-        {exportJob && <ExportRenderer key={exportJob.mode} doc={exportJob.doc} mode={exportJob.mode} onReady={exportJob.resolve} />}
-
-        {toast && (
-          <div className="pointer-events-none fixed bottom-6 left-1/2 z-[60] -translate-x-1/2 rounded-lg bg-slate-900/90 px-4 py-2 text-xs font-medium text-white shadow-lg">
-            {toast}
-          </div>
-        )}
+        {bars("overlay")}
       </div>
     </UiProvider>
   );
