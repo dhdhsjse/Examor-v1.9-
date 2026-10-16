@@ -23,7 +23,7 @@ const LOG_MAX = Math.log(ZOOM_MAX);
 const toSlider = (z: number) => Math.round(((Math.log(z) - LOG_MIN) / (LOG_MAX - LOG_MIN)) * 1000);
 const fromSlider = (v: number) => Math.exp(LOG_MIN + (v / 1000) * (LOG_MAX - LOG_MIN));
 
-// Slim frosted bar (bottom-right): guides toggle, − slider +, a typed % and a preset menu.
+// Slim frosted bar (bottom-right): guides toggle, − slider + (pops out on hover), a typed % and a preset menu.
 export default function ZoomBar({ zoom, fitMode, showGuides, onZoom, onFitPage, onFitWidth, onToggleGuides }: Props) {
   const t = useT();
   const [open, setOpen] = useState(false);
@@ -54,7 +54,7 @@ export default function ZoomBar({ zoom, fitMode, showGuides, onZoom, onFitPage, 
   };
 
   return (
-    <div className="pointer-events-auto flex items-center gap-0.5 rounded-lg border border-white/70 bg-white/80 p-1 shadow-[0_6px_20px_-6px_rgba(16,24,40,0.25)] backdrop-blur-md">
+    <div className="group pointer-events-auto flex items-center gap-0.5 rounded-lg border border-white/70 bg-white/80 p-1 shadow-[0_6px_20px_-6px_rgba(16,24,40,0.25)] backdrop-blur-md">
       <button
         onClick={onToggleGuides}
         title={t("Guides and snapping")}
@@ -70,28 +70,36 @@ export default function ZoomBar({ zoom, fitMode, showGuides, onZoom, onFitPage, 
 
       <div className="mx-1 h-4 w-px bg-line" />
 
-      <button className={iconBtn} onClick={() => onZoom(zoom / 1.2)} title={`${t("Zoom out")} (Ctrl −)`}>
-        <svg width="12" height="12" viewBox="0 0 12 12" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
-          <path d="M2.5 6h7" />
-        </svg>
-      </button>
+      {/* Only shown while the mouse is on the bar (or the slider is in use), to save room */}
+      <div
+        className={`flex items-center gap-0.5 overflow-hidden transition-all duration-200 ease-out group-focus-within:max-w-48 group-focus-within:opacity-100 group-hover:max-w-48 group-hover:opacity-100 ${
+          open ? "max-w-48 opacity-100" : "max-w-0 opacity-0"
+        }`}
+      >
+        <button className={iconBtn} onClick={() => onZoom(zoom / 1.2)} title={`${t("Zoom out")} (Ctrl −)`}>
+          <svg width="12" height="12" viewBox="0 0 12 12" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
+            <path d="M2.5 6h7" />
+          </svg>
+        </button>
 
-      <input
-        type="range"
-        min={0}
-        max={1000}
-        value={toSlider(zoom)}
-        onChange={(e) => onZoom(fromSlider(Number(e.target.value)))}
-        title={t("Drag to zoom")}
-        aria-label={t("Zoom")}
-        className="h-1 w-24 cursor-pointer accent-indigo-600"
-      />
+        <input
+          type="range"
+          min={0}
+          max={1000}
+          value={toSlider(zoom)}
+          onChange={(e) => onZoom(fromSlider(Number(e.target.value)))}
+          onPointerUp={(e) => e.currentTarget.blur() /* let the bar fold again */}
+          title={t("Drag to zoom")}
+          aria-label={t("Zoom")}
+          className="h-1 w-24 cursor-pointer accent-indigo-600"
+        />
 
-      <button className={iconBtn} onClick={() => onZoom(zoom * 1.2)} title={`${t("Zoom in")} (Ctrl +)`}>
-        <svg width="12" height="12" viewBox="0 0 12 12" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
-          <path d="M2.5 6h7M6 2.5v7" />
-        </svg>
-      </button>
+        <button className={iconBtn} onClick={() => onZoom(zoom * 1.2)} title={`${t("Zoom in")} (Ctrl +)`}>
+          <svg width="12" height="12" viewBox="0 0 12 12" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
+            <path d="M2.5 6h7M6 2.5v7" />
+          </svg>
+        </button>
+      </div>
 
       {/* Type any % — the arrow opens the presets */}
       <div ref={menuRef} className="relative flex items-center">

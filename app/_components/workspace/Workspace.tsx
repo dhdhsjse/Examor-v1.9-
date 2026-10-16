@@ -2,18 +2,20 @@
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type DragEvent } from "react";
 import { PAGE_HEIGHT, PAGE_WIDTH } from "@/app/_lib/a4";
-import { isQuestion } from "@/app/_lib/blocks";
+import { fullMark, isQuestion, totalPoints } from "@/app/_lib/blocks";
 import type { EditField } from "@/app/_lib/editRegions";
 import { LABEL_SPACE, pageAt, pageTop, stackHeight } from "@/app/_lib/pageStack";
 import { DRAG_MIME, type ToolAction } from "@/app/_lib/tools";
-import type { BlockLayout, ExamDoc, ViewMode } from "@/app/_lib/types";
+import type { BlockLayout, ExamDoc, ExamMeta, ViewMode } from "@/app/_lib/types";
 import { useT } from "@/app/_lib/uiLang";
 import type { BlockPatch, DropPoint, RevealRequest } from "@/app/_lib/useExam";
 import { useZoom } from "@/app/_lib/useZoom";
 import ExamCanvas from "../canvas/ExamCanvas";
 import AnswerBar from "./AnswerBar";
+import CorrectionBar from "./CorrectionBar";
 import InlineEditor from "./InlineEditor";
 import PageStrip from "./PageStrip";
+import PointsMeter from "./PointsMeter";
 import ToolRail, { type CanvasTool } from "./ToolRail";
 import ZoomBar from "./ZoomBar";
 
@@ -49,6 +51,9 @@ interface Props {
   onDeletePage: (pageId: string) => void;
   onActivePageChange: (index: number) => void;
   onDropItem: (action: ToolAction, at: DropPoint) => void;
+  onMeta: (patch: Partial<ExamMeta>, key?: string) => void;
+  onFullMark: (value: number) => void;
+  onModeChange: (mode: ViewMode) => void;
 }
 
 const ANSWER_BAR_KEY = "examBuilder.answerBarOpen";
@@ -314,7 +319,9 @@ export default function Workspace(props: Props) {
                     block={editBlock}
                     field={editing.field}
                     number={numbers.get(editBlock.id) ?? 1}
-                    lang={doc.meta.lang}
+                    meta={doc.meta}
+                    mode={mode}
+                    zoom={zoom}
                     top={blockTop(editBlock)}
                     onChange={props.onEditChange}
                     onNext={props.onEditNext}
@@ -339,10 +346,12 @@ export default function Workspace(props: Props) {
                     block={question}
                     number={numbers.get(question.id) ?? 1}
                     lang={doc.meta.lang}
+                    mode={mode}
                     open={answerOpen}
                     onToggle={toggleAnswerBar}
                     onPatch={(patch, field) => props.onPatch(question.id, patch, field)}
                     onEdit={(field) => props.onEditStart(question.id, field)}
+                    onShowCorrection={() => props.onModeChange("key")}
                   />
                 </div>
               )}
@@ -385,6 +394,18 @@ export default function Workspace(props: Props) {
             }}
           />
         )}
+
+        {/* Points so far / full mark, and (correction sheet) the look of the answers */}
+        <div className="pointer-events-none absolute end-4 top-3 z-30 flex items-start gap-2">
+          {mode === "key" && <CorrectionBar meta={doc.meta} onMeta={props.onMeta} />}
+          <PointsMeter
+            total={totalPoints(doc.blocks)}
+            full={fullMark(doc)}
+            hidden={!!doc.meta.hidePoints}
+            onToggleHidden={() => props.onMeta({ hidePoints: !doc.meta.hidePoints })}
+            onFullMark={props.onFullMark}
+          />
+        </div>
 
         {/* Select / Text tools + zoom (bottom-right, away from the "Page 1 of 2" labels) */}
         <div className="pointer-events-none absolute right-4 bottom-4 flex items-center gap-2" dir="ltr">

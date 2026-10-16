@@ -2,7 +2,7 @@ import { CONTENT_WIDTH, PAGE_MARGIN } from "./a4";
 import { blockHeight } from "./blockLayout";
 import { newId } from "./id";
 import { EX_PX } from "./math";
-import type { Block, BlockData, BlockLayout, BlockType, ExamDoc, HeaderStyle, Lang, OpenPart, Page, QuestionBlock, TextStyle } from "./types";
+import type { Block, BlockData, BlockLayout, BlockType, ExamDoc, HeaderStyle, Lang, OpenBlock, OpenPart, Page, QuestionBlock, TextStyle } from "./types";
 import type { BlockPatch } from "./useExam";
 
 export const QUESTION_TYPES: BlockType[] = ["mcq", "truefalse", "blank", "open"];
@@ -117,7 +117,7 @@ export function questionNumbers(blocks: Block[], pages: Page[]): Map<string, num
 // Height of every block, keyed by id.
 export function blockHeights(doc: ExamDoc): Map<string, number> {
   const numbers = questionNumbers(doc.blocks, doc.pages);
-  return new Map(doc.blocks.map((b) => [b.id, blockHeight(b, numbers.get(b.id) ?? 1, doc.meta.lang)]));
+  return new Map(doc.blocks.map((b) => [b.id, blockHeight(b, numbers.get(b.id) ?? 1, doc.meta)]));
 }
 
 // Y position just below the lowest block of a page, so new blocks stack neatly.
@@ -159,4 +159,43 @@ export function pushDownOverlaps(blocks: Block[], movedId: string, heights: Map<
     bottom = ny + h(b);
   }
   return blocks.map((b) => (placed.has(b.id) && placed.get(b.id) !== b.layout.y ? { ...b, layout: { ...b.layout, y: placed.get(b.id)! } } : b));
+}
+
+// Sum of the points of every question.
+export const totalPoints = (blocks: Block[]) => blocks.filter(isQuestion).reduce((s, q) => s + q.points, 0);
+
+// The mark the exam is graded out of: the header's "/ 20", else the exam setting (20).
+// `auto` = the header follows the total of the questions (so it can't be exceeded).
+export function fullMark(doc: ExamDoc): { value: number; auto: boolean; fromHeader: boolean } {
+  const header = doc.blocks.find((b) => b.type === "header");
+  if (header?.type === "header") {
+    const auto = !!header.fields.autoOutOf;
+    return { value: auto ? totalPoints(doc.blocks) || header.fields.outOf : header.fields.outOf, auto, fromHeader: true };
+  }
+  return { value: doc.meta.fullMark ?? 20, auto: false, fromHeader: false };
+}
+
+// ---- Sub-questions of an open question ----
+
+const sumParts = (parts: OpenPart[]) => parts.reduce((s, p) => s + p.points, 0);
+
+// Add a sub-question at the end. The first one takes the place of the main answer lines.
+export function addPart(b: OpenBlock): BlockPatch {
+  const parts = b.parts ?? [];
+  const next = [...parts, { text: "", lines: 2, answer: "", points: 1 }];
+  return { parts: next, points: sumParts(next), ...(parts.length ? {} : { lines: 0 }) };
+}
+
+export function removePart(b: OpenBlock, i: number): BlockPatch {
+  const next = (b.parts ?? []).filter((_, k) => k !== i);
+  return { parts: next, ...(next.length ? { points: sumParts(next) } : { lines: 4 }) };
+}
+
+// Drag a sub-question to another place (its own name and points go with it).
+export function movePart(b: OpenBlock, from: number, to: number): BlockPatch {
+  const next = [...(b.parts ?? [])];
+  const [moved] = next.splice(from, 1);
+  if (!moved) return {};
+  next.splice(Math.max(0, Math.min(to, next.length)), 0, moved);
+  return { parts: next };
 }

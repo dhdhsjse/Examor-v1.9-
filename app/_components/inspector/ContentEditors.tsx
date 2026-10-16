@@ -1,9 +1,12 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { isRtl } from "@/app/_lib/i18n";
-import type { HeaderBlock, HeaderFields, ImageBlock, Lang, TableBlock, TextBlock } from "@/app/_lib/types";
+import { DEFAULT_ACCENT } from "@/app/_lib/blockLayout";
+import type { HeaderBlock, HeaderFields, HeaderStyle, HeadingDecor, ImageBlock, Lang, TableBlock, TextBlock } from "@/app/_lib/types";
 import { useT } from "@/app/_lib/uiLang";
-import { Field, NumberInput, Segmented, SmallButton, TextArea, TextInput } from "./fields";
+import { ColorGrid } from "../rich/FormatBar";
+import { ChoiceGrid, Field, NumberInput, RichInput, Segmented, SmallButton, TextInput } from "./fields";
 import type { OnChange } from "./QuestionEditors";
 
 export function TextEditor({ b, onChange }: { b: TextBlock; onChange: OnChange }) {
@@ -21,8 +24,21 @@ export function TextEditor({ b, onChange }: { b: TextBlock; onChange: OnChange }
           ]}
         />
       </Field>
+      {b.style !== "body" && (
+        <>
+          <Field label={t("Look")}>
+            <ChoiceGrid value={b.decor ?? "plain"} onChange={(decor) => onChange({ decor }, "decor")} options={decorOptions(t, b.accent ?? DEFAULT_ACCENT)} />
+          </Field>
+          {(b.decor ?? "plain") !== "plain" && (
+            <div className="flex flex-col gap-1">
+              <span className="text-[11px] font-semibold text-muted">{t("Accent color")}</span>
+              <ColorGrid value={b.accent ?? DEFAULT_ACCENT} onChange={(accent) => onChange({ accent }, "accent")} />
+            </div>
+          )}
+        </>
+      )}
       <Field label={t("Text")} hint={t("Tip: click the text on the page and type there.")}>
-        <TextArea value={b.text} onChange={(text) => onChange({ text }, "text")} rows={5} />
+        <RichInput value={b.text} onChange={(text) => onChange({ text }, "text")} rows={5} multiline={b.style === "body"} />
       </Field>
     </>
   );
@@ -67,13 +83,9 @@ export function TableEditor({ b, lang, onChange }: { b: TableBlock; lang: Lang; 
           <div className="grid gap-1" dir={isRtl(lang) ? "rtl" : "ltr"} style={{ gridTemplateColumns: `repeat(${cols}, minmax(64px, 1fr))` }}>
             {b.cells.map((row, r) =>
               row.map((cell, c) => (
-                <input
-                  key={`${r}-${c}`}
-                  dir="auto"
-                  value={cell}
-                  onChange={(e) => setCell(r, c, e.target.value)}
-                  className={`rounded border border-line px-1.5 py-1 text-xs outline-none focus:border-indigo-400 ${b.header && r === 0 ? "bg-subtle font-semibold" : "bg-white"}`}
-                />
+                <div key={`${r}-${c}`} className={`min-w-0 text-xs [&_.rich-edit]:px-1.5 [&_.rich-edit]:py-1 [&_.rich-edit]:text-xs ${b.header && r === 0 ? "font-semibold" : ""}`}>
+                  <RichInput value={cell} onChange={(v) => setCell(r, c, v)} />
+                </div>
               )),
             )}
           </div>
@@ -116,15 +128,7 @@ export function HeaderEditor({ b, totalPoints, onChange }: { b: HeaderBlock; tot
   return (
     <>
       <Field label={t("Header style")}>
-        <Segmented
-          value={b.style}
-          onChange={(style) => onChange({ style }, "style")}
-          options={[
-            { value: "classic", label: t("Classic") },
-            { value: "modern", label: t("Modern") },
-            { value: "minimal", label: t("Minimal") },
-          ]}
-        />
+        <ChoiceGrid<HeaderStyle> value={b.style} onChange={(style) => onChange({ style }, "style")} options={headerOptions(t)} />
       </Field>
       {text("title", t("Exam title"))}
       {text("school", t("School"))}
@@ -154,4 +158,89 @@ export function HeaderEditor({ b, totalPoints, onChange }: { b: HeaderBlock; tot
       </div>
     </>
   );
+}
+
+type Tr = ReturnType<typeof useT>;
+
+// The heading looks, each with a small drawing in the chosen accent color.
+function decorOptions(t: Tr, accent: string): { value: HeadingDecor; label: string; preview: ReactNode }[] {
+  const word = <span className="text-[10px] font-bold text-ink">Exercice 1</span>;
+  return [
+    { value: "plain", label: t("Plain"), preview: word },
+    { value: "underline", label: t("Underline"), preview: <span className="border-b-[3px] pb-px text-[10px] font-bold text-ink" style={{ borderColor: accent }}>Exercice 1</span> },
+    { value: "bar", label: t("Side bar"), preview: <span className="border-s-[3px] ps-1 text-[10px] font-bold text-ink" style={{ borderColor: accent }}>Exercice 1</span> },
+    { value: "band", label: t("Band"), preview: <span className="w-full rounded px-1.5 py-1 text-start text-[10px] font-bold text-white" style={{ background: accent }}>Exercice 1</span> },
+    { value: "pill", label: t("Pill"), preview: <span className="rounded-full px-2 py-0.5 text-[10px] font-bold text-white" style={{ background: accent }}>Exercice 1</span> },
+    { value: "boxed", label: t("Box"), preview: <span className="w-full rounded border-[1.5px] px-1.5 py-0.5 text-start text-[10px] font-bold text-ink" style={{ borderColor: accent, background: `${accent}14` }}>Exercice 1</span> },
+    {
+      value: "rule",
+      label: t("Line"),
+      preview: (
+        <span className="flex w-full items-center gap-1 px-1">
+          {word}
+          <span className="h-px flex-1" style={{ background: accent }} />
+        </span>
+      ),
+    },
+  ];
+}
+
+// Exam header styles, each with a tiny sketch of the layout.
+function headerOptions(t: Tr): { value: HeaderStyle; label: string; preview: ReactNode }[] {
+  const bar = (w: string, c = "bg-slate-300") => <span className={`block h-[3px] rounded-full ${c}`} style={{ width: w }} />;
+  return [
+    {
+      value: "classic",
+      label: t("Classic"),
+      preview: (
+        <span className="grid h-6 w-full grid-cols-3 border border-slate-500">
+          <span className="border-e border-slate-400" />
+          <span className="flex items-center justify-center border-e border-slate-400">{bar("70%", "bg-slate-500")}</span>
+          <span />
+        </span>
+      ),
+    },
+    {
+      value: "modern",
+      label: t("Modern"),
+      preview: (
+        <span className="flex h-6 w-full items-center justify-between rounded bg-indigo-50 px-1.5">
+          <span className="flex w-2/3 flex-col gap-0.5">{bar("80%", "bg-indigo-400")}{bar("50%", "bg-indigo-200")}</span>
+          <span className="size-4 rounded-full border border-indigo-400 bg-white" />
+        </span>
+      ),
+    },
+    {
+      value: "minimal",
+      label: t("Minimal"),
+      preview: (
+        <span className="flex w-full flex-col items-center gap-1 px-1">
+          {bar("60%", "bg-slate-500")}
+          <span className="block h-px w-full bg-slate-500" />
+        </span>
+      ),
+    },
+    {
+      value: "banner",
+      label: t("Banner"),
+      preview: (
+        <span className="flex h-6 w-full items-center justify-between rounded bg-slate-800 px-1.5">
+          <span className="flex w-2/3 flex-col gap-0.5">{bar("80%", "bg-white")}{bar("50%", "bg-slate-400")}</span>
+          <span className="h-4 w-5 rounded-sm bg-white" />
+        </span>
+      ),
+    },
+    {
+      value: "elegant",
+      label: t("Elegant"),
+      preview: (
+        <span className="flex w-full flex-col items-center gap-0.5 px-1">
+          <span className="block h-[2px] w-full border-t border-b border-slate-500" />
+          {bar("55%", "bg-slate-600")}
+          {bar("35%", "bg-indigo-300")}
+          <span className="block h-[2px] w-full border-t border-b border-slate-500" />
+        </span>
+      ),
+    },
+  ];
 }

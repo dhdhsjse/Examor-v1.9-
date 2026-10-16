@@ -1,11 +1,16 @@
 "use client";
 
+import type { ReactNode } from "react";
+import { ANSWER_COLOR, DEFAULT_SIZE } from "@/app/_lib/blockLayout";
+import { DEFAULT_FONT } from "@/app/_lib/fonts";
 import type { Block, ExamMeta } from "@/app/_lib/types";
 import { useT } from "@/app/_lib/uiLang";
 import type { BlockPatch } from "@/app/_lib/useExam";
 import { CopyIcon, TrashIcon } from "../icons";
 import { ContentEditorSwitch } from "./ContentEditorSwitch";
-import { Field, Segmented, SmallButton, TextInput } from "./fields";
+import { ColorGrid, FontSelect } from "../rich/FormatBar";
+import { BlockFontControls, hasFontControls } from "./FontControls";
+import { Field, Segmented, SmallButton, Stepper, TextInput } from "./fields";
 
 const TYPE_NAMES: Record<Block["type"], string> = {
   mcq: "Multiple choice",
@@ -25,6 +30,7 @@ interface Props {
   number: number; // question number of the selected block
   meta: ExamMeta;
   stats: { questions: number; points: number; pages: number };
+  hasHeader: boolean; // the full mark is set in the header then
   onChange: (id: string, patch: BlockPatch, field: string) => void;
   onLatex: (block: Block, latex: string) => void;
   onDelete: (id: string) => void;
@@ -67,11 +73,12 @@ export default function Inspector(props: Props) {
         onLatex={(latex) => props.onLatex(block, latex)}
         onReplaceImage={() => props.onReplaceImage(block.id)}
       />
+      {hasFontControls(block) && <BlockFontControls b={block} meta={props.meta} onChange={(patch, field) => props.onChange(block.id, patch, field)} />}
     </div>
   );
 }
 
-function ExamSettings({ meta, stats, onMeta, onChangeTemplate }: Props) {
+function ExamSettings({ meta, stats, hasHeader, onMeta, onChangeTemplate }: Props) {
   const t = useT();
   return (
     <div className="flex flex-col gap-3.5 p-3.5">
@@ -93,6 +100,44 @@ function ExamSettings({ meta, stats, onMeta, onChangeTemplate }: Props) {
         />
       </Field>
       <SmallButton onClick={onChangeTemplate}>{t("Start from a template…")}</SmallButton>
+
+      <Section title={t("Paper font")}>
+        <FontSelect
+          value={meta.fontFamily}
+          onChange={(fontFamily) => onMeta({ fontFamily })}
+          defaultLabel={DEFAULT_FONT}
+          className="w-full rounded-md border border-line bg-white px-2 py-1.5 text-[13px] text-ink outline-none focus:border-indigo-400"
+        />
+        <Row label={t("Question text size")}>
+          <Stepper value={meta.fontSize ?? DEFAULT_SIZE} min={9} max={24} onChange={(fontSize) => onMeta({ fontSize }, "fontSize")} />
+        </Row>
+        <Hint>{t("Every block uses this font unless it has its own (Properties → Text style).")}</Hint>
+      </Section>
+
+      <Section title={t("Points")}>
+        <label className="flex items-center gap-2 text-xs text-ink">
+          <input type="checkbox" checked={!!meta.hidePoints} onChange={(e) => onMeta({ hidePoints: e.target.checked })} className="accent-indigo-600" />
+          {t("Hide the points on the paper")}
+        </label>
+        {hasHeader ? (
+          <Hint>{t("The full mark is set in the exam header (“Graded out of”).")}</Hint>
+        ) : (
+          <Row label={t("Full mark")}>
+            <Stepper value={meta.fullMark ?? 20} min={1} max={200} onChange={(fullMark) => onMeta({ fullMark }, "fullMark")} />
+          </Row>
+        )}
+      </Section>
+
+      <Section title={t("Correction sheet")}>
+        <span className="text-[11px] text-muted">{t("Color of the answers")}</span>
+        <ColorGrid value={meta.answerColor} autoLabel={t("Green")} onChange={(answerColor) => onMeta({ answerColor })} />
+        <Row label={t("Size of the answers")}>
+          <Stepper value={meta.answerSize ?? meta.fontSize ?? DEFAULT_SIZE} min={9} max={28} onChange={(answerSize) => onMeta({ answerSize }, "answerSize")} />
+        </Row>
+        <p className="text-[10px] text-faint">
+          {t("Preview:")} <span style={{ color: meta.answerColor ?? ANSWER_COLOR, fontWeight: 600 }}>{t("model answer")}</span>
+        </p>
+      </Section>
 
       <div className="grid grid-cols-3 gap-2 pt-1">
         {(
@@ -122,3 +167,23 @@ function ExamSettings({ meta, stats, onMeta, onChangeTemplate }: Props) {
     </div>
   );
 }
+
+function Section({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <div className="flex flex-col gap-2 rounded-lg border border-line bg-subtle/60 p-2.5">
+      <span className="text-[11px] font-semibold text-muted">{title}</span>
+      {children}
+    </div>
+  );
+}
+
+function Row({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="flex items-center justify-between gap-2">
+      <span className="text-[11px] text-muted">{label}</span>
+      {children}
+    </div>
+  );
+}
+
+const Hint = ({ children }: { children: ReactNode }) => <p className="text-[10px] leading-snug text-faint">{children}</p>;

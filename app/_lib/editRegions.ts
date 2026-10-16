@@ -2,11 +2,9 @@
 // Used by the canvas (double-click / text tool) and by the inline text box.
 
 import {
-  BODY,
   CHOICE_W,
   PAD,
-  TEXT_STYLES,
-  TITLE,
+  answerTextTop,
   layoutBlank,
   layoutMcq,
   layoutOpen,
@@ -14,9 +12,10 @@ import {
   layoutText,
   layoutTrueFalse,
   type AnswerArea,
+  type Spec,
 } from "./blockLayout";
 import { isRtl } from "./i18n";
-import type { Block, Lang, OpenPart } from "./types";
+import type { Block, ExamMeta, OpenPart, ViewMode } from "./types";
 import type { BlockPatch } from "./useExam";
 
 export type EditField =
@@ -36,10 +35,8 @@ export interface EditRegion {
   y: number;
   width: number;
   height: number;
-  size: number;
-  line: number;
-  bold: boolean;
-  answer?: boolean; // shown in green (correction)
+  spec: Spec;
+  answer?: boolean; // a model answer (correction sheet)
   multiline: boolean; // Enter = new line (otherwise Enter = done)
   align?: "left" | "right" | "center";
 }
@@ -55,92 +52,69 @@ export interface ClickTarget {
 
 export const fieldKey = (f: EditField) => JSON.stringify(f);
 
-const body = { size: BODY.size, line: BODY.line, bold: false };
-const answerRegion = (field: EditField, a: AnswerArea): EditRegion => ({
-  field,
-  x: a.x,
-  y: a.y - 4,
-  width: a.width,
-  height: Math.max(a.height, 24),
-  size: BODY.size,
-  line: 28,
-  bold: false,
-  answer: true,
-  multiline: true,
-});
+// The model answer is typed on the dotted lines, only on the correction sheet.
+const answerRegion = (field: EditField, a: AnswerArea, spec: Spec): EditRegion => {
+  const y = answerTextTop(a, spec.font.size);
+  return { field, x: a.x, y, width: a.width, height: Math.max(a.y + a.height - y, a.line), spec: { ...spec, line: a.line }, answer: true, multiline: true };
+};
 
-export function editRegions(b: Block, n: number, lang: Lang): EditRegion[] {
+export function editRegions(b: Block, n: number, meta: ExamMeta, mode: ViewMode = "exam"): EditRegion[] {
   const w = b.layout.width;
-  const rtl = isRtl(lang);
-  const title = (t: { y: number; height: number }): EditRegion => ({
+  const rtl = isRtl(meta.lang);
+  const title = (t: { y: number; height: number }, spec: Spec): EditRegion => ({
     field: { kind: "text" },
     x: PAD,
     y: t.y,
     width: w - PAD * 2,
     height: t.height,
-    size: TITLE.size,
-    line: TITLE.line,
-    bold: true,
+    spec,
     multiline: false,
   });
 
   switch (b.type) {
     case "mcq": {
-      const L = layoutMcq(b, n, lang);
+      const L = layoutMcq(b, n, meta);
       return [
-        title(L.title),
-        ...L.options.map((o, i) => ({ field: { kind: "option", i } as EditField, x: rtl ? PAD : PAD + 30, y: o.y, width: w - PAD * 2 - 30, height: o.height, ...body, multiline: false })),
+        title(L.title, L.F.title),
+        ...L.options.map((o, i) => ({ field: { kind: "option", i } as EditField, x: rtl ? PAD : PAD + 30, y: o.y, width: w - PAD * 2 - 30, height: o.height, spec: L.F.body, multiline: false })),
       ];
     }
     case "truefalse": {
-      const L = layoutTrueFalse(b, n, lang);
+      const L = layoutTrueFalse(b, n, meta);
       return [
-        title(L.title),
+        title(L.title, L.F.title),
         ...L.rows.map((r, i) => ({
           field: { kind: "statement", i } as EditField,
           x: rtl ? PAD + CHOICE_W + 10 : PAD,
           y: r.y,
           width: w - PAD * 2 - CHOICE_W - 10,
           height: r.height,
-          ...body,
+          spec: L.F.body,
           multiline: false,
         })),
       ];
     }
     case "blank": {
-      const L = layoutBlank(b, n, lang);
-      return [title(L.title), { field: { kind: "content" }, x: PAD, y: L.exam.y, width: w - PAD * 2, height: Math.max(L.exam.height, L.key.height), ...body, multiline: true }];
+      const L = layoutBlank(b, n, meta);
+      return [title(L.title, L.F.title), { field: { kind: "content" }, x: PAD, y: L.exam.y, width: w - PAD * 2, height: Math.max(L.exam.height, L.key.height), spec: L.F.body, multiline: true }];
     }
     case "open": {
-      const L = layoutOpen(b, n, lang);
-      const out: EditRegion[] = [title(L.title)];
-      if (L.main.count > 0) out.push(answerRegion({ kind: "answer" }, L.main));
+      const L = layoutOpen(b, n, meta);
+      const key = mode === "key";
+      const out: EditRegion[] = [title(L.title, L.F.title)];
+      if (key && L.main.count > 0) out.push(answerRegion({ kind: "answer" }, L.main, L.F.answer));
       L.parts.forEach((p, i) => {
-        out.push({ field: { kind: "part", i }, x: p.area.x, y: p.text.y, width: p.area.width, height: p.text.height, ...body, multiline: false });
-        if (p.area.count > 0) out.push(answerRegion({ kind: "partAnswer", i }, p.area));
+        out.push({ field: { kind: "part", i }, x: p.area.x, y: p.text.y, width: p.area.width, height: p.text.height, spec: L.F.body, multiline: false });
+        if (key && p.area.count > 0) out.push(answerRegion({ kind: "partAnswer", i }, p.area, L.F.answer));
       });
       return out;
     }
     case "text": {
-      const L = layoutText(b);
-      const s = TEXT_STYLES[b.style];
-      return [
-        {
-          field: { kind: "text" },
-          x: PAD,
-          y: L.text.y,
-          width: w - PAD * 2,
-          height: L.text.height,
-          size: s.size,
-          line: s.line,
-          bold: s.bold,
-          multiline: b.style === "body",
-          align: b.style === "title" ? "center" : undefined,
-        },
-      ];
+      const L = layoutText(b, meta);
+      return [{ field: { kind: "text" }, x: L.x, y: L.text.y, width: L.width, height: L.text.height, spec: L.spec, multiline: b.style === "body", align: L.align }];
     }
     case "table": {
-      const L = layoutTable(b, rtl);
+      const L = layoutTable(b, meta);
       return L.rows.flatMap((row, r) =>
         row.cells.map((_, c) => ({
           field: { kind: "cell", r, c } as EditField,
@@ -148,9 +122,7 @@ export function editRegions(b: Block, n: number, lang: Lang): EditRegion[] {
           y: row.y + 4,
           width: L.colW[c] - 12,
           height: row.height - 8,
-          size: BODY.size,
-          line: BODY.line,
-          bold: row.bold,
+          spec: row.bold ? { ...L.F.body, font: { ...L.F.body.font, bold: true } } : L.F.body,
           multiline: false,
           align: row.bold ? ("center" as const) : undefined,
         })),
@@ -161,16 +133,17 @@ export function editRegions(b: Block, n: number, lang: Lang): EditRegion[] {
   }
 }
 
-export function clickTargets(b: Block, n: number, lang: Lang): ClickTarget[] {
+export function clickTargets(b: Block, n: number, meta: ExamMeta): ClickTarget[] {
   const w = b.layout.width;
-  const rtl = isRtl(lang);
+  const rtl = isRtl(meta.lang);
   if (b.type === "mcq") {
-    return layoutMcq(b, n, lang).options.map((o, i) => ({ x: rtl ? w - PAD - 20 : PAD - 2, y: o.y, width: 22, height: BODY.line, patch: { correct: i } }));
+    const L = layoutMcq(b, n, meta);
+    return L.options.map((o, i) => ({ x: rtl ? w - PAD - 20 : PAD - 2, y: o.y, width: 22, height: L.F.body.line, patch: { correct: i } }));
   }
   if (b.type === "truefalse") {
     const colX = rtl ? PAD : w - PAD - CHOICE_W;
     const half = CHOICE_W / 2;
-    return layoutTrueFalse(b, n, lang).rows.flatMap((r, i) =>
+    return layoutTrueFalse(b, n, meta).rows.flatMap((r, i) =>
       [true, false].map((value, k) => ({
         x: rtl ? colX + CHOICE_W - (k + 1) * half : colX + k * half,
         y: r.y,

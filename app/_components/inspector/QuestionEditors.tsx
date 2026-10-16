@@ -1,12 +1,14 @@
 "use client";
 
-import { useRef } from "react";
-import { blankAnswers, partLabel } from "@/app/_lib/blockLayout";
-import { patchPart } from "@/app/_lib/blocks";
+import { useRef, useState } from "react";
+import { PART_NUMBERINGS, blankAnswers, partLabel } from "@/app/_lib/blockLayout";
+import { addPart, movePart, patchPart, removePart } from "@/app/_lib/blocks";
+import { insertText } from "@/app/_lib/richText";
 import type { BlankBlock, Lang, McqBlock, OpenBlock, OpenPart, QuestionBlock, TrueFalseBlock } from "@/app/_lib/types";
 import { useT } from "@/app/_lib/uiLang";
 import type { BlockPatch } from "@/app/_lib/useExam";
-import { AddRowButton, Field, NumberInput, RemoveButton, TextArea, TextInput } from "./fields";
+import type { RichHandle } from "../rich/RichEditable";
+import { AddRowButton, Field, NumberInput, RemoveButton, RichInput, Segmented, TextInput } from "./fields";
 
 export type OnChange = (patch: BlockPatch, field: string) => void;
 
@@ -16,13 +18,13 @@ export function QuestionBasics({ b, onChange, lockPoints }: { b: QuestionBlock; 
   return (
     <>
       <Field label={t("Question")} hint={t("Tip: click the question on the page and type there.")}>
-        <TextArea value={b.text} onChange={(text) => onChange({ text }, "text")} rows={3} />
+        <RichInput value={b.text} onChange={(text) => onChange({ text }, "text")} rows={3} multiline />
       </Field>
       <Field label={t("Points")} hint={lockPoints ? t("Total of the sub-questions.") : undefined}>
         {lockPoints ? (
           <span className="text-sm font-semibold text-ink">{b.points}</span>
         ) : (
-          <NumberInput value={b.points} min={0} max={100} step={0.5} onChange={(points) => onChange({ points }, "points")} />
+          <NumberInput value={b.points} min={0} max={100} step={0.25} onChange={(points) => onChange({ points }, "points")} />
         )}
       </Field>
     </>
@@ -50,7 +52,7 @@ export function McqEditor({ b, onChange }: { b: McqBlock; onChange: OnChange }) 
                 className="size-4 shrink-0 accent-emerald-600"
                 title={t("Correct answer")}
               />
-              <TextInput value={opt} onChange={(v) => setOption(i, v)} />
+              <RichInput value={opt} onChange={(v) => setOption(i, v)} />
               {b.options.length > 2 && <RemoveButton onClick={() => remove(i)} title={t("Remove")} />}
             </div>
           ))}
@@ -75,7 +77,7 @@ export function TrueFalseEditor({ b, onChange }: { b: TrueFalseBlock; onChange: 
         <div className="flex flex-col gap-1.5">
           {b.statements.map((s, i) => (
             <div key={i} className="flex items-center gap-1.5">
-              <TextInput value={s.text} onChange={(text) => set(i, { text })} />
+              <RichInput value={s.text} onChange={(text) => set(i, { text })} />
               <button
                 type="button"
                 onClick={() => set(i, { answer: !s.answer })}
@@ -98,22 +100,22 @@ export function TrueFalseEditor({ b, onChange }: { b: TrueFalseBlock; onChange: 
 
 export function BlankEditor({ b, onChange }: { b: BlankBlock; onChange: OnChange }) {
   const t = useT();
-  const ref = useRef<HTMLTextAreaElement>(null);
+  const ref = useRef<RichHandle>(null);
   const answers = blankAnswers(b.content);
 
   // Wrap the selected words in [brackets] to turn them into a blank.
   const makeBlank = () => {
-    const el = ref.current;
-    if (!el || el.selectionStart === el.selectionEnd) return;
-    const { selectionStart: s, selectionEnd: e } = el;
-    onChange({ content: `${b.content.slice(0, s)}[${b.content.slice(s, e)}]${b.content.slice(e)}` }, "content-blank");
+    const sel = ref.current?.selection();
+    if (!sel || sel.start === sel.end) return;
+    const content = insertText(insertText(b.content, sel.end, "]"), sel.start, "[");
+    onChange({ content }, "content-blank");
   };
 
   return (
     <>
       <QuestionBasics b={b} onChange={onChange} />
       <Field label={t("Text with blanks")} hint={t("Put each answer in [brackets], or select words and click “Make blank”.")}>
-        <TextArea ref={ref} value={b.content} onChange={(content) => onChange({ content }, "content")} rows={4} />
+        <RichInput ref={ref} value={b.content} onChange={(content) => onChange({ content }, "content")} rows={4} multiline />
       </Field>
       <button
         type="button"
@@ -136,16 +138,16 @@ export function OpenEditor({ b, onChange, number, lang }: { b: OpenBlock; onChan
   const t = useT();
   const parts = b.parts ?? [];
   const setPart = (i: number, patch: Partial<OpenPart>, field: string) => onChange(patchPart(parts, i, patch), `part${i}-${field}`);
-
-  // The first sub-question takes the place of the main answer lines.
-  const addPart = () => {
-    const next = [...parts, { text: "", lines: 2, answer: "", points: 1 }];
-    onChange({ parts: next, points: next.reduce((s, p) => s + p.points, 0), ...(parts.length ? {} : { lines: 0 }) }, "parts");
+  const [armed, setArmed] = useState<number | null>(null); // grabbed by its handle
+  const [drag, setDrag] = useState<number | null>(null);
+  const [over, setOver] = useState<number | null>(null);
+  const reset = () => {
+    setArmed(null);
+    setDrag(null);
+    setOver(null);
   };
-  const removePart = (i: number) => {
-    const next = parts.filter((_, k) => k !== i);
-    onChange({ parts: next, ...(next.length ? { points: next.reduce((s, p) => s + p.points, 0) } : { lines: 4 }) }, "parts");
-  };
+  // The automatic name of part i (what an empty name shows).
+  const autoLabel = (i: number) => partLabel({ ...b, parts: parts.map((p) => ({ ...p, label: "" })) }, number, i, lang) || "—";
 
   return (
     <>
@@ -155,31 +157,69 @@ export function OpenEditor({ b, onChange, number, lang }: { b: OpenBlock; onChan
       </Field>
       {(b.lines > 0 || !parts.length) && (
         <Field label={t("Model answer")} hint={t("Shown only on the correction sheet.")}>
-          <TextArea value={b.answer} onChange={(answer) => onChange({ answer }, "answer")} rows={3} />
+          <RichInput value={b.answer} onChange={(answer) => onChange({ answer }, "answer")} rows={3} multiline />
         </Field>
       )}
 
       <Field label={t("Sub-questions")} hint={t("Split the question into parts: 1a), 1b)… Each part has its own lines, points and answer.")}>
         <div className="flex flex-col gap-2">
+          {parts.length > 0 && (
+            <div className="flex flex-col gap-1">
+              <span className="text-[10px] text-muted">{t("Numbering")}</span>
+              <Segmented value={b.partNumbering ?? "1a"} onChange={(partNumbering) => onChange({ partNumbering }, "numbering")} options={PART_NUMBERINGS} />
+            </div>
+          )}
           {parts.map((p, i) => (
-            <div key={i} className="flex flex-col gap-1.5 rounded-lg border border-line bg-subtle/60 p-2">
+            <div
+              key={i}
+              draggable={armed === i}
+              onDragStart={(e) => {
+                e.dataTransfer.effectAllowed = "move";
+                e.dataTransfer.setData("text/plain", String(i));
+                setDrag(i);
+              }}
+              onDragOver={(e) => {
+                if (drag === null) return;
+                e.preventDefault();
+                setOver(i);
+              }}
+              onDrop={(e) => {
+                e.preventDefault();
+                if (drag !== null && drag !== i) onChange(movePart(b, drag, i), "parts-order");
+                reset();
+              }}
+              onDragEnd={reset}
+              className={`flex flex-col gap-1.5 rounded-lg border bg-subtle/60 p-2 transition-colors ${drag === i ? "opacity-40" : ""} ${
+                over === i && drag !== i ? "border-indigo-400 bg-indigo-50" : "border-line"
+              }`}
+            >
               <div className="flex items-center gap-1.5">
-                <span className="w-9 shrink-0 text-xs font-bold text-indigo-600">{partLabel(number, i, lang)}</span>
-                <TextInput value={p.text} placeholder={t("Sub-question…")} onChange={(text) => setPart(i, { text }, "text")} />
-                <RemoveButton title={t("Remove")} onClick={() => removePart(i)} />
+                <span
+                  onMouseDown={() => setArmed(i)}
+                  onMouseUp={() => setArmed(null)}
+                  className="cursor-grab px-0.5 text-sm leading-none text-faint select-none hover:text-indigo-600 active:cursor-grabbing"
+                  title={t("Drag to reorder")}
+                >
+                  ⋮⋮
+                </span>
+                <div className="w-14 shrink-0" title={t("Name of the sub-question (empty = automatic)")}>
+                  <TextInput value={p.label ?? ""} placeholder={autoLabel(i)} onChange={(label) => setPart(i, { label }, "label")} />
+                </div>
+                <RichInput value={p.text} placeholder={t("Sub-question…")} onChange={(text) => setPart(i, { text }, "text")} />
+                <RemoveButton title={t("Remove")} onClick={() => onChange(removePart(b, i), "parts")} />
               </div>
-              <div className="flex items-center gap-2 ps-10 text-[11px] text-muted">
+              <div className="flex items-center gap-2 ps-6 text-[11px] text-muted">
                 {t("Lines")}
                 <NumberInput value={p.lines} min={0} max={20} onChange={(lines) => setPart(i, { lines }, "lines")} />
                 {t("Points")}
-                <NumberInput value={p.points} min={0} max={100} step={0.5} onChange={(points) => setPart(i, { points }, "points")} />
+                <NumberInput value={p.points} min={0} max={100} step={0.25} onChange={(points) => setPart(i, { points }, "points")} />
               </div>
-              <div className="ps-10">
-                <TextInput value={p.answer} placeholder={t("Answer (correction sheet)…")} onChange={(answer) => setPart(i, { answer }, "answer")} />
+              <div className="ps-6">
+                <RichInput value={p.answer} placeholder={t("Answer (correction sheet)…")} onChange={(answer) => setPart(i, { answer }, "answer")} multiline />
               </div>
             </div>
           ))}
-          {parts.length < 8 && <AddRowButton onClick={addPart}>{t("Add sub-question")}</AddRowButton>}
+          {parts.length < 12 && <AddRowButton onClick={() => onChange(addPart(b), "parts")}>{t("Add sub-question")}</AddRowButton>}
         </div>
       </Field>
     </>

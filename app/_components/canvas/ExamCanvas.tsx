@@ -4,7 +4,7 @@ import type Konva from "konva";
 import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { Layer, Line, Rect, Stage, Transformer } from "react-konva";
 import { PAGE_HEIGHT, PAGE_MARGIN, PAGE_WIDTH } from "@/app/_lib/a4";
-import { isQuestion, questionNumbers } from "@/app/_lib/blocks";
+import { questionNumbers, totalPoints as sumPoints } from "@/app/_lib/blocks";
 import type { EditField } from "@/app/_lib/editRegions";
 import { pageAt, pageTop, stackHeight } from "@/app/_lib/pageStack";
 import { snapBox, type Guide } from "@/app/_lib/snapping";
@@ -58,7 +58,7 @@ export default function ExamCanvas(props: Props) {
   const pageIndex = new Map(pages.map((p, i) => [p.id, i]));
   const selected = interactive ? blocks.find((b) => b.id === selectedId) : undefined;
   const guidesOn = showGuides && interactive;
-  const totalPoints = useMemo(() => blocks.filter(isQuestion).reduce((s, q) => s + q.points, 0), [blocks]);
+  const totalPoints = useMemo(() => sumPoints(blocks), [blocks]);
 
   // Draw at a higher resolution when zoomed in, so text stays sharp.
   useEffect(() => {
@@ -154,7 +154,7 @@ export default function ExamCanvas(props: Props) {
             y={pageTop(pageIndex.get(b.layout.pageId) ?? 0) + b.layout.y}
             height={heights.get(b.id) ?? 0}
             number={numbers.get(b.id) ?? 0}
-            lang={meta.lang}
+            meta={meta}
             mode={mode}
             totalPoints={totalPoints}
             zoom={zoom}

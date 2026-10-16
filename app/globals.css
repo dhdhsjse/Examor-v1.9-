@@ -78,3 +78,16 @@ body {
     0 2px 4px rgba(16, 24, 40, 0.06),
     0 16px 40px -12px rgba(16, 24, 40, 0.28);
 }
+
+/* Text boxes with styled words (RichEditable): grey hint while empty. */
+.rich-edit {
+  user-select: text;
+  cursor: text;
+}
+.rich-edit[data-empty="true"]::before {
+  content: attr(data-placeholder);
+  position: absolute;
+  color: #cbd5e1;
+  font-weight: 400;
+  pointer-events: none;
+}

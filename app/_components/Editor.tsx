@@ -4,10 +4,11 @@ import type Konva from "konva";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CONTENT_WIDTH, PAGE_HEIGHT, PAGE_MARGIN, PAGE_WIDTH } from "@/app/_lib/a4";
 import { focusMathfield } from "@/app/_lib/activeMathfield";
-import { blockHeights, isQuestion, questionNumbers } from "@/app/_lib/blocks";
+import { blockHeights, fullMark, isQuestion, questionNumbers } from "@/app/_lib/blocks";
 import { editRegions, fieldKey, fieldPatch, fieldValue, type EditField } from "@/app/_lib/editRegions";
 import { newId } from "@/app/_lib/id";
 import { preloadImages, readImageFile } from "@/app/_lib/images";
+import { plainText } from "@/app/_lib/richText";
 import { BUILTIN_ASSETS, svgUrl, type Asset, type AssetKind } from "@/app/_lib/library";
 import { imagesToPdf, stagePageImages } from "@/app/_lib/pdf";
 import { loadAutosave, loadUserAssets, parseExamFile, pickFile, saveFile, saveUserAssets } from "@/app/_lib/storage";
@@ -224,7 +225,7 @@ export default function Editor() {
   const editNext = (back: boolean) => {
     const block = editing && doc.blocks.find((b) => b.id === editing.id);
     if (!editing || !block) return;
-    const fields = editRegions(block, numbers.get(block.id) ?? 1, doc.meta.lang).map((r) => r.field);
+    const fields = editRegions(block, numbers.get(block.id) ?? 1, doc.meta, mode).map((r) => r.field);
     const i = fields.findIndex((f) => fieldKey(f) === fieldKey(editing.field));
     const next = fields[(i + (back ? -1 : 1) + fields.length) % fields.length];
     if (next) setEditing({ id: block.id, field: next });
@@ -233,7 +234,7 @@ export default function Editor() {
   // Finished typing. A new text from the T tool that stayed empty is removed.
   const editDone = (id: string) => {
     const block = doc.blocks.find((b) => b.id === id);
-    if (editing?.id === id && editing.created && block && !fieldValue(block, editing.field).trim()) exam.deleteBlock(id);
+    if (editing?.id === id && editing.created && block && !plainText(fieldValue(block, editing.field)).trim()) exam.deleteBlock(id);
     setEditing((cur) => (cur?.id === id ? null : cur));
   };
 
@@ -243,18 +244,31 @@ export default function Editor() {
     const block = editing && doc.blocks.find((b) => b.id === editing.id);
     if (!editing || !block) return;
     const f = editing.field;
-    if (!("i" in f) || !fieldValue(block, f).trim()) return editDone(block.id);
+    if (!("i" in f) || !plainText(fieldValue(block, f)).trim()) return editDone(block.id);
     const i = f.i + 1;
     const insert = <T,>(list: T[], item: T) => [...list.slice(0, i), item, ...list.slice(i)];
     if (block.type === "mcq" && f.kind === "option" && block.options.length < 6) {
       exam.updateBlock(block.id, { options: insert(block.options, ""), correct: block.correct >= i ? block.correct + 1 : block.correct });
     } else if (block.type === "truefalse" && f.kind === "statement") {
       exam.updateBlock(block.id, { statements: insert(block.statements, { text: "", answer: true }) });
-    } else if (block.type === "open" && f.kind === "part" && (block.parts?.length ?? 0) < 8) {
+    } else if (block.type === "open" && f.kind === "part" && (block.parts?.length ?? 0) < 12) {
       const parts = insert(block.parts ?? [], { text: "", lines: 2, answer: "", points: 1 });
       exam.updateBlock(block.id, { parts, points: parts.reduce((sum, p) => sum + p.points, 0) });
     } else return editNext(false);
     setEditing({ id: block.id, field: { kind: f.kind, i } as EditField });
+  };
+
+  // Exam ⇄ correction sheet. Answers can only be typed on the correction sheet, so stop typing.
+  const changeMode = (m: ViewMode) => {
+    setMode(m);
+    setEditing(null);
+  };
+
+  // Full mark from the points indicator: the header's "/ 20" when there is one, else the exam setting.
+  const setFullMark = (value: number) => {
+    const header = doc.blocks.find((b) => b.type === "header");
+    if (header?.type === "header" && !header.fields.autoOutOf) exam.updateBlock(header.id, { fields: { ...header.fields, outOf: value } }, { key: "fullMark" });
+    else if (!fullMark(doc).fromHeader) exam.setMeta({ fullMark: value }, "fullMark");
   };
 
   // T tool on empty paper: a new paragraph starting where the teacher clicked.
@@ -403,7 +417,7 @@ export default function Editor() {
           title={doc.meta.title}
           onTitleChange={(title) => exam.setMeta({ title }, "title")}
           mode={mode}
-          onModeChange={setMode}
+          onModeChange={changeMode}
           canUndo={exam.canUndo}
           canRedo={exam.canRedo}
           onUndo={exam.undo}
@@ -449,6 +463,9 @@ export default function Editor() {
               onDeletePage={exam.deletePage}
               onActivePageChange={exam.setActivePage}
               onDropItem={runTool}
+              onMeta={exam.setMeta}
+              onFullMark={setFullMark}
+              onModeChange={changeMode}
             />
 
             {/* Math keyboard while an equation is selected */}
@@ -472,6 +489,7 @@ export default function Editor() {
                 onToggleKeyboard={() => toggleKeyboard()}
                 meta={doc.meta}
                 stats={stats}
+                hasHeader={doc.blocks.some((b) => b.type === "header")}
                 onChange={(id, patch, field) => exam.updateBlock(id, patch, { key: `${id}:${field}` })}
                 onLatex={onLatex}
                 onDelete={exam.deleteBlock}

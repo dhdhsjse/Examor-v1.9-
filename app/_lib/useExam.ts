@@ -119,7 +119,7 @@ export function useExam(initial: ExamDoc) {
     (type: BlockType, preset: BlockPreset = {}, at?: DropPoint) => {
       const lang = doc.meta.lang;
       const block = createBlock(type, lang, "", preset);
-      const h = blockHeight(block, 1, lang);
+      const h = blockHeight(block, 1, doc.meta);
       const w = block.layout.width;
       let pages = doc.pages;
 

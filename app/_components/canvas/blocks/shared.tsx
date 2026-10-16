@@ -1,43 +1,56 @@
 "use client";
 
 import { Text } from "react-konva";
-import { FONT_FAMILY } from "@/app/_lib/measure";
+import { FONT_FAMILY, konvaFontStyle, type RichLine } from "@/app/_lib/measure";
 
-export const INK = "#111827";
+export { INK } from "@/app/_lib/blockLayout";
 export const MUTED = "#4b5563";
-export const KEY = "#15803d"; // correction-sheet green
 
-interface LinesProps {
-  lines: string[];
+interface RichTextProps {
+  lines: RichLine[];
   x: number;
   y: number;
   width: number;
-  size: number;
-  line: number; // line height in px
-  bold?: boolean;
-  color?: string;
   rtl: boolean;
   align?: "left" | "right" | "center";
+  step?: number; // fixed distance between lines (answers on dotted lines)
+  recolor?: [from: string, to: string]; // e.g. the correct MCQ option in the answer color
 }
 
-// Draws text that was already wrapped by `wrapText` (so it matches the computed heights).
-export function Lines({ lines, x, y, width, size, line, bold, color = INK, rtl, align }: LinesProps) {
+// Draws text that was already wrapped by `wrapRich` (so it matches the computed heights).
+// Each styled piece is its own Konva text; pieces of one line share the same baseline.
+export function RichText({ lines, x, y, width, rtl, align, step, recolor }: RichTextProps) {
+  const a = align ?? (rtl ? "right" : "left");
+  // Top of each line (lines can have different heights).
+  const tops = lines.map((_, k) => (step ? y + k * step : y + lines.slice(0, k).reduce((s, l) => s + l.height, 0)));
   return (
-    <Text
-      x={x}
-      y={y}
-      width={width}
-      text={lines.join("\n")}
-      fontFamily={FONT_FAMILY}
-      fontSize={size}
-      lineHeight={line / size}
-      fontStyle={bold ? "bold" : "normal"}
-      fill={color}
-      wrap="none"
-      align={align ?? (rtl ? "right" : "left")}
-      direction={rtl ? "rtl" : "ltr"}
-      listening={false}
-    />
+    <>
+      {lines.map((l, k) => {
+        const lineTop = tops[k];
+        const lineH = step ?? l.height;
+        const start = a === "left" ? x : a === "right" ? x + width - l.width : x + (width - l.width) / 2;
+        return l.pieces.map((p, j) => (
+          <Text
+            key={`${k}-${j}`}
+            // Right-to-left: the first piece is on the right.
+            x={rtl ? start + l.width - p.x - p.width : start + p.x}
+            y={lineTop + (l.size - p.font.size) * 0.38}
+            width={p.width + 1}
+            text={p.text}
+            fontFamily={p.font.family}
+            fontSize={p.font.size}
+            lineHeight={lineH / p.font.size}
+            fontStyle={konvaFontStyle(p.font)}
+            textDecoration={p.font.underline ? "underline" : ""}
+            fill={recolor && p.font.color === recolor[0] ? recolor[1] : p.font.color}
+            wrap="none"
+            align={rtl ? "right" : "left"}
+            direction={rtl ? "rtl" : "ltr"}
+            listening={false}
+          />
+        ));
+      })}
+    </>
   );
 }
 
@@ -49,19 +62,20 @@ interface OneLineProps {
   size: number;
   bold?: boolean;
   color?: string;
+  family?: string;
   rtl: boolean;
   align?: "left" | "right" | "center";
 }
 
-// A single line of text, cut with "…" if too long (used in headers).
-export function OneLine({ text, x, y, width, size, bold, color = INK, rtl, align }: OneLineProps) {
+// A single line of plain text, cut with "…" if too long (used in headers and labels).
+export function OneLine({ text, x, y, width, size, bold, color = "#111827", family = FONT_FAMILY, rtl, align }: OneLineProps) {
   return (
     <Text
       x={x}
       y={y}
       width={width}
       text={text}
-      fontFamily={FONT_FAMILY}
+      fontFamily={family}
       fontSize={size}
       fontStyle={bold ? "bold" : "normal"}
       fill={color}

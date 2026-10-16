@@ -1,35 +1,49 @@
 "use client";
 
 import { Group, Image as KImage, Line, Rect } from "react-konva";
-import { BODY, PAD, TEXT_STYLES, layoutTable, layoutText } from "@/app/_lib/blockLayout";
+import { DEFAULT_ACCENT, layoutTable, layoutText } from "@/app/_lib/blockLayout";
 import { isRtl } from "@/app/_lib/i18n";
 import { useImage } from "@/app/_lib/images";
 import { svgUrl } from "@/app/_lib/library";
-import type { EquationBlock, ImageBlock, Lang, TableBlock, TextBlock } from "@/app/_lib/types";
-import { INK, Lines } from "./shared";
+import type { EquationBlock, ExamMeta, ImageBlock, TableBlock, TextBlock } from "@/app/_lib/types";
+import { INK, RichText } from "./shared";
 
-export function TextView({ b, lang }: { b: TextBlock; lang: Lang }) {
-  const L = layoutText(b);
-  const s = TEXT_STYLES[b.style];
+// Light version of a color, e.g. for the inside of a box ("#4f46e5" → "#4f46e514").
+const tint = (hex: string, alpha = "14") => (/^#[0-9a-f]{6}$/i.test(hex) ? `${hex}${alpha}` : hex);
+
+export function TextView({ b, meta }: { b: TextBlock; meta: ExamMeta }) {
+  const L = layoutText(b, meta);
+  const rtl = isRtl(meta.lang);
+  const accent = b.accent ?? DEFAULT_ACCENT;
+  const d = L.deco;
   return (
-    <Lines
-      lines={L.text.lines}
-      x={PAD}
-      y={L.text.y}
-      width={b.layout.width - PAD * 2}
-      size={s.size}
-      line={s.line}
-      bold={s.bold}
-      rtl={isRtl(lang)}
-      align={b.style === "title" ? "center" : undefined}
-    />
+    <>
+      {d?.kind === "underline" && <Rect x={d.x} y={d.y} width={d.width} height={d.height} fill={accent} cornerRadius={2} listening={false} />}
+      {d?.kind === "bar" && <Rect x={d.x} y={d.y} width={d.width} height={d.height} fill={accent} cornerRadius={2} listening={false} />}
+      {d?.kind === "band" && <Rect x={d.x} y={d.y} width={d.width} height={d.height} fill={accent} cornerRadius={6} listening={false} />}
+      {d?.kind === "pill" && <Rect x={d.x} y={d.y} width={d.width} height={d.height} fill={accent} cornerRadius={d.height / 2} listening={false} />}
+      {d?.kind === "boxed" && (
+        <Rect x={d.x + 0.75} y={d.y + 0.75} width={d.width - 1.5} height={d.height - 1.5} fill={tint(accent)} stroke={accent} strokeWidth={1.5} cornerRadius={6} listening={false} />
+      )}
+      {d?.kind === "rule" &&
+        (L.align === "center" ? (
+          // Centered title: a line on each side of the text.
+          <>
+            <Line points={[d.x, d.y, (b.layout.width - d.height) / 2 - 12, d.y]} stroke={accent} strokeWidth={1.5} listening={false} />
+            <Line points={[(b.layout.width + d.height) / 2 + 12, d.y, d.x + d.width, d.y]} stroke={accent} strokeWidth={1.5} listening={false} />
+          </>
+        ) : (
+          d.width > 0 && <Line points={[d.x, d.y, d.x + d.width, d.y]} stroke={accent} strokeWidth={1.5} listening={false} />
+        ))}
+      <RichText lines={L.text.lines} x={L.x} y={L.text.y} width={L.width} rtl={rtl} align={L.align} />
+    </>
   );
 }
 
-export function TableView({ b, lang }: { b: TableBlock; lang: Lang }) {
+export function TableView({ b, meta }: { b: TableBlock; meta: ExamMeta }) {
   // In Arabic the first column is on the right.
-  const rtl = isRtl(lang);
-  const L = layoutTable(b, rtl);
+  const L = layoutTable(b, meta);
+  const rtl = L.F.rtl;
   const w = b.layout.width;
 
   return (
@@ -39,15 +53,12 @@ export function TableView({ b, lang }: { b: TableBlock; lang: Lang }) {
         <Group key={r}>
           {r > 0 && <Line points={[0, row.y, w, row.y]} stroke={INK} strokeWidth={1} />}
           {row.cells.map((cell, c) => (
-            <Lines
+            <RichText
               key={c}
               lines={cell.lines}
               x={L.colX[c] + 6}
               y={row.y + (row.height - cell.height) / 2}
               width={L.colW[c] - 12}
-              size={BODY.size}
-              line={BODY.line}
-              bold={row.bold}
               rtl={rtl}
               align={row.bold ? "center" : undefined}
             />

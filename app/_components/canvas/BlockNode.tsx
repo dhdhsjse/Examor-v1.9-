@@ -4,7 +4,7 @@ import type Konva from "konva";
 import { useRef, useState } from "react";
 import { Group, Rect } from "react-konva";
 import { clickTargets, editRegions, type EditField } from "@/app/_lib/editRegions";
-import type { Block, Lang, ViewMode } from "@/app/_lib/types";
+import type { Block, ExamMeta, ViewMode } from "@/app/_lib/types";
 import type { BlockPatch } from "@/app/_lib/useExam";
 import { EquationView, ImageView, TableView, TextView } from "./blocks/ContentViews";
 import { GraphView } from "./blocks/GraphView";
@@ -25,7 +25,7 @@ interface Props {
   y: number;
   height: number;
   number: number;
-  lang: Lang;
+  meta: ExamMeta;
   mode: ViewMode;
   totalPoints: number; // for the header score
   zoom: number;
@@ -42,20 +42,20 @@ interface Props {
 }
 
 // What to draw inside the block.
-function Content({ block, number, lang, mode, interactive, totalPoints }: Pick<Props, "block" | "number" | "lang" | "mode" | "interactive" | "totalPoints">) {
+function Content({ block, number, meta, mode, interactive, totalPoints }: Pick<Props, "block" | "number" | "meta" | "mode" | "interactive" | "totalPoints">) {
   switch (block.type) {
     case "mcq":
-      return <McqView b={block} n={number} lang={lang} mode={mode} />;
+      return <McqView b={block} n={number} meta={meta} mode={mode} />;
     case "truefalse":
-      return <TrueFalseView b={block} n={number} lang={lang} mode={mode} />;
+      return <TrueFalseView b={block} n={number} meta={meta} mode={mode} />;
     case "blank":
-      return <BlankView b={block} n={number} lang={lang} mode={mode} />;
+      return <BlankView b={block} n={number} meta={meta} mode={mode} />;
     case "open":
-      return <OpenView b={block} n={number} lang={lang} mode={mode} />;
+      return <OpenView b={block} n={number} meta={meta} mode={mode} />;
     case "text":
-      return <TextView b={block} lang={lang} />;
+      return <TextView b={block} meta={meta} />;
     case "table":
-      return <TableView b={block} lang={lang} />;
+      return <TableView b={block} meta={meta} />;
     case "equation":
       // An empty equation is only a hint on screen: it is not printed.
       return interactive || block.latex.trim() ? <EquationView b={block} /> : null;
@@ -64,7 +64,7 @@ function Content({ block, number, lang, mode, interactive, totalPoints }: Pick<P
     case "graph":
       return <GraphView b={block} />;
     case "header":
-      return <HeaderView b={block} lang={lang} mode={mode} totalPoints={totalPoints} />;
+      return <HeaderView b={block} meta={meta} mode={mode} totalPoints={totalPoints} />;
   }
 }
 
@@ -131,12 +131,12 @@ export default function BlockNode(props: Props) {
         dash={[4, 3]}
         cornerRadius={4}
       />
-      <Content block={block} number={props.number} lang={props.lang} mode={props.mode} interactive={interactive} totalPoints={props.totalPoints} />
+      <Content block={block} number={props.number} meta={props.meta} mode={props.mode} interactive={interactive} totalPoints={props.totalPoints} />
 
       {/* Invisible areas on top of the texts: double-click, click a selected block (or click with
           the T tool) to type there */}
       {interactive &&
-        editRegions(block, props.number, props.lang).map((r, k) => (
+        editRegions(block, props.number, props.meta, props.mode).map((r, k) => (
           <Rect
             key={`e${k}`}
             x={r.x - 2}
@@ -163,7 +163,7 @@ export default function BlockNode(props: Props) {
 
       {/* Click a circle / box to set the correct answer */}
       {interactive &&
-        clickTargets(block, props.number, props.lang).map((t, k) => (
+        clickTargets(block, props.number, props.meta).map((t, k) => (
           <Rect
             key={`c${k}`}
             x={t.x}
@@ -179,7 +179,7 @@ export default function BlockNode(props: Props) {
 
       {/* Drag the lines of the selected table to resize its columns and rows */}
       {interactive && selected && !textTool && block.type === "table" && (
-        <TableHandles b={block} lang={props.lang} zoom={props.zoom} onPatch={props.onPatch} />
+        <TableHandles b={block} meta={props.meta} zoom={props.zoom} onPatch={props.onPatch} />
       )}
     </Group>
   );

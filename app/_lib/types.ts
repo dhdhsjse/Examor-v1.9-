@@ -20,9 +20,17 @@ export interface BlockLayout {
   height: number;
 }
 
+// Font of a whole block (missing = the exam's default font).
+export interface BlockFont {
+  family?: string; // one of FONT_CHOICES (see fonts.ts)
+  size?: number; // main text size in px
+  color?: string;
+}
+
 interface BlockBase {
   id: string;
   layout: BlockLayout;
+  font?: BlockFont;
 }
 
 // ---- Questions (they have points and a correct answer) ----
@@ -52,6 +60,7 @@ export interface BlankBlock extends BlockBase {
 
 // A sub-question of an open question: "1a)", "1b)"...
 export interface OpenPart {
+  label?: string; // own name instead of the automatic "1a)" (empty = automatic)
   text: string;
   lines: number;
   answer: string;
@@ -65,16 +74,25 @@ export interface OpenBlock extends BlockBase {
   answer: string; // model answer (correction sheet)
   points: number; // total (= sum of the parts when there are parts)
   parts?: OpenPart[]; // missing in files from older versions
+  partNumbering?: PartNumbering; // missing = "1a"
 }
+
+// How sub-questions are numbered: 1a) · a) · 1.1) · i) · 1) · nothing.
+export type PartNumbering = "1a" | "a" | "1.1" | "i" | "1" | "none";
 
 // ---- Content blocks ----
 
 export type TextStyle = "title" | "heading" | "body";
 
+// Look of a title / heading: a plain text, or a modern decoration around it.
+export type HeadingDecor = "plain" | "underline" | "bar" | "band" | "pill" | "boxed" | "rule";
+
 export interface TextBlock extends BlockBase {
   type: "text";
   text: string;
   style: TextStyle;
+  decor?: HeadingDecor; // missing = "plain"
+  accent?: string; // color of the decoration
 }
 
 export interface EquationBlock extends BlockBase {
@@ -110,7 +128,7 @@ export interface GraphBlock extends BlockBase {
   grid: boolean;
 }
 
-export type HeaderStyle = "classic" | "modern" | "minimal";
+export type HeaderStyle = "classic" | "modern" | "minimal" | "banner" | "elegant";
 
 export interface HeaderFields {
   school: string;
@@ -142,6 +160,13 @@ export interface ExamMeta {
   title: string;
   lang: Lang;
   templateId: string;
+  // Missing in files from older versions: the defaults are used.
+  fontFamily?: string; // default font of the paper
+  fontSize?: number; // default size of question text (14)
+  hidePoints?: boolean; // don't print "(2 pts)" next to the questions
+  fullMark?: number; // full mark when there is no exam header (20)
+  answerColor?: string; // correction sheet: color of the answers
+  answerSize?: number; // correction sheet: size of the written answers
 }
 
 // The whole exam, as saved to disk.

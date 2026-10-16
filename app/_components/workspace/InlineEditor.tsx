@@ -1,17 +1,21 @@
 "use client";
 
-import { useLayoutEffect, useRef } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { editRegions, fieldKey, fieldValue, type EditField } from "@/app/_lib/editRegions";
 import { isRtl } from "@/app/_lib/i18n";
-import { FONT_FAMILY } from "@/app/_lib/measure";
-import type { Block, Lang } from "@/app/_lib/types";
+import type { RunStyle } from "@/app/_lib/richText";
+import type { Block, ExamMeta, ViewMode } from "@/app/_lib/types";
 import { useT } from "@/app/_lib/uiLang";
+import FormatBar from "../rich/FormatBar";
+import RichEditable, { type RichHandle } from "../rich/RichEditable";
 
 interface Props {
   block: Block;
   field: EditField;
   number: number;
-  lang: Lang;
+  meta: ExamMeta;
+  mode: ViewMode;
+  zoom: number;
   top: number; // y of the block on the page stack
   onChange: (value: string) => void;
   onDone: () => void;
@@ -20,75 +24,91 @@ interface Props {
   selectAll: boolean; // select the starting text, so typing replaces it
 }
 
-// A text box placed exactly over a text of the page, so the teacher types "on the paper".
-// It sits inside the zoomed layer, so its sizes are real page pixels.
 // Fields where Enter adds a new item below (like a bullet list).
 const LIST_FIELDS = ["option", "statement", "part"];
 
-export default function InlineEditor({ block, field, number, lang, top, onChange, onDone, onNext, onEnter, selectAll }: Props) {
+// A text box placed exactly over a text of the page, so the teacher types "on the paper".
+// It sits inside the zoomed layer, so its sizes are real page pixels. A format bar floats above it
+// (screen size): select words to color / resize / change their font, or style the whole text.
+export default function InlineEditor({ block, field, number, meta, mode, zoom, top, onChange, onDone, onNext, onEnter, selectAll }: Props) {
   const t = useT();
-  const ref = useRef<HTMLTextAreaElement>(null);
-  const region = editRegions(block, number, lang).find((r) => fieldKey(r.field) === fieldKey(field));
+  const ref = useRef<RichHandle>(null);
+  const wrap = useRef<HTMLDivElement>(null);
+  const [sel, setSel] = useState<RunStyle>({});
+  const region = editRegions(block, number, meta, mode).find((r) => fieldKey(r.field) === fieldKey(field));
   const value = fieldValue(block, field);
-
-  // Grow with the text.
-  useLayoutEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    el.style.height = "0px";
-    el.style.height = `${el.scrollHeight}px`;
-  }, [value, region?.width]);
+  const rtl = isRtl(meta.lang);
 
   // Focus once, with the cursor at the end (or everything selected for a new block).
   useLayoutEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    el.focus();
-    if (selectAll) el.select();
-    else el.setSelectionRange(el.value.length, el.value.length);
+    ref.current?.focus(selectAll ? "all" : "end");
     // Only when another text starts being edited.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [block.id, fieldKey(field)]);
 
   if (!region) return null;
+  const { font, line } = region.spec;
+
+  // Done when the focus leaves both the text and its format bar.
+  const handleBlur = () =>
+    setTimeout(() => {
+      if (!wrap.current?.contains(document.activeElement)) onDone();
+    }, 0);
+
+  const x = block.layout.x + region.x;
+  const y = top + region.y;
 
   return (
-    <textarea
-      ref={ref}
-      value={value}
-      dir={isRtl(lang) ? "rtl" : "auto"}
-      rows={1}
-      spellCheck={false}
-      placeholder={region.answer ? t("Model answer…") : t("Type here…")}
-      onChange={(e) => onChange(e.target.value)}
-      onBlur={onDone}
-      onMouseDown={(e) => e.stopPropagation()}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" && !e.shiftKey && !e.ctrlKey && LIST_FIELDS.includes(field.kind)) {
-          e.preventDefault();
-          onEnter();
-        } else if (e.key === "Escape" || (e.key === "Enter" && (e.ctrlKey || (!region.multiline && !e.shiftKey)))) {
-          e.preventDefault();
-          onDone();
-        } else if (e.key === "Tab") {
-          e.preventDefault();
-          onNext(e.shiftKey);
-        }
-      }}
-      className="absolute z-20 resize-none overflow-hidden rounded-[3px] bg-white p-0 outline-2 outline-offset-2 outline-indigo-500 placeholder:text-slate-300"
-      style={{
-        left: block.layout.x + region.x,
-        top: top + region.y,
-        width: region.width,
-        minHeight: region.line,
-        fontFamily: FONT_FAMILY,
-        fontSize: region.size,
-        lineHeight: `${region.line}px`,
-        fontWeight: region.bold ? 700 : 400,
-        color: region.answer ? "#15803d" : "#111827",
-        textAlign: region.align ?? (isRtl(lang) ? "right" : "left"),
-        background: region.answer ? "#f0fdf4" : "#ffffff",
-      }}
-    />
+    <div ref={wrap} onMouseDown={(e) => e.stopPropagation()} onBlur={handleBlur}>
+      {/* Format bar just above the text, at screen size (lined up on the right in Arabic) */}
+      <div className="absolute z-30 h-0" style={{ left: rtl ? x + region.width : x, top: y - 8 / zoom }}>
+        <div className={`absolute bottom-0 ${rtl ? "right-0 origin-bottom-right" : "left-0 origin-bottom-left"}`} style={{ transform: `scale(${1 / zoom})` }}>
+          <FormatBar
+            style={sel}
+            baseFont={block.font?.family ?? meta.fontFamily}
+            baseSize={font.size}
+            baseColor={font.color}
+            onApply={(p) => ref.current?.apply(p)}
+            onToggle={(k) => ref.current?.toggle(k)}
+          />
+        </div>
+      </div>
+
+      <RichEditable
+        ref={ref}
+        value={value}
+        onChange={onChange}
+        onSelectionStyle={setSel}
+        multiline={region.multiline}
+        dir={rtl ? "rtl" : "auto"}
+        placeholder={region.answer ? t("Model answer…") : t("Type here…")}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && !e.shiftKey && !e.ctrlKey && LIST_FIELDS.includes(field.kind)) {
+            e.preventDefault();
+            onEnter();
+          } else if (e.key === "Escape" || (e.key === "Enter" && (e.ctrlKey || (!region.multiline && !e.shiftKey)))) {
+            e.preventDefault();
+            onDone();
+          } else if (e.key === "Tab") {
+            e.preventDefault();
+            onNext(e.shiftKey);
+          }
+        }}
+        className="absolute z-20 rounded-[3px] outline-2 outline-offset-2 outline-indigo-500"
+        style={{
+          left: x,
+          top: y,
+          width: region.width,
+          minHeight: line,
+          fontFamily: font.family,
+          fontSize: font.size,
+          lineHeight: `${line}px`,
+          fontWeight: font.bold ? 700 : 400,
+          color: font.color,
+          textAlign: region.align ?? (rtl ? "right" : "left"),
+          background: region.answer ? "#fbfdfb" : "#ffffff",
+        }}
+      />
+    </div>
   );
 }

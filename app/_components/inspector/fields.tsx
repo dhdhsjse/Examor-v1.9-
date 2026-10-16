@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode, Ref } from "react";
+import RichEditable, { type RichHandle } from "../rich/RichEditable";
 
 // Small form pieces used by every block editor. `dir="auto"` lets Arabic flow right-to-left.
 
@@ -122,5 +123,64 @@ export function AddRowButton({ children, onClick }: { children: ReactNode; onCli
     >
       <span className="text-sm leading-none">+</span> {children}
     </button>
+  );
+}
+
+// A text box that keeps the styled words (colors, fonts…) of the text. Same look as the inputs.
+export function RichInput({ value, onChange, multiline, rows = 1, placeholder, ref }: {
+  value: string;
+  onChange: (v: string) => void;
+  multiline?: boolean;
+  rows?: number;
+  placeholder?: string;
+  ref?: Ref<RichHandle>;
+}) {
+  return (
+    <RichEditable
+      ref={ref}
+      value={value}
+      onChange={onChange}
+      multiline={multiline}
+      placeholder={placeholder}
+      className={`${inputCls} relative leading-snug focus:border-indigo-400`}
+      style={{ minHeight: rows > 1 ? `${rows * 1.4 + 0.8}em` : undefined }}
+    />
+  );
+}
+
+// Big buttons with a small drawing, several per row (header styles, heading looks).
+export function ChoiceGrid<T extends string>(props: { value: T; options: { value: T; label: string; preview: ReactNode }[]; onChange: (v: T) => void; cols?: number }) {
+  return (
+    <div className="grid gap-1.5" style={{ gridTemplateColumns: `repeat(${props.cols ?? 3}, minmax(0, 1fr))` }}>
+      {props.options.map((o) => (
+        <button
+          key={o.value}
+          type="button"
+          onClick={() => props.onChange(o.value)}
+          className={`flex flex-col items-stretch gap-1 rounded-md border p-1.5 text-[10px] transition-colors ${
+            o.value === props.value ? "border-indigo-500 bg-indigo-50/60 font-semibold text-indigo-700 ring-1 ring-indigo-200" : "border-line text-muted hover:border-indigo-300 hover:text-ink"
+          }`}
+        >
+          <span className="pointer-events-none flex h-8 items-center justify-center overflow-hidden rounded bg-white">{o.preview}</span>
+          {o.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// − 14 + : a small number stepper.
+export function Stepper({ value, onChange, min, max, title }: { value: number; onChange: (v: number) => void; min: number; max: number; title?: string }) {
+  const b = "grid size-7 place-items-center rounded-md text-xs font-semibold text-ink hover:bg-white";
+  return (
+    <div className="flex items-center rounded-md bg-subtle ring-1 ring-line" title={title}>
+      <button type="button" className={b} onClick={() => onChange(Math.max(min, value - 1))}>
+        −
+      </button>
+      <span className="w-7 text-center text-xs font-semibold tabular-nums">{value}</span>
+      <button type="button" className={b} onClick={() => onChange(Math.min(max, value + 1))}>
+        +
+      </button>
+    </div>
   );
 }
