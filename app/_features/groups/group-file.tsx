@@ -2,6 +2,7 @@ import { FileIcon } from "@/app/_components/icons";
 import type { Group } from "@/app/_features/core/types";
 import { fileHistoryAction } from "@/app/_features/actions/file-history";
 import { fileNewAction } from "@/app/_features/actions/file-new";
+import { fileReconfigureAction } from "@/app/_features/actions/file-reconfigure";
 import { fileOpenAction } from "@/app/_features/actions/file-open";
 import { filePreviewAction } from "@/app/_features/actions/file-preview";
 import { fileSaveAction } from "@/app/_features/actions/file-save";
@@ -15,5 +16,5 @@ export const fileGroup: Group = {
       <FileIcon /> {ctx.t("File")}
     </span>
   ),
-  features: [fileNewAction, fileOpenAction, fileSaveAction, fileHistoryAction, filePreviewAction],
+  features: [fileNewAction, fileReconfigureAction, fileOpenAction, fileSaveAction, fileHistoryAction, filePreviewAction],
 };

@@ -35,6 +35,8 @@ export type Shell = {
   duplicateBlock: (id: string) => void;
   // files
   newExam: () => void;
+  // Replace the exam with a ready document (onboarding). `keepOld` saves the current one in the history first.
+  applyDoc: (doc: ExamDoc, keepOld: boolean) => void;
   openExam: () => void;
   saveExam: () => void;
   showHistory: () => void;
@@ -127,6 +129,24 @@ export type Group = {
   header?: (ctx: Ctx) => ReactNode; // the dropdown's trigger (menu groups)
   menuAlignEnd?: boolean;
   className?: string;
+};
+
+// A top-level section of the left navigation (Home, Insert, Design, Page layout). Plain data.
+// It owns its options; it is not a Group, because a section is opened and navigated, a group is not.
+export type Section = {
+  id: string;
+  order?: number;
+  label: string | ((t: T) => string);
+  icon?: ReactNode;
+  options: Option[];
+};
+
+// A labelled group of features inside a Section.
+export type Option = {
+  id: string;
+  order?: number;
+  label?: string | ((t: T) => string);
+  features: Feature[];
 };
 
 export type BarPosition = 'top' | 'left' | 'right' | 'bottom' | 'overlay';
