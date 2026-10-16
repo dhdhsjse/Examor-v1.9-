@@ -1,4 +1,4 @@
-import { CONTENT_WIDTH, PAGE_MARGIN } from "./a4";
+import { CONTENT_WIDTH, PAGE_HEIGHT, PAGE_MARGIN } from "./a4";
 import { blockHeight } from "./blockLayout";
 import { newId } from "./id";
 import { EX_PX } from "./math";
@@ -121,9 +121,16 @@ export function blockHeights(doc: ExamDoc): Map<string, number> {
 }
 
 // Y position just below the lowest block of a page, so new blocks stack neatly.
-export function nextFreeY(blocks: Block[], heights: Map<string, number>): number {
+export function nextFreeY(blocks: Block[], heights: Map<string, number>, top = PAGE_MARGIN): number {
   const gap = 14;
-  return blocks.reduce((bottom, b) => Math.max(bottom, b.layout.y + (heights.get(b.id) ?? 0) + gap), PAGE_MARGIN);
+  // Footers sit at the bottom of the page: they don't count as "content so far".
+  return blocks.filter((b) => b.meta?.role !== "footer").reduce((bottom, b) => Math.max(bottom, b.layout.y + (heights.get(b.id) ?? 0) + gap), top);
+}
+
+// Lowest y a new block may reach on a page: above its footer, or the bottom margin.
+export function pageBottom(onPage: Block[], page: Page, pageHeight = PAGE_HEIGHT): number {
+  const footers = onPage.filter((b) => b.meta?.role === "footer").map((b) => b.layout.y - 14);
+  return Math.min(pageHeight - (page.margins?.bottom ?? PAGE_MARGIN), ...footers);
 }
 
 // Change one sub-question; the question's points stay the sum of its parts.

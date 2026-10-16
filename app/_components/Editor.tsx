@@ -50,17 +50,17 @@ export default function Editor() {
     const saved = loadAutosave();
     return { doc: saved ?? buildDoc(templateById("classic-fr")), fresh: !saved };
   });
-  const exam = useExam(initial.doc);
-  const { doc, selectedId } = exam;
-
   const [uiLang, setUiLang] = useState<UiLang>(loadUiLang);
   const tr = (text: string, vars?: Record<string, string | number>) => translate(uiLang, text, vars);
+  const exam = useExam(initial.doc, tr);
+  const { doc, selectedId } = exam;
+
   const [subject, setSubject] = useState<Subject>("General");
   const [query, setQuery] = useState("");
   const [mode, setMode] = useState<ViewMode>("exam");
   const [tab, setTab] = useState<RightTab>("properties");
   const [library, setLibrary] = useState<{ kind: AssetKind | "all"; n: number }>({ kind: "all", n: 0 });
-  const [picker, setPicker] = useState<{ open: boolean; mustPick: boolean }>({ open: initial.fresh, mustPick: initial.fresh });
+  const [picker, setPicker] = useState<{ open: boolean; mustPick: boolean }>({ open: false, mustPick: false });
   const [userAssets, setUserAssets] = useState<Asset[]>(loadUserAssets);
   const [exportJob, setExportJob] = useState<Shell["exportJob"]>(null);
   const [preview, setPreview] = useState(false);
@@ -437,6 +437,12 @@ export default function Editor() {
     deleteBlock: exam.deleteBlock,
     duplicateBlock: exam.duplicateBlock,
     newExam: () => setPicker({ open: true, mustPick: false }),
+    applyDoc: (next, keepOld) => {
+      if (keepOld) keepCopy(tr("Before changing the page layout"));
+      exam.replaceDoc(next);
+      setEditing(null);
+      setSession((s) => s + 1);
+    },
     openExam: () => void open(),
     saveExam: () => void save(),
     showHistory: () => setHistory(true),
@@ -528,7 +534,7 @@ export default function Editor() {
               onSelect={select}
               onMove={exam.moveBlock}
               onResize={(id, layout) => exam.updateBlock(id, { layout })}
-              onAddPage={exam.addPage}
+              onAddPage={() => exam.addPage()}
               onDeletePage={exam.deletePage}
               onActivePageChange={exam.setActivePage}
               onDropItem={runTool}

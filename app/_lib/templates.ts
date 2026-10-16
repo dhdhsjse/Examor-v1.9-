@@ -1,6 +1,7 @@
+import { CONTENT_WIDTH, PAGE_MARGIN, PAGE_WIDTH } from "./a4";
 import { createBlock, defaultHeaderFields, nextFreeY, blockHeights, type BlockPreset } from "./blocks";
 import { newId } from "./id";
-import type { Block, BlockType, ExamDoc, HeaderStyle, Lang } from "./types";
+import type { Block, BlockType, ExamDoc, HeaderStyle, Lang, PageMargins } from "./types";
 
 export interface Template {
   id: string;
@@ -99,3 +100,21 @@ export function buildDoc(t: Template): ExamDoc {
 }
 
 export const templateById = (id: string) => TEMPLATES.find((t) => t.id === id) ?? TEMPLATES[0];
+
+// Move a template's blocks from the default 48px margins onto the margins the user chose.
+export function fitToMargins(doc: ExamDoc, m: PageMargins): ExamDoc {
+  const width = PAGE_WIDTH - m.left - m.right;
+  return {
+    ...doc,
+    pages: doc.pages.map((p) => ({ ...p, margins: { ...m } })),
+    blocks: doc.blocks.map((b) => ({
+      ...b,
+      layout: {
+        ...b.layout,
+        x: b.layout.x - PAGE_MARGIN + m.left,
+        y: b.layout.y - PAGE_MARGIN + m.top,
+        width: b.layout.width === CONTENT_WIDTH ? width : b.layout.width,
+      },
+    })),
+  };
+}

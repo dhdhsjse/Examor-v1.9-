@@ -3,12 +3,14 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { PAGE_HEIGHT, PAGE_MARGIN, PAGE_WIDTH } from "./a4";
 import { blockHeight } from "./blockLayout";
-import { blockHeights, createBlock, nextFreeY, pushDownOverlaps, type BlockPreset } from "./blocks";
+import { blockHeights, createBlock, nextFreeY, pageBottom, pushDownOverlaps, type BlockPreset } from "./blocks";
 import { newId } from "./id";
 import { renderEquation, type RenderedEquation } from "./math";
+import { chromeBlocksForPage } from "./onboarding/applyOnboarding";
 import { saveAutosave } from "./storage";
 import { buildDoc, type Template } from "./templates";
-import type { Block, BlockData, BlockLayout, BlockType, EquationBlock, ExamDoc, ExamMeta } from "./types";
+import type { Block, BlockData, BlockLayout, BlockType, EquationBlock, ExamDoc, ExamMeta, Page } from "./types";
+import type { T } from "./uiLang";
 
 // Ask the workspace to scroll to a page (n changes on every request).
 export interface RevealRequest {
@@ -36,6 +38,9 @@ interface History {
   future: ExamDoc[];
 }
 
+// A new empty page with the same margins as the last one.
+const newPageLike = (pages: Page[]): Page => ({ id: newId(), ...(pages[pages.length - 1]?.margins ? { margins: pages[pages.length - 1].margins } : {}) });
+
 const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(v, max));
 
 // New svg + size for an equation, keeping its current zoom (pixels per "ex").
@@ -45,7 +50,12 @@ export function equationPatch(b: EquationBlock, r: RenderedEquation): BlockPatch
 }
 
 // All exam data + every action that changes it (with undo/redo and autosave).
-export function useExam(initial: ExamDoc) {
+export function useExam(initial: ExamDoc, t?: T) {
+  // Latest translator, for the header/footer text of pages added later.
+  const tRef = useRef<T | undefined>(t);
+  useEffect(() => {
+    tRef.current = t;
+  });
   const [hist, setHist] = useState<History>({ past: [], present: initial, future: [] });
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [activePage, setActivePage] = useState(0); // page currently in view
@@ -122,6 +132,9 @@ export function useExam(initial: ExamDoc) {
       const h = blockHeight(block, 1, doc.meta);
       const w = block.layout.width;
       let pages = doc.pages;
+      let chrome: Block[] = [];
+      // Header/footer blocks of a page created here follow the exam's rule.
+      const chromeFor = (d: ExamDoc, i: number) => (d.meta.chrome && tRef.current ? chromeBlocksForPage(d, i, d.meta.chrome, tRef.current) : []);
 
       if (at) {
         const page = pages[clamp(at.pageIndex, 0, pages.length - 1)];
@@ -134,21 +147,32 @@ export function useExam(initial: ExamDoc) {
       } else {
         const heights = blockHeights(doc);
         let target: { pageId: string; y: number } | null = null;
+        let pageIdx = 0;
         for (let i = clamp(activePage, 0, pages.length - 1); i < pages.length && !target; i++) {
-          const y = nextFreeY(doc.blocks.filter((b) => b.layout.pageId === pages[i].id), heights);
-          if (y + h <= PAGE_HEIGHT - PAGE_MARGIN) target = { pageId: pages[i].id, y };
+          const onPage = doc.blocks.filter((b) => b.layout.pageId === pages[i].id);
+          const y = nextFreeY(onPage, heights, pages[i].margins?.top);
+          if (y + h <= pageBottom(onPage, pages[i])) {
+            target = { pageId: pages[i].id, y };
+            pageIdx = i;
+          }
         }
         if (!target) {
-          const page = { id: newId() };
+          const page = newPageLike(pages);
           pages = [...pages, page];
-          target = { pageId: page.id, y: PAGE_MARGIN };
+          pageIdx = pages.length - 1;
+          chrome = chromeFor({ ...doc, pages }, pageIdx);
+          const chromeHeights = new Map(chrome.map((b) => [b.id, blockHeight(b, 1, doc.meta)]));
+          target = { pageId: page.id, y: nextFreeY(chrome, chromeHeights, page.margins?.top) };
         }
         // Narrow blocks (images, equations) are centered; the rest use the margin.
-        const x = w < PAGE_WIDTH - PAGE_MARGIN * 2 - 1 ? (PAGE_WIDTH - w) / 2 : PAGE_MARGIN;
-        block.layout = { ...block.layout, ...target, x };
+        const m = pages[pageIdx].margins;
+        const left = m?.left ?? PAGE_MARGIN;
+        const room = PAGE_WIDTH - left - (m?.right ?? PAGE_MARGIN);
+        const x = w < room - 1 ? (PAGE_WIDTH - w) / 2 : left;
+        block.layout = { ...block.layout, ...target, x, width: Math.min(w, room) };
       }
 
-      commit((d) => ({ ...d, pages, blocks: [...d.blocks, block] }));
+      commit((d) => ({ ...d, pages, blocks: [...d.blocks, ...chrome, block] }));
       setSelectedId(block.id);
       revealPage(block.layout.pageId);
       if (block.type === "equation") refreshEquation(block);
@@ -192,10 +216,15 @@ export function useExam(initial: ExamDoc) {
   );
 
   const addPage = useCallback(() => {
-    const page = { id: newId() };
-    commit((d) => ({ ...d, pages: [...d.pages, page] }));
+    const page = newPageLike(doc.pages);
+    commit((d) => {
+      const pages = [...d.pages, page];
+      const next = { ...d, pages };
+      const chrome = d.meta.chrome && tRef.current ? chromeBlocksForPage(next, pages.length - 1, d.meta.chrome, tRef.current) : [];
+      return { ...next, blocks: [...d.blocks, ...chrome] };
+    });
     revealPage(page.id);
-  }, [commit]);
+  }, [commit, doc.pages]);
 
   // Remove a page and everything on it (the last page can't be removed).
   const deletePage = useCallback(

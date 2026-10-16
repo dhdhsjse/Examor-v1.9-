@@ -7,6 +7,33 @@ export type ViewMode = "exam" | "key";
 // One A4 sheet of the exam.
 export interface Page {
   id: string;
+  margins?: PageMargins; // missing = 48px on every side
+}
+
+// Printable-area margins of a page (page pixels).
+export interface PageMargins {
+  top: number;
+  right: number;
+  bottom: number;
+  left: number;
+}
+
+// Which pages carry a header or a footer.
+// "pages" lists page numbers (1 = first page).
+export type PageScope = { mode: "all" | "first" | "none" } | { mode: "pages"; pages: number[] };
+
+// The header/footer choices made in the onboarding wizard (kept so new pages follow them).
+export interface ChromeRule {
+  header: PageScope;
+  footer: PageScope;
+  headerId?: string;
+  footerId?: string;
+}
+
+// Marks a block placed by the onboarding wizard as a page header or footer.
+export interface BlockMeta {
+  role?: "header" | "footer";
+  templateId?: string;
 }
 
 // Where a block sits (page pixels, relative to its own page).
@@ -31,6 +58,7 @@ interface BlockBase {
   id: string;
   layout: BlockLayout;
   font?: BlockFont;
+  meta?: BlockMeta; // missing in older files
 }
 
 // ---- Questions (they have points and a correct answer) ----
@@ -167,6 +195,7 @@ export interface ExamMeta {
   fullMark?: number; // full mark when there is no exam header (20)
   answerColor?: string; // correction sheet: color of the answers
   answerSize?: number; // correction sheet: size of the written answers
+  chrome?: ChromeRule; // missing in older files
 }
 
 // The whole exam, as saved to disk.

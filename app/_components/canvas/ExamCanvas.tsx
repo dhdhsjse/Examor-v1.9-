@@ -8,7 +8,7 @@ import { questionNumbers, totalPoints as sumPoints } from "@/app/_lib/blocks";
 import type { EditField } from "@/app/_lib/editRegions";
 import { pageAt, pageTop, stackHeight } from "@/app/_lib/pageStack";
 import { snapBox, type Guide } from "@/app/_lib/snapping";
-import type { Block, BlockLayout, ExamDoc, ViewMode } from "@/app/_lib/types";
+import type { Block, BlockLayout, ExamDoc, PageMargins, ViewMode } from "@/app/_lib/types";
 import type { BlockPatch } from "@/app/_lib/useExam";
 import BlockNode, { type ResizeResult } from "./BlockNode";
 
@@ -143,7 +143,7 @@ export default function ExamCanvas(props: Props) {
     >
       <Layer ref={layerRef}>
         {pages.map((page, i) => (
-          <PaperSheet key={page.id} top={pageTop(i)} showGuides={guidesOn} zoom={zoom} />
+          <PaperSheet key={page.id} top={pageTop(i)} margins={page.margins} showGuides={guidesOn} zoom={zoom} />
         ))}
 
         {blocks.map((b) => (
@@ -212,24 +212,25 @@ export default function ExamCanvas(props: Props) {
 }
 
 // One white A4 sheet, with margin box + center line when guides are on.
-function PaperSheet({ top, showGuides, zoom }: { top: number; showGuides: boolean; zoom: number }) {
+function PaperSheet({ top, margins, showGuides, zoom }: { top: number; margins?: PageMargins; showGuides: boolean; zoom: number }) {
+  const m = margins ?? { top: PAGE_MARGIN, right: PAGE_MARGIN, bottom: PAGE_MARGIN, left: PAGE_MARGIN };
   return (
     <>
       <Rect name="paper" y={top} width={PAGE_WIDTH} height={PAGE_HEIGHT} fill="#ffffff" />
       {showGuides && (
         <>
           <Rect
-            x={PAGE_MARGIN}
-            y={top + PAGE_MARGIN}
-            width={PAGE_WIDTH - PAGE_MARGIN * 2}
-            height={PAGE_HEIGHT - PAGE_MARGIN * 2}
+            x={m.left}
+            y={top + m.top}
+            width={PAGE_WIDTH - m.left - m.right}
+            height={PAGE_HEIGHT - m.top - m.bottom}
             stroke={GUIDE_COLOR}
             strokeWidth={1 / zoom}
             dash={[6, 4]}
             listening={false}
           />
           <Line
-            points={[PAGE_WIDTH / 2, top + PAGE_MARGIN, PAGE_WIDTH / 2, top + PAGE_HEIGHT - PAGE_MARGIN]}
+            points={[m.left + (PAGE_WIDTH - m.left - m.right) / 2, top + m.top, m.left + (PAGE_WIDTH - m.left - m.right) / 2, top + PAGE_HEIGHT - m.bottom]}
             stroke={GUIDE_COLOR}
             strokeWidth={1 / zoom}
             dash={[2, 6]}

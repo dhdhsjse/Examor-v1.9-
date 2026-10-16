@@ -2,10 +2,9 @@ import type { Bar } from "@/app/_features/core/types";
 import { arabicGroup } from "@/app/_features/groups/group-arabic";
 import { examSummaryGroup } from "@/app/_features/groups/group-exam-summary";
 import { frenchGroup } from "@/app/_features/groups/group-french";
-import { insertGroup } from "@/app/_features/groups/group-insert";
 import { mathGroup } from "@/app/_features/groups/group-math";
 import { physicsGroup } from "@/app/_features/groups/group-physics";
-import { questionsGroup } from "@/app/_features/groups/group-questions";
+import { navigationGroup } from "@/app/_features/groups/group-navigation";
 import { sciencesGroup } from "@/app/_features/groups/group-sciences";
 import { toolboxSearchGroup } from "@/app/_features/groups/group-toolbox-search";
 
@@ -22,8 +21,7 @@ export const outilsGenerauxBar: Bar = {
     sciencesGroup,
     arabicGroup,
     frenchGroup,
-    questionsGroup,
-    insertGroup,
+    navigationGroup,
     examSummaryGroup,
   ],
 };
