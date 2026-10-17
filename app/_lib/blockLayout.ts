@@ -2,15 +2,19 @@ import { fontStack } from "./fonts";
 import { isRtl, optionLabel, words } from "./i18n";
 import { linesHeight, wrapRich, type RichLine, type TextFont } from "./measure";
 import { plainText, replaceBlanks, serializeRich } from "./richText";
+import { fixOrder, shuffled } from "./shuffle";
 import type {
   BlankBlock,
   Block,
+  ClassifyBlock,
   ExamMeta,
   HeaderStyle,
   HeadingDecor,
   Lang,
+  MatchBlock,
   McqBlock,
   OpenBlock,
+  OrderBlock,
   PartNumbering,
   QuestionBlock,
   TableBlock,
@@ -36,7 +40,31 @@ export const TEXT_STYLES: Record<TextStyle, { size: number; line: number; bold: 
   body: { size: 14, line: 20, bold: false },
 };
 
-export const HEADER_HEIGHT: Record<HeaderStyle, number> = { classic: 150, modern: 136, minimal: 112, banner: 140, elegant: 134 };
+export const HEADER_HEIGHT: Record<HeaderStyle, number> = {
+  classic: 150,
+  modern: 136,
+  minimal: 112,
+  banner: 140,
+  elegant: 134,
+  official: 172,
+  split: 136,
+  compact: 78,
+  evaluation: 176,
+  playful: 140,
+  cards: 128,
+  accentbar: 126,
+  bookmark: 124,
+  gradient: 126,
+  geometric: 132,
+  chips: 124,
+  editorial: 128,
+  framed: 140,
+  infogrid: 150,
+  duotone: 128,
+  monogram: 128,
+  ticket: 130,
+  floating: 132,
+};
 
 // A font + its line height.
 export interface Spec {
@@ -101,15 +129,38 @@ export function questionTitle(b: QuestionBlock, n: number, F: Fonts): string {
 
 const inner = (b: Block) => b.layout.width - PAD * 2;
 
+// x of a box placed `x` px from the start side of the block (mirrored in Arabic).
+const startX = (b: Block, F: Fonts, x: number, width: number) => (F.rtl ? b.layout.width - x - width : x);
+
+// A text box placed at x (block coordinates).
+export interface PlacedBox extends TextBox {
+  x: number;
+  width: number;
+}
+
+const placed = (text: string, x: number, width: number, s: Spec, y: number): PlacedBox => ({ ...box(text, width, s, y), x, width });
+
+export const MCQ_MARK = 30; // room for the circle / box before an option
+const MCQ_COL_GAP = 14;
+
+// Options under the question, in 1 to 4 columns (the first column is on the right in Arabic).
 export function layoutMcq(b: McqBlock, n: number, meta: ExamMeta) {
   const F = blockFonts(b, meta);
   const title = box(questionTitle(b, n, F), inner(b), F.title, PAD);
+  const cols = Math.max(1, Math.min(4, Math.round(b.columns ?? 1)));
+  const colW = (inner(b) - MCQ_COL_GAP * (cols - 1)) / cols;
   let y = PAD + title.height + GAP;
-  const options = b.options.map((opt, i) => {
-    const t = box(`${optionLabel(i, F.lang)})  ${opt}`, inner(b) - 30, F.body, y);
-    y += t.height + 6;
-    return t;
-  });
+  const options: (PlacedBox & { markX: number })[] = [];
+  for (let r = 0; r * cols < b.options.length; r++) {
+    const row = b.options.slice(r * cols, r * cols + cols).map((opt, k) => {
+      const i = r * cols + k;
+      const col = startX(b, F, PAD + k * (colW + MCQ_COL_GAP), colW); // left edge of the column
+      const text = placed(`${optionLabel(i, F.lang)})  ${opt}`, F.rtl ? col : col + MCQ_MARK, colW - MCQ_MARK, F.body, y);
+      return { ...text, markX: F.rtl ? col + colW - 9 : col + 9 };
+    });
+    options.push(...row);
+    y += Math.max(...row.map((o) => o.height)) + 6;
+  }
   return { F, title, options, height: y - (options.length ? 6 : GAP) + PAD };
 }
 
@@ -120,10 +171,33 @@ export function layoutTrueFalse(b: TrueFalseBlock, n: number, meta: ExamMeta) {
   const rows = b.statements.map((s, i) => {
     const t = box(`${i + 1}) ${s.text}`, inner(b) - CHOICE_W - 10, F.body, y);
     const row = { ...t, height: Math.max(t.height, F.body.line + 2) };
-    y += row.height + 6;
-    return row;
+    y += row.height;
+    // "Correct the false statements": one line under each statement (the student doesn't know which).
+    const fix = b.justify ? answerArea(s.answer ? "" : (s.fix ?? ""), 1, F.rtl ? PAD : PAD + PART_INDENT, inner(b) - PART_INDENT, y, F) : null;
+    if (fix) y += fix.height;
+    y += 6;
+    return { ...row, fix };
   });
   return { F, title, rows, height: y - (rows.length ? 6 : GAP) + PAD };
+}
+
+// A framed box of words (word bank), mixed up the same way every time for this block.
+export interface WordBank {
+  text: TextBox;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+const BANK_PAD = 7;
+
+function wordBank(words: string[], seed: string, b: Block, F: Fonts, y: number): WordBank | null {
+  const clean = words.map((w) => plainText(w).trim().replace(/ +/g, " ")).filter(Boolean);
+  if (!clean.length) return null;
+  // Items stay whole on a line; " / " between them.
+  const text = box(shuffled(clean, seed).join(" / "), inner(b) - BANK_PAD * 2 - 4, F.body, y + BANK_PAD);
+  return { text, x: PAD, y, width: inner(b), height: text.height + BANK_PAD * 2 };
 }
 
 // Blanks: "[answer]" becomes "________" on the exam, "« answer »" (answer color) on the key.
@@ -134,11 +208,13 @@ const blankKey = (s: string, color: string) => serializeRich(replaceBlanks(s, (a
 export function layoutBlank(b: BlankBlock, n: number, meta: ExamMeta) {
   const F = blockFonts(b, meta);
   const title = box(questionTitle(b, n, F), inner(b), F.title, PAD);
-  const y = PAD + title.height + GAP;
+  let y = PAD + title.height + GAP;
+  const bank = b.wordBank ? wordBank([...blankAnswers(b.content), ...(b.distractors ?? [])], b.id, b, F, y) : null;
+  if (bank) y += bank.height + GAP + 2;
   const exam = box(blankExam(b.content), inner(b), F.body, y);
   const key = box(blankKey(b.content, F.keyColor), inner(b), F.body, y);
   // Same height in both modes, so nothing moves when switching to the key.
-  return { F, title, exam, key, height: y + Math.max(exam.height, key.height) + PAD };
+  return { F, title, bank, exam, key, height: y + Math.max(exam.height, key.height) + PAD };
 }
 
 // Dotted answer lines (and the model answer for the key) starting at `y`.
@@ -195,6 +271,9 @@ export function layoutOpen(b: OpenBlock, n: number, meta: ExamMeta) {
   const F = blockFonts(b, meta);
   const title = box(questionTitle(b, n, F), inner(b), F.title, PAD);
   let y = PAD + title.height + GAP;
+  // The statement (data, a short text…) under the question.
+  const context = b.context && plainText(b.context).trim() ? box(b.context, inner(b), F.body, y - 2) : null;
+  if (context) y = context.y + context.height + GAP;
   const main = answerArea(b.answer, b.lines, PAD, inner(b), y, F);
   y += main.height;
   // Sub-questions: label + text, then their own answer lines.
@@ -207,7 +286,93 @@ export function layoutOpen(b: OpenBlock, n: number, meta: ExamMeta) {
     y += area.height;
     return { text, area };
   });
-  return { F, title, main, parts, height: y + PAD };
+  return { F, title, context, main, parts, height: y + PAD };
+}
+
+// Squares of the "grid" answer style (about 5 mm on paper).
+export const GRID_STEP = 14;
+
+// ---- Matching: two columns, a dot after each left item and before each right item ----
+
+export const MATCH_DOT = 4; // radius
+
+export function layoutMatch(b: MatchBlock, n: number, meta: ExamMeta) {
+  const F = blockFonts(b, meta);
+  const title = box(questionTitle(b, n, F), inner(b), F.title, PAD);
+  const W = inner(b);
+  const mid = Math.max(60, Math.min(140, W * 0.24)); // room for the student's lines
+  const colW = (W - mid) / 2;
+  const order = fixOrder(b.order, b.pairs.length);
+  let y = PAD + title.height + GAP + 2;
+  const rows = b.pairs.map((p, r) => {
+    const right = b.pairs[order[r]];
+    const left = placed(`${r + 1}. ${p.left}`, startX(b, F, PAD, colW - 16), colW - 16, F.body, y);
+    const rightBox = placed(`${String.fromCharCode(97 + r)}. ${right?.right ?? ""}`, startX(b, F, PAD + colW + mid + 16, colW - 16), colW - 16, F.body, y);
+    const height = Math.max(left.height, rightBox.height, F.body.line);
+    const dotY = y + F.body.line / 2;
+    const row = {
+      y,
+      height,
+      left,
+      right: rightBox,
+      pair: order[r], // which pair's right item is printed on this row
+      leftDot: { x: F.rtl ? b.layout.width - PAD - colW + 4 : PAD + colW - 4, y: dotY },
+      rightDot: { x: F.rtl ? b.layout.width - PAD - colW - mid - 4 : PAD + colW + mid + 4, y: dotY },
+    };
+    y += height + 10;
+    return row;
+  });
+  return { F, title, rows, height: y - (rows.length ? 10 : GAP) + PAD };
+}
+
+// ---- Ordering ----
+
+export const RANK_BOX = 22;
+
+export function layoutOrder(b: OrderBlock, n: number, meta: ExamMeta) {
+  const F = blockFonts(b, meta);
+  const title = box(questionTitle(b, n, F), inner(b), F.title, PAD);
+  const order = fixOrder(b.order, b.items.length);
+  let y = PAD + title.height + GAP;
+
+  if (b.style === "sentence") {
+    // The mixed-up words, then a line to write the sentence (the key writes it on the line).
+    const words = box(order.map((i) => b.items[i]).join("  /  "), inner(b), F.body, y);
+    y += words.height + 4;
+    const area = answerArea(b.items.join(" "), 1, PAD, inner(b), y, F);
+    return { F, title, sentence: { words, area }, rows: [], height: y + area.height + PAD };
+  }
+
+  const rows = order.map((item) => {
+    const text = placed(b.items[item] ?? "", startX(b, F, PAD + RANK_BOX + 10, inner(b) - RANK_BOX - 10), inner(b) - RANK_BOX - 10, F.body, y);
+    const height = Math.max(text.height, RANK_BOX + 2);
+    const row = { y, height, text, item, boxX: startX(b, F, PAD, RANK_BOX), boxY: y + (F.body.line - RANK_BOX) / 2 };
+    y += height + 6;
+    return row;
+  });
+  return { F, title, sentence: null, rows, height: y - (rows.length ? 6 : GAP) + PAD };
+}
+
+// ---- Classification: a box of words, then a table with one column per category ----
+
+export function layoutClassify(b: ClassifyBlock, n: number, meta: ExamMeta) {
+  const F = blockFonts(b, meta);
+  const title = box(questionTitle(b, n, F), inner(b), F.title, PAD);
+  let y = PAD + title.height + GAP;
+  const bank = b.hideBank ? null : wordBank(b.groups.flatMap((g) => g.items), b.id, b, F, y);
+  if (bank) y += bank.height + GAP + 2;
+
+  const cols = Math.max(1, b.groups.length);
+  const W = inner(b);
+  const colW = W / cols;
+  const bold: Spec = { ...F.body, font: { ...F.body.font, bold: true } };
+  const heads = b.groups.map((g, c) => placed(g.name, startX(b, F, PAD + c * colW + 6, colW - 12), colW - 12, bold, y + 4));
+  const headH = Math.max(TABLE_MIN_ROW, ...heads.map((h) => h.height + 8));
+  const rowCount = Math.max(1, ...b.groups.map((g) => g.items.length));
+  const rowH = Math.max(TABLE_MIN_ROW, F.answer.line + 2);
+  const colX = b.groups.map((_, c) => startX(b, F, PAD + c * colW, colW));
+  const table = { y, colX, colW, headH, rowH, rowCount, height: headH + rowCount * rowH };
+  return { F, title, bank, heads, table, height: y + table.height + PAD };
 }
 
 // ---- Text blocks (titles, headings, paragraphs) and their decorations ----
@@ -352,6 +517,12 @@ export function blockHeight(b: Block, n: number, meta: ExamMeta): number {
       return layoutBlank(b, n, meta).height;
     case "open":
       return layoutOpen(b, n, meta).height;
+    case "match":
+      return layoutMatch(b, n, meta).height;
+    case "order":
+      return layoutOrder(b, n, meta).height;
+    case "classify":
+      return layoutClassify(b, n, meta).height;
     case "text":
       return layoutText(b, meta).height;
     case "table":

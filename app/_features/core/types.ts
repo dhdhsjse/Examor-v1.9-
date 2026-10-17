@@ -73,9 +73,15 @@ export type Shell = {
   restore: (version: Version) => void;
   exportJob: { doc: ExamDoc; mode: ViewMode; resolve: (stage: Konva.Stage) => void } | null;
   toast: string | null;
-  // bars the user has hidden (ids of bars with `collapsible: true`)
+  // side bars the user has closed (ids of bars with `collapse`), remembered in the browser
   hiddenBars: string[];
   toggleBar: (id: string) => void;
+  showBar: (id: string) => void;
+  // width the user dragged a resizable side bar to (missing = its default), remembered in the browser
+  barWidths: Record<string, number>;
+  setBarWidth: (id: string, width: number | null) => void; // null = back to the default width
+  // keep a block in the user library ("My blocks") to reuse it in other exams
+  saveToLibrary: (block: Block) => void;
 };
 
 // Passed to every feature. Replaces globals.
@@ -113,6 +119,7 @@ export type Feature<TConfig = unknown> = {
   tone?: Tone; // color of a tool tile
   dragPayload?: ToolAction; // a tool tile that can also be dragged onto the page
   separatorBefore?: boolean; // menu item: line above it
+  heading?: string; // menu item: small section title above it (English key, translated)
   checked?: (ctx: Ctx) => boolean; // menu item: shows a check mark
 };
 
@@ -151,8 +158,22 @@ export type Option = {
 
 export type BarPosition = 'top' | 'left' | 'right' | 'bottom' | 'overlay';
 
+// A side bar the user can close. It slides down to a thin strip and the page area takes the room.
+// Text fields are English keys (translated).
+export type BarCollapse = {
+  width: number; // px when open (the default, until the user resizes it)
+  minWidth?: number; // with maxWidth: the user can drag the inner edge to resize the bar
+  maxWidth?: number;
+  label: string; // name of the panel, e.g. "Toolbox"
+  hide: string; // toggle tooltip while open, e.g. "Hide toolbox"
+  show: string; // toggle tooltip while closed
+  hotkey?: string; // e.g. "Ctrl+[": handled by the shell, shown in the tooltips
+  strip?: Feature[]; // drawn in the thin strip while closed (shortcuts that reopen the panel)
+};
+
 // An ordered list of groups (plus one-off features) at a position.
-// Extension: `className` carries the bar's geometry (see ARCHITECTURE.md §13).
+// Extensions (see ARCHITECTURE.md §13): `className` carries the bar's geometry, `collapse` lets the
+// user close a side bar, `dragRegion` makes its empty areas move the desktop window.
 export type Bar = {
   id: string;
   position: BarPosition;
@@ -160,5 +181,6 @@ export type Bar = {
   groups: Group[];
   features?: Feature[];
   className?: string;
-  collapsible?: boolean; // the user can hide it (see Shell.hiddenBars)
+  collapse?: BarCollapse; // the user can close it (see Shell.hiddenBars)
+  dragRegion?: boolean; // empty areas drag the window, double-click maximizes (desktop app)
 };

@@ -22,7 +22,7 @@ export default function FeatureRow({ feature, ctx }: { feature: Feature; ctx: Ct
         e.dataTransfer.effectAllowed = "copy";
       }}
       title={label}
-      className="flex h-10 w-full items-center gap-3 rounded-md px-2 text-start text-[13px] text-ink transition-colors duration-100 hover:bg-subtle"
+      className="flex h-9 w-full items-center gap-3 rounded-md px-2 text-start text-[13px] text-ink transition-colors duration-100 hover:bg-subtle"
     >
       <span className="grid size-5 shrink-0 place-items-center text-muted">{feature.icon}</span>
       <span className="min-w-0 flex-1 truncate">{label}</span>

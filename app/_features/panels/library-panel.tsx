@@ -11,6 +11,7 @@ export const libraryPanel: Feature = {
     return (
       <LibraryPanel
         key={`${shell.subject}-${shell.library.n}`}
+        lang={ctx.doc.meta.lang}
         subject={shell.subject}
         initialKind={shell.library.kind}
         userAssets={shell.userAssets}

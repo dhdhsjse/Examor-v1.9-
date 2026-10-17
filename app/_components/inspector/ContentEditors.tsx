@@ -5,7 +5,9 @@ import { isRtl } from "@/app/_lib/i18n";
 import { DEFAULT_ACCENT } from "@/app/_lib/blockLayout";
 import type { HeaderBlock, HeaderFields, HeaderStyle, HeadingDecor, ImageBlock, Lang, TableBlock, TextBlock } from "@/app/_lib/types";
 import { useT } from "@/app/_lib/uiLang";
+import { HEADER_STYLE_OPTIONS, HeaderSketch } from "../HeaderSketch";
 import { ColorGrid } from "../rich/FormatBar";
+import { FigureEditor } from "./FigureEditor";
 import { ChoiceGrid, Field, NumberInput, RichInput, Segmented, SmallButton, TextInput } from "./fields";
 import type { OnChange } from "./QuestionEditors";
 
@@ -95,12 +97,13 @@ export function TableEditor({ b, lang, onChange }: { b: TableBlock; lang: Lang; 
   );
 }
 
-export function ImageEditor({ b, onChange, onReplace }: { b: ImageBlock; onChange: OnChange; onReplace: () => void }) {
+export function ImageEditor({ b, lang, onChange, onReplace }: { b: ImageBlock; lang: Lang; onChange: OnChange; onReplace: () => void }) {
   const t = useT();
   return (
     <>
       {/* eslint-disable-next-line @next/next/no-img-element -- local data URL preview */}
       <img src={b.src} alt="" className="max-h-40 w-full rounded-md border border-line bg-subtle object-contain" />
+      {b.figure && <FigureEditor b={b} figure={b.figure} lang={lang} onChange={onChange} />}
       <Field label={t("Width (px)")} hint={t("Height follows to keep the picture's shape. You can also drag the corner handles.")}>
         <NumberInput
           value={Math.round(b.layout.width)}
@@ -109,17 +112,22 @@ export function ImageEditor({ b, onChange, onReplace }: { b: ImageBlock; onChang
           onChange={(width) => onChange({ layout: { width, height: width / b.ratio } }, "width")}
         />
       </Field>
-      <SmallButton onClick={onReplace}>{t("Replace image…")}</SmallButton>
+      {/* A figure is redrawn from its settings: replacing it with a picture drops them. */}
+      <SmallButton onClick={onReplace}>{t(b.figure ? "Replace with an image…" : "Replace image…")}</SmallButton>
     </>
   );
 }
+
+// Header styles drawn in their own color (the teacher can change it).
+const COLORED: HeaderStyle[] = ["modern", "banner", "elegant", "split", "cards", "playful", "evaluation", "official", "compact",
+  "accentbar", "bookmark", "gradient", "geometric", "chips", "editorial", "framed", "infogrid", "duotone", "monogram", "ticket", "floating"];
 
 export function HeaderEditor({ b, totalPoints, onChange }: { b: HeaderBlock; totalPoints: number; onChange: OnChange }) {
   const t = useT();
   const set = (key: keyof HeaderFields, value: string | number | boolean) => onChange({ fields: { ...b.fields, [key]: value } }, `field-${key}`);
   const text = (key: Exclude<keyof HeaderFields, "outOf" | "autoOutOf">, label: string) => (
     <Field label={label}>
-      <TextInput value={b.fields[key]} onChange={(v) => set(key, v)} />
+      <TextInput value={b.fields[key] ?? ""} onChange={(v) => set(key, v)} />
     </Field>
   );
   const auto = !!b.fields.autoOutOf;
@@ -127,9 +135,20 @@ export function HeaderEditor({ b, totalPoints, onChange }: { b: HeaderBlock; tot
 
   return (
     <>
-      <Field label={t("Header style")}>
-        <ChoiceGrid<HeaderStyle> value={b.style} onChange={(style) => onChange({ style }, "style")} options={headerOptions(t)} />
+      <Field group label={t("Header style")}>
+        <ChoiceGrid<HeaderStyle>
+          value={b.style}
+          onChange={(style) => onChange({ style }, "style")}
+          options={HEADER_STYLE_OPTIONS.map((o) => ({ value: o.value, label: t(o.label), preview: <HeaderSketch style={o.value} accent={b.accent} /> }))}
+        />
       </Field>
+      {COLORED.includes(b.style) && (
+        <div className="flex flex-col gap-1">
+          <span className="text-[11px] font-semibold text-muted">{t("Color")}</span>
+          <ColorGrid value={b.accent} autoLabel={t("Style's own")} onChange={(accent) => onChange({ accent }, "accent")} />
+        </div>
+      )}
+      {b.style === "official" && text("authority", t("Ministry / authority line"))}
       {text("title", t("Exam title"))}
       {text("school", t("School"))}
       {text("subject", t("Subject"))}
@@ -179,66 +198,6 @@ function decorOptions(t: Tr, accent: string): { value: HeadingDecor; label: stri
         <span className="flex w-full items-center gap-1 px-1">
           {word}
           <span className="h-px flex-1" style={{ background: accent }} />
-        </span>
-      ),
-    },
-  ];
-}
-
-// Exam header styles, each with a tiny sketch of the layout.
-function headerOptions(t: Tr): { value: HeaderStyle; label: string; preview: ReactNode }[] {
-  const bar = (w: string, c = "bg-slate-300") => <span className={`block h-[3px] rounded-full ${c}`} style={{ width: w }} />;
-  return [
-    {
-      value: "classic",
-      label: t("Classic"),
-      preview: (
-        <span className="grid h-6 w-full grid-cols-3 border border-slate-500">
-          <span className="border-e border-slate-400" />
-          <span className="flex items-center justify-center border-e border-slate-400">{bar("70%", "bg-slate-500")}</span>
-          <span />
-        </span>
-      ),
-    },
-    {
-      value: "modern",
-      label: t("Modern"),
-      preview: (
-        <span className="flex h-6 w-full items-center justify-between rounded bg-indigo-50 px-1.5">
-          <span className="flex w-2/3 flex-col gap-0.5">{bar("80%", "bg-indigo-400")}{bar("50%", "bg-indigo-200")}</span>
-          <span className="size-4 rounded-full border border-indigo-400 bg-white" />
-        </span>
-      ),
-    },
-    {
-      value: "minimal",
-      label: t("Minimal"),
-      preview: (
-        <span className="flex w-full flex-col items-center gap-1 px-1">
-          {bar("60%", "bg-slate-500")}
-          <span className="block h-px w-full bg-slate-500" />
-        </span>
-      ),
-    },
-    {
-      value: "banner",
-      label: t("Banner"),
-      preview: (
-        <span className="flex h-6 w-full items-center justify-between rounded bg-slate-800 px-1.5">
-          <span className="flex w-2/3 flex-col gap-0.5">{bar("80%", "bg-white")}{bar("50%", "bg-slate-400")}</span>
-          <span className="h-4 w-5 rounded-sm bg-white" />
-        </span>
-      ),
-    },
-    {
-      value: "elegant",
-      label: t("Elegant"),
-      preview: (
-        <span className="flex w-full flex-col items-center gap-0.5 px-1">
-          <span className="block h-[2px] w-full border-t border-b border-slate-500" />
-          {bar("55%", "bg-slate-600")}
-          {bar("35%", "bg-indigo-300")}
-          <span className="block h-[2px] w-full border-t border-b border-slate-500" />
         </span>
       ),
     },

@@ -28,9 +28,9 @@ A feature is one thing the user can see or use. It has an `id`, a `kind`, a labe
 | `kind` | What it is | Its main function | Example |
 |---|---|---|---|
 | `tool` | A toolbox tile that adds something to the page. Can also be dragged onto the page. | `run` calls `shell.runTool(action)` | `toolQuestionMcq` |
-| `menu-item` | A row inside a dropdown menu. | `run` | `fileSaveAction` |
+| `menu-item` | A row inside a dropdown menu. | `run` | `fileSaveAction`, `subjectMath` |
 | `action` | A plain button that runs an action. | `run` | (none yet) |
-| `toggle` | A control that shows or changes a setting. | `render` | `subjectMath`, `undoToggle` |
+| `toggle` | A control that shows or changes a setting. | `render` | `barLeftToggle`, `undoToggle` |
 | `field` | An input bound to a value. | `render` | `titleField` |
 | `panel` | A block of UI with its own content. | `render` | `inspectorPanel`, `examSummaryPanel` |
 | `overlay` | A popup or layer that appears only when open. | `render` (returns `null` when closed) | `pickerOverlay`, `toastOverlay` |
@@ -116,7 +116,8 @@ A bar has:
 | `groups` | Groups, drawn in `order`. |
 | `features` | One-off features, drawn before the groups. Used for the logo and for overlays, which have no sibling. |
 | `className` | The bar's own layout and colours, e.g. `"flex w-[248px] … border-e"`. |
-| `collapsible` | `true` lets the user hide the bar. The choice is kept in `shell.hiddenBars`, saved in the browser. The toolbox and the right panel are collapsible; the top bar is not. |
+| `collapse` | Lets the user close a side bar: `{ width, label, hide, show, hotkey, strip }`. It slides down to a 32px strip (with the `strip` features as shortcuts) and the page area grows. Toggled by the edge tab, the top-bar buttons and `hotkey` (Ctrl+[ / Ctrl+]). The choice is kept in `shell.hiddenBars`, saved in the browser. The toolbox and the right panel have it; the top bar does not. With `minWidth` / `maxWidth` the inner edge can be dragged to resize the bar (kept in `shell.barWidths`; double-click resets it). |
+| `dragRegion` | `true` makes the empty parts of the bar move the desktop window (double-click maximizes). Used by the top bar, which replaces the native title bar. |
 
 Example:
 
@@ -125,9 +126,10 @@ Example:
 export const topBar: Bar = {
   id: "bar.top",
   position: "top",
-  className: "relative z-20 flex h-11 shrink-0 items-center gap-3 border-b border-line bg-surface px-3",
+  dragRegion: true,
+  className: "flex h-11 shrink-0 items-center gap-3 border-b border-line bg-surface px-3",
   features: [brandLogoPanel],
-  groups: [fileGroup, titleGroup, subjectsGroup, languageGroup, editGroup, viewGroup, exportGroup],
+  groups: [fileGroup, titleGroup, subjectsGroup, editGroup, viewGroup, panelsGroup, exportGroup, windowGroup],
 };
 ```
 

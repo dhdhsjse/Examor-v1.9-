@@ -9,6 +9,8 @@ import {
   defaultHeaderId,
   defaultMarginId,
   examFromLayout,
+  footerTemplates,
+  headerTemplates,
   marginMatching,
   marginTemplates,
   onboardingRequests,
@@ -23,6 +25,7 @@ import { templateById } from "@/app/_lib/templates";
 import type { ExamDoc, PageScope } from "@/app/_lib/types";
 import BuildCard from "./cards/BuildCard";
 import MarginCard from "./cards/MarginCard";
+import ChromePicker from "./ChromePicker";
 import ScopePicker from "./ScopePicker";
 
 type Step = "welcome" | "margins" | "structure";
@@ -242,6 +245,16 @@ export function OnboardingModal({ ctx }: { ctx: Ctx }) {
           <div className="mt-4 grid gap-3 md:grid-cols-2">
             {wantsHeader(draft.build) && <ScopePicker ctx={ctx} label="Header" scope={draft.headerScope} onChange={(headerScope) => setDraft((d) => ({ ...d, headerScope }))} />}
             {wantsFooter(draft.build) && <ScopePicker ctx={ctx} label="Footer" scope={draft.footerScope} onChange={(footerScope) => setDraft((d) => ({ ...d, footerScope }))} />}
+          </div>
+        )}
+        {wantsHeader(draft.build) && (
+          <div className="mt-4">
+            <ChromePicker ctx={ctx} label="Header style" items={headerTemplates} value={draft.headerId} onChange={(headerId) => setDraft((d) => ({ ...d, headerId }))} />
+          </div>
+        )}
+        {wantsFooter(draft.build) && (
+          <div className="mt-3">
+            <ChromePicker ctx={ctx} label="Footer text" items={footerTemplates} value={draft.footerId} onChange={(footerId) => setDraft((d) => ({ ...d, footerId }))} />
           </div>
         )}
         <p className="mt-4 text-xs text-muted">{t("You can edit the header and footer later in the Properties panel.")}</p>

@@ -9,6 +9,6 @@ export const frenchGroup: Group = {
   order: 20,
   when: (ctx) => ctx.shell.subject === "French",
   label: (t) => t("{subject} tools", { subject: t("French") }),
-  className: "grid grid-cols-2 gap-2",
+  className: "grid grid-cols-2 gap-1.5",
   features: [toolFrenchConjugation, toolFrenchDictation, toolFrenchReadingText, toolFrenchGrammar],
 };

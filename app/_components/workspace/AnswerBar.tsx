@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { PART_NUMBERINGS, blankAnswers, partLabel } from "@/app/_lib/blockLayout";
-import { addPart, movePart, patchPart, removePart } from "@/app/_lib/blocks";
+import { MAX_OPTIONS, addOrderItem, addPair, addPart, insertOption, mcqAnswers, movePart, patchPart, removePart, reshuffle, toggleMcq } from "@/app/_lib/blocks";
 import type { EditField } from "@/app/_lib/editRegions";
 import { isRtl, optionLabel, words } from "@/app/_lib/i18n";
 import { plainText } from "@/app/_lib/richText";
@@ -49,8 +49,18 @@ export default function AnswerBar({ block: b, number, lang, mode, open, onToggle
   // Add an item and start typing it on the page.
   const addOption = () => {
     if (b.type !== "mcq") return;
-    onPatch({ options: [...b.options, ""] }, "options");
+    onPatch(insertOption(b, b.options.length), "options");
     onEdit({ kind: "option", i: b.options.length });
+  };
+  const newPair = () => {
+    if (b.type !== "match") return;
+    onPatch(addPair(b), "pairs");
+    onEdit({ kind: "left", i: b.pairs.length });
+  };
+  const newItem = () => {
+    if (b.type !== "order") return;
+    onPatch(addOrderItem(b), "items");
+    onEdit({ kind: "item", i: b.items.length });
   };
   const addStatement = () => {
     if (b.type !== "truefalse") return;
@@ -82,7 +92,7 @@ export default function AnswerBar({ block: b, number, lang, mode, open, onToggle
           {open &&
             b.type === "mcq" &&
             b.options.map((_, i) => (
-              <button key={i} className={chip(b.correct === i)} onClick={() => onPatch({ correct: i }, "correct")} title={plainText(b.options[i])}>
+              <button key={i} className={chip(mcqAnswers(b).includes(i))} onClick={() => onPatch(toggleMcq(b, i), "correct")} title={plainText(b.options[i])}>
                 {optionLabel(i, lang)}
               </button>
             ))}
@@ -122,7 +132,26 @@ export default function AnswerBar({ block: b, number, lang, mode, open, onToggle
           )}
 
           {/* "Add" buttons are always there, even when the bar is folded */}
-          {b.type === "mcq" && b.options.length < 6 && (
+          {(b.type === "match" || b.type === "order") && (
+            <button
+              className={addBtn}
+              onClick={() => onPatch(reshuffle(b.type === "match" ? b.pairs.length : b.items.length), "order")}
+              title={ui("Mix the printed order again")}
+            >
+              ⤨ {ui("Mix")}
+            </button>
+          )}
+          {b.type === "match" && b.pairs.length < 12 && (
+            <button className={addBtn} onClick={newPair} title={ui("Add a pair and type it on the page")}>
+              + {ui("Pair")}
+            </button>
+          )}
+          {b.type === "order" && b.style !== "sentence" && b.items.length < 12 && (
+            <button className={addBtn} onClick={newItem} title={ui("Add an item and type it on the page")}>
+              + {ui("Item")}
+            </button>
+          )}
+          {b.type === "mcq" && b.options.length < MAX_OPTIONS && (
             <button className={addBtn} onClick={addOption} title={ui("Add an option and type it on the page")}>
               + {ui("Option")}
             </button>

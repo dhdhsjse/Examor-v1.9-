@@ -8,10 +8,14 @@ import FeatureRow from "./FeatureRow";
 import SectionDetail from "./SectionDetail";
 import SectionList from "./SectionList";
 
-// Tools whose English or translated name contains the search text (same rule as the other groups).
+// Tools whose English or translated name (or one of their search tags) contains the search text.
 function matches(feature: Feature, ctx: Ctx, q: string) {
   const english = typeof feature.label === "string" ? feature.label : "";
-  return english.toLowerCase().includes(q) || resolveLabel(feature.label, ctx.t).toLowerCase().includes(q);
+  return (
+    english.toLowerCase().includes(q) ||
+    resolveLabel(feature.label, ctx.t).toLowerCase().includes(q) ||
+    !!feature.tags?.some((tag) => tag.toLowerCase().includes(q))
+  );
 }
 
 // The left navigation: a list of sections, then one section's options. While the search bar has text,

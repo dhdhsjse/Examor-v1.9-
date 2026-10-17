@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { PAGE_HEIGHT, PAGE_WIDTH } from "@/app/_lib/a4";
 import type { Block, Page } from "@/app/_lib/types";
-import { useT } from "@/app/_lib/uiLang";
+import { useUi } from "@/app/_lib/uiLang";
+import { PanelToggle } from "../PanelToggle";
 
 const THUMB_W = 40;
 const SCALE = THUMB_W / PAGE_WIDTH;
@@ -35,7 +36,7 @@ function saveCollapsed(value: boolean) {
 
 // Slim column of page thumbnails between the toolbox and the page. Can be collapsed.
 export default function PageStrip({ pages, blocks, heights, activeIndex, onJump, onAddPage, onDeletePage }: Props) {
-  const t = useT();
+  const { t, rtl } = useUi();
   const [collapsed, setCollapsed] = useState(loadCollapsed);
 
   const toggle = () => {
@@ -45,36 +46,27 @@ export default function PageStrip({ pages, blocks, heights, activeIndex, onJump,
 
   return (
     <div
-      className={`flex shrink-0 flex-col border-e border-line bg-surface transition-[width] duration-200 ease-out ${
-        collapsed ? "w-3" : "w-16"
+      onClick={(e) => collapsed && e.target === e.currentTarget && toggle()}
+      title={collapsed ? t("Show pages") : undefined}
+      className={`relative flex shrink-0 flex-col border-e border-line bg-surface transition-[width] duration-200 ease-out motion-reduce:transition-none ${
+        collapsed ? "w-3 cursor-pointer" : "w-16"
       }`}
     >
-      {/* Chevron toggle */}
-      <button
-        onClick={toggle}
+      {/* Same edge tab as the side panels; near the top, clear of the toolbox's tab */}
+      <PanelToggle
+        side="start"
+        open={!collapsed}
+        dir={rtl ? "rtl" : "ltr"}
+        placement="top"
         title={collapsed ? t("Show pages") : t("Hide pages")}
-        className={`flex h-8 shrink-0 items-center justify-center text-faint hover:bg-subtle hover:text-ink ${
-          collapsed ? "h-full items-start pt-2.5" : ""
-        }`}
-      >
-        <svg
-          width="10"
-          height="10"
-          viewBox="0 0 10 10"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.6"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          className={`transition-transform duration-200 ${collapsed ? "rotate-180 rtl:rotate-0" : "rtl:rotate-180"}`}
-        >
-          <path d="M6.5 2L3.5 5l3 3" />
-        </svg>
-      </button>
+        controls="page-strip"
+        onToggle={toggle}
+      />
 
       {/* Thumbnails + add button (hidden while collapsed) */}
       <div
-        className={`flex flex-1 flex-col items-center gap-2.5 overflow-x-hidden overflow-y-auto pb-3 transition-opacity duration-200 ${
+        id="page-strip"
+        className={`flex flex-1 flex-col items-center gap-2.5 overflow-x-hidden overflow-y-auto pt-2.5 pb-3 transition-opacity duration-200 ${
           collapsed ? "pointer-events-none hidden opacity-0" : "opacity-100"
         }`}
       >
@@ -98,7 +90,7 @@ export default function PageStrip({ pages, blocks, heights, activeIndex, onJump,
                 <button
                   onClick={() => onDeletePage(page.id)}
                   title={t("Delete page")}
-                  className="absolute -top-1.5 -end-1.5 hidden size-4 place-items-center rounded-full bg-white text-faint shadow ring-1 ring-black/10 group-hover:grid hover:text-red-600"
+                  className="absolute -top-1.5 -end-1.5 z-40 hidden size-4 place-items-center rounded-full bg-white text-faint shadow ring-1 ring-black/10 group-hover:grid hover:text-red-600"
                 >
                   <svg width="8" height="8" viewBox="0 0 8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
                     <path d="M1.5 1.5l5 5M6.5 1.5l-5 5" />

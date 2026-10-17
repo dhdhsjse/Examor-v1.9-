@@ -1,4 +1,7 @@
 @import "tailwindcss";
+/* Don't scan the Rust side for class names: cargo locks files in src-tauri/target while it builds,
+   which crashed the CSS build during `tauri dev`. */
+@source not "../src-tauri";
 
 /* App theme: white panels, a grey work area, and one indigo accent. */
 @theme {
@@ -8,7 +11,7 @@
   --color-line: #e2e5eb;        /* borders */
   --color-ink: #111827;         /* main text */
   --color-muted: #5b6475;       /* secondary text */
-  --color-faint: #9aa1ae;       /* hints, disabled */
+  --color-faint: #667085;       /* hints: at least 4.5:1 on surface and subtle (WCAG AA) */
   --color-accent: #4f46e5;      /* active state, main actions */
   --color-accent-strong: #4338ca;
   --color-accent-soft: #eceafe; /* hover / selected backgrounds */
@@ -90,4 +93,8 @@ body {
   color: #cbd5e1;
   font-weight: 400;
   pointer-events: none;
+}
+/* In the panels the hint must stay readable (on the paper it stays light, unlike printed text). */
+.rich-input[data-empty="true"]::before {
+  color: var(--color-faint);
 }

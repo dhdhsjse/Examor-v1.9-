@@ -39,6 +39,38 @@ export const OpenQuestionIcon = () => (
   </svg>
 );
 
+export const MatchIcon = () => (
+  <svg {...base}>
+    <circle cx="4" cy="4.5" r="1.4" />
+    <circle cx="4" cy="13.5" r="1.4" />
+    <circle cx="14" cy="4.5" r="1.4" />
+    <circle cx="14" cy="13.5" r="1.4" />
+    <path d="M5.5 5l7 8M5.5 13l7-8" />
+  </svg>
+);
+
+export const OrderIcon = () => (
+  <svg {...base}>
+    <rect x="2" y="2.5" width="4" height="4" rx="0.8" />
+    <rect x="2" y="11.5" width="4" height="4" rx="0.8" />
+    <path d="M8.5 4.5h7M8.5 13.5h7M12 7.5v3M10.5 9l1.5 1.5L13.5 9" />
+  </svg>
+);
+
+export const ClassifyIcon = () => (
+  <svg {...base}>
+    <rect x="2.5" y="2.5" width="13" height="13" rx="1.5" />
+    <path d="M9 2.5v13M2.5 6.5h13" />
+    <path d="M4.5 9.5h2.5M4.5 12.5h2.5M11 9.5h2.5" />
+  </svg>
+);
+
+export const BookmarkIcon = () => (
+  <svg {...base} width={14} height={14}>
+    <path d="M4.5 2.5h9v13L9 12l-4.5 3.5z" />
+  </svg>
+);
+
 export const ImageIcon = () => (
   <svg {...base}>
     <rect x="2.5" y="3.5" width="13" height="11" rx="1.5" />

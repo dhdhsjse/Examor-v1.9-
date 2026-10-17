@@ -5,6 +5,6 @@ import { undoToggle } from "@/app/_features/toggles/undo";
 export const editGroup: Group = {
   id: "group.edit",
   order: 50,
-  className: "flex items-center",
+  className: "ms-auto flex shrink-0 items-center",
   features: [undoToggle, redoToggle],
 };

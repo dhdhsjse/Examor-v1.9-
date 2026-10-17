@@ -9,6 +9,6 @@ export const insertSection: Section = {
   id: "section.insert",
   order: 20,
   label: (t) => t("Insert"),
-  icon: <Type size={20} strokeWidth={1.7} />,
+  icon: <Type size={18} strokeWidth={1.7} />,
   options: [insertQuestionsOption, insertContentOption, insertGraphsOption, insertMediaOption],
 };

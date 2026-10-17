@@ -22,6 +22,7 @@ export const inspectorPanel: Feature = {
         onLatex={shell.onLatex}
         onDelete={shell.deleteBlock}
         onDuplicate={shell.duplicateBlock}
+        onSaveToLibrary={shell.saveToLibrary}
         onReplaceImage={shell.replaceImage}
         onMeta={shell.setMeta}
         onChangeTemplate={shell.openPicker}

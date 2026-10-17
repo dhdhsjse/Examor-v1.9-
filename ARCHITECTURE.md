@@ -352,9 +352,14 @@ This section records where the migrated code departs from §2–§6. Each item i
 - `Ctx` has `doc`, `selection`, `activePageId`, `t` (with `{vars}` support), `dir`, and `shell`. `lang`, `commit`, and `select` were dropped; features use `shell` commands instead.
 - `Ctx.shell` (type `Shell`, `core/types.ts`) is the shell's command surface. It is rebuilt each render in `Editor.tsx`. Features call it; they never read state.
 - Toolbox tiles are `kind: "tool"` features that use `run` (which calls `shell.runTool`), not `create`. Placement and undo live in the shell.
-- `Feature` gains `tone`, `dragPayload` (a draggable tool's action), `separatorBefore`, and `checked`.
+- `Feature` gains `tone`, `dragPayload` (a draggable tool's action), `separatorBefore`, `heading` (a small section title above a menu item), and `checked`.
 - `Group` gains `when` (visibility), `menu` and `header` (draws the group as a dropdown), `menuAlignEnd`, and `className`.
 - `Bar` gains `className`. Geometry lives on the bar, not in the renderer.
+- `Bar` gains `collapse` (`BarCollapse`: width, labels, hotkey, `strip` features). `BarRenderer` wraps such a bar in `CollapsibleBar`, which slides it to a 32px strip with the shared edge tab (`_components/PanelToggle.tsx`). The shell dispatches `collapse.hotkey` generically. `Shell` gains `showBar`.
+- `BarCollapse` gains `minWidth` / `maxWidth`. With both, `CollapsibleBar` adds a drag handle on the inner edge (`role="separator"`, arrow keys work too, double-click resets). Dragging far below the minimum closes the bar. The width is kept in `Shell.barWidths` (saved in the browser) and set with `Shell.setBarWidth`.
+- `Shell` gains `saveToLibrary(block)`: keeps a copy of a block as a user asset of kind `"block"` ("My blocks" in the library).
+- `Feature.tags` is used by the left-panel search (a tool also matches by its tags).
+- `Bar` gains `dragRegion`: the bar gets `data-tauri-drag-region="deep"`, so its empty areas move the desktop window (the window has no native frame, see `tauri.conf.json`). The window buttons are a feature (`panels/window-controls.tsx`) in `group-window.ts`, shown only in the desktop app.
 - `BarRenderer` draws one-off `features` first, then `groups` in `order`.
 
 **Known gaps**

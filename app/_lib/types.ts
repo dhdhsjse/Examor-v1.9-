@@ -67,15 +67,25 @@ export interface McqBlock extends BlockBase {
   type: "mcq";
   text: string;
   options: string[];
-  correct: number; // index into `options`
+  correct: number; // index into `options` (one correct answer)
   points: number;
+  multi?: boolean; // several correct answers: square boxes, the answers are in `corrects`
+  corrects?: number[];
+  columns?: number; // options side by side, 1–4 (missing = 1)
+}
+
+export interface TrueFalseStatement {
+  text: string;
+  answer: boolean;
+  fix?: string; // the corrected statement, shown on the correction sheet (with `justify`)
 }
 
 export interface TrueFalseBlock extends BlockBase {
   type: "truefalse";
   text: string;
-  statements: { text: string; answer: boolean }[];
+  statements: TrueFalseStatement[];
   points: number;
+  justify?: boolean; // a line under each statement to correct the false ones
 }
 
 // Fill in the blank: answers are written in [brackets] inside `content`.
@@ -84,6 +94,51 @@ export interface BlankBlock extends BlockBase {
   text: string;
   content: string;
   points: number;
+  wordBank?: boolean; // show the answers (mixed up) in a box above the text
+  distractors?: string[]; // extra wrong words for the box
+}
+
+// What the student writes on: dotted lines, plain lines, squared paper, an empty frame, or nothing.
+export type AnswerStyle = "dotted" | "lines" | "grid" | "box" | "none";
+
+// Match each item on the left with one on the right. `order` is the order in which the right
+// items are printed (indexes into `pairs`), so the matches aren't side by side.
+export interface MatchPair {
+  left: string;
+  right: string;
+}
+
+export interface MatchBlock extends BlockBase {
+  type: "match";
+  text: string;
+  pairs: MatchPair[];
+  order: number[];
+  points: number;
+}
+
+// Put items back in order. `items` is the right order, `order` the mixed-up printed order.
+// "list": a box before each item for its rank; "sentence": mixed-up words to write as a sentence.
+export interface OrderBlock extends BlockBase {
+  type: "order";
+  text: string;
+  items: string[];
+  order: number[];
+  points: number;
+  style?: "list" | "sentence"; // missing = "list"
+}
+
+// Sort words into categories: the words are given in a box, the student fills a table.
+export interface ClassifyGroup {
+  name: string;
+  items: string[];
+}
+
+export interface ClassifyBlock extends BlockBase {
+  type: "classify";
+  text: string;
+  groups: ClassifyGroup[];
+  points: number;
+  hideBank?: boolean; // don't print the box of words (the student finds them, e.g. in a text)
 }
 
 // A sub-question of an open question: "1a)", "1b)"...
@@ -103,6 +158,8 @@ export interface OpenBlock extends BlockBase {
   points: number; // total (= sum of the parts when there are parts)
   parts?: OpenPart[]; // missing in files from older versions
   partNumbering?: PartNumbering; // missing = "1a"
+  context?: string; // statement printed under the question, before the answer (data, a text, a situation…)
+  answerStyle?: AnswerStyle; // missing = "dotted"
 }
 
 // How sub-questions are numbered: 1a) · a) · 1.1) · i) · 1) · nothing.
@@ -131,10 +188,20 @@ export interface EquationBlock extends BlockBase {
   exH: number;
 }
 
+// A library figure drawn from settings the teacher can change (the angles of a triangle…).
+// `id` names the figure in app/_lib/figures; `params` are its settings.
+export type FigureValue = number | string | boolean;
+
+export interface FigureSpec {
+  id: string;
+  params: Record<string, FigureValue>;
+}
+
 export interface ImageBlock extends BlockBase {
   type: "image";
   src: string; // data URL (imported image or library diagram)
   ratio: number; // width / height
+  figure?: FigureSpec; // a library figure: `src` is redrawn when its settings change
 }
 
 export interface TableBlock extends BlockBase {
@@ -156,9 +223,33 @@ export interface GraphBlock extends BlockBase {
   grid: boolean;
 }
 
-export type HeaderStyle = "classic" | "modern" | "minimal" | "banner" | "elegant";
+export type HeaderStyle =
+  | "classic"
+  | "modern"
+  | "minimal"
+  | "banner"
+  | "elegant"
+  | "official"
+  | "split"
+  | "compact"
+  | "evaluation"
+  | "playful"
+  | "cards"
+  | "accentbar"
+  | "bookmark"
+  | "gradient"
+  | "geometric"
+  | "chips"
+  | "editorial"
+  | "framed"
+  | "infogrid"
+  | "duotone"
+  | "monogram"
+  | "ticket"
+  | "floating";
 
 export interface HeaderFields {
+  authority?: string; // top line of the official header, e.g. the ministry (missing in older files)
   school: string;
   title: string;
   subject: string;
@@ -173,9 +264,10 @@ export interface HeaderBlock extends BlockBase {
   type: "header";
   style: HeaderStyle;
   fields: HeaderFields;
+  accent?: string; // main color of the colored styles (missing = each style's own color)
 }
 
-export type QuestionBlock = McqBlock | TrueFalseBlock | BlankBlock | OpenBlock;
+export type QuestionBlock = McqBlock | TrueFalseBlock | BlankBlock | OpenBlock | MatchBlock | OrderBlock | ClassifyBlock;
 export type Block = QuestionBlock | TextBlock | EquationBlock | ImageBlock | TableBlock | GraphBlock | HeaderBlock;
 export type BlockType = Block["type"];
 

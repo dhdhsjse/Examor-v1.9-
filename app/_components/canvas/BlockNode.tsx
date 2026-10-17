@@ -3,12 +3,14 @@
 import type Konva from "konva";
 import { useRef, useState } from "react";
 import { Group, Rect } from "react-konva";
+import { withHints } from "@/app/_lib/blocks";
 import { clickTargets, editRegions, type EditField } from "@/app/_lib/editRegions";
 import type { Block, ExamMeta, ViewMode } from "@/app/_lib/types";
 import type { BlockPatch } from "@/app/_lib/useExam";
 import { EquationView, ImageView, TableView, TextView } from "./blocks/ContentViews";
 import { GraphView } from "./blocks/GraphView";
 import HeaderView from "./blocks/HeaderView";
+import { ClassifyView, MatchView, OrderView } from "./blocks/MoreQuestionViews";
 import { BlankView, McqView, OpenView, TrueFalseView } from "./blocks/QuestionViews";
 import { TableHandles } from "./blocks/TableHandles";
 
@@ -42,7 +44,9 @@ interface Props {
 }
 
 // What to draw inside the block.
-function Content({ block, number, meta, mode, interactive, totalPoints }: Pick<Props, "block" | "number" | "meta" | "mode" | "interactive" | "totalPoints">) {
+function Content({ block: real, number, meta, mode, interactive, totalPoints }: Pick<Props, "block" | "number" | "meta" | "mode" | "interactive" | "totalPoints">) {
+  // On screen, empty question texts show a light example; export draws the real (empty) text.
+  const block = interactive ? withHints(real, meta.lang) : real;
   switch (block.type) {
     case "mcq":
       return <McqView b={block} n={number} meta={meta} mode={mode} />;
@@ -52,6 +56,12 @@ function Content({ block, number, meta, mode, interactive, totalPoints }: Pick<P
       return <BlankView b={block} n={number} meta={meta} mode={mode} />;
     case "open":
       return <OpenView b={block} n={number} meta={meta} mode={mode} />;
+    case "match":
+      return <MatchView b={block} n={number} meta={meta} mode={mode} />;
+    case "order":
+      return <OrderView b={block} n={number} meta={meta} mode={mode} />;
+    case "classify":
+      return <ClassifyView b={block} n={number} meta={meta} mode={mode} />;
     case "text":
       return <TextView b={block} meta={meta} />;
     case "table":
@@ -136,7 +146,7 @@ export default function BlockNode(props: Props) {
       {/* Invisible areas on top of the texts: double-click, click a selected block (or click with
           the T tool) to type there */}
       {interactive &&
-        editRegions(block, props.number, props.meta, props.mode).map((r, k) => (
+        editRegions(withHints(block, props.meta.lang), props.number, props.meta, props.mode).map((r, k) => (
           <Rect
             key={`e${k}`}
             x={r.x - 2}

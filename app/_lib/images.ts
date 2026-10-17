@@ -30,20 +30,26 @@ export function preloadImages(srcs: string[]): Promise<unknown> {
   return Promise.allSettled(srcs.filter(Boolean).map(loadImage));
 }
 
-// React hook: returns the image once it is loaded (undefined before that).
+// React hook: returns the image once it is loaded. Until then, the picture shown before it (a figure
+// being redrawn keeps its old drawing instead of blinking), or undefined.
 export function useImage(src: string): HTMLImageElement | undefined {
   const [, setLoaded] = useState(0);
+  const [shown, setShown] = useState(src);
   useEffect(() => {
     if (!src || cache.has(src)) return;
     let alive = true;
     loadImage(src)
-      .then(() => alive && setLoaded((n) => n + 1))
+      .then(() => {
+        if (!alive) return;
+        setLoaded((n) => n + 1);
+        setShown(src);
+      })
       .catch(() => {});
     return () => {
       alive = false;
     };
   }, [src]);
-  return src ? cache.get(src) : undefined;
+  return src ? (cache.get(src) ?? cache.get(shown)) : undefined;
 }
 
 // Read a file the user picked as a data URL + its width/height ratio.

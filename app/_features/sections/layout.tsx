@@ -7,6 +7,6 @@ export const layoutSection: Section = {
   id: "section.layout",
   order: 40,
   label: (t) => t("Page layout"),
-  icon: <LayoutGrid size={20} strokeWidth={1.7} />,
+  icon: <LayoutGrid size={18} strokeWidth={1.7} />,
   options: [layoutMarginsOption, layoutHeaderFooterOption],
 };

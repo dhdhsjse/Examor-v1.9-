@@ -1,5 +1,5 @@
 import type { T } from "./uiLang";
-import type { Block, Lang, PageMargins, PageScope } from "./types";
+import type { Block, HeaderStyle, Lang, PageMargins, PageScope } from "./types";
 
 // A4 margin preset. Values are page pixels (see a4.ts). `nameKey` is the English text (translated with t).
 export type MarginTemplate = {
@@ -28,6 +28,8 @@ export type HeaderFooterTemplate = {
   id: string;
   kind: "header" | "footer";
   nameKey: string;
+  sketch?: HeaderStyle; // preview: the exam header style it uses
+  sample?: string; // preview: its text (English key), for text-only headers and footers
   build: (ctx: HeaderFooterBuildCtx) => Block[];
 };
 

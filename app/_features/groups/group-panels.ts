@@ -6,6 +6,6 @@ import { barRightToggle } from "@/app/_features/toggles/bar-right-toggle";
 export const panelsGroup: Group = {
   id: "group.panels",
   order: 65,
-  className: "flex items-center gap-0.5",
+  className: "flex shrink-0 items-center gap-0.5",
   features: [barLeftToggle, barRightToggle],
 };

@@ -6,14 +6,19 @@ import {
   PAD,
   answerTextTop,
   layoutBlank,
+  layoutClassify,
+  layoutMatch,
   layoutMcq,
   layoutOpen,
+  layoutOrder,
   layoutTable,
   layoutText,
   layoutTrueFalse,
   type AnswerArea,
+  type PlacedBox,
   type Spec,
 } from "./blockLayout";
+import { toggleMcq } from "./blocks";
 import { isRtl } from "./i18n";
 import type { Block, ExamMeta, OpenPart, ViewMode } from "./types";
 import type { BlockPatch } from "./useExam";
@@ -22,10 +27,16 @@ export type EditField =
   | { kind: "text" } // question text, or the text of a text block
   | { kind: "option"; i: number }
   | { kind: "statement"; i: number }
+  | { kind: "fix"; i: number } // corrected statement (true / false, correction sheet)
   | { kind: "content" } // fill-in-the-blank sentence
+  | { kind: "context" } // statement under an open question
   | { kind: "answer" } // model answer of an open question
   | { kind: "part"; i: number } // sub-question text
   | { kind: "partAnswer"; i: number }
+  | { kind: "left"; i: number } // matching: left item of pair i
+  | { kind: "right"; i: number } // matching: right item of pair i
+  | { kind: "item"; i: number } // ordering: item i (in the right order)
+  | { kind: "group"; i: number } // classification: name of category i
   | { kind: "cell"; r: number; c: number };
 
 // A rectangle (block coordinates) + how its text looks.
@@ -58,9 +69,21 @@ const answerRegion = (field: EditField, a: AnswerArea, spec: Spec): EditRegion =
   return { field, x: a.x, y, width: a.width, height: Math.max(a.y + a.height - y, a.line), spec: { ...spec, line: a.line }, answer: true, multiline: true };
 };
 
+const boxRegion = (field: EditField, p: PlacedBox, spec: Spec, align?: EditRegion["align"]): EditRegion => ({
+  field,
+  x: p.x,
+  y: p.y,
+  width: p.width,
+  height: p.height,
+  spec,
+  multiline: false,
+  align,
+});
+
 export function editRegions(b: Block, n: number, meta: ExamMeta, mode: ViewMode = "exam"): EditRegion[] {
   const w = b.layout.width;
   const rtl = isRtl(meta.lang);
+  const key = mode === "key";
   const title = (t: { y: number; height: number }, spec: Spec): EditRegion => ({
     field: { kind: "text" },
     x: PAD,
@@ -74,25 +97,25 @@ export function editRegions(b: Block, n: number, meta: ExamMeta, mode: ViewMode 
   switch (b.type) {
     case "mcq": {
       const L = layoutMcq(b, n, meta);
-      return [
-        title(L.title, L.F.title),
-        ...L.options.map((o, i) => ({ field: { kind: "option", i } as EditField, x: rtl ? PAD : PAD + 30, y: o.y, width: w - PAD * 2 - 30, height: o.height, spec: L.F.body, multiline: false })),
-      ];
+      return [title(L.title, L.F.title), ...L.options.map((o, i) => boxRegion({ kind: "option", i }, o, L.F.body))];
     }
     case "truefalse": {
       const L = layoutTrueFalse(b, n, meta);
-      return [
-        title(L.title, L.F.title),
-        ...L.rows.map((r, i) => ({
-          field: { kind: "statement", i } as EditField,
+      const out: EditRegion[] = [title(L.title, L.F.title)];
+      L.rows.forEach((r, i) => {
+        out.push({
+          field: { kind: "statement", i },
           x: rtl ? PAD + CHOICE_W + 10 : PAD,
           y: r.y,
           width: w - PAD * 2 - CHOICE_W - 10,
           height: r.height,
           spec: L.F.body,
           multiline: false,
-        })),
-      ];
+        });
+        // The correction of a false statement is typed on its line, on the correction sheet.
+        if (key && r.fix && !b.statements[i]?.answer) out.push(answerRegion({ kind: "fix", i }, r.fix, L.F.answer));
+      });
+      return out;
     }
     case "blank": {
       const L = layoutBlank(b, n, meta);
@@ -100,14 +123,31 @@ export function editRegions(b: Block, n: number, meta: ExamMeta, mode: ViewMode 
     }
     case "open": {
       const L = layoutOpen(b, n, meta);
-      const key = mode === "key";
       const out: EditRegion[] = [title(L.title, L.F.title)];
+      if (L.context) out.push({ field: { kind: "context" }, x: PAD, y: L.context.y, width: w - PAD * 2, height: L.context.height, spec: L.F.body, multiline: true });
       if (key && L.main.count > 0) out.push(answerRegion({ kind: "answer" }, L.main, L.F.answer));
       L.parts.forEach((p, i) => {
         out.push({ field: { kind: "part", i }, x: p.area.x, y: p.text.y, width: p.area.width, height: p.text.height, spec: L.F.body, multiline: false });
         if (key && p.area.count > 0) out.push(answerRegion({ kind: "partAnswer", i }, p.area, L.F.answer));
       });
       return out;
+    }
+    case "match": {
+      // Left items are printed in their own order; the right one on row k is pair `r.pair`.
+      const L = layoutMatch(b, n, meta);
+      return [
+        title(L.title, L.F.title),
+        ...L.rows.flatMap((r, k) => [boxRegion({ kind: "left", i: k }, r.left, L.F.body), boxRegion({ kind: "right", i: r.pair }, r.right, L.F.body)]),
+      ];
+    }
+    case "order": {
+      const L = layoutOrder(b, n, meta);
+      return [title(L.title, L.F.title), ...L.rows.map((r) => boxRegion({ kind: "item", i: r.item }, r.text, L.F.body))];
+    }
+    case "classify": {
+      const L = layoutClassify(b, n, meta);
+      const bold = { ...L.F.body, font: { ...L.F.body.font, bold: true } };
+      return [title(L.title, L.F.title), ...L.heads.map((h, i) => boxRegion({ kind: "group", i }, h, bold, "center"))];
     }
     case "text": {
       const L = layoutText(b, meta);
@@ -138,7 +178,7 @@ export function clickTargets(b: Block, n: number, meta: ExamMeta): ClickTarget[]
   const rtl = isRtl(meta.lang);
   if (b.type === "mcq") {
     const L = layoutMcq(b, n, meta);
-    return L.options.map((o, i) => ({ x: rtl ? w - PAD - 20 : PAD - 2, y: o.y, width: 22, height: L.F.body.line, patch: { correct: i } }));
+    return L.options.map((o, i) => ({ x: o.markX - 11, y: o.y, width: 22, height: L.F.body.line, patch: toggleMcq(b, i) }));
   }
   if (b.type === "truefalse") {
     const colX = rtl ? PAD : w - PAD - CHOICE_W;
@@ -164,20 +204,33 @@ export function fieldValue(b: Block, f: EditField): string {
       return b.type === "mcq" ? (b.options[f.i] ?? "") : "";
     case "statement":
       return b.type === "truefalse" ? (b.statements[f.i]?.text ?? "") : "";
+    case "fix":
+      return b.type === "truefalse" ? (b.statements[f.i]?.fix ?? "") : "";
     case "content":
       return b.type === "blank" ? b.content : "";
+    case "context":
+      return b.type === "open" ? (b.context ?? "") : "";
     case "answer":
       return b.type === "open" ? b.answer : "";
     case "part":
       return b.type === "open" ? (b.parts?.[f.i]?.text ?? "") : "";
     case "partAnswer":
       return b.type === "open" ? (b.parts?.[f.i]?.answer ?? "") : "";
+    case "left":
+      return b.type === "match" ? (b.pairs[f.i]?.left ?? "") : "";
+    case "right":
+      return b.type === "match" ? (b.pairs[f.i]?.right ?? "") : "";
+    case "item":
+      return b.type === "order" ? (b.items[f.i] ?? "") : "";
+    case "group":
+      return b.type === "classify" ? (b.groups[f.i]?.name ?? "") : "";
     case "cell":
       return b.type === "table" ? (b.cells[f.r]?.[f.c] ?? "") : "";
   }
 }
 
 const setPart = (parts: OpenPart[], i: number, patch: Partial<OpenPart>) => parts.map((p, k) => (k === i ? { ...p, ...patch } : p));
+const setAt = <T,>(list: T[], i: number, fn: (x: T) => T) => list.map((x, k) => (k === i ? fn(x) : x));
 
 export function fieldPatch(b: Block, f: EditField, v: string): BlockPatch {
   switch (f.kind) {
@@ -186,15 +239,27 @@ export function fieldPatch(b: Block, f: EditField, v: string): BlockPatch {
     case "option":
       return b.type === "mcq" ? { options: b.options.map((o, k) => (k === f.i ? v : o)) } : {};
     case "statement":
-      return b.type === "truefalse" ? { statements: b.statements.map((s, k) => (k === f.i ? { ...s, text: v } : s)) } : {};
+      return b.type === "truefalse" ? { statements: setAt(b.statements, f.i, (s) => ({ ...s, text: v })) } : {};
+    case "fix":
+      return b.type === "truefalse" ? { statements: setAt(b.statements, f.i, (s) => ({ ...s, fix: v })) } : {};
     case "content":
       return { content: v };
+    case "context":
+      return { context: v };
     case "answer":
       return { answer: v };
     case "part":
       return b.type === "open" ? { parts: setPart(b.parts ?? [], f.i, { text: v }) } : {};
     case "partAnswer":
       return b.type === "open" ? { parts: setPart(b.parts ?? [], f.i, { answer: v }) } : {};
+    case "left":
+      return b.type === "match" ? { pairs: setAt(b.pairs, f.i, (p) => ({ ...p, left: v })) } : {};
+    case "right":
+      return b.type === "match" ? { pairs: setAt(b.pairs, f.i, (p) => ({ ...p, right: v })) } : {};
+    case "item":
+      return b.type === "order" ? { items: setAt(b.items, f.i, () => v) } : {};
+    case "group":
+      return b.type === "classify" ? { groups: setAt(b.groups, f.i, (g) => ({ ...g, name: v })) } : {};
     case "cell":
       return b.type === "table" ? { cells: b.cells.map((row, r) => (r === f.r ? row.map((c, k) => (k === f.c ? v : c)) : row)) } : {};
   }

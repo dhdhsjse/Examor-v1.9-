@@ -1,10 +1,10 @@
 import type { Feature } from "@/app/_features/core/types";
-import { SubjectTab } from "@/app/_features/core/ui";
 
 export const subjectPhysics: Feature = {
-  id: "toggle.subject.physics",
-  kind: "toggle",
+  id: "action.subject.physics",
+  kind: "menu-item",
   label: "Physics",
   order: 3,
-  render: ({ ctx }) => <SubjectTab text={ctx.t("Physics")} active={ctx.shell.subject === "Physics"} onClick={() => ctx.shell.setSubject("Physics")} />,
+  checked: (ctx) => ctx.shell.subject === "Physics",
+  run: (ctx) => ctx.shell.setSubject("Physics"),
 };

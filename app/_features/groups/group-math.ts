@@ -9,6 +9,6 @@ export const mathGroup: Group = {
   order: 20,
   when: (ctx) => ctx.shell.subject === "Math",
   label: (t) => t("{subject} tools", { subject: t("Math") }),
-  className: "grid grid-cols-2 gap-2",
+  className: "grid grid-cols-2 gap-1.5",
   features: [toolMathGraph, toolMathGeometry, toolMathNumberLine, toolMathFraction],
 };

@@ -2,6 +2,11 @@
 
 import { useCallback, useState } from "react";
 import { PAGE_HEIGHT, PAGE_WIDTH } from "./a4";
+import { CANVAS_TOP_GAP, LABEL_HEIGHT } from "./pageStack";
+
+// "Fit page" keeps the page label above the page and the page itself clear of the floating
+// tools / zoom bar below it (38px high, 16px off the bottom, + a small margin).
+const FIT_SPACE_Y = CANVAS_TOP_GAP + LABEL_HEIGHT + 62;
 
 export const ZOOM_MIN = 0.1;
 export const ZOOM_MAX = 4;
@@ -22,7 +27,7 @@ export function useZoom(viewport: { width: number; height: number }) {
     ? DEFAULT_ZOOM
     : fitMode === "width"
       ? clampZoom((viewport.width - 80) / PAGE_WIDTH)
-      : clampZoom(Math.min((viewport.width - 80) / PAGE_WIDTH, (viewport.height - 60) / PAGE_HEIGHT));
+      : clampZoom(Math.min((viewport.width - 80) / PAGE_WIDTH, (viewport.height - FIT_SPACE_Y) / PAGE_HEIGHT));
   const zoom = fitMode ? fit : custom;
 
   const setZoom = useCallback((z: number) => {

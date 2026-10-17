@@ -6,6 +6,9 @@ import { FONT_FAMILY, konvaFontStyle, type RichLine } from "@/app/_lib/measure";
 export { INK } from "@/app/_lib/blockLayout";
 export const MUTED = "#4b5563";
 
+// Light version of a color, e.g. for the inside of a box ("#4f46e5" → "#4f46e514").
+export const tint = (hex: string, alpha = "14") => (/^#[0-9a-f]{6}$/i.test(hex) ? `${hex}${alpha}` : hex);
+
 interface RichTextProps {
   lines: RichLine[];
   x: number;

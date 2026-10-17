@@ -1,7 +1,13 @@
-import { CONTENT_WIDTH, PAGE_MARGIN, PAGE_WIDTH } from "./a4";
+import { CONTENT_WIDTH, PAGE_HEIGHT, PAGE_MARGIN, PAGE_WIDTH } from "./a4";
 import { createBlock, defaultHeaderFields, nextFreeY, blockHeights, type BlockPreset } from "./blocks";
+import { renderFigure, type Params } from "./figures";
 import { newId } from "./id";
-import type { Block, BlockType, ExamDoc, HeaderStyle, Lang, PageMargins } from "./types";
+import { svgSize, svgUrl } from "./library";
+import { EXAMPLES } from "./templateExamples";
+import type { Block, BlockType, ExamDoc, HeaderFields, HeaderStyle, Lang, PageMargins } from "./types";
+
+// A block stacked under the header: a block with its preset, or a library figure.
+export type TemplateItem = { type: BlockType; preset?: BlockPreset } | { figure: string; params?: Params; width?: number };
 
 export interface Template {
   id: string;
@@ -9,10 +15,15 @@ export interface Template {
   description: string;
   lang: Lang;
   header: HeaderStyle | null;
-  extras: { type: BlockType; preset?: BlockPreset }[]; // blocks stacked under the header
+  extras: TemplateItem[]; // blocks stacked under the header (they flow onto new pages)
+  kind?: "layout" | "example"; // missing = "layout" (an empty starting page)
+  subject?: string; // English key, shown on example cards
+  title?: string; // name of the exam (also the header's title)
+  fields?: Partial<HeaderFields>; // header text of an example
+  accent?: string; // header color
 }
 
-export const TEMPLATES: Template[] = [
+const LAYOUTS: Template[] = [
   {
     id: "classic-fr",
     name: "Classique",
@@ -20,6 +31,14 @@ export const TEMPLATES: Template[] = [
     lang: "fr",
     header: "classic",
     extras: [{ type: "text", preset: { text: "Exercice 1" } }],
+  },
+  {
+    id: "official-fr",
+    name: "Officiel",
+    description: "Ministry line, framed title, student lines and score box",
+    lang: "fr",
+    header: "official",
+    extras: [{ type: "text", preset: { text: "Exercice 1", decor: "underline" } }],
   },
   {
     id: "modern-fr",
@@ -30,12 +49,36 @@ export const TEMPLATES: Template[] = [
     extras: [{ type: "text", preset: { text: "Exercice 1" } }],
   },
   {
+    id: "split-fr",
+    name: "Deux cartes",
+    description: "Exam details and student details side by side",
+    lang: "fr",
+    header: "split",
+    extras: [{ type: "text", preset: { text: "Exercice 1", decor: "bar" } }],
+  },
+  {
     id: "minimal-fr",
     name: "Minimal",
     description: "Light header, maximum room for questions",
     lang: "fr",
     header: "minimal",
     extras: [],
+  },
+  {
+    id: "compact-fr",
+    name: "Compact",
+    description: "Three thin lines: the most room for questions",
+    lang: "fr",
+    header: "compact",
+    extras: [],
+  },
+  {
+    id: "primary-fr",
+    name: "Primaire",
+    description: "Colorful band with stars, for young pupils",
+    lang: "fr",
+    header: "playful",
+    extras: [{ type: "text", preset: { text: "Exercice 1", decor: "pill", accent: "#0ea5e9" } }],
   },
   {
     id: "qcm-fr",
@@ -57,6 +100,14 @@ export const TEMPLATES: Template[] = [
     lang: "ar",
     header: "classic",
     extras: [{ type: "text", preset: { text: "التمرين الأول" } }],
+  },
+  {
+    id: "official-ar",
+    name: "رسمي",
+    description: "Arabic official header with the ministry line",
+    lang: "ar",
+    header: "official",
+    extras: [{ type: "text", preset: { text: "التمرين الأول", decor: "underline" } }],
   },
   {
     id: "devoir-ar",
@@ -81,21 +132,51 @@ export const TEMPLATES: Template[] = [
   },
 ];
 
-// Build a fresh exam from a template: header on top, then the extra blocks stacked below.
+export const TEMPLATES: Template[] = [...LAYOUTS, ...EXAMPLES];
+
+// An image block showing a library figure (editable in Properties like one added from the library).
+function figureBlock(id: string, params: Params | undefined, width: number | undefined, lang: Lang, pageId: string): Block | null {
+  const r = renderFigure(id, params, lang);
+  if (!r) return null;
+  const { w, h } = svgSize(r.svg);
+  const bw = Math.min(CONTENT_WIDTH, width ?? w);
+  const b = createBlock("image", lang, pageId, { src: svgUrl(r.svg), ratio: w / h, width: bw, height: (bw * h) / w, figure: { id, params: r.params } });
+  // Figures are centered on the page.
+  return { ...b, layout: { ...b.layout, x: (PAGE_WIDTH - bw) / 2 } };
+}
+
+// Build a fresh exam from a template: header on top, then the extra blocks stacked below,
+// going on to a new page when one is full.
 export function buildDoc(t: Template): ExamDoc {
-  const page = { id: newId() };
+  let page = { id: newId() };
+  const pages = [page];
   const blocks: Block[] = [];
-  const doc: ExamDoc = { version: 1, meta: { title: "Untitled exam", lang: t.lang, templateId: t.id }, pages: [page], blocks };
+  const title = t.title ?? "Untitled exam";
+  const doc: ExamDoc = { version: 1, meta: { title, lang: t.lang, templateId: t.id }, pages, blocks };
 
   const place = (b: Block) => {
-    b.layout.y = nextFreeY(blocks, blockHeights(doc));
+    const heights = blockHeights(doc);
+    const onPage = blocks.filter((x) => x.layout.pageId === page.id);
+    let y = nextFreeY(onPage, heights);
+    const h = heights.get(b.id) ?? blockHeights({ ...doc, blocks: [b] }).get(b.id) ?? 0;
+    if (onPage.length && y + h > PAGE_HEIGHT - PAGE_MARGIN) {
+      page = { id: newId() };
+      pages.push(page);
+      y = PAGE_MARGIN;
+    }
+    b.layout.pageId = page.id;
+    b.layout.y = y;
     blocks.push(b);
   };
 
   if (t.header) {
-    place(createBlock("header", t.lang, page.id, { style: t.header, fields: defaultHeaderFields(t.lang) }));
+    const fields = { ...defaultHeaderFields(t.lang), ...(t.title ? { title: t.title } : {}), ...t.fields };
+    place(createBlock("header", t.lang, page.id, { style: t.header, fields, ...(t.accent ? { accent: t.accent } : {}) }));
   }
-  for (const extra of t.extras) place(createBlock(extra.type, t.lang, page.id, extra.preset));
+  for (const extra of t.extras) {
+    const b = "figure" in extra ? figureBlock(extra.figure, extra.params, extra.width, t.lang, page.id) : createBlock(extra.type, t.lang, page.id, extra.preset);
+    if (b) place(b);
+  }
   return doc;
 }
 

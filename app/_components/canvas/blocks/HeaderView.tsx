@@ -5,7 +5,9 @@ import { HEADER_HEIGHT } from "@/app/_lib/blockLayout";
 import { fontStack } from "@/app/_lib/fonts";
 import { isRtl, words } from "@/app/_lib/i18n";
 import type { ExamMeta, HeaderBlock, ViewMode } from "@/app/_lib/types";
-import { INK, MUTED, OneLine } from "./shared";
+import { MODERN_HEADER_STYLES, ModernHeaderView } from "./ModernHeaderViews";
+import { MORE_HEADER_STYLES, MoreHeaderView } from "./MoreHeaderViews";
+import { INK, MUTED, OneLine, tint } from "./shared";
 
 interface Props {
   b: HeaderBlock;
@@ -18,7 +20,8 @@ const DOTS = "....................................";
 // Keep "/ 20" left-to-right inside Arabic text (otherwise it shows as "20 /").
 const ltr = (s: string) => `⁦${s}⁩`;
 
-// The exam header from the template (5 styles). Mirrors itself for Arabic.
+// The exam header (23 styles). Mirrors itself for Arabic. The teacher's accent color, when set,
+// replaces each style's own color.
 export default function HeaderView({ b, meta, mode, totalPoints }: Props) {
   const lang = meta.lang;
   const family = fontStack(b.font?.family || meta.fontFamily);
@@ -35,6 +38,11 @@ export default function HeaderView({ b, meta, mode, totalPoints }: Props) {
   const sub = [f.subject, f.level, f.duration].filter(Boolean).join("  ·  ");
   // Graded out of: the total of the questions when the teacher asked for it.
   const outOf = f.autoOutOf && totalPoints > 0 ? totalPoints : f.outOf;
+  const accent = b.accent;
+
+  const ctx = { W, H, rtl, family, t, f, title, sub, outOf, accent, at };
+  if (MORE_HEADER_STYLES.includes(b.style)) return <MoreHeaderView style={b.style} c={ctx} />;
+  if (MODERN_HEADER_STYLES.includes(b.style)) return <ModernHeaderView style={b.style} c={ctx} />;
 
   if (b.style === "banner") {
     // Dark band with the title, a score card at the end, then school / year and the name line.
@@ -42,12 +50,12 @@ export default function HeaderView({ b, meta, mode, totalPoints }: Props) {
     const cardX = at(W - card - 12, card);
     return (
       <>
-        <Rect width={W} height={80} fill="#1e293b" cornerRadius={8} listening={false} />
+        <Rect width={W} height={80} fill={accent ?? "#1e293b"} cornerRadius={8} listening={false} />
         <OneLine family={family} text={title} x={at(20, W - card - 52)} y={15} width={W - card - 52} size={22} bold color="#ffffff" rtl={rtl} />
         <OneLine family={family} text={sub} x={at(20, W - card - 52)} y={49} width={W - card - 52} size={13} color="#cbd5e1" rtl={rtl} />
         <Rect x={cardX} y={11} width={card} height={58} fill="#ffffff" cornerRadius={6} listening={false} />
         <OneLine family={family} text={t.score} x={cardX} y={17} width={card} size={10} color={MUTED} rtl={rtl} align="center" />
-        <OneLine family={family} text={`...... / ${outOf}`} x={cardX} y={37} width={card} size={16} bold color="#1e293b" rtl={false} align="center" />
+        <OneLine family={family} text={`...... / ${outOf}`} x={cardX} y={37} width={card} size={16} bold color={accent ?? "#1e293b"} rtl={false} align="center" />
         <OneLine family={family} text={f.school} x={at(4, W / 2)} y={90} width={W / 2} size={12} color={MUTED} rtl={rtl} align={start} />
         <OneLine family={family} text={`${t.year} : ${f.year}`} x={at(W / 2 - 4, W / 2)} y={90} width={W / 2} size={12} color={MUTED} rtl={rtl} align={end} />
         <OneLine family={family} text={`${t.name} : ${DOTS}${DOTS}      ${t.class} : ${DOTS}`} x={0} y={116} width={W} size={13} rtl={rtl} />
@@ -57,7 +65,7 @@ export default function HeaderView({ b, meta, mode, totalPoints }: Props) {
 
   if (b.style === "elegant") {
     // Centered title between thin double rules.
-    const accent = "#4338ca";
+    const color = accent ?? "#4338ca";
     return (
       <>
         <Line points={[0, 1, W, 1]} stroke={INK} strokeWidth={1.6} listening={false} />
@@ -65,7 +73,7 @@ export default function HeaderView({ b, meta, mode, totalPoints }: Props) {
         <OneLine family={family} text={f.school} x={at(0, W / 2)} y={13} width={W / 2} size={11} color={MUTED} rtl={rtl} align={start} />
         <OneLine family={family} text={`${t.year} : ${f.year}`} x={at(W / 2, W / 2)} y={13} width={W / 2} size={11} color={MUTED} rtl={rtl} align={end} />
         <OneLine family={family} text={title} x={0} y={32} width={W} size={23} bold rtl={rtl} align="center" />
-        <OneLine family={family} text={sub} x={0} y={64} width={W} size={12} color={accent} rtl={rtl} align="center" />
+        <OneLine family={family} text={sub} x={0} y={64} width={W} size={12} color={color} rtl={rtl} align="center" />
         <Line points={[0, 86, W, 86]} stroke={INK} strokeWidth={0.6} listening={false} />
         <Line points={[0, 90, W, 90]} stroke={INK} strokeWidth={1.6} listening={false} />
         <OneLine family={family} text={`${t.name} : ${DOTS}${DOTS}`} x={at(0, W * 0.62)} y={106} width={W * 0.62} size={13} rtl={rtl} align={start} />
@@ -78,11 +86,11 @@ export default function HeaderView({ b, meta, mode, totalPoints }: Props) {
     const cx = rtl ? 56 : W - 56; // center of the score circle
     return (
       <>
-        <Rect width={W} height={84} fill="#eef2ff" cornerRadius={10} listening={false} />
-        <OneLine family={family} text={title} x={at(18, W - 150)} y={14} width={W - 150} size={21} bold color="#312e81" rtl={rtl} />
-        <OneLine family={family} text={sub} x={at(18, W - 150)} y={46} width={W - 150} size={13} color="#4338ca" rtl={rtl} />
-        <OneLine family={family} text={[f.school, f.year].filter(Boolean).join("  —  ")} x={at(18, W - 150)} y={65} width={W - 150} size={11} color="#6366f1" rtl={rtl} />
-        <Circle x={cx} y={42} radius={32} fill="#ffffff" stroke="#6366f1" strokeWidth={1.5} listening={false} />
+        <Rect width={W} height={84} fill={accent ? tint(accent, "1a") : "#eef2ff"} cornerRadius={10} listening={false} />
+        <OneLine family={family} text={title} x={at(18, W - 150)} y={14} width={W - 150} size={21} bold color={accent ?? "#312e81"} rtl={rtl} />
+        <OneLine family={family} text={sub} x={at(18, W - 150)} y={46} width={W - 150} size={13} color={accent ?? "#4338ca"} rtl={rtl} />
+        <OneLine family={family} text={[f.school, f.year].filter(Boolean).join("  —  ")} x={at(18, W - 150)} y={65} width={W - 150} size={11} color={accent ?? "#6366f1"} rtl={rtl} />
+        <Circle x={cx} y={42} radius={32} fill="#ffffff" stroke={accent ?? "#6366f1"} strokeWidth={1.5} listening={false} />
         <OneLine family={family} text={t.score} x={cx - 30} y={18} width={60} size={10} color={MUTED} rtl={rtl} align="center" />
         {/* Room to write the grade, then "/20" */}
         <Line points={[cx - 24, 55, cx - 2, 55]} stroke="#a5b4fc" strokeWidth={1} dash={[2, 2]} listening={false} />

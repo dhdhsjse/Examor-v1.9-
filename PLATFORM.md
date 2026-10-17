@@ -33,7 +33,7 @@ Everything runs on the client. There is no server-side API, database or login. W
 ├── src-tauri/               Tauri desktop shell (Rust)
 │   ├── src/lib.rs           Builder: fs + dialog plugins, debug-only log plugin
 │   ├── src/main.rs          Binary entry point
-│   ├── tauri.conf.json      Window (1400x900, maximized), dev/build commands, icons
+│   ├── tauri.conf.json      Window (1400x900, maximized, no native frame), dev/build commands, icons
 │   ├── capabilities/        Tauri permission grants
 │   └── icons/               App icons for each platform
 ├── package.json             Scripts: dev, build, start, lint, tauri
@@ -56,7 +56,7 @@ The `Editor` component (`app/_components/Editor.tsx`) is the main screen. It has
 
 | Region | Component | Purpose |
 |---|---|---|
-| Top bar | `TopBar.tsx` | Save state, file actions, language switch, export |
+| Top bar | `bar-top.ts` | First row of the window (no native title bar): file menu (incl. app language), exam name, subject, export, window buttons |
 | Left panel | `LeftPanel.tsx`, `ToolTile.tsx`, `toolGroups.tsx` | Toolbox: add questions, text, equations, images, tables, graphs, headers |
 | Center | `workspace/` | A4 pages with zoom, page strip and answer bar |
 | Right panel | `RightPanel.tsx` | Properties (inspector) and the library |
@@ -99,16 +99,18 @@ The layout is mirrored right to left when the UI language is Arabic.
 | `blocks.ts` | Creating blocks, measuring heights, pushing overlapping blocks down, numbering questions |
 | `blockLayout.ts` | Height calculation for each block |
 | `tools.ts` | Maps toolbox actions to blocks (`assetToBlock`, `ToolAction`) |
-| `templates.ts` | Starting exam templates (see below) |
+| `templates.ts`, `templateExamples.ts` | Empty starting layouts and complete example exams (see below) |
 | `a4.ts` | A4 page constants: 794 x 1123 px, 48 px margin |
 | `storage.ts` | `localStorage` autosave and user library; file save/open (Tauri dialog or browser download) |
 | `versions.ts` | Version snapshots for the history |
 | `pdf.ts` | PDF generation with jsPDF |
 | `images.ts` | Image import and preloading |
-| `library.ts` | Built-in asset list and SVG URLs |
+| `library.ts` | Built-in library items (figures, tables, ready blocks) and SVG URLs |
+| `figures/` | Library figures drawn from settings (triangle, solids, circuit, lens, cell…), one file each; `index.ts` is the list |
+| `shuffle.ts` | Repeatable mixed-up orders (matching, ordering, word boxes) |
 | `math.ts`, `mathKeys.ts`, `activeMathfield.ts` | Equation rendering and the active math input |
 | `editRegions.ts` | Editable text regions on the page |
-| `graphMath.ts`, `diagrams.ts` | Graph calculations and diagram helpers |
+| `graphMath.ts` | Graph calculations |
 | `snapping.ts`, `measure.ts`, `pageStack.ts`, `useZoom.ts` | Snapping, text measurement, page stacking, zoom |
 | `subjects.ts` | Subjects and school cycles |
 | `i18n.ts`, `uiLang.tsx`, `uiStrings.ts` | Interface translations (English, French, Arabic) |
@@ -123,28 +125,40 @@ Blocks are split into two families.
 
 **Questions** carry points and an answer:
 
-- `mcq`: multiple choice, with `options` and a `correct` index.
-- `truefalse`: a list of statements, each with a true/false answer.
-- `blank`: fill in the blank. Answers go in `[brackets]` inside `content`.
-- `open`: open question, with `lines`, a model `answer`, and optional `parts` (1a, 1b, ...).
+- `mcq`: multiple choice, with `options` and a `correct` index. `multi` + `corrects` allow several correct answers (square boxes); `columns` puts 1–4 options per row.
+- `truefalse`: a list of statements, each with a true/false answer. `justify` adds a line under each statement to correct the false ones (`fix` is the correction printed on the key).
+- `blank`: fill in the blank. Answers go in `[brackets]` inside `content`. `wordBank` prints the answers (plus `distractors`) mixed up in a box.
+- `open`: open question, with `lines`, a model `answer`, and optional `parts` (1a, 1b, ...). `context` is a statement printed under the question; `answerStyle` is dotted, lines, grid, box or none.
+- `match`: two columns to link. `pairs` holds the matches; `order` is the printed (mixed-up) order of the right column. The key draws the links.
+- `order`: items to put back in order (`items` = right order, `order` = printed order). `style` "list" (a box for each rank) or "sentence" (mixed-up words, a line to write the sentence).
+- `classify`: words to sort into `groups` (2–4 categories), printed in a box (unless `hideBank`) above a table the key fills in.
 
 **Content** blocks have no answer:
 
 - `text`
 - `equation`
-- `image`
+- `image` (with `figure`: a library figure redrawn from its settings in Properties)
 - `table`
 - `graph`
-- `header`
+- `header` (11 styles; `accent` recolors the colored ones; `fields.authority` is the ministry line of the official style)
 
 Every block has an `id` and a `layout` (page ID, `x`, `y`, `width`, `height`, in page pixels). Questions are numbered automatically from their order.
 
 ## Templates
 
-Starting templates (`templates.ts`):
+Starting templates (`templates.ts`), shown in two tabs of the template picker:
 
-- `classic-fr`, `modern-fr`, `minimal-fr`, `qcm-fr`, `blank-fr`: French.
-- `classic-ar`, `devoir-ar`: Arabic (right to left).
+- Empty layouts: `classic-fr`, `official-fr`, `modern-fr`, `split-fr`, `minimal-fr`, `compact-fr`, `primary-fr`, `qcm-fr`, `blank-fr` (French); `classic-ar`, `official-ar`, `devoir-ar` (Arabic, right to left).
+- Ready examples (`templateExamples.ts`): complete exams with real questions and figures — geometry, primary-school French, SVT, physics (French), Arabic language and Arabic math. Long examples continue on new pages.
+
+The setup wizard (page layout) also offers every header style and several footers (`onboarding/headerFooterLibrary.ts`).
+
+## Library
+
+The library (right panel) holds figures, tables, imported images and saved blocks:
+
+- Figures (`figures/`) are drawn from settings. Added to the page they stay editable: the triangle's three angles (always 180° in total), corner names and side lengths; the solids' size and hidden edges; the circuit's lamps, switch and meters; the lens's focal length and object; and so on.
+- "My blocks": any block can be kept with the bookmark button in Properties and reused in other exams.
 
 ## Desktop shell (Tauri)
 

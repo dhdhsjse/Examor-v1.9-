@@ -1,12 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { SlidersHorizontal } from "lucide-react";
+import { useMemo, useState } from "react";
+import { BLOCK_TYPE_NAMES } from "@/app/_lib/blocks";
+import { renderFigure } from "@/app/_lib/figures";
 import { BUILTIN_ASSETS, matchesFilter, svgUrl, type Asset, type AssetKind, type LibraryFilter } from "@/app/_lib/library";
+import type { Lang } from "@/app/_lib/types";
 import { ALL_CYCLES, CYCLES, SUBJECTS, type Cycle, type SchoolSubject, type Subject } from "@/app/_lib/subjects";
 import { DRAG_MIME } from "@/app/_lib/tools";
 import { useT } from "@/app/_lib/uiLang";
 
 interface Props {
+  lang: Lang; // exam language: figures are drawn with its words
   subject: Subject; // top-bar subject = default subject filter
   initialKind: AssetKind | "all";
   userAssets: Asset[];
@@ -23,11 +28,12 @@ const KINDS: { value: AssetKind | "all"; label: string }[] = [
   { value: "diagram", label: "Diagrams" },
   { value: "table", label: "Tables" },
   { value: "image", label: "My images" },
+  { value: "block", label: "My blocks" },
 ];
 
 // Smart library: diagrams, tables and imported images, filtered by cycle / year / subject.
 // Click an item to add it, or drag it onto the page.
-export default function LibraryPanel({ subject, initialKind, userAssets, onUse, onImport, onDeleteUserAsset }: Props) {
+export default function LibraryPanel({ lang, subject, initialKind, userAssets, onUse, onImport, onDeleteUserAsset }: Props) {
   const t = useT();
   const [filter, setFilter] = useState<LibraryFilter>({
     query: "",
@@ -117,12 +123,13 @@ export default function LibraryPanel({ subject, initialKind, userAssets, onUse, 
 
       <div className="grid flex-1 auto-rows-min grid-cols-2 gap-2 overflow-y-auto p-3">
         {items.map((a) => (
-          <AssetCard key={a.id} asset={a} onUse={onUse} onDelete={a.id.startsWith("user-") ? onDeleteUserAsset : undefined} />
+          <AssetCard key={a.id} asset={a} lang={lang} onUse={onUse} onDelete={a.id.startsWith("user-") ? onDeleteUserAsset : undefined} />
         ))}
         {items.length === 0 && (
           <p className="col-span-2 pt-8 text-center text-xs text-faint">
             {t("Nothing matches these filters.")}
             {filter.kind === "image" && ` ${t("Click “+ Import” to add your own images.")}`}
+            {filter.kind === "block" && ` ${t("Select a block on the page and click its bookmark button to keep it here.")}`}
           </p>
         )}
       </div>
@@ -130,7 +137,7 @@ export default function LibraryPanel({ subject, initialKind, userAssets, onUse, 
   );
 }
 
-function AssetCard({ asset, onUse, onDelete }: { asset: Asset; onUse: (a: Asset) => void; onDelete?: (id: string) => void }) {
+function AssetCard({ asset, lang, onUse, onDelete }: { asset: Asset; lang: Lang; onUse: (a: Asset) => void; onDelete?: (id: string) => void }) {
   const t = useT();
   // Built-in items have English names (translated); imported images keep their file name.
   const name = asset.id.startsWith("user-") ? asset.name : t(asset.name);
@@ -146,8 +153,14 @@ function AssetCard({ asset, onUse, onDelete }: { asset: Asset; onUse: (a: Asset)
         title={t("{label} — click or drag onto the page", { label: name })}
         className="flex w-full flex-col overflow-hidden rounded-lg border border-line bg-white text-start transition hover:-translate-y-0.5 hover:border-amber-300 hover:shadow-md"
       >
-        <div className="grid h-20 w-full place-items-center bg-subtle p-2">
-          <AssetPreview asset={asset} />
+        <div className="relative flex h-20 w-full items-center justify-center overflow-hidden bg-subtle p-2">
+          <AssetPreview asset={asset} lang={lang} />
+          {/* Figures and ready blocks can be changed after they are added (Properties). */}
+          {(asset.figure || asset.block) && (
+            <span title={t("Customizable: change it in Properties after adding it")} className="absolute bottom-1 end-1 grid size-4 place-items-center rounded bg-white/90 text-indigo-600 ring-1 ring-indigo-100">
+              <SlidersHorizontal size={10} aria-hidden />
+            </span>
+          )}
         </div>
         <span className="truncate px-2 py-1.5 text-[11px] font-medium text-ink" dir="auto">
           {name}
@@ -166,7 +179,23 @@ function AssetCard({ asset, onUse, onDelete }: { asset: Asset; onUse: (a: Asset)
   );
 }
 
-function AssetPreview({ asset }: { asset: Asset }) {
+function AssetPreview({ asset, lang }: { asset: Asset; lang: Lang }) {
+  const t = useT();
+  // Figures are drawn from their default settings (only once per card).
+  const figureSvg = useMemo(() => (asset.figure ? renderFigure(asset.figure.id, asset.figure.params, lang)?.svg : undefined), [asset.figure, lang]);
+  // A saved picture or figure shows itself.
+  const savedPicture = asset.block?.preset && "src" in asset.block.preset ? asset.block.preset.src : undefined;
+  if (asset.block && !asset.svg && !savedPicture) {
+    // A saved block: its kind, and the start of its text.
+    return (
+      <span className="flex w-full flex-col items-start gap-1 self-stretch rounded-md bg-white p-1.5 text-start ring-1 ring-line">
+        <span className="rounded bg-indigo-50 px-1 py-0.5 text-[8px] font-bold text-indigo-700 uppercase">{t(BLOCK_TYPE_NAMES[asset.block.type])}</span>
+        <span className="line-clamp-2 text-[9px] leading-tight text-muted" dir="auto">
+          {asset.name}
+        </span>
+      </span>
+    );
+  }
   if (asset.kind === "table") {
     const rows = (asset.cells ?? []).slice(0, 4);
     return (
@@ -181,7 +210,8 @@ function AssetPreview({ asset }: { asset: Asset }) {
       </div>
     );
   }
-  const src = asset.svg ? svgUrl(asset.svg) : asset.src;
+  const svg = figureSvg ?? asset.svg;
+  const src = svg ? svgUrl(svg) : (savedPicture ?? asset.src);
   // eslint-disable-next-line @next/next/no-img-element -- local data URL preview
-  return <img src={src} alt="" className="max-h-full max-w-full object-contain" draggable={false} />;
+  return <img src={src} alt="" className="max-h-16 max-w-full object-contain" draggable={false} />;
 }

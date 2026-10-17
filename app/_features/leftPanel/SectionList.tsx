@@ -16,9 +16,9 @@ export default function SectionList({ sections, ctx, onOpen }: { sections: Secti
             <button
               type="button"
               onClick={() => onOpen(s.id)}
-              className="flex h-14 w-full items-center gap-3 border-b border-line px-4 text-start text-sm font-medium text-ink transition-colors duration-100 hover:bg-subtle"
+              className="flex h-11 w-full items-center gap-3 border-b border-line px-4 text-start text-[13px] font-medium text-ink transition-colors duration-100 hover:bg-subtle"
             >
-              <span className="grid size-6 shrink-0 place-items-center text-indigo-500">{s.icon}</span>
+              <span className="grid size-5 shrink-0 place-items-center text-indigo-500">{s.icon}</span>
               <span className="min-w-0 flex-1 truncate">{resolveLabel(s.label, ctx.t)}</span>
               <Chevron size={16} strokeWidth={1.7} className="shrink-0 text-faint" />
             </button>

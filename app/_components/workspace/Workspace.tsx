@@ -2,9 +2,9 @@
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type DragEvent } from "react";
 import { PAGE_HEIGHT, PAGE_WIDTH } from "@/app/_lib/a4";
-import { fullMark, isQuestion, totalPoints } from "@/app/_lib/blocks";
+import { isQuestion } from "@/app/_lib/blocks";
 import type { EditField } from "@/app/_lib/editRegions";
-import { LABEL_SPACE, pageAt, pageTop, stackHeight } from "@/app/_lib/pageStack";
+import { CANVAS_BOTTOM_SPACE, CANVAS_TOP_GAP, LABEL_HEIGHT, canvasTopPadding, pageAt, pageTop, stackHeight } from "@/app/_lib/pageStack";
 import { DRAG_MIME, type ToolAction } from "@/app/_lib/tools";
 import type { BlockLayout, ExamDoc, ExamMeta, ViewMode } from "@/app/_lib/types";
 import { useT } from "@/app/_lib/uiLang";
@@ -15,7 +15,6 @@ import AnswerBar from "./AnswerBar";
 import CorrectionBar from "./CorrectionBar";
 import InlineEditor from "./InlineEditor";
 import PageStrip from "./PageStrip";
-import PointsMeter from "./PointsMeter";
 import ToolRail, { type CanvasTool } from "./ToolRail";
 import ZoomBar from "./ZoomBar";
 
@@ -52,7 +51,6 @@ interface Props {
   onActivePageChange: (index: number) => void;
   onDropItem: (action: ToolAction, at: DropPoint) => void;
   onMeta: (patch: Partial<ExamMeta>, key?: string) => void;
-  onFullMark: (value: number) => void;
   onModeChange: (mode: ViewMode) => void;
 }
 
@@ -121,13 +119,13 @@ export default function Workspace(props: Props) {
     el.scrollTop = a.y * zoom + stack.offsetTop - a.sy;
   }, [zoom]);
 
-  // Smoothly scroll so page `i` (with its label) is at the top.
+  // Smoothly scroll so page `i` (with its whole label) is at the top.
   const scrollToPage = useCallback(
     (i: number) => {
       const el = scrollRef.current;
       const stack = stackRef.current;
       if (!el || !stack) return;
-      el.scrollTo({ top: stack.offsetTop + (pageTop(i) - LABEL_SPACE) * zoom - 8, behavior: "smooth" });
+      el.scrollTo({ top: stack.offsetTop + pageTop(i) * zoom - LABEL_HEIGHT - CANVAS_TOP_GAP, behavior: "smooth" });
     },
     [zoom],
   );
@@ -267,7 +265,12 @@ export default function Workspace(props: Props) {
           // Clicking the grey area clears the selection.
           onMouseDown={(e) => e.target === e.currentTarget && props.onSelect(null)}
         >
-          <div className="mx-auto flex w-fit flex-col items-center gap-4 px-10 pt-2 pb-20">
+          {/* Top: room for the first "Page 1 of 3" label. Bottom: the end of the last page can always
+              be scrolled above the floating tools / zoom bar. */}
+          <div
+            className="mx-auto flex w-fit flex-col items-center gap-4 px-10"
+            style={{ paddingTop: canvasTopPadding(zoom, mode === "key"), paddingBottom: CANVAS_BOTTOM_SPACE }}
+          >
             {/* Takes the zoomed size in the layout... */}
             <div
               ref={stackRef}
@@ -395,17 +398,12 @@ export default function Workspace(props: Props) {
           />
         )}
 
-        {/* Points so far / full mark, and (correction sheet) the look of the answers */}
-        <div className="pointer-events-none absolute end-4 top-3 z-30 flex items-start gap-2">
-          {mode === "key" && <CorrectionBar meta={doc.meta} onMeta={props.onMeta} />}
-          <PointsMeter
-            total={totalPoints(doc.blocks)}
-            full={fullMark(doc)}
-            hidden={!!doc.meta.hidePoints}
-            onToggleHidden={() => props.onMeta({ hidePoints: !doc.meta.hidePoints })}
-            onFullMark={props.onFullMark}
-          />
-        </div>
+        {/* Correction sheet: the look of the answers. (Points so far / full mark: status bar of the toolbox.) */}
+        {mode === "key" && (
+          <div className="pointer-events-none absolute end-4 top-3 z-30 flex items-start gap-2">
+            <CorrectionBar meta={doc.meta} onMeta={props.onMeta} />
+          </div>
+        )}
 
         {/* Select / Text tools + zoom (bottom-right, away from the "Page 1 of 2" labels) */}
         <div className="pointer-events-none absolute right-4 bottom-4 flex items-center gap-2" dir="ltr">
@@ -456,7 +454,7 @@ function PageFrame({ index, total, zoom, active, keyMode, onClick }: {
           padding: `${2 / zoom}px ${6 / zoom}px`,
         }}
       >
-        {t("Page")} {index + 1} <span className="text-faint">{t("of {n}", { n: total })}</span>
+        {t("Page")} {index + 1} <span className="text-muted">{t("of {n}", { n: total })}</span>
         {keyMode && <span className="text-emerald-600"> · {t("Correction")}</span>}
       </button>
     </>

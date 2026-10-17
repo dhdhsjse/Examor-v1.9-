@@ -1,8 +1,9 @@
 "use client";
 
-import { Circle, Group, Line, Rect } from "react-konva";
+import { Circle, Group, Line, Rect, Shape } from "react-konva";
 import {
   CHOICE_W,
+  GRID_STEP,
   PAD,
   answerTextTop,
   dottedLineY,
@@ -13,12 +14,14 @@ import {
   type AnswerArea,
   type Spec,
   type TextBox,
+  type WordBank,
 } from "@/app/_lib/blockLayout";
+import { mcqAnswers } from "@/app/_lib/blocks";
 import { words } from "@/app/_lib/i18n";
-import type { BlankBlock, ExamMeta, McqBlock, OpenBlock, TrueFalseBlock, ViewMode } from "@/app/_lib/types";
+import type { AnswerStyle, BlankBlock, ExamMeta, McqBlock, OpenBlock, TrueFalseBlock, ViewMode } from "@/app/_lib/types";
 import { OneLine, RichText } from "./shared";
 
-interface ViewProps<B> {
+export interface ViewProps<B> {
   b: B;
   n: number;
   meta: ExamMeta;
@@ -26,32 +29,30 @@ interface ViewProps<B> {
 }
 
 // Bold "3. Question text (2 pts)" line(s) at the top of every question.
-function Title({ box, width, rtl }: { box: TextBox; width: number; rtl: boolean }) {
+export function Title({ box, width, rtl }: { box: TextBox; width: number; rtl: boolean }) {
   return <RichText lines={box.lines} x={PAD} y={box.y} width={width - PAD * 2} rtl={rtl} />;
 }
 
 export function McqView({ b, n, meta, mode }: ViewProps<McqBlock>) {
   const L = layoutMcq(b, n, meta);
   const { rtl, body, keyColor } = L.F;
-  const w = b.layout.width;
+  const answers = mcqAnswers(b);
 
   return (
     <>
-      <Title box={L.title} width={w} rtl={rtl} />
+      <Title box={L.title} width={b.layout.width} rtl={rtl} />
       {L.options.map((o, i) => {
-        const isKey = mode === "key" && i === b.correct;
+        const isKey = mode === "key" && answers.includes(i);
+        const cy = o.y + body.line / 2;
         return (
           <Group key={i}>
-            <Circle
-              x={rtl ? w - PAD - 9 : PAD + 9}
-              y={o.y + body.line / 2}
-              radius={7}
-              stroke={isKey ? keyColor : "#374151"}
-              strokeWidth={1.2}
-              fill={isKey ? keyColor : undefined}
-              listening={false}
-            />
-            <RichText lines={o.lines} x={rtl ? PAD : PAD + 30} y={o.y} width={w - PAD * 2 - 30} rtl={rtl} recolor={isKey ? [body.font.color, keyColor] : undefined} />
+            {/* Several answers: square boxes to tick. One answer: circles. */}
+            {b.multi ? (
+              <CheckBox x={o.markX - 6.5} y={cy - 6.5} checked={isKey} color={keyColor} />
+            ) : (
+              <Circle x={o.markX} y={cy} radius={7} stroke={isKey ? keyColor : "#374151"} strokeWidth={1.2} fill={isKey ? keyColor : undefined} listening={false} />
+            )}
+            <RichText lines={o.lines} x={o.x} y={o.y} width={o.width} rtl={rtl} recolor={isKey ? [body.font.color, keyColor] : undefined} />
           </Group>
         );
       })}
@@ -60,7 +61,7 @@ export function McqView({ b, n, meta, mode }: ViewProps<McqBlock>) {
 }
 
 // A small checkbox; ticked in the answer color on the correction sheet.
-function CheckBox({ x, y, checked, color }: { x: number; y: number; checked: boolean; color: string }) {
+export function CheckBox({ x, y, checked, color }: { x: number; y: number; checked: boolean; color: string }) {
   return (
     <Group x={x} y={y} listening={false}>
       <Rect width={13} height={13} stroke={checked ? color : "#374151"} strokeWidth={1.2} cornerRadius={2} />
@@ -71,7 +72,7 @@ function CheckBox({ x, y, checked, color }: { x: number; y: number; checked: boo
 
 export function TrueFalseView({ b, n, meta, mode }: ViewProps<TrueFalseBlock>) {
   const L = layoutTrueFalse(b, n, meta);
-  const { rtl, body, keyColor } = L.F;
+  const { rtl, body, keyColor, answer: answerSpec } = L.F;
   const w = b.layout.width;
   const t = words(meta.lang);
   const colX = rtl ? PAD : w - PAD - CHOICE_W; // left edge of the choices column
@@ -96,6 +97,7 @@ export function TrueFalseView({ b, n, meta, mode }: ViewProps<TrueFalseBlock>) {
                 </Group>
               );
             })}
+            {row.fix && <Answer area={row.fix} keyMode={mode === "key"} rtl={rtl} spec={answerSpec} />}
           </Group>
         );
       })}
@@ -108,12 +110,24 @@ function Label({ spec, text, x, y, width, bold, color, rtl }: { spec: Spec; text
   return <OneLine text={text} x={x} y={y + (spec.line - spec.font.size) / 2} width={width} size={spec.font.size} family={spec.font.family} bold={bold} color={color} rtl={rtl} />;
 }
 
+// The framed box of words (fill in the blank, classification).
+export function WordBankView({ bank, rtl }: { bank: WordBank; rtl: boolean }) {
+  const inset = 9;
+  return (
+    <>
+      <Rect x={bank.x} y={bank.y} width={bank.width} height={bank.height} stroke="#6b7280" strokeWidth={1} dash={[5, 3]} cornerRadius={6} listening={false} />
+      <RichText lines={bank.text.lines} x={bank.x + inset} y={bank.text.y} width={bank.width - inset * 2} rtl={rtl} align="center" />
+    </>
+  );
+}
+
 export function BlankView({ b, n, meta, mode }: ViewProps<BlankBlock>) {
   const L = layoutBlank(b, n, meta);
   const body = mode === "key" ? L.key : L.exam;
   return (
     <>
       <Title box={L.title} width={b.layout.width} rtl={L.F.rtl} />
+      {L.bank && <WordBankView bank={L.bank} rtl={L.F.rtl} />}
       <RichText lines={body.lines} x={PAD} y={body.y} width={b.layout.width - PAD * 2} rtl={L.F.rtl} />
     </>
   );
@@ -124,33 +138,66 @@ export function OpenView({ b, n, meta, mode }: ViewProps<OpenBlock>) {
   const { rtl, answer } = L.F;
   const w = b.layout.width;
   const keyMode = mode === "key";
+  const style = b.answerStyle ?? "dotted";
 
   return (
     <>
       <Title box={L.title} width={w} rtl={rtl} />
-      <Answer area={L.main} keyMode={keyMode} rtl={rtl} spec={answer} />
+      {L.context && <RichText lines={L.context.lines} x={PAD} y={L.context.y} width={w - PAD * 2} rtl={rtl} />}
+      <Answer area={L.main} keyMode={keyMode} rtl={rtl} spec={answer} style={style} />
       {L.parts.map((p, i) => (
         <Group key={i}>
           <RichText lines={p.text.lines} x={p.area.x} y={p.text.y} width={p.area.width} rtl={rtl} />
-          <Answer area={p.area} keyMode={keyMode} rtl={rtl} spec={answer} />
+          <Answer area={p.area} keyMode={keyMode} rtl={rtl} spec={answer} style={style} />
         </Group>
       ))}
     </>
   );
 }
 
-// Dotted lines for the student; on the correction sheet the model answer is written ON them.
-function Answer({ area, keyMode, rtl, spec }: { area: AnswerArea; keyMode: boolean; rtl: boolean; spec: Spec }) {
+// Where the student writes: dotted or plain lines, squared paper, a frame, or empty space.
+// On the correction sheet the model answer is written on top.
+export function Answer({ area, keyMode, rtl, spec, style = "dotted" }: { area: AnswerArea; keyMode: boolean; rtl: boolean; spec: Spec; style?: AnswerStyle }) {
   const hasText = area.text.lines.some((l) => l.pieces.some((p) => p.text.trim()));
+  const { x, y, width, height } = area;
   return (
     <>
-      {Array.from({ length: area.count }, (_, i) => {
-        const y = dottedLineY(area, i);
-        return <Line key={i} points={[area.x, y, area.x + area.width, y]} stroke="#9ca3af" strokeWidth={1} dash={[2, 4]} listening={false} />;
-      })}
-      {keyMode && hasText && (
-        <RichText lines={area.text.lines} x={area.x} y={answerTextTop(area, spec.font.size)} width={area.width} rtl={rtl} step={area.line} />
+      {(style === "dotted" || style === "lines") &&
+        Array.from({ length: area.count }, (_, i) => {
+          const ly = dottedLineY(area, i);
+          return (
+            <Line
+              key={i}
+              points={[x, ly, x + width, ly]}
+              stroke={style === "dotted" ? "#9ca3af" : "#cbd5e1"}
+              strokeWidth={1}
+              dash={style === "dotted" ? [2, 4] : undefined}
+              listening={false}
+            />
+          );
+        })}
+      {style === "grid" && height > 0 && (
+        <Shape
+          listening={false}
+          stroke="#cbd5e1"
+          strokeWidth={0.7}
+          sceneFunc={(ctx, shape) => {
+            ctx.beginPath();
+            const bottom = y + height - 2;
+            for (let gx = x; gx <= x + width + 0.5; gx += GRID_STEP) {
+              ctx.moveTo(gx, y + 2);
+              ctx.lineTo(gx, bottom);
+            }
+            for (let gy = y + 2; gy <= bottom + 0.5; gy += GRID_STEP) {
+              ctx.moveTo(x, gy);
+              ctx.lineTo(x + Math.floor(width / GRID_STEP) * GRID_STEP, gy);
+            }
+            ctx.strokeShape(shape);
+          }}
+        />
       )}
+      {style === "box" && height > 0 && <Rect x={x} y={y + 2} width={width} height={height - 4} stroke="#9ca3af" strokeWidth={1} cornerRadius={4} listening={false} />}
+      {keyMode && hasText && <RichText lines={area.text.lines} x={x} y={answerTextTop(area, spec.font.size)} width={width} rtl={rtl} step={area.line} />}
     </>
   );
 }

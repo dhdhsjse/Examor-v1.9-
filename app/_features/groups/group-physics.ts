@@ -9,6 +9,6 @@ export const physicsGroup: Group = {
   order: 20,
   when: (ctx) => ctx.shell.subject === "Physics",
   label: (t) => t("{subject} tools", { subject: t("Physics") }),
-  className: "grid grid-cols-2 gap-2",
+  className: "grid grid-cols-2 gap-1.5",
   features: [toolPhysicsCircuit, toolPhysicsForces, toolPhysicsUnits, toolPhysicsOptics],
 };

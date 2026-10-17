@@ -1,17 +1,114 @@
 "use client";
 
-import type { ReactNode, Ref } from "react";
+import { Check, ChevronDown } from "lucide-react";
+import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode, type Ref } from "react";
 import RichEditable, { type RichHandle } from "../rich/RichEditable";
 
 // Small form pieces used by every block editor. `dir="auto"` lets Arabic flow right-to-left.
 
-export function Field({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
+// `group`: for a row of buttons (a <label> would press its first button when its text is clicked).
+export function Field({ label, hint, children, group }: { label: string; hint?: string; children: ReactNode; group?: boolean }) {
+  const Tag = group ? "div" : "label";
   return (
-    <label className="flex flex-col gap-1">
+    <Tag className="flex flex-col gap-1" role={group ? "group" : undefined} aria-label={group ? label : undefined}>
       <span className="text-[11px] font-semibold text-muted">{label}</span>
       {children}
-      {hint && <span className="text-[10px] leading-snug text-faint">{hint}</span>}
+      {hint && <span className="text-[11px] leading-snug text-faint">{hint}</span>}
+    </Tag>
+  );
+}
+
+// A checkbox with its label (and a small explanation under it).
+export function Toggle({ checked, onChange, label, hint }: { checked: boolean; onChange: (v: boolean) => void; label: string; hint?: string }) {
+  return (
+    <label className="flex items-start gap-2 text-xs text-ink">
+      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className="mt-0.5 accent-indigo-600" />
+      <span className="flex flex-col gap-0.5">
+        {label}
+        {hint && <span className="text-[11px] leading-snug text-faint">{hint}</span>}
+      </span>
     </label>
+  );
+}
+
+// A compact dropdown: a button showing the current choice ("Français ▾") and a small list to pick
+// another. Arrow keys move in the list, Escape closes it.
+export function MenuSelect<T extends string>({ value, options, onChange, label }: {
+  value: T;
+  options: { value: T; label: string }[];
+  onChange: (v: T) => void;
+  label: string; // what is being chosen, for screen readers
+}) {
+  const [open, setOpen] = useState(false);
+  const box = useRef<HTMLDivElement>(null);
+  const button = useRef<HTMLButtonElement>(null);
+  const current = options.find((o) => o.value === value);
+
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: PointerEvent) => !box.current?.contains(e.target as Node) && setOpen(false);
+    document.addEventListener("pointerdown", close);
+    // Start on the current choice.
+    box.current?.querySelector<HTMLButtonElement>("[aria-selected=true]")?.focus();
+    return () => document.removeEventListener("pointerdown", close);
+  }, [open]);
+
+  const pick = (v: T) => {
+    setOpen(false);
+    button.current?.focus();
+    if (v !== value) onChange(v);
+  };
+  const onListKey = (e: KeyboardEvent) => {
+    const rows = [...(box.current?.querySelectorAll<HTMLButtonElement>("[role=option]") ?? [])];
+    const i = rows.indexOf(document.activeElement as HTMLButtonElement);
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      rows[(i + (e.key === "ArrowDown" ? 1 : -1) + rows.length) % rows.length]?.focus();
+    } else if (e.key === "Escape") {
+      e.stopPropagation();
+      setOpen(false);
+      button.current?.focus();
+    } else if (e.key === "Tab") setOpen(false);
+  };
+
+  return (
+    <div ref={box} className="relative">
+      <button
+        ref={button}
+        type="button"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-label={`${label}: ${current?.label ?? ""}`}
+        onClick={() => setOpen(!open)}
+        onKeyDown={(e) => {
+          if (!open && (e.key === "ArrowDown" || e.key === "ArrowUp")) {
+            e.preventDefault();
+            setOpen(true);
+          }
+        }}
+        className={`flex h-7 items-center gap-1 rounded-md border bg-white ps-2.5 pe-1.5 text-xs font-medium text-ink transition-colors hover:border-indigo-300 focus-visible:border-indigo-400 focus-visible:ring-2 focus-visible:ring-indigo-100 focus-visible:outline-none ${open ? "border-indigo-400" : "border-line"}`}
+      >
+        <span dir="auto">{current?.label}</span>
+        <ChevronDown size={14} strokeWidth={2} className="text-muted" aria-hidden />
+      </button>
+      {open && (
+        <div role="listbox" aria-label={label} onKeyDown={onListKey} className="absolute end-0 top-full z-30 mt-1 min-w-36 rounded-lg border border-line bg-white p-1 shadow-lg">
+          {options.map((o) => (
+            <button
+              key={o.value}
+              type="button"
+              role="option"
+              aria-selected={o.value === value}
+              onClick={() => pick(o.value)}
+              className={`flex w-full items-center justify-between gap-3 rounded-md px-2.5 py-1.5 text-start text-[13px] outline-none hover:bg-subtle focus-visible:bg-subtle ${o.value === value ? "font-semibold text-indigo-600" : "text-ink"}`}
+            >
+              <span dir="auto">{o.label}</span>
+              {o.value === value && <Check size={14} strokeWidth={2.2} aria-hidden />}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -142,7 +239,7 @@ export function RichInput({ value, onChange, multiline, rows = 1, placeholder, r
       onChange={onChange}
       multiline={multiline}
       placeholder={placeholder}
-      className={`${inputCls} relative leading-snug focus:border-indigo-400`}
+      className={`${inputCls} rich-input relative leading-snug focus:border-indigo-400`}
       style={{ minHeight: rows > 1 ? `${rows * 1.4 + 0.8}em` : undefined }}
     />
   );

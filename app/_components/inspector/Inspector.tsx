@@ -2,28 +2,18 @@
 
 import type { ReactNode } from "react";
 import { ANSWER_COLOR, DEFAULT_SIZE } from "@/app/_lib/blockLayout";
+import { BLOCK_TYPE_NAMES } from "@/app/_lib/blocks";
 import { DEFAULT_FONT } from "@/app/_lib/fonts";
+import { EXAM_LANGS } from "@/app/_lib/i18n";
 import type { Block, ExamMeta } from "@/app/_lib/types";
 import { useT } from "@/app/_lib/uiLang";
 import type { BlockPatch } from "@/app/_lib/useExam";
-import { CopyIcon, TrashIcon } from "../icons";
+import { BookmarkIcon, CopyIcon, TrashIcon } from "../icons";
+import InfoTip from "../InfoTip";
 import { ContentEditorSwitch } from "./ContentEditorSwitch";
 import { ColorGrid, FontSelect } from "../rich/FormatBar";
 import { BlockFontControls, hasFontControls } from "./FontControls";
-import { Field, Segmented, SmallButton, Stepper, TextInput } from "./fields";
-
-const TYPE_NAMES: Record<Block["type"], string> = {
-  mcq: "Multiple choice",
-  truefalse: "True / False",
-  blank: "Fill in the blank",
-  open: "Open question",
-  text: "Text",
-  table: "Table",
-  graph: "Function graph",
-  equation: "Equation",
-  image: "Image",
-  header: "Exam header",
-};
+import { MenuSelect, SmallButton, Stepper } from "./fields";
 
 interface Props {
   block: Block | undefined;
@@ -35,6 +25,7 @@ interface Props {
   onLatex: (block: Block, latex: string) => void;
   onDelete: (id: string) => void;
   onDuplicate: (id: string) => void;
+  onSaveToLibrary: (block: Block) => void;
   onReplaceImage: (id: string) => void;
   onMeta: (patch: Partial<ExamMeta>, key?: string) => void;
   onChangeTemplate: () => void;
@@ -52,8 +43,11 @@ export default function Inspector(props: Props) {
   return (
     <div className="flex flex-col gap-3.5 p-3.5">
       <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-ink">{t(TYPE_NAMES[block.type])}</h2>
+        <h2 className="text-sm font-semibold text-ink">{t(BLOCK_TYPE_NAMES[block.type])}</h2>
         <div className="flex gap-1">
+          <SmallButton title={t("Save to my library (reuse it in other exams)")} onClick={() => props.onSaveToLibrary(block)}>
+            <BookmarkIcon />
+          </SmallButton>
           <SmallButton title={`${t("Duplicate")} (Ctrl+D)`} onClick={() => props.onDuplicate(block.id)}>
             <CopyIcon />
           </SmallButton>
@@ -63,6 +57,7 @@ export default function Inspector(props: Props) {
         </div>
       </div>
       <ContentEditorSwitch
+        key={block.id}
         block={block}
         number={props.number}
         lang={props.meta.lang}
@@ -78,27 +73,25 @@ export default function Inspector(props: Props) {
   );
 }
 
+// Nothing selected: settings of the whole exam. (The exam's name is edited in the top bar.)
 function ExamSettings({ meta, stats, hasHeader, onMeta, onChangeTemplate }: Props) {
   const t = useT();
   return (
     <div className="flex flex-col gap-3.5 p-3.5">
-      <div>
+      <div className="flex items-center gap-1.5">
         <h2 className="text-sm font-semibold text-ink">{t("Exam settings")}</h2>
-        <p className="mt-0.5 text-[11px] text-faint">{t("Select a block on the page to edit it.")}</p>
+        <InfoTip label={t("More info")} text={t("Select a block on the page to edit it.")} />
       </div>
-      <Field label={t("File name")}>
-        <TextInput value={meta.title} onChange={(title) => onMeta({ title }, "title")} />
-      </Field>
-      <Field label={t("Exam language")} hint={t("Arabic flips the page right-to-left and translates the printed labels. The app's own language is in the top bar.")}>
-        <Segmented
-          value={meta.lang}
-          onChange={(lang) => onMeta({ lang })}
-          options={[
-            { value: "fr", label: "Français" },
-            { value: "ar", label: "العربية" },
-          ]}
-        />
-      </Field>
+      <div className="flex items-center justify-between gap-2">
+        <span className="flex items-center gap-1 text-[11px] font-semibold text-muted">
+          {t("Exam language")}
+          <InfoTip
+            label={t("More info")}
+            text={t("Arabic flips the page right-to-left and translates the printed labels. The app's own language is in the File menu.")}
+          />
+        </span>
+        <MenuSelect label={t("Exam language")} value={meta.lang} options={EXAM_LANGS} onChange={(lang) => onMeta({ lang })} />
+      </div>
       <SmallButton onClick={onChangeTemplate}>{t("Start from a template…")}</SmallButton>
 
       <Section title={t("Paper font")}>
@@ -134,7 +127,7 @@ function ExamSettings({ meta, stats, hasHeader, onMeta, onChangeTemplate }: Prop
         <Row label={t("Size of the answers")}>
           <Stepper value={meta.answerSize ?? meta.fontSize ?? DEFAULT_SIZE} min={9} max={28} onChange={(answerSize) => onMeta({ answerSize }, "answerSize")} />
         </Row>
-        <p className="text-[10px] text-faint">
+        <p className="text-[11px] text-faint">
           {t("Preview:")} <span style={{ color: meta.answerColor ?? ANSWER_COLOR, fontWeight: 600 }}>{t("model answer")}</span>
         </p>
       </Section>
@@ -186,4 +179,4 @@ function Row({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-const Hint = ({ children }: { children: ReactNode }) => <p className="text-[10px] leading-snug text-faint">{children}</p>;
+const Hint = ({ children }: { children: ReactNode }) => <p className="text-[11px] leading-snug text-faint">{children}</p>;

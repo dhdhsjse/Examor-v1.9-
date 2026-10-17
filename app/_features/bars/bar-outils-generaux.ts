@@ -12,8 +12,8 @@ export const outilsGenerauxBar: Bar = {
   id: "bar.outils-generaux",
   position: "left",
   order: 10,
-  collapsible: true,
-  className: "flex w-[248px] shrink-0 flex-col gap-4 overflow-y-auto border-e border-line bg-surface pb-4",
+  collapse: { width: 248, minWidth: 200, maxWidth: 440, label: "Toolbox", hide: "Hide toolbox", show: "Show toolbox", hotkey: "Ctrl+[" },
+  className: "flex flex-col gap-3 overflow-y-auto",
   groups: [
     toolboxSearchGroup,
     mathGroup,

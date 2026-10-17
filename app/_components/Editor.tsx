@@ -4,8 +4,20 @@ import type Konva from "konva";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CONTENT_WIDTH, PAGE_HEIGHT, PAGE_MARGIN, PAGE_WIDTH } from "@/app/_lib/a4";
 import { focusMathfield } from "@/app/_lib/activeMathfield";
-import { blockHeights, fullMark, isQuestion, questionNumbers } from "@/app/_lib/blocks";
+import {
+  BLOCK_TYPE_NAMES,
+  MAX_OPTIONS,
+  addOrderItem,
+  addPair,
+  blockHeights,
+  blockLabel,
+  insertOption,
+  isQuestion,
+  questionNumbers,
+  type BlockPreset,
+} from "@/app/_lib/blocks";
 import { editRegions, fieldKey, fieldPatch, fieldValue, type EditField } from "@/app/_lib/editRegions";
+import { figureDef } from "@/app/_lib/figures";
 import { newId } from "@/app/_lib/id";
 import { preloadImages, readImageFile } from "@/app/_lib/images";
 import { plainText } from "@/app/_lib/richText";
@@ -28,6 +40,7 @@ import Workspace, { type Editing } from "./workspace/Workspace";
 const fileName = (title: string) => title.replace(/[\\/:*?"<>|]+/g, "").trim() || "exam";
 const KEYBOARD_KEY = "examBuilder.mathKeyboard";
 const HIDDEN_BARS_KEY = "examBuilder.hiddenBars";
+const BAR_WIDTHS_KEY = "examBuilder.barWidths";
 
 // Bars the user hid last time (remembered in this browser).
 function loadHiddenBars(): string[] {
@@ -38,10 +51,27 @@ function loadHiddenBars(): string[] {
     return [];
   }
 }
+// Widths the user dragged the side bars to (remembered in this browser).
+function loadBarWidths(): Record<string, number> {
+  try {
+    const saved: unknown = JSON.parse(localStorage.getItem(BAR_WIDTHS_KEY) ?? "{}");
+    if (!saved || typeof saved !== "object") return {};
+    return Object.fromEntries(Object.entries(saved).filter((e): e is [string, number] => typeof e[1] === "number" && e[1] > 0));
+  } catch {
+    return {};
+  }
+}
+// "Ctrl+[" → the "[" key, or the key at its place on a US keyboard.
+const KEY_CODES: Record<string, string> = { "[": "BracketLeft", "]": "BracketRight" };
+function hotkeyHit(e: KeyboardEvent, hotkey: string) {
+  const key = hotkey.split("+").pop() ?? "";
+  return e.key === key || e.code === KEY_CODES[key];
+}
+
 const SNAPSHOT_EVERY = 3 * 60 * 1000; // automatic copy in the version history
 
 // New blocks of these types start with their text selected on the page, ready to type over.
-const TYPE_ON_ADD: BlockType[] = ["mcq", "truefalse", "blank", "open", "text"];
+const TYPE_ON_ADD: BlockType[] = ["mcq", "truefalse", "blank", "open", "match", "order", "classify", "text"];
 
 // The shell: owns the state and the actions. The screen itself is drawn from appLayout (app/_features/app.ts).
 export default function Editor() {
@@ -81,11 +111,24 @@ export default function Editor() {
   });
 
   const [hiddenBars, setHiddenBars] = useState<string[]>(loadHiddenBars);
-  const toggleBar = (id: string) =>
+  const setBarOpen = (id: string, open?: boolean) =>
     setHiddenBars((cur) => {
-      const next = cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id];
+      const show = open ?? cur.includes(id);
+      const next = show ? cur.filter((x) => x !== id) : cur.includes(id) ? cur : [...cur, id];
       try {
         localStorage.setItem(HIDDEN_BARS_KEY, JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+
+  const [barWidths, setBarWidths] = useState<Record<string, number>>(loadBarWidths);
+  const setBarWidth = (id: string, width: number | null) =>
+    setBarWidths((cur) => {
+      const next = { ...cur };
+      if (width === null) delete next[id];
+      else next[id] = width;
+      try {
+        localStorage.setItem(BAR_WIDTHS_KEY, JSON.stringify(next));
       } catch {}
       return next;
     });
@@ -153,7 +196,7 @@ export default function Editor() {
     setUserAssets(next);
     if (!saveUserAssets(next)) notify(tr("Library storage is full — the image is only kept in this exam"));
     if (addToPage) {
-      const { type, preset } = assetToBlock(asset);
+      const { type, preset } = assetToBlock(asset, doc.meta.lang);
       exam.addBlock(type, preset);
     } else {
       setLibrary((l) => ({ kind: "image", n: l.n + 1 }));
@@ -166,6 +209,27 @@ export default function Editor() {
     if (!file || !block) return;
     const { src, ratio } = await readImageFile(file);
     exam.updateBlock(id, { src, ratio, layout: { height: block.layout.width / ratio } });
+  };
+
+  // Keep a copy of a block in "My blocks" (without its place on the page or its header/footer role).
+  const saveToLibrary = (block: Block) => {
+    const { layout, type } = block;
+    const data = structuredClone(block) as unknown as Record<string, unknown>;
+    for (const key of ["id", "layout", "meta", "type"]) delete data[key];
+    const fixedSize = type === "image" || type === "equation" || type === "graph";
+    const preset = { ...data, width: layout.width, ...(fixedSize ? { height: layout.height } : {}) } as BlockPreset;
+    const figure = block.type === "image" && block.figure ? figureDef(block.figure.id) : undefined;
+    const asset: Asset = {
+      id: `user-${newId()}`,
+      name: blockLabel(block) || tr(figure?.name ?? BLOCK_TYPE_NAMES[type]),
+      kind: "block",
+      subjects: "all",
+      cycles: ALL_CYCLES,
+      block: { type, preset },
+    };
+    const next = [asset, ...userAssets];
+    setUserAssets(next);
+    notify(saveUserAssets(next) ? tr("Saved in your library (Library → My blocks)") : tr("Library storage is full — the block could not be kept"));
   };
 
   const deleteUserAsset = (id: string) => {
@@ -188,7 +252,7 @@ export default function Editor() {
       case "asset": {
         const asset = [...userAssets, ...BUILTIN_ASSETS].find((a) => a.id === action.assetId);
         if (!asset) return;
-        const { type, preset } = assetToBlock(asset);
+        const { type, preset } = assetToBlock(asset, doc.meta.lang);
         exam.addBlock(type, preset, at);
         setTab("properties");
         break;
@@ -255,8 +319,14 @@ export default function Editor() {
     if (!("i" in f) || !plainText(fieldValue(block, f)).trim()) return editDone(block.id);
     const i = f.i + 1;
     const insert = <T,>(list: T[], item: T) => [...list.slice(0, i), item, ...list.slice(i)];
-    if (block.type === "mcq" && f.kind === "option" && block.options.length < 6) {
-      exam.updateBlock(block.id, { options: insert(block.options, ""), correct: block.correct >= i ? block.correct + 1 : block.correct });
+    if (block.type === "mcq" && f.kind === "option" && block.options.length < MAX_OPTIONS) {
+      exam.updateBlock(block.id, insertOption(block, i));
+    } else if (block.type === "match" && (f.kind === "left" || f.kind === "right") && block.pairs.length < 12) {
+      // A new pair: type its left item first.
+      exam.updateBlock(block.id, addPair(block, i));
+      return setEditing({ id: block.id, field: { kind: "left", i } });
+    } else if (block.type === "order" && f.kind === "item" && block.items.length < 12) {
+      exam.updateBlock(block.id, addOrderItem(block, i));
     } else if (block.type === "truefalse" && f.kind === "statement") {
       exam.updateBlock(block.id, { statements: insert(block.statements, { text: "", answer: true }) });
     } else if (block.type === "open" && f.kind === "part" && (block.parts?.length ?? 0) < 12) {
@@ -270,13 +340,6 @@ export default function Editor() {
   const changeMode = (m: ViewMode) => {
     setMode(m);
     setEditing(null);
-  };
-
-  // Full mark from the points indicator: the header's "/ 20" when there is one, else the exam setting.
-  const setFullMark = (value: number) => {
-    const header = doc.blocks.find((b) => b.type === "header");
-    if (header?.type === "header" && !header.fields.autoOutOf) exam.updateBlock(header.id, { fields: { ...header.fields, outOf: value } }, { key: "fullMark" });
-    else if (!fullMark(doc).fromHeader) exam.setMeta({ fullMark: value }, "fullMark");
   };
 
   // T tool on empty paper: a new paragraph starting where the teacher clicked.
@@ -376,6 +439,14 @@ export default function Editor() {
       if (mod && key === "p") {
         e.preventDefault();
         setPreview(true);
+        return;
+      }
+      // Ctrl+[ / Ctrl+] open or close the side bars. Not with Alt: AltGr (= Ctrl+Alt) types "[" on
+      // French keyboards. The physical key also works there, where "[" has no key of its own.
+      const bar = mod && !e.altKey && appLayout.find((b) => b.collapse?.hotkey && hotkeyHit(e, b.collapse.hotkey));
+      if (bar) {
+        e.preventDefault();
+        setBarOpen(bar.id);
         return;
       }
       if (typing || picker.open || preview || history) return;
@@ -484,7 +555,11 @@ export default function Editor() {
     exportJob,
     toast,
     hiddenBars,
-    toggleBar,
+    toggleBar: (id) => setBarOpen(id),
+    showBar: (id) => setBarOpen(id, true),
+    barWidths,
+    setBarWidth,
+    saveToLibrary,
   };
 
   const ctx: Ctx = {
@@ -539,7 +614,6 @@ export default function Editor() {
               onActivePageChange={exam.setActivePage}
               onDropItem={runTool}
               onMeta={exam.setMeta}
-              onFullMark={setFullMark}
               onModeChange={changeMode}
             />
             {bars("bottom")}

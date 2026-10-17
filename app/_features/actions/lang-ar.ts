@@ -5,7 +5,7 @@ export const langArAction: Feature = {
   id: "action.lang.ar",
   kind: "menu-item",
   label: UI_LANGS[2].label,
-  order: 3,
+  order: 13,
   checked: (ctx) => ctx.shell.uiLang === "ar",
   run: (ctx) => ctx.shell.setUiLang("ar"),
 };

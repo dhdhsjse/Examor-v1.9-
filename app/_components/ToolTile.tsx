@@ -21,7 +21,8 @@ interface Props {
   onUse: (action: ToolAction) => void;
 }
 
-// A small button in the toolbox. Click = add to the page; blocks can also be dragged onto it.
+// A small button in the toolbox (two per row): icon chip and a name of up to two lines.
+// Click = add to the page; blocks can also be dragged onto it.
 export default function ToolTile({ icon, label, tone, action, onUse }: Props) {
   const tr = useT();
   const t = TONES[tone];
@@ -36,10 +37,10 @@ export default function ToolTile({ icon, label, tone, action, onUse }: Props) {
         e.dataTransfer.effectAllowed = "copy";
       }}
       title={draggable ? tr("{label} — click or drag onto the page", { label }) : label}
-      className={`flex flex-col items-center gap-1.5 rounded-lg border border-line bg-surface px-1.5 pt-3 pb-2 text-center shadow-[0_1px_2px_rgba(16,24,40,0.04)] transition hover:-translate-y-0.5 hover:shadow-md active:translate-y-0 ${t.hover}`}
+      className={`flex h-11 min-w-0 items-center gap-1 rounded-lg border border-line bg-surface ps-1.5 pe-1 text-start shadow-[0_1px_2px_rgba(16,24,40,0.04)] transition hover:shadow-md active:shadow-none ${t.hover}`}
     >
-      <span className={`grid size-8 place-items-center rounded-md ${t.chip}`}>{icon}</span>
-      <span className="text-[11px] font-medium leading-tight text-ink">{label}</span>
+      <span className={`grid size-6 shrink-0 place-items-center rounded-md ${t.chip}`}>{icon}</span>
+      <span className="line-clamp-2 min-w-0 text-[11px] font-medium leading-tight break-words text-ink">{label}</span>
     </button>
   );
 }

@@ -6,10 +6,8 @@ import { isRtl } from "@/app/_lib/i18n";
 import { useImage } from "@/app/_lib/images";
 import { svgUrl } from "@/app/_lib/library";
 import type { EquationBlock, ExamMeta, ImageBlock, TableBlock, TextBlock } from "@/app/_lib/types";
-import { INK, RichText } from "./shared";
+import { INK, RichText, tint } from "./shared";
 
-// Light version of a color, e.g. for the inside of a box ("#4f46e5" → "#4f46e514").
-const tint = (hex: string, alpha = "14") => (/^#[0-9a-f]{6}$/i.test(hex) ? `${hex}${alpha}` : hex);
 
 export function TextView({ b, meta }: { b: TextBlock; meta: ExamMeta }) {
   const L = layoutText(b, meta);
