@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import type Konva from 'konva';
-import type { Block, ExamDoc, ExamMeta, ViewMode } from '@/app/_lib/types';
+import type { Block, BlockType, ExamDoc, ExamMeta, ViewMode } from '@/app/_lib/types';
+import type { BlockPreset } from '@/app/_lib/blocks';
 import type { ToolAction } from '@/app/_lib/tools';
 import type { Subject } from '@/app/_lib/subjects';
 import type { T, UiLang } from '@/app/_lib/uiLang';
@@ -92,6 +93,10 @@ export type Ctx = {
   t: T;
   dir: 'ltr' | 'rtl';
   shell: Shell;
+  // The feature drawn in the right panel instead of the block / exam properties (see Feature.target).
+  activeInspectorId: string | null;
+  openInspector: (featureId: string) => void;
+  closeInspector: () => void;
 };
 
 export type FeatureKind = 'tool' | 'action' | 'toggle' | 'menu-item' | 'field' | 'panel' | 'overlay';
@@ -118,9 +123,15 @@ export type Feature<TConfig = unknown> = {
   // extensions
   tone?: Tone; // color of a tool tile
   dragPayload?: ToolAction; // a tool tile that can also be dragged onto the page
+  library?: Library; // click opens this library of templates instead of inserting the default block
   separatorBefore?: boolean; // menu item: line above it
   heading?: string; // menu item: small section title above it (English key, translated)
   checked?: (ctx: Ctx) => boolean; // menu item: shows a check mark
+  // Where a click on the feature's left-panel row leads:
+  // 'canvas' (default) runs it, 'left-panel' opens its `library`, 'inspector' opens `renderInspector`
+  // in the right panel and leaves the left panel where it is. An inspector feature has no create / run.
+  target?: 'canvas' | 'left-panel' | 'inspector';
+  renderInspector?: (p: { ctx: Ctx }) => ReactNode; // required with target: 'inspector'
 };
 
 // An ordered list of features with a label.
@@ -154,6 +165,25 @@ export type Option = {
   order?: number;
   label?: string | ((t: T) => string);
   features: Feature[];
+};
+
+// The block a template creates. It goes through the same path as the tool's own tile.
+// (Multi-block templates need a batch insert first; see LIBRARY.md.)
+export type LibraryItem = { type: BlockType; preset?: BlockPreset };
+
+// One named starting point a tool offers. `item` is pure: it only reads ctx.
+export type LibraryTemplate = {
+  id: string;
+  label: string | ((t: T) => string);
+  description?: string | ((t: T) => string);
+  recommended?: boolean;
+  item: (ctx: Ctx) => LibraryItem;
+};
+
+// The templates a tool offers, in the order they are shown.
+export type Library = {
+  id: string;
+  templates: LibraryTemplate[];
 };
 
 export type BarPosition = 'top' | 'left' | 'right' | 'bottom' | 'overlay';

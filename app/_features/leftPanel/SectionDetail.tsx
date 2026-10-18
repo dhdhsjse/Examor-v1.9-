@@ -3,11 +3,11 @@
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { resolveLabel } from "@/app/_features/core/FeatureRenderer";
-import type { Ctx, Section } from "@/app/_features/core/types";
+import type { Ctx, Feature, Section } from "@/app/_features/core/types";
 import OptionGroup from "./OptionGroup";
 
 // A section opened: a back button, then its options one under another.
-export default function SectionDetail({ section, ctx, onBack }: { section: Section; ctx: Ctx; onBack: () => void }) {
+export default function SectionDetail({ section, ctx, onBack, onLibrary }: { section: Section; ctx: Ctx; onBack: () => void; onLibrary: (f: Feature) => void }) {
   const backRef = useRef<HTMLButtonElement>(null);
   useEffect(() => backRef.current?.focus(), []);
 
@@ -32,7 +32,7 @@ export default function SectionDetail({ section, ctx, onBack }: { section: Secti
       </div>
       <div className="flex flex-col gap-4 p-3">
         {options.map((o) => (
-          <OptionGroup key={o.id} option={o} ctx={ctx} />
+          <OptionGroup key={o.id} option={o} ctx={ctx} onLibrary={onLibrary} />
         ))}
       </div>
     </div>

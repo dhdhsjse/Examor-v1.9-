@@ -1,9 +1,9 @@
 import type { Option } from "@/app/_features/core/types";
+import { inspectorLayoutMargins } from "@/app/_features/inspectors/inspector-layout-margins";
 
-// Placeholder: margin controls will be listed here (margins are set in the page setup window for now).
+// No heading: the option is a single row that already says "Margins".
 export const layoutMarginsOption: Option = {
   id: "option.layout.margins",
-  order: 20,
-  label: (t) => t("Margins"),
-  features: [],
+  order: 10,
+  features: [inspectorLayoutMargins],
 };

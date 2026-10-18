@@ -1,4 +1,5 @@
 import type { Bar } from "@/app/_features/core/types";
+import { activeInspectorGroup } from "@/app/_features/groups/group-active-inspector";
 import { libraryGroup } from "@/app/_features/groups/group-library";
 import { propertiesGroup } from "@/app/_features/groups/group-properties";
 import { tabsGroup } from "@/app/_features/groups/group-tabs";
@@ -20,5 +21,5 @@ export const rightPanelBar: Bar = {
     strip: [stripPropertiesToggle, stripLibraryToggle],
   },
   className: "flex flex-col",
-  groups: [tabsGroup, propertiesGroup, libraryGroup],
+  groups: [tabsGroup, activeInspectorGroup, propertiesGroup, libraryGroup],
 };

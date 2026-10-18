@@ -89,6 +89,7 @@ export default function Editor() {
   const [query, setQuery] = useState("");
   const [mode, setMode] = useState<ViewMode>("exam");
   const [tab, setTab] = useState<RightTab>("properties");
+  const [activeInspectorId, setActiveInspectorId] = useState<string | null>(null);
   const [library, setLibrary] = useState<{ kind: AssetKind | "all"; n: number }>({ kind: "all", n: 0 });
   const [picker, setPicker] = useState<{ open: boolean; mustPick: boolean }>({ open: false, mustPick: false });
   const [userAssets, setUserAssets] = useState<Asset[]>(loadUserAssets);
@@ -147,9 +148,19 @@ export default function Editor() {
     toastTimer.current = setTimeout(() => setToast(null), 2800);
   };
 
+  // Selecting a block shows its properties, so it also closes an inspector opened from the left panel.
   const select = (id: string | null) => {
     exam.setSelectedId(id);
-    if (id) setTab("properties");
+    if (!id) return;
+    setTab("properties");
+    setActiveInspectorId(null);
+  };
+
+  // An inspector feature (target: 'inspector') takes the Properties tab of the right panel, reopened if closed.
+  const openInspector = (featureId: string) => {
+    setActiveInspectorId(featureId);
+    setTab("properties");
+    for (const bar of appLayout) if (bar.position === "right" && bar.collapse) setBarOpen(bar.id, true);
   };
 
   const changeUiLang = (lang: UiLang) => {
@@ -245,6 +256,7 @@ export default function Editor() {
       case "block": {
         const block = exam.addBlock(action.type, action.preset, at);
         setTab("properties");
+        setActiveInspectorId(null);
         // Write right away on the page: the starting text is selected, so typing replaces it.
         if (TYPE_ON_ADD.includes(block.type)) setEditing({ id: block.id, field: { kind: "text" }, selectAll: true });
         break;
@@ -255,6 +267,7 @@ export default function Editor() {
         const { type, preset } = assetToBlock(asset, doc.meta.lang);
         exam.addBlock(type, preset, at);
         setTab("properties");
+        setActiveInspectorId(null);
         break;
       }
       case "importImage":
@@ -569,6 +582,9 @@ export default function Editor() {
     t: tr,
     dir: uiLang === "ar" ? "rtl" : "ltr",
     shell,
+    activeInspectorId,
+    openInspector,
+    closeInspector: () => setActiveInspectorId(null),
   };
 
   // Bars for one screen position, in order.

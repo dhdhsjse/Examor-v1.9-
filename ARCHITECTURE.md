@@ -361,6 +361,9 @@ This section records where the migrated code departs from §2–§6. Each item i
 - `Feature.tags` is used by the left-panel search (a tool also matches by its tags).
 - `Bar` gains `dragRegion`: the bar gets `data-tauri-drag-region="deep"`, so its empty areas move the desktop window (the window has no native frame, see `tauri.conf.json`). The window buttons are a feature (`panels/window-controls.tsx`) in `group-window.ts`, shown only in the desktop app.
 - `BarRenderer` draws one-off `features` first, then `groups` in `order`.
+- Inspector-driven options (INSPECTOR-OPTIONS.md): `Feature` gains `target` (`'canvas'` default, `'left-panel'`, `'inspector'`) and `renderInspector`. An inspector feature has `renderInspector` as its only verb (no `create` / `run` / `render`; this extends invariant 2). Its left-panel row (`leftPanel/FeatureRow.tsx`) calls `ctx.openInspector(id)` and leaves the left panel where it is.
+- `Ctx` gains `activeInspectorId`, `openInspector` and `closeInspector` (state in `Editor.tsx`). Opening one also switches the right panel to the Properties tab and reopens it if it was closed. Selecting or inserting a block closes it (the block's properties take over).
+- The right panel draws the open inspector through `group-active-inspector.ts` (`panels/active-inspector.tsx`: title, close button, `renderInspector`). `group-properties.ts` hides while one is open. The feature is found by id with `findSectionFeature` (`sections/index.ts`), so the right panel never imports it directly. A new inspector option is one feature file + one entry in its section's option.
 
 **Known gaps**
 
