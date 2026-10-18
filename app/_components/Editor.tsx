@@ -3,6 +3,7 @@
 import type Konva from "konva";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CONTENT_WIDTH, PAGE_HEIGHT, PAGE_MARGIN, PAGE_WIDTH } from "@/app/_lib/a4";
+import { pageMargins } from "@/app/_lib/onboarding/applyOnboarding";
 import { focusMathfield } from "@/app/_lib/activeMathfield";
 import {
   BLOCK_TYPE_NAMES,
@@ -27,13 +28,13 @@ import { loadAutosave, loadUserAssets, parseExamFile, pickFile, saveFile, saveUs
 import { ALL_CYCLES, type Subject } from "@/app/_lib/subjects";
 import { buildDoc, templateById, type Template } from "@/app/_lib/templates";
 import { assetToBlock, type ToolAction } from "@/app/_lib/tools";
-import type { Block, BlockType, ViewMode } from "@/app/_lib/types";
+import type { Block, BlockType, PageMargins, ViewMode } from "@/app/_lib/types";
 import { UiProvider, loadUiLang, saveUiLang, translate, type UiLang } from "@/app/_lib/uiLang";
 import { useExam, type DropPoint } from "@/app/_lib/useExam";
 import { addVersion, type Version } from "@/app/_lib/versions";
 import { appLayout } from "@/app/_features/app";
 import BarRenderer from "@/app/_features/core/BarRenderer";
-import type { BarPosition, Ctx, RightTab, Shell } from "@/app/_features/core/types";
+import type { BarPosition, Ctx, MarginEdit, RightTab, Shell } from "@/app/_features/core/types";
 import type { CanvasTool } from "./workspace/ToolRail";
 import Workspace, { type Editing } from "./workspace/Workspace";
 
@@ -68,6 +69,7 @@ function hotkeyHit(e: KeyboardEvent, hotkey: string) {
   return e.key === key || e.code === KEY_CODES[key];
 }
 
+const MARGIN_SAVE_DELAY = 500; // ms without a change before typed margins become an undo step
 const SNAPSHOT_EVERY = 3 * 60 * 1000; // automatic copy in the version history
 
 // New blocks of these types start with their text selected on the page, ready to type over.
@@ -90,6 +92,8 @@ export default function Editor() {
   const [mode, setMode] = useState<ViewMode>("exam");
   const [tab, setTab] = useState<RightTab>("properties");
   const [activeInspectorId, setActiveInspectorId] = useState<string | null>(null);
+  const [marginEdit, setMarginEdit] = useState<MarginEdit | null>(null); // see Shell.marginEdit
+  const marginTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const [library, setLibrary] = useState<{ kind: AssetKind | "all"; n: number }>({ kind: "all", n: 0 });
   const [picker, setPicker] = useState<{ open: boolean; mustPick: boolean }>({ open: false, mustPick: false });
   const [userAssets, setUserAssets] = useState<Asset[]>(loadUserAssets);
@@ -161,6 +165,26 @@ export default function Editor() {
     setActiveInspectorId(featureId);
     setTab("properties");
     for (const bar of appLayout) if (bar.position === "right" && bar.collapse) setBarOpen(bar.id, true);
+  };
+
+  // ---- Page layout → Margins: one draft shared by the right panel and the handles on the canvas ----
+
+  const saveMargins = (m: PageMargins) => {
+    clearTimeout(marginTimer.current);
+    exam.setMargins(m);
+    setMarginEdit((cur) => cur && { draft: null, dragging: false });
+  };
+  // Show `m` on the canvas and in the panel. Typed changes are saved after a pause; a drag on release.
+  const draftMargins = (m: PageMargins | null, dragging = false) => {
+    clearTimeout(marginTimer.current);
+    setMarginEdit((cur) => cur && { draft: m, dragging });
+    if (m && !dragging) marginTimer.current = setTimeout(() => saveMargins(m), MARGIN_SAVE_DELAY);
+  };
+  const openMarginEdit = (open: boolean) => {
+    if (open) return setMarginEdit((cur) => cur ?? { draft: null, dragging: false });
+    if (marginEdit?.draft) saveMargins(marginEdit.draft);
+    clearTimeout(marginTimer.current);
+    setMarginEdit(null);
   };
 
   const changeUiLang = (lang: UiLang) => {
@@ -520,6 +544,10 @@ export default function Editor() {
     onLatex,
     deleteBlock: exam.deleteBlock,
     duplicateBlock: exam.duplicateBlock,
+    marginEdit,
+    openMarginEdit,
+    draftMargins: (m) => draftMargins(m),
+    setMargins: saveMargins,
     newExam: () => setPicker({ open: true, mustPick: false }),
     applyDoc: (next, keepOld) => {
       if (keepOld) keepCopy(tr("Before changing the page layout"));
@@ -614,6 +642,8 @@ export default function Editor() {
               reveal={exam.reveal}
               tool={tool}
               editing={editing}
+              marginEdit={marginEdit && { margins: marginEdit.draft ?? pageMargins(doc, exam.activePage), dragging: marginEdit.dragging }}
+              onMarginDrag={(m, done) => (done ? saveMargins(m) : draftMargins(m, true))}
               onToolChange={setTool}
               onPatch={(id, patch, field) => exam.updateBlock(id, patch, { key: `${id}:${field}` })}
               onEditStart={startEdit}

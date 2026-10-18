@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { PAGE_HEIGHT, PAGE_MARGIN, PAGE_WIDTH } from "./a4";
+import { DEFAULT_MARGINS, PAGE_HEIGHT, PAGE_MARGIN, PAGE_WIDTH } from "./a4";
 import { blockHeight } from "./blockLayout";
 import { blockHeights, createBlock, nextFreeY, pageBottom, pushDownOverlaps, type BlockPreset } from "./blocks";
 import { newId } from "./id";
@@ -9,7 +9,7 @@ import { renderEquation, type RenderedEquation } from "./math";
 import { chromeBlocksForPage } from "./onboarding/applyOnboarding";
 import { saveAutosave } from "./storage";
 import { buildDoc, type Template } from "./templates";
-import type { Block, BlockData, BlockLayout, BlockType, EquationBlock, ExamDoc, ExamMeta, Page } from "./types";
+import type { Block, BlockData, BlockLayout, BlockType, EquationBlock, ExamDoc, ExamMeta, Page, PageMargins } from "./types";
 import type { T } from "./uiLang";
 
 // Ask the workspace to scroll to a page (n changes on every request).
@@ -239,6 +239,19 @@ export function useExam(initial: ExamDoc, t?: T) {
     [commit],
   );
 
+  // The same margins on every page (Page layout → Margins), as one undo step. Blocks stay where they are.
+  const setMargins = useCallback(
+    (m: PageMargins) =>
+      commit((d) => {
+        const same = (p: Page) => {
+          const o = p.margins ?? DEFAULT_MARGINS;
+          return o.top === m.top && o.right === m.right && o.bottom === m.bottom && o.left === m.left;
+        };
+        return d.pages.every(same) ? d : { ...d, pages: d.pages.map((p) => ({ ...p, margins: { ...m } })) };
+      }),
+    [commit],
+  );
+
   const setMeta = useCallback(
     (patch: Partial<ExamMeta>, key?: string) => commit((d) => ({ ...d, meta: { ...d.meta, ...patch } }), { key }),
     [commit],
@@ -278,6 +291,7 @@ export function useExam(initial: ExamDoc, t?: T) {
     duplicateBlock,
     addPage,
     deletePage,
+    setMargins,
     setMeta,
     replaceDoc,
     newFromTemplate,

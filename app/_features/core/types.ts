@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import type Konva from 'konva';
-import type { Block, BlockType, ExamDoc, ExamMeta, ViewMode } from '@/app/_lib/types';
+import type { Block, BlockType, ExamDoc, ExamMeta, PageMargins, ViewMode } from '@/app/_lib/types';
 import type { BlockPreset } from '@/app/_lib/blocks';
 import type { ToolAction } from '@/app/_lib/tools';
 import type { Subject } from '@/app/_lib/subjects';
@@ -34,6 +34,12 @@ export type Shell = {
   onLatex: (block: Block, latex: string) => void;
   deleteBlock: (id: string) => void;
   duplicateBlock: (id: string) => void;
+  // Page layout → Margins. While its panel is open (`marginEdit` not null) the canvas draws the margins
+  // being edited on every page, shades the area outside them and shows handles to drag them.
+  marginEdit: MarginEdit | null;
+  openMarginEdit: (open: boolean) => void; // closing saves an unsaved draft
+  draftMargins: (margins: PageMargins | null) => void; // unsaved change (null = drop it), saved after a short pause
+  setMargins: (margins: PageMargins) => void; // save now, on every page (one undo step); blocks stay where they are
   // files
   newExam: () => void;
   // Replace the exam with a ready document (onboarding). `keepOld` saves the current one in the history first.
@@ -84,6 +90,10 @@ export type Shell = {
   // keep a block in the user library ("My blocks") to reuse it in other exams
   saveToLibrary: (block: Block) => void;
 };
+
+// Margins being edited (see Shell.marginEdit). `draft` = not saved yet; `dragging` = a handle on the
+// canvas is being dragged (the guides follow it without gliding).
+export type MarginEdit = { draft: PageMargins | null; dragging: boolean };
 
 // Passed to every feature. Replaces globals.
 export type Ctx = {

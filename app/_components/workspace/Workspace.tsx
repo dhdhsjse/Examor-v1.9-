@@ -6,11 +6,11 @@ import { isQuestion } from "@/app/_lib/blocks";
 import type { EditField } from "@/app/_lib/editRegions";
 import { CANVAS_BOTTOM_SPACE, CANVAS_TOP_GAP, LABEL_HEIGHT, canvasTopPadding, pageAt, pageTop, stackHeight } from "@/app/_lib/pageStack";
 import { DRAG_MIME, type ToolAction } from "@/app/_lib/tools";
-import type { BlockLayout, ExamDoc, ExamMeta, ViewMode } from "@/app/_lib/types";
+import type { BlockLayout, ExamDoc, ExamMeta, PageMargins, ViewMode } from "@/app/_lib/types";
 import { useT } from "@/app/_lib/uiLang";
 import type { BlockPatch, DropPoint, RevealRequest } from "@/app/_lib/useExam";
 import { useZoom } from "@/app/_lib/useZoom";
-import ExamCanvas from "../canvas/ExamCanvas";
+import ExamCanvas, { type MarginEditView } from "../canvas/ExamCanvas";
 import AnswerBar from "./AnswerBar";
 import CorrectionBar from "./CorrectionBar";
 import InlineEditor from "./InlineEditor";
@@ -35,6 +35,8 @@ interface Props {
   reveal: RevealRequest | null;
   tool: CanvasTool;
   editing: Editing | null;
+  marginEdit: MarginEditView | null; // margins being edited (Page layout → Margins), see ExamCanvas
+  onMarginDrag: (margins: PageMargins, done: boolean) => void;
   onToolChange: (tool: CanvasTool) => void;
   onSelect: (id: string | null) => void;
   onMove: (id: string, pageId: string, x: number, y: number) => void;
@@ -304,6 +306,8 @@ export default function Workspace(props: Props) {
                     mode={mode}
                     zoom={zoom}
                     showGuides={showGuides}
+                    marginEdit={props.marginEdit}
+                    onMarginDrag={props.onMarginDrag}
                     selectedId={selectedId}
                     textTool={props.tool === "text"}
                     onSelect={props.onSelect}

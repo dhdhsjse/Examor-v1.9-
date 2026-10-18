@@ -3,7 +3,7 @@
 import type Konva from "konva";
 import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { Layer, Line, Rect, Stage, Transformer } from "react-konva";
-import { PAGE_HEIGHT, PAGE_MARGIN, PAGE_WIDTH } from "@/app/_lib/a4";
+import { DEFAULT_MARGINS, MAX_MARGIN_MM, MIN_MARGIN_MM, PAGE_HEIGHT, PAGE_WIDTH, mmToPx, pxToMm } from "@/app/_lib/a4";
 import { questionNumbers, totalPoints as sumPoints } from "@/app/_lib/blocks";
 import type { EditField } from "@/app/_lib/editRegions";
 import { pageAt, pageTop, stackHeight } from "@/app/_lib/pageStack";
@@ -14,6 +14,14 @@ import BlockNode, { type ResizeResult } from "./BlockNode";
 
 const SNAP_PX = 6; // snap distance on screen, in pixels
 const GUIDE_COLOR = "#c7d2fe"; // static margin/center guides
+const EDIT_GUIDE_COLOR = "#818cf8"; // margin guides while the margins are being edited
+const SHADE = "rgba(0,0,0,0.05)"; // outside the margins, while they are being edited
+const GLIDE_SECONDS = 0.15; // margin guides move to new values instead of jumping
+const HANDLE_LONG = 24; // margin handles, in screen pixels (the same at every zoom)
+const HANDLE_SHORT = 6;
+
+// Margins being edited (Page layout → Margins) and whether a handle is being dragged.
+export type MarginEditView = { margins: PageMargins; dragging: boolean };
 const SNAP_COLOR = "#ec4899"; // pink lines while dragging
 const ACCENT = "#4f46e5";
 
@@ -24,6 +32,10 @@ interface Props {
   mode: ViewMode;
   zoom: number;
   showGuides: boolean;
+  // Margins being edited: drawn on every page (even with the guides off), the area outside them shaded,
+  // with a handle on each side to drag them. Nothing else changes: blocks stay where they are.
+  marginEdit?: MarginEditView | null;
+  onMarginDrag?: (margins: PageMargins, done: boolean) => void;
   selectedId: string | null;
   interactive?: boolean; // false = clean render for the PDF
   stageRef?: RefObject<Konva.Stage | null>;
@@ -58,6 +70,8 @@ export default function ExamCanvas(props: Props) {
   const pageIndex = new Map(pages.map((p, i) => [p.id, i]));
   const selected = interactive ? blocks.find((b) => b.id === selectedId) : undefined;
   const guidesOn = showGuides && interactive;
+  const edit = interactive ? props.marginEdit : null;
+  const preview = edit?.margins;
   const totalPoints = useMemo(() => sumPoints(blocks), [blocks]);
 
   // Draw at a higher resolution when zoomed in, so text stays sharp.
@@ -143,7 +157,15 @@ export default function ExamCanvas(props: Props) {
     >
       <Layer ref={layerRef}>
         {pages.map((page, i) => (
-          <PaperSheet key={page.id} top={pageTop(i)} margins={page.margins} showGuides={guidesOn} zoom={zoom} />
+          <PaperSheet
+            key={page.id}
+            top={pageTop(i)}
+            margins={preview ?? page.margins}
+            showGuides={guidesOn || !!preview}
+            editing={!!preview}
+            instant={!!edit?.dragging}
+            zoom={zoom}
+          />
         ))}
 
         {blocks.map((b) => (
@@ -170,6 +192,13 @@ export default function ExamCanvas(props: Props) {
             onResize={(r) => handleResize(b, r)}
           />
         ))}
+
+        {/* While the margins are edited: the area outside them is shaded (over the blocks; clicks go through it) */}
+        {preview && pages.map((page, i) => <MarginShade key={page.id} top={pageTop(i)} margins={preview} instant={!!edit?.dragging} />)}
+        {preview &&
+          pages.map((page, i) => (
+            <MarginHandles key={page.id} top={pageTop(i)} margins={preview} zoom={zoom} onDrag={(m, done) => props.onMarginDrag?.(m, done)} />
+          ))}
 
         {/* Pink alignment lines on the page being dragged over */}
         {snap?.guides.map((g, k) => {
@@ -212,32 +241,130 @@ export default function ExamCanvas(props: Props) {
 }
 
 // One white A4 sheet, with margin box + center line when guides are on.
-function PaperSheet({ top, margins, showGuides, zoom }: { top: number; margins?: PageMargins; showGuides: boolean; zoom: number }) {
-  const m = margins ?? { top: PAGE_MARGIN, right: PAGE_MARGIN, bottom: PAGE_MARGIN, left: PAGE_MARGIN };
+function PaperSheet({ top, margins, showGuides, editing, instant, zoom }: {
+  top: number;
+  margins?: PageMargins;
+  showGuides: boolean;
+  editing: boolean;
+  instant: boolean;
+  zoom: number;
+}) {
+  const m = margins ?? DEFAULT_MARGINS;
+  const width = PAGE_WIDTH - m.left - m.right;
+  const height = PAGE_HEIGHT - m.top - m.bottom;
+  const color = editing ? EDIT_GUIDE_COLOR : GUIDE_COLOR;
   return (
     <>
       <Rect name="paper" y={top} width={PAGE_WIDTH} height={PAGE_HEIGHT} fill="#ffffff" />
       {showGuides && (
         <>
-          <Rect
-            x={m.left}
-            y={top + m.top}
-            width={PAGE_WIDTH - m.left - m.right}
-            height={PAGE_HEIGHT - m.top - m.bottom}
-            stroke={GUIDE_COLOR}
-            strokeWidth={1 / zoom}
-            dash={[6, 4]}
-            listening={false}
-          />
-          <Line
-            points={[m.left + (PAGE_WIDTH - m.left - m.right) / 2, top + m.top, m.left + (PAGE_WIDTH - m.left - m.right) / 2, top + PAGE_HEIGHT - m.bottom]}
-            stroke={GUIDE_COLOR}
-            strokeWidth={1 / zoom}
-            dash={[2, 6]}
-            listening={false}
-          />
+          <GlideRect x={m.left} y={top + m.top} width={width} height={height} instant={instant} stroke={color} strokeWidth={1 / zoom} dash={[6, 4]} />
+          <GlideLine x={m.left + width / 2} y={top + m.top} length={height} instant={instant} stroke={color} strokeWidth={1 / zoom} dash={[2, 6]} />
         </>
       )}
     </>
   );
+}
+
+// The four bands of a page outside its margins.
+function MarginShade({ top, margins: m, instant }: { top: number; margins: PageMargins; instant: boolean }) {
+  const middle = PAGE_HEIGHT - m.top - m.bottom;
+  return (
+    <>
+      <GlideRect x={0} y={top} width={PAGE_WIDTH} height={m.top} instant={instant} fill={SHADE} />
+      <GlideRect x={0} y={top + PAGE_HEIGHT - m.bottom} width={PAGE_WIDTH} height={m.bottom} instant={instant} fill={SHADE} />
+      <GlideRect x={0} y={top + m.top} width={m.left} height={middle} instant={instant} fill={SHADE} />
+      <GlideRect x={PAGE_WIDTH - m.right} y={top + m.top} width={m.right} height={middle} instant={instant} fill={SHADE} />
+    </>
+  );
+}
+
+type Side = keyof PageMargins;
+const clampMm = (mm: number) => Math.max(MIN_MARGIN_MM, Math.min(mm, MAX_MARGIN_MM));
+
+// A handle in the middle of each side of the printable area. Dragging one moves that margin in whole
+// millimetres, within the allowed range; `onDrag` gets the new margins (done = released).
+function MarginHandles({ top, margins: m, zoom, onDrag }: {
+  top: number;
+  margins: PageMargins;
+  zoom: number;
+  onDrag: (m: PageMargins, done: boolean) => void;
+}) {
+  const midX = m.left + (PAGE_WIDTH - m.left - m.right) / 2;
+  const midY = top + m.top + (PAGE_HEIGHT - m.top - m.bottom) / 2;
+  // Each side: where its handle sits for a margin of `px`, and the margin for a handle at (x, y).
+  const sides: { side: Side; at: (px: number) => { x: number; y: number }; margin: (x: number, y: number) => number }[] = [
+    { side: "top", at: (px) => ({ x: midX, y: top + px }), margin: (_, y) => y - top },
+    { side: "bottom", at: (px) => ({ x: midX, y: top + PAGE_HEIGHT - px }), margin: (_, y) => top + PAGE_HEIGHT - y },
+    { side: "left", at: (px) => ({ x: px, y: midY }), margin: (x) => x },
+    { side: "right", at: (px) => ({ x: PAGE_WIDTH - px, y: midY }), margin: (x) => PAGE_WIDTH - x },
+  ];
+  const cursor = (e: Konva.KonvaEventObject<MouseEvent | DragEvent>, value: string) => {
+    const container = e.target.getStage()?.container();
+    if (container) container.style.cursor = value;
+  };
+  return (
+    <>
+      {sides.map(({ side, at, margin }) => {
+        const across = side === "left" || side === "right";
+        const resize = across ? "ew-resize" : "ns-resize";
+        const width = (across ? HANDLE_SHORT : HANDLE_LONG) / zoom;
+        const height = (across ? HANDLE_LONG : HANDLE_SHORT) / zoom;
+        const snapped = (x: number, y: number) => mmToPx(clampMm(pxToMm(margin(x, y))));
+        const update = (node: Konva.Node, done: boolean) => onDrag({ ...m, [side]: snapped(node.x(), node.y()) }, done);
+        return (
+          <Rect
+            key={side}
+            {...at(m[side])}
+            width={width}
+            height={height}
+            offsetX={width / 2}
+            offsetY={height / 2}
+            fill="#ffffff"
+            stroke={ACCENT}
+            strokeWidth={1 / zoom}
+            cornerRadius={3 / zoom}
+            shadowColor="rgba(0,0,0,0.2)"
+            shadowBlur={4 / zoom}
+            hitStrokeWidth={8 / zoom}
+            draggable
+            // The stage itself is not scaled (the zoom is CSS outside it), so absolute = page-stack coordinates.
+            dragBoundFunc={(pos) => at(snapped(pos.x, pos.y))}
+            onMouseEnter={(e) => cursor(e, resize)}
+            onMouseLeave={(e) => !e.target.isDragging() && cursor(e, "")}
+            onDragMove={(e) => update(e.target, false)}
+            onDragEnd={(e) => {
+              cursor(e, "");
+              update(e.target, true);
+            }}
+          />
+        );
+      })}
+    </>
+  );
+}
+
+// Konva has no CSS transitions: a node moves to its new place with a short tween instead (a new tween
+// takes over from a running one). `instant` follows at once, e.g. while a margin handle is dragged.
+// Only the first place goes through props (react-konva would jump the node there otherwise).
+function glide(node: Konva.Node | null, attrs: Konva.NodeConfig, instant: boolean) {
+  const still = instant || window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  node?.to({ ...attrs, duration: still ? 0 : GLIDE_SECONDS });
+}
+
+type Stroke = { instant: boolean; stroke?: string; strokeWidth?: number; dash?: number[]; fill?: string };
+
+function GlideRect({ x, y, width, height, instant, ...style }: { x: number; y: number; width: number; height: number } & Stroke) {
+  const ref = useRef<Konva.Rect>(null);
+  const [start] = useState({ x, y, width, height });
+  useEffect(() => glide(ref.current, { x, y, width, height }, instant), [x, y, width, height, instant]);
+  return <Rect ref={ref} {...start} {...style} listening={false} />;
+}
+
+// A vertical line from (x, y), `length` long.
+function GlideLine({ x, y, length, instant, ...style }: { x: number; y: number; length: number } & Stroke) {
+  const ref = useRef<Konva.Line>(null);
+  const [start] = useState({ x, y, points: [0, 0, 0, length] });
+  useEffect(() => glide(ref.current, { x, y, points: [0, 0, 0, length] }, instant), [x, y, length, instant]);
+  return <Line ref={ref} {...start} {...style} listening={false} />;
 }

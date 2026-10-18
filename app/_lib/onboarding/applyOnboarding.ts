@@ -1,4 +1,4 @@
-import { PAGE_MARGIN } from "../a4";
+import { DEFAULT_MARGINS } from "../a4";
 import { newId } from "../id";
 import type { Block, ChromeRule, ExamDoc, Lang, PageMargins, PageScope } from "../types";
 import type { T } from "../uiLang";
@@ -8,7 +8,6 @@ import { defaultFooterId, defaultHeaderId, footerById, headerById } from "./head
 import { marginById } from "./marginTemplates";
 import { scopePages } from "./pageScope";
 
-const DEFAULT_MARGINS: PageMargins = { top: PAGE_MARGIN, right: PAGE_MARGIN, bottom: PAGE_MARGIN, left: PAGE_MARGIN };
 const NONE: PageScope = { mode: "none" };
 
 export const pageMargins = (doc: ExamDoc, pageIndex: number): PageMargins => doc.pages[pageIndex]?.margins ?? DEFAULT_MARGINS;
