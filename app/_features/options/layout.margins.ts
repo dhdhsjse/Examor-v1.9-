@@ -4,6 +4,6 @@ import { inspectorLayoutMargins } from "@/app/_features/inspectors/inspector-lay
 // No heading: the option is a single row that already says "Margins".
 export const layoutMarginsOption: Option = {
   id: "option.layout.margins",
-  order: 10,
+  order: 20,
   features: [inspectorLayoutMargins],
 };

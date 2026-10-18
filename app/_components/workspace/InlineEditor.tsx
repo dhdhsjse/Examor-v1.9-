@@ -17,6 +17,7 @@ interface Props {
   mode: ViewMode;
   zoom: number;
   top: number; // y of the block on the page stack
+  left: number; // x of the block on the page stack
   onChange: (value: string) => void;
   onDone: () => void;
   onNext: (back: boolean) => void; // Tab: go to the next text of the block
@@ -30,7 +31,7 @@ const LIST_FIELDS = ["option", "statement", "part"];
 // A text box placed exactly over a text of the page, so the teacher types "on the paper".
 // It sits inside the zoomed layer, so its sizes are real page pixels. A format bar floats above it
 // (screen size): select words to color / resize / change their font, or style the whole text.
-export default function InlineEditor({ block, field, number, meta, mode, zoom, top, onChange, onDone, onNext, onEnter, selectAll }: Props) {
+export default function InlineEditor({ block, field, number, meta, mode, zoom, top, left, onChange, onDone, onNext, onEnter, selectAll }: Props) {
   const t = useT();
   const ref = useRef<RichHandle>(null);
   const wrap = useRef<HTMLDivElement>(null);
@@ -55,7 +56,7 @@ export default function InlineEditor({ block, field, number, meta, mode, zoom, t
       if (!wrap.current?.contains(document.activeElement)) onDone();
     }, 0);
 
-  const x = block.layout.x + region.x;
+  const x = left + region.x;
   const y = top + region.y;
 
   return (

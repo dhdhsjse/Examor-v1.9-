@@ -28,6 +28,7 @@ export const HEADER_STYLE_OPTIONS: { value: HeaderStyle; label: string }[] = [
   { value: "monogram", label: "Monogram" },
   { value: "ticket", label: "Ticket" },
   { value: "floating", label: "Floating card" },
+  { value: "algerian", label: "Algerian exam" },
 ];
 
 // Default color of the colored styles (what the accent replaces).
@@ -74,6 +75,19 @@ export function HeaderSketch({ style, accent }: { style: HeaderStyle; accent?: s
             <B w="70%" c={ink} />
           </span>
           <span />
+        </span>
+      );
+    case "algerian":
+      return (
+        <span className="flex h-6 w-full flex-col items-center justify-between">
+          <B w="55%" c={ink} h={2} />
+          <span className="grid h-2.5 w-full grid-cols-2 border border-slate-500">
+            <span className="border-e border-slate-400" />
+            <span />
+          </span>
+          <span className="flex h-2 w-full items-center justify-center border border-slate-600">
+            <B w="45%" c={ink} h={2} />
+          </span>
         </span>
       );
     case "official":

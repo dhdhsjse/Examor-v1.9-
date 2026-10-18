@@ -113,7 +113,7 @@ function ExamSettings({ meta, stats, hasHeader, onMeta, onChangeTemplate }: Prop
           {t("Hide the points on the paper")}
         </label>
         {hasHeader ? (
-          <Hint>{t("The full mark is set in the exam header (“Graded out of”).")}</Hint>
+          <Hint>{t("The full mark is set in Page layout → Header and footer (“Graded out of”).")}</Hint>
         ) : (
           <Row label={t("Full mark")}>
             <Stepper value={meta.fullMark ?? 20} min={1} max={200} onChange={(fullMark) => onMeta({ fullMark }, "fullMark")} />

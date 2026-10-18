@@ -18,9 +18,11 @@ import {
   type PlacedBox,
   type Spec,
 } from "./blockLayout";
+import { headerRegions } from "@/app/_components/canvas/blocks/headerParts";
 import { toggleMcq } from "./blocks";
+import { chromeTextField } from "./onboarding/headerFooterLibrary";
 import { isRtl } from "./i18n";
-import type { Block, ExamMeta, OpenPart, ViewMode } from "./types";
+import type { Block, ExamMeta, HeaderFields, OpenPart, ViewMode } from "./types";
 import type { BlockPatch } from "./useExam";
 
 export type EditField =
@@ -37,7 +39,8 @@ export type EditField =
   | { kind: "right"; i: number } // matching: right item of pair i
   | { kind: "item"; i: number } // ordering: item i (in the right order)
   | { kind: "group"; i: number } // classification: name of category i
-  | { kind: "cell"; r: number; c: number };
+  | { kind: "cell"; r: number; c: number }
+  | { kind: "header"; keys: string[]; sep: string }; // exam header: one or more of its fields, joined by `sep`
 
 // A rectangle (block coordinates) + how its text looks.
 export interface EditRegion {
@@ -149,7 +152,11 @@ export function editRegions(b: Block, n: number, meta: ExamMeta, mode: ViewMode 
       const bold = { ...L.F.body, font: { ...L.F.body.font, bold: true } };
       return [title(L.title, L.F.title), ...L.heads.map((h, i) => boxRegion({ kind: "group", i }, h, bold, "center"))];
     }
+    case "header":
+      return headerRegions(b, meta, mode);
     case "text": {
+      // A header/footer text filled in automatically (page numbers, a rule) has nothing to type.
+      if (b.meta?.role && !chromeTextField(b)) return [];
       const L = layoutText(b, meta);
       return [{ field: { kind: "text" }, x: L.x, y: L.text.y, width: L.width, height: L.text.height, spec: L.spec, multiline: b.style === "body", align: L.align }];
     }
@@ -226,7 +233,16 @@ export function fieldValue(b: Block, f: EditField): string {
       return b.type === "classify" ? (b.groups[f.i]?.name ?? "") : "";
     case "cell":
       return b.type === "table" ? (b.cells[f.r]?.[f.c] ?? "") : "";
+    case "header":
+      return b.type === "header" ? f.keys.map((k) => String(b.fields[k as keyof HeaderFields] ?? "")).join(f.sep) : "";
   }
+}
+
+// Typed text of a header text back into its fields: split on the separator, the rest in the last one.
+function headerFields(f: { keys: string[]; sep: string }, v: string): Record<string, string> {
+  if (f.keys.length < 2) return { [f.keys[0]]: v };
+  const parts = v.split(f.sep.trim()).map((s) => s.trim());
+  return Object.fromEntries(f.keys.map((k, i) => [k, i < f.keys.length - 1 ? (parts[i] ?? "") : parts.slice(i).join(` ${f.sep.trim()} `)]));
 }
 
 const setPart = (parts: OpenPart[], i: number, patch: Partial<OpenPart>) => parts.map((p, k) => (k === i ? { ...p, ...patch } : p));
@@ -262,5 +278,7 @@ export function fieldPatch(b: Block, f: EditField, v: string): BlockPatch {
       return b.type === "classify" ? { groups: setAt(b.groups, f.i, (g) => ({ ...g, name: v })) } : {};
     case "cell":
       return b.type === "table" ? { cells: b.cells.map((row, r) => (r === f.r ? row.map((c, k) => (k === f.c ? v : c)) : row)) } : {};
+    case "header":
+      return b.type === "header" ? { fields: { ...b.fields, ...headerFields(f, v) } } : {};
   }
 }

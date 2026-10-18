@@ -1,4 +1,5 @@
-import { CONTENT_WIDTH, PAGE_HEIGHT, PAGE_MARGIN } from "./a4";
+import { CONTENT_WIDTH, PAGE_MARGIN } from "./a4";
+import { pageSize } from "./pageFormats";
 import { blockHeight } from "./blockLayout";
 import { newId } from "./id";
 import { EX_PX } from "./math";
@@ -345,9 +346,9 @@ export function nextFreeY(blocks: Block[], heights: Map<string, number>, top = P
 }
 
 // Lowest y a new block may reach on a page: above its footer, or the bottom margin.
-export function pageBottom(onPage: Block[], page: Page, pageHeight = PAGE_HEIGHT): number {
+export function pageBottom(onPage: Block[], page: Page): number {
   const footers = onPage.filter((b) => b.meta?.role === "footer").map((b) => b.layout.y - 14);
-  return Math.min(pageHeight - (page.margins?.bottom ?? PAGE_MARGIN), ...footers);
+  return Math.min(pageSize(page).height - (page.margins?.bottom ?? PAGE_MARGIN), ...footers);
 }
 
 // Change one sub-question; the question's points stay the sum of its parts.

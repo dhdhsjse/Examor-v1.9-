@@ -2,8 +2,9 @@
 
 import type Konva from "konva";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { CONTENT_WIDTH, PAGE_HEIGHT, PAGE_MARGIN, PAGE_WIDTH } from "@/app/_lib/a4";
+import { CONTENT_WIDTH } from "@/app/_lib/a4";
 import { pageMargins } from "@/app/_lib/onboarding/applyOnboarding";
+import { pageSize } from "@/app/_lib/pageFormats";
 import { focusMathfield } from "@/app/_lib/activeMathfield";
 import {
   BLOCK_TYPE_NAMES,
@@ -69,6 +70,7 @@ function hotkeyHit(e: KeyboardEvent, hotkey: string) {
   return e.key === key || e.code === KEY_CODES[key];
 }
 
+const HEADER_FOOTER_INSPECTOR = "inspector.layout.header-footer"; // where exam headers are edited
 const MARGIN_SAVE_DELAY = 500; // ms without a change before typed margins become an undo step
 const SNAPSHOT_EVERY = 3 * 60 * 1000; // automatic copy in the version history
 
@@ -153,11 +155,13 @@ export default function Editor() {
   };
 
   // Selecting a block shows its properties, so it also closes an inspector opened from the left panel.
+  // A header or footer is set in Page layout → Header and footer: selecting one opens that inspector.
   const select = (id: string | null) => {
     exam.setSelectedId(id);
     if (!id) return;
     setTab("properties");
-    setActiveInspectorId(null);
+    const b = doc.blocks.find((x) => x.id === id);
+    setActiveInspectorId(b?.type === "header" || b?.meta?.role ? HEADER_FOOTER_INSPECTOR : null);
   };
 
   // An inspector feature (target: 'inspector') takes the Properties tab of the right panel, reopened if closed.
@@ -280,7 +284,7 @@ export default function Editor() {
       case "block": {
         const block = exam.addBlock(action.type, action.preset, at);
         setTab("properties");
-        setActiveInspectorId(null);
+        setActiveInspectorId(block.type === "header" ? HEADER_FOOTER_INSPECTOR : null);
         // Write right away on the page: the starting text is selected, so typing replaces it.
         if (TYPE_ON_ADD.includes(block.type)) setEditing({ id: block.id, field: { kind: "text" }, selectAll: true });
         break;
@@ -291,7 +295,7 @@ export default function Editor() {
         const { type, preset } = assetToBlock(asset, doc.meta.lang);
         exam.addBlock(type, preset, at);
         setTab("properties");
-        setActiveInspectorId(null);
+        setActiveInspectorId(type === "header" ? HEADER_FOOTER_INSPECTOR : null);
         break;
       }
       case "importImage":
@@ -381,7 +385,7 @@ export default function Editor() {
 
   // T tool on empty paper: a new paragraph starting where the teacher clicked.
   const createText = (at: DropPoint) => {
-    const width = Math.max(160, Math.min(CONTENT_WIDTH, PAGE_WIDTH - PAGE_MARGIN - at.x));
+    const width = Math.max(160, Math.min(CONTENT_WIDTH, pageSize(doc.pages[at.pageIndex]).width - pageMargins(doc, at.pageIndex).right - at.x));
     const block = exam.addBlock("text", { style: "body", text: "", width }, at);
     setEditing({ id: block.id, field: { kind: "text" }, created: true });
   };
@@ -432,7 +436,7 @@ export default function Editor() {
     await Promise.all([preloadImages(srcs), document.fonts.ready]);
     const stage = await new Promise<Konva.Stage>((resolve) => setExportJob({ doc, mode: m, resolve }));
     try {
-      return stagePageImages(stage, doc.pages.length, pixelRatio, quality);
+      return stagePageImages(stage, doc.pages, pixelRatio, quality);
     } finally {
       setExportJob(null);
     }
@@ -445,7 +449,7 @@ export default function Editor() {
     try {
       const modes: ViewMode[] = which === "both" ? ["exam", "key"] : [which];
       for (const m of modes) {
-        const bytes = await imagesToPdf(await renderPages(m, 3, 0.92));
+        const bytes = await imagesToPdf(await renderPages(m, 3, 0.92), doc.pages);
         const name = `${fileName(doc.meta.title)}${m === "key" ? ` - ${tr("correction")}` : ""}.pdf`;
         if (await saveFile(bytes, name, { name: "PDF", extensions: ["pdf"] })) {
           notify(m === "key" ? tr("Correction sheet exported") : tr("Exam exported"));
@@ -515,8 +519,9 @@ export default function Editor() {
         const dx = key === "arrowleft" ? -step : key === "arrowright" ? step : 0;
         const dy = key === "arrowup" ? -step : key === "arrowdown" ? step : 0;
         const h = heights.get(selected.id) ?? 0;
-        const x = Math.max(0, Math.min(selected.layout.x + dx, PAGE_WIDTH - selected.layout.width));
-        const y = Math.max(0, Math.min(selected.layout.y + dy, PAGE_HEIGHT - h));
+        const size = pageSize(doc.pages.find((p) => p.id === selected.layout.pageId));
+        const x = Math.max(0, Math.min(selected.layout.x + dx, size.width - selected.layout.width));
+        const y = Math.max(0, Math.min(selected.layout.y + dy, size.height - h));
         exam.updateBlock(selected.id, { layout: { x, y } }, { key: `nudge-${selected.id}` });
       }
     };
@@ -548,6 +553,10 @@ export default function Editor() {
     openMarginEdit,
     draftMargins: (m) => draftMargins(m),
     setMargins: saveMargins,
+    setPageFormat: exam.setPageFormat,
+    setChrome: exam.setChrome,
+    resetPageChrome: exam.resetPageChrome,
+    adoptHeader: exam.adoptHeader,
     newExam: () => setPicker({ open: true, mustPick: false }),
     applyDoc: (next, keepOld) => {
       if (keepOld) keepCopy(tr("Before changing the page layout"));
@@ -644,6 +653,9 @@ export default function Editor() {
               editing={editing}
               marginEdit={marginEdit && { margins: marginEdit.draft ?? pageMargins(doc, exam.activePage), dragging: marginEdit.dragging }}
               onMarginDrag={(m, done) => (done ? saveMargins(m) : draftMargins(m, true))}
+        onChromeData={exam.editChrome}
+        onChromeScope={exam.chromeScope}
+        onChromeSettings={() => openInspector(HEADER_FOOTER_INSPECTOR)}
               onToolChange={setTool}
               onPatch={(id, patch, field) => exam.updateBlock(id, patch, { key: `${id}:${field}` })}
               onEditStart={startEdit}

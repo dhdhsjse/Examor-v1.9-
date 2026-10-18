@@ -1,11 +1,11 @@
-import { PAGE_HEIGHT, PAGE_WIDTH } from "@/app/_lib/a4";
+import { A4 } from "@/app/_lib/pageFormats";
 import type { PageMargins } from "@/app/_lib/types";
 
 // A small A4 sheet with its printable area dashed and the margins shaded.
 // `rtl` mirrors it, so a wide binding margin shows on the right.
 export default function MiniA4({ margins, width = 84, rtl = false }: { margins: PageMargins; width?: number; rtl?: boolean }) {
-  const k = width / PAGE_WIDTH;
-  const height = PAGE_HEIGHT * k;
+  const k = width / A4.width;
+  const height = A4.height * k;
   const left = (rtl ? margins.right : margins.left) * k;
   const right = (rtl ? margins.left : margins.right) * k;
   const top = margins.top * k;

@@ -9,7 +9,7 @@ import type { Block, ExamMeta, ViewMode } from "@/app/_lib/types";
 import type { BlockPatch } from "@/app/_lib/useExam";
 import { EquationView, ImageView, TableView, TextView } from "./blocks/ContentViews";
 import { GraphView } from "./blocks/GraphView";
-import HeaderView from "./blocks/HeaderView";
+import { HeaderNode } from "./blocks/headerParts";
 import { ClassifyView, MatchView, OrderView } from "./blocks/MoreQuestionViews";
 import { BlankView, McqView, OpenView, TrueFalseView } from "./blocks/QuestionViews";
 import { TableHandles } from "./blocks/TableHandles";
@@ -74,7 +74,7 @@ function Content({ block: real, number, meta, mode, interactive, totalPoints }: 
     case "graph":
       return <GraphView b={block} />;
     case "header":
-      return <HeaderView b={block} meta={meta} mode={mode} totalPoints={totalPoints} />;
+      return <HeaderNode b={block} meta={meta} mode={mode} totalPoints={totalPoints} />;
   }
 }
 

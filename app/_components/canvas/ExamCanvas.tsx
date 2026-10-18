@@ -3,10 +3,10 @@
 import type Konva from "konva";
 import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { Layer, Line, Rect, Stage, Transformer } from "react-konva";
-import { DEFAULT_MARGINS, MAX_MARGIN_MM, MIN_MARGIN_MM, PAGE_HEIGHT, PAGE_WIDTH, mmToPx, pxToMm } from "@/app/_lib/a4";
+import { DEFAULT_MARGINS, MAX_MARGIN_MM, MIN_MARGIN_MM, mmToPx, pxToMm } from "@/app/_lib/a4";
 import { questionNumbers, totalPoints as sumPoints } from "@/app/_lib/blocks";
 import type { EditField } from "@/app/_lib/editRegions";
-import { pageAt, pageTop, stackHeight } from "@/app/_lib/pageStack";
+import { pageAt, pageBoxes, stackSize, type PageBox } from "@/app/_lib/pageStack";
 import { snapBox, type Guide } from "@/app/_lib/snapping";
 import type { Block, BlockLayout, ExamDoc, PageMargins, ViewMode } from "@/app/_lib/types";
 import type { BlockPatch } from "@/app/_lib/useExam";
@@ -51,8 +51,9 @@ interface Props {
 
 const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(v, max));
 
-// All pages on ONE Konva stage (real A4 size: 794 x 1123 per page), so blocks can be
-// dragged from one page to another. Zoom is applied by CSS outside.
+// All pages on ONE Konva stage (real size: 794 x 1123 for an A4 page; each page has its own size,
+// see pageBoxes), so blocks can be dragged from one page to another. Zoom is applied by CSS outside.
+// Blocks keep positions relative to their page; the page's box places them on the stage.
 export default function ExamCanvas(props: Props) {
   const { doc, heights, mode, zoom, showGuides, selectedId, interactive = true, stageRef } = props;
   const { pages, blocks, meta } = doc;
@@ -66,7 +67,8 @@ export default function ExamCanvas(props: Props) {
     const moved = blocks.map((b) => (b.id === dragAt.id ? { ...b, layout: { ...b.layout, pageId: dragAt.pageId, y: dragAt.y } } : b));
     return questionNumbers(moved, pages);
   }, [dragAt, props.numbers, blocks, pages]);
-  const height = stackHeight(pages.length);
+  const boxes = useMemo(() => pageBoxes(pages), [pages]);
+  const { width, height } = stackSize(boxes);
   const pageIndex = new Map(pages.map((p, i) => [p.id, i]));
   const selected = interactive ? blocks.find((b) => b.id === selectedId) : undefined;
   const guidesOn = showGuides && interactive;
@@ -96,40 +98,41 @@ export default function ExamCanvas(props: Props) {
   // While dragging: pick the closest page, snap to guides, keep the block inside that page.
   const handleDragMove = (b: Block, x: number, y: number) => {
     const h = heights.get(b.id) ?? 0;
-    const i = pageAt(y + h / 2, pages.length);
-    const top = pageTop(i);
+    const i = pageAt(y + h / 2, boxes);
+    const page = boxes[i];
     const others = blocks
       .filter((o) => o.id !== b.id && o.layout.pageId === pages[i].id)
       .map((o) => ({ ...o.layout, height: heights.get(o.id) ?? 0 }));
 
-    const box = { x, y: y - top, width: b.layout.width, height: h };
-    const snapped = guidesOn ? snapBox(box, others, SNAP_PX / zoom) : { ...box, guides: [] };
+    const box = { x: x - page.left, y: y - page.top, width: b.layout.width, height: h };
+    const snapped = guidesOn ? snapBox(box, others, { ...page, margins: pages[i].margins }, SNAP_PX / zoom) : { ...box, guides: [] };
     setSnap({ page: i, guides: snapped.guides });
-    const pos = { x: clamp(snapped.x, 0, PAGE_WIDTH - b.layout.width), y: clamp(snapped.y, 0, PAGE_HEIGHT - h) };
+    const pos = { x: clamp(snapped.x, 0, page.width - b.layout.width), y: clamp(snapped.y, 0, page.height - h) };
     if (dragAt?.pageId !== pages[i].id || dragAt.y !== pos.y) setDragAt({ id: b.id, pageId: pages[i].id, y: pos.y });
-    return { x: pos.x, y: top + pos.y };
+    return { x: page.left + pos.x, y: page.top + pos.y };
   };
 
   // Drop: save which page the block landed on and its position on that page.
   const handleDragEnd = (b: Block, x: number, y: number) => {
-    const i = pageAt(y + (heights.get(b.id) ?? 0) / 2, pages.length);
+    const i = pageAt(y + (heights.get(b.id) ?? 0) / 2, boxes);
     setSnap(null);
     setDragAt(null);
     props.onDragging?.(false);
-    props.onMove?.(b.id, pages[i].id, x, y - pageTop(i));
+    props.onMove?.(b.id, pages[i].id, x - boxes[i].left, y - boxes[i].top);
   };
 
   // Resize end: keep the block inside its page; images/equations keep their shape.
   const handleResize = (b: Block, r: ResizeResult) => {
-    const width = clamp(r.width, 40, PAGE_WIDTH);
+    const i = pageAt(r.y + r.height / 2, boxes);
+    const page = boxes[i];
+    const width = clamp(r.width, 40, page.width);
     const ratio = b.type === "image" ? b.ratio : b.type === "equation" ? b.exW / Math.max(0.1, b.exH) : 0;
     const graph = b.type === "graph"; // graphs can change shape freely
-    const h = graph ? clamp(r.height, 80, PAGE_HEIGHT) : ratio ? width / ratio : (heights.get(b.id) ?? 0);
-    const i = pageAt(r.y + h / 2, pages.length);
+    const h = graph ? clamp(r.height, 80, page.height) : ratio ? width / ratio : (heights.get(b.id) ?? 0);
     props.onResize?.(b.id, {
       pageId: pages[i].id,
-      x: clamp(r.x, 0, PAGE_WIDTH - width),
-      y: clamp(r.y - pageTop(i), 0, PAGE_HEIGHT - h),
+      x: clamp(r.x - page.left, 0, page.width - width),
+      y: clamp(r.y - page.top, 0, page.height - h),
       width,
       ...(ratio || graph ? { height: h } : {}),
     });
@@ -141,7 +144,7 @@ export default function ExamCanvas(props: Props) {
   return (
     <Stage
       ref={stageRef}
-      width={PAGE_WIDTH}
+      width={width}
       height={height}
       // Clicking empty paper clears the selection (with the T tool: starts a new text there).
       onMouseDown={(e) => {
@@ -150,8 +153,8 @@ export default function ExamCanvas(props: Props) {
         const p = e.target.getStage()?.getPointerPosition();
         if (props.textTool && p && e.target.name() === "paper") {
           e.evt.preventDefault(); // keep the focus in the new text box
-          const i = pageAt(p.y, pages.length);
-          props.onCreateText?.({ pageIndex: i, x: p.x, y: p.y - pageTop(i) });
+          const i = pageAt(p.y, boxes);
+          props.onCreateText?.({ pageIndex: i, x: p.x - boxes[i].left, y: p.y - boxes[i].top });
         }
       }}
     >
@@ -159,7 +162,7 @@ export default function ExamCanvas(props: Props) {
         {pages.map((page, i) => (
           <PaperSheet
             key={page.id}
-            top={pageTop(i)}
+            box={boxes[i]}
             margins={preview ?? page.margins}
             showGuides={guidesOn || !!preview}
             editing={!!preview}
@@ -172,8 +175,8 @@ export default function ExamCanvas(props: Props) {
           <BlockNode
             key={b.id}
             block={b}
-            x={b.layout.x}
-            y={pageTop(pageIndex.get(b.layout.pageId) ?? 0) + b.layout.y}
+            x={boxes[pageIndex.get(b.layout.pageId) ?? 0].left + b.layout.x}
+            y={boxes[pageIndex.get(b.layout.pageId) ?? 0].top + b.layout.y}
             height={heights.get(b.id) ?? 0}
             number={numbers.get(b.id) ?? 0}
             meta={meta}
@@ -194,19 +197,20 @@ export default function ExamCanvas(props: Props) {
         ))}
 
         {/* While the margins are edited: the area outside them is shaded (over the blocks; clicks go through it) */}
-        {preview && pages.map((page, i) => <MarginShade key={page.id} top={pageTop(i)} margins={preview} instant={!!edit?.dragging} />)}
+        {preview && pages.map((page, i) => <MarginShade key={page.id} box={boxes[i]} margins={preview} instant={!!edit?.dragging} />)}
         {preview &&
           pages.map((page, i) => (
-            <MarginHandles key={page.id} top={pageTop(i)} margins={preview} zoom={zoom} onDrag={(m, done) => props.onMarginDrag?.(m, done)} />
+            <MarginHandles key={page.id} box={boxes[i]} margins={preview} zoom={zoom} onDrag={(m, done) => props.onMarginDrag?.(m, done)} />
           ))}
 
         {/* Pink alignment lines on the page being dragged over */}
         {snap?.guides.map((g, k) => {
-          const top = pageTop(snap.page);
+          const page = boxes[snap.page];
+          const { top, left } = page;
           return (
             <Line
               key={k}
-              points={g.axis === "x" ? [g.pos, top, g.pos, top + PAGE_HEIGHT] : [0, top + g.pos, PAGE_WIDTH, top + g.pos]}
+              points={g.axis === "x" ? [left + g.pos, top, left + g.pos, top + page.height] : [left, top + g.pos, left + page.width, top + g.pos]}
               stroke={SNAP_COLOR}
               strokeWidth={1 / zoom}
               listening={false}
@@ -232,7 +236,7 @@ export default function ExamCanvas(props: Props) {
             anchorCornerRadius={2 / zoom}
             padding={2 / zoom}
             ignoreStroke
-            boundBoxFunc={(oldBox, newBox) => (newBox.width < 40 || newBox.width > PAGE_WIDTH + 4 ? oldBox : newBox)}
+            boundBoxFunc={(oldBox, newBox) => (newBox.width < 40 || newBox.width > width + 4 ? oldBox : newBox)}
           />
         )}
       </Layer>
@@ -240,9 +244,9 @@ export default function ExamCanvas(props: Props) {
   );
 }
 
-// One white A4 sheet, with margin box + center line when guides are on.
-function PaperSheet({ top, margins, showGuides, editing, instant, zoom }: {
-  top: number;
+// One white sheet, with margin box + center line when guides are on.
+function PaperSheet({ box, margins, showGuides, editing, instant, zoom }: {
+  box: PageBox;
   margins?: PageMargins;
   showGuides: boolean;
   editing: boolean;
@@ -250,16 +254,17 @@ function PaperSheet({ top, margins, showGuides, editing, instant, zoom }: {
   zoom: number;
 }) {
   const m = margins ?? DEFAULT_MARGINS;
-  const width = PAGE_WIDTH - m.left - m.right;
-  const height = PAGE_HEIGHT - m.top - m.bottom;
+  const { top, left } = box;
+  const width = box.width - m.left - m.right;
+  const height = box.height - m.top - m.bottom;
   const color = editing ? EDIT_GUIDE_COLOR : GUIDE_COLOR;
   return (
     <>
-      <Rect name="paper" y={top} width={PAGE_WIDTH} height={PAGE_HEIGHT} fill="#ffffff" />
+      <Rect name="paper" x={left} y={top} width={box.width} height={box.height} fill="#ffffff" />
       {showGuides && (
         <>
-          <GlideRect x={m.left} y={top + m.top} width={width} height={height} instant={instant} stroke={color} strokeWidth={1 / zoom} dash={[6, 4]} />
-          <GlideLine x={m.left + width / 2} y={top + m.top} length={height} instant={instant} stroke={color} strokeWidth={1 / zoom} dash={[2, 6]} />
+          <GlideRect x={left + m.left} y={top + m.top} width={width} height={height} instant={instant} stroke={color} strokeWidth={1 / zoom} dash={[6, 4]} />
+          <GlideLine x={left + m.left + width / 2} y={top + m.top} length={height} instant={instant} stroke={color} strokeWidth={1 / zoom} dash={[2, 6]} />
         </>
       )}
     </>
@@ -267,14 +272,15 @@ function PaperSheet({ top, margins, showGuides, editing, instant, zoom }: {
 }
 
 // The four bands of a page outside its margins.
-function MarginShade({ top, margins: m, instant }: { top: number; margins: PageMargins; instant: boolean }) {
-  const middle = PAGE_HEIGHT - m.top - m.bottom;
+function MarginShade({ box, margins: m, instant }: { box: PageBox; margins: PageMargins; instant: boolean }) {
+  const { top, left, width, height } = box;
+  const middle = height - m.top - m.bottom;
   return (
     <>
-      <GlideRect x={0} y={top} width={PAGE_WIDTH} height={m.top} instant={instant} fill={SHADE} />
-      <GlideRect x={0} y={top + PAGE_HEIGHT - m.bottom} width={PAGE_WIDTH} height={m.bottom} instant={instant} fill={SHADE} />
-      <GlideRect x={0} y={top + m.top} width={m.left} height={middle} instant={instant} fill={SHADE} />
-      <GlideRect x={PAGE_WIDTH - m.right} y={top + m.top} width={m.right} height={middle} instant={instant} fill={SHADE} />
+      <GlideRect x={left} y={top} width={width} height={m.top} instant={instant} fill={SHADE} />
+      <GlideRect x={left} y={top + height - m.bottom} width={width} height={m.bottom} instant={instant} fill={SHADE} />
+      <GlideRect x={left} y={top + m.top} width={m.left} height={middle} instant={instant} fill={SHADE} />
+      <GlideRect x={left + width - m.right} y={top + m.top} width={m.right} height={middle} instant={instant} fill={SHADE} />
     </>
   );
 }
@@ -284,20 +290,23 @@ const clampMm = (mm: number) => Math.max(MIN_MARGIN_MM, Math.min(mm, MAX_MARGIN_
 
 // A handle in the middle of each side of the printable area. Dragging one moves that margin in whole
 // millimetres, within the allowed range; `onDrag` gets the new margins (done = released).
-function MarginHandles({ top, margins: m, zoom, onDrag }: {
-  top: number;
+function MarginHandles({ box, margins: m, zoom, onDrag }: {
+  box: PageBox;
   margins: PageMargins;
   zoom: number;
   onDrag: (m: PageMargins, done: boolean) => void;
 }) {
-  const midX = m.left + (PAGE_WIDTH - m.left - m.right) / 2;
-  const midY = top + m.top + (PAGE_HEIGHT - m.top - m.bottom) / 2;
+  const { top, left } = box;
+  const right = left + box.width;
+  const bottom = top + box.height;
+  const midX = left + m.left + (box.width - m.left - m.right) / 2;
+  const midY = top + m.top + (box.height - m.top - m.bottom) / 2;
   // Each side: where its handle sits for a margin of `px`, and the margin for a handle at (x, y).
   const sides: { side: Side; at: (px: number) => { x: number; y: number }; margin: (x: number, y: number) => number }[] = [
     { side: "top", at: (px) => ({ x: midX, y: top + px }), margin: (_, y) => y - top },
-    { side: "bottom", at: (px) => ({ x: midX, y: top + PAGE_HEIGHT - px }), margin: (_, y) => top + PAGE_HEIGHT - y },
-    { side: "left", at: (px) => ({ x: px, y: midY }), margin: (x) => x },
-    { side: "right", at: (px) => ({ x: PAGE_WIDTH - px, y: midY }), margin: (x) => PAGE_WIDTH - x },
+    { side: "bottom", at: (px) => ({ x: midX, y: bottom - px }), margin: (_, y) => bottom - y },
+    { side: "left", at: (px) => ({ x: left + px, y: midY }), margin: (x) => x - left },
+    { side: "right", at: (px) => ({ x: right - px, y: midY }), margin: (x) => right - x },
   ];
   const cursor = (e: Konva.KonvaEventObject<MouseEvent | DragEvent>, value: string) => {
     const container = e.target.getStage()?.container();

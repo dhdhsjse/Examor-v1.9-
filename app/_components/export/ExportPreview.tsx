@@ -94,7 +94,7 @@ export default function ExportPreview({ doc, busy, renderPages, onExport, onClos
           : {
               status: "warn",
               title: t("Questions add up to {total} pts, the header says /{outOf}", { total, outOf }),
-              detail: t("Change the points, or tick “Use the total of the questions” in the header's properties."),
+              detail: t("Change the points, or tick “Use the total of the questions” in Page layout → Header and footer."),
             },
       );
     } else {
@@ -135,7 +135,7 @@ export default function ExportPreview({ doc, busy, renderPages, onExport, onClos
                 </button>
               ))}
             </div>
-            <span className="ms-auto text-xs text-muted">{t("{n} A4 page(s)", { n: doc.pages.length })}</span>
+            <span className="ms-auto text-xs text-muted">{t(doc.pages.every((p) => !p.format || (p.format.size === "A4" && p.format.orientation === "portrait")) ? "{n} A4 page(s)" : "{n} page(s)", { n: doc.pages.length })}</span>
           </div>
           <div className="flex-1 overflow-y-auto p-6">
             {failed ? (

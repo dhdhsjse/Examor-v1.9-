@@ -1,17 +1,18 @@
 "use client";
 
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type DragEvent } from "react";
-import { PAGE_HEIGHT, PAGE_WIDTH } from "@/app/_lib/a4";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type DragEvent } from "react";
 import { isQuestion } from "@/app/_lib/blocks";
 import type { EditField } from "@/app/_lib/editRegions";
-import { CANVAS_BOTTOM_SPACE, CANVAS_TOP_GAP, LABEL_HEIGHT, canvasTopPadding, pageAt, pageTop, stackHeight } from "@/app/_lib/pageStack";
+import { CANVAS_BOTTOM_SPACE, CANVAS_TOP_GAP, LABEL_HEIGHT, canvasTopPadding, pageAt, pageBoxes, stackSize, type PageBox } from "@/app/_lib/pageStack";
 import { DRAG_MIME, type ToolAction } from "@/app/_lib/tools";
-import type { BlockLayout, ExamDoc, ExamMeta, PageMargins, ViewMode } from "@/app/_lib/types";
+import type { Block, BlockLayout, ExamDoc, ExamMeta, PageMargins, ViewMode } from "@/app/_lib/types";
 import { useT } from "@/app/_lib/uiLang";
 import type { BlockPatch, DropPoint, RevealRequest } from "@/app/_lib/useExam";
 import { useZoom } from "@/app/_lib/useZoom";
+import { chromeConfig, withChromeConfig } from "@/app/_lib/pageChrome";
 import ExamCanvas, { type MarginEditView } from "../canvas/ExamCanvas";
 import AnswerBar from "./AnswerBar";
+import ChromeBar from "./ChromeBar";
 import CorrectionBar from "./CorrectionBar";
 import InlineEditor from "./InlineEditor";
 import PageStrip from "./PageStrip";
@@ -37,6 +38,10 @@ interface Props {
   editing: Editing | null;
   marginEdit: MarginEditView | null; // margins being edited (Page layout → Margins), see ExamCanvas
   onMarginDrag: (margins: PageMargins, done: boolean) => void;
+  // A selected header/footer: change its settings, show it on every page or only this one, open its panel.
+  onChromeData: (blockId: string, fn: (data: Record<string, string>, b: Block) => Record<string, string>, key?: string) => void;
+  onChromeScope: (blockId: string, to: "all" | "page") => void;
+  onChromeSettings: () => void;
   onToolChange: (tool: CanvasTool) => void;
   onSelect: (id: string | null) => void;
   onMove: (id: string, pageId: string, x: number, y: number) => void;
@@ -76,11 +81,14 @@ export default function Workspace(props: Props) {
       return true;
     }
   });
-  const { zoom, fitMode, setZoom, fitPage, fitWidth } = useZoom(viewport);
+  // Pages can differ in size: each one has its box on the canvas (see pageBoxes).
+  const boxes = useMemo(() => pageBoxes(pages), [pages]);
+  const canvasSize = stackSize(boxes);
+  const { zoom, fitMode, setZoom, fitPage, fitWidth } = useZoom(viewport, boxes[Math.min(activePage, boxes.length - 1)] ?? canvasSize);
   const [panReady, setPanReady] = useState(false); // Space held: drag to move around
   const [panning, setPanning] = useState(false);
   const pan = useRef<{ x: number; y: number; left: number; top: number } | null>(null);
-  const height = stackHeight(pages.length);
+  const height = canvasSize.height;
   const pageIndex = (pageId: string) => Math.max(0, pages.findIndex((p) => p.id === pageId));
 
   // ---- Zoom that keeps the same spot of the page under the screen center (or the mouse) ----
@@ -127,9 +135,9 @@ export default function Workspace(props: Props) {
       const el = scrollRef.current;
       const stack = stackRef.current;
       if (!el || !stack) return;
-      el.scrollTo({ top: stack.offsetTop + pageTop(i) * zoom - LABEL_HEIGHT - CANVAS_TOP_GAP, behavior: "smooth" });
+      el.scrollTo({ top: stack.offsetTop + (boxes[i]?.top ?? 0) * zoom - LABEL_HEIGHT - CANVAS_TOP_GAP, behavior: "smooth" });
     },
-    [zoom],
+    [zoom, boxes],
   );
 
   // The page under the top third of the screen is the "current" page.
@@ -139,8 +147,8 @@ export default function Workspace(props: Props) {
     if (!el || !stack) return;
     const mark = el.scrollTop + el.clientHeight / 3;
     let current = 0;
-    pages.forEach((_, i) => {
-      if (stack.offsetTop + pageTop(i) * zoom <= mark) current = i;
+    boxes.forEach((box, i) => {
+      if (stack.offsetTop + box.top * zoom <= mark) current = i;
     });
     if (current !== activePage) props.onActivePageChange(current);
   };
@@ -230,8 +238,8 @@ export default function Workspace(props: Props) {
     const rect = stack.getBoundingClientRect();
     const x = (e.clientX - rect.left) / zoom;
     const y = (e.clientY - rect.top) / zoom;
-    const i = pageAt(y, pages.length);
-    props.onDropItem(JSON.parse(raw) as ToolAction, { pageIndex: i, x, y: y - pageTop(i) });
+    const i = pageAt(y, boxes);
+    props.onDropItem(JSON.parse(raw) as ToolAction, { pageIndex: i, x: x - boxes[i].left, y: y - boxes[i].top });
   };
 
   const toggleAnswerBar = () => {
@@ -244,7 +252,11 @@ export default function Workspace(props: Props) {
   const editBlock = editing ? doc.blocks.find((b) => b.id === editing.id) : undefined;
   const selected = doc.blocks.find((b) => b.id === selectedId);
   const question = selected && isQuestion(selected) && !dragging ? selected : undefined;
-  const blockTop = (b: { layout: BlockLayout }) => pageTop(pageIndex(b.layout.pageId)) + b.layout.y;
+  const chrome = selected?.meta?.role && !dragging ? selected : undefined; // a page's header or footer
+  const chromeKind = chrome?.meta?.role;
+  const chromePage = chrome ? pageIndex(chrome.layout.pageId) : 0;
+  const blockTop = (b: { layout: BlockLayout }) => boxes[pageIndex(b.layout.pageId)].top + b.layout.y;
+  const blockLeft = (b: { layout: BlockLayout }) => boxes[pageIndex(b.layout.pageId)].left + b.layout.x;
 
   return (
     <div className="flex h-full">
@@ -276,21 +288,22 @@ export default function Workspace(props: Props) {
             {/* Takes the zoomed size in the layout... */}
             <div
               ref={stackRef}
-              style={{ width: PAGE_WIDTH * zoom, height: height * zoom }}
+              style={{ width: canvasSize.width * zoom, height: height * zoom }}
               className={`relative rounded-sm transition-shadow ${dropHover ? "ring-2 ring-indigo-400/60 ring-offset-4 ring-offset-transparent" : ""}`}
               onDragOver={handleDragOver}
               onDragLeave={() => setDropHover(false)}
               onDrop={handleDrop}
             >
-              {/* ...while the content inside stays at real A4 size and is scaled by CSS. */}
+              {/* ...while the content inside stays at real page size and is scaled by CSS. */}
               <div
                 className="absolute top-0 left-0 origin-top-left"
-                style={{ width: PAGE_WIDTH, height, transform: `scale(${zoom})` }}
+                style={{ width: canvasSize.width, height, transform: `scale(${zoom})` }}
               >
                 {pages.map((page, i) => (
                   <PageFrame
                     key={page.id}
                     index={i}
+                    box={boxes[i]}
                     total={pages.length}
                     zoom={zoom}
                     active={i === activePage}
@@ -330,6 +343,7 @@ export default function Workspace(props: Props) {
                     mode={mode}
                     zoom={zoom}
                     top={blockTop(editBlock)}
+                    left={blockLeft(editBlock)}
                     onChange={props.onEditChange}
                     onNext={props.onEditNext}
                     onEnter={props.onEditEnter}
@@ -339,12 +353,31 @@ export default function Workspace(props: Props) {
                 )}
               </div>
 
+              {/* Format bar under the selected header / footer (screen size, not zoomed) */}
+              {chrome && chromeKind && (
+                <div
+                  className="absolute z-30"
+                  style={{ left: blockLeft(chrome) * zoom, top: (blockTop(chrome) + (heights.get(chrome.id) ?? 0)) * zoom + 6 }}
+                >
+                  <ChromeBar
+                    block={chrome}
+                    own={withChromeConfig(doc).pages[chromePage]?.[chromeKind] !== undefined}
+                    data={chromeConfig(doc, chromePage, chromeKind)?.data ?? {}}
+                    editing={editing?.id === chrome.id ? editing.field : null}
+                    meta={doc.meta}
+                    onData={(fn, key) => props.onChromeData(chrome.id, fn, key)}
+                    onScope={(to) => props.onChromeScope(chrome.id, to)}
+                    onSettings={props.onChromeSettings}
+                  />
+                </div>
+              )}
+
               {/* Green answer bar under the selected question (screen size, not zoomed) */}
               {question && (
                 <div
                   className="pointer-events-none absolute z-30"
                   style={{
-                    left: question.layout.x * zoom,
+                    left: blockLeft(question) * zoom,
                     top: (blockTop(question) + (heights.get(question.id) ?? 0)) * zoom + 6,
                     width: Math.max(300, question.layout.width * zoom),
                   }}
@@ -429,8 +462,9 @@ export default function Workspace(props: Props) {
 
 // The paper shadow behind page `index` + its clickable "Page 1 of 3" label.
 // Sizes are divided by zoom so the label keeps the same size on screen.
-function PageFrame({ index, total, zoom, active, keyMode, onClick }: {
+function PageFrame({ index, box, total, zoom, active, keyMode, onClick }: {
   index: number;
+  box: PageBox;
   total: number;
   zoom: number;
   active: boolean;
@@ -438,20 +472,21 @@ function PageFrame({ index, total, zoom, active, keyMode, onClick }: {
   onClick: () => void;
 }) {
   const t = useT();
-  const top = pageTop(index);
+  const { top, left } = box;
   return (
     <>
       <div
-        className={`paper-shadow absolute left-0 bg-white ${keyMode ? "outline-2 outline-emerald-500/50" : ""}`}
-        style={{ top, width: PAGE_WIDTH, height: PAGE_HEIGHT }}
+        className={`paper-shadow absolute bg-white ${keyMode ? "outline-2 outline-emerald-500/50" : ""}`}
+        style={{ top, left, width: box.width, height: box.height }}
       />
       <button
         onClick={onClick}
-        className={`absolute left-0 z-10 rounded font-medium transition-colors hover:bg-white/70 ${
+        className={`absolute z-10 rounded font-medium transition-colors hover:bg-white/70 ${
           active ? "text-indigo-600" : "text-muted"
         }`}
         style={{
           top,
+          left,
           transform: "translateY(-100%)",
           marginTop: -4 / zoom,
           fontSize: 12 / zoom,

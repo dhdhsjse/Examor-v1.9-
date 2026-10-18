@@ -4,10 +4,32 @@ export type Lang = "fr" | "ar";
 // "exam" = the student copy, "key" = the correction sheet (answers shown).
 export type ViewMode = "exam" | "key";
 
-// One A4 sheet of the exam.
+// One sheet of the exam.
 export interface Page {
   id: string;
   margins?: PageMargins; // missing = 48px on every side
+  format?: PageFormat; // missing = A4 portrait
+  header?: HeaderFooterConfig; // this page's own header (Page layout → Header and footer); missing = the document's
+  footer?: HeaderFooterConfig;
+}
+
+// A header or footer: a template of the header/footer library (onboarding/headerFooterLibrary.ts) and
+// the texts typed for it (`data`, by field key; missing = the template's default text).
+export interface HeaderFooterConfig {
+  enabled: boolean;
+  templateId: string;
+  data: Record<string, string>;
+}
+
+export type PageOrientation = "portrait" | "landscape";
+export type PageSizeKey = "A4" | "A3" | "A5" | "Letter" | "Legal" | "custom";
+
+// Paper size of a page (Page layout → Page format). Sizes are portrait; "landscape" swaps them.
+export interface PageFormat {
+  size: PageSizeKey;
+  orientation: PageOrientation;
+  customWidth?: number; // mm, only with size "custom"
+  customHeight?: number;
 }
 
 // Printable-area margins of a page (page pixels).
@@ -34,6 +56,7 @@ export interface ChromeRule {
 export interface BlockMeta {
   role?: "header" | "footer";
   templateId?: string;
+  field?: string; // a header/footer text block: the text of its settings it shows (HeaderFooterConfig.data key)
 }
 
 // Where a block sits (page pixels, relative to its own page).
@@ -246,10 +269,13 @@ export type HeaderStyle =
   | "duotone"
   | "monogram"
   | "ticket"
-  | "floating";
+  | "floating"
+  | "algerian";
 
 export interface HeaderFields {
   authority?: string; // top line of the official header, e.g. the ministry (missing in older files)
+  republic?: string; // first line of the Algerian header ("République Algérienne…")
+  directorate?: string; // Algerian header: "Direction de l'Éducation de la wilaya de …"
   school: string;
   title: string;
   subject: string;
@@ -265,7 +291,10 @@ export interface HeaderBlock extends BlockBase {
   style: HeaderStyle;
   fields: HeaderFields;
   accent?: string; // main color of the colored styles (missing = each style's own color)
+  aligns?: Partial<Record<string, TextAlign>>; // alignment chosen for a text of the header, by field key
 }
+
+export type TextAlign = "left" | "center" | "right";
 
 export type QuestionBlock = McqBlock | TrueFalseBlock | BlankBlock | OpenBlock | MatchBlock | OrderBlock | ClassifyBlock;
 export type Block = QuestionBlock | TextBlock | EquationBlock | ImageBlock | TableBlock | GraphBlock | HeaderBlock;
@@ -296,4 +325,8 @@ export interface ExamDoc {
   meta: ExamMeta;
   pages: Page[];
   blocks: Block[];
+  // Header and footer of every page without its own (Page.header / Page.footer). Missing in older
+  // files: `meta.chrome` (the onboarding rule) is used instead, see pageChrome.ts.
+  globalHeader?: HeaderFooterConfig;
+  globalFooter?: HeaderFooterConfig;
 }

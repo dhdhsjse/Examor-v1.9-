@@ -119,7 +119,7 @@ export function ImageEditor({ b, lang, onChange, onReplace }: { b: ImageBlock; l
 }
 
 // Header styles drawn in their own color (the teacher can change it).
-const COLORED: HeaderStyle[] = ["modern", "banner", "elegant", "split", "cards", "playful", "evaluation", "official", "compact",
+export const COLORED: HeaderStyle[] = ["modern", "banner", "elegant", "split", "cards", "playful", "evaluation", "official", "compact",
   "accentbar", "bookmark", "gradient", "geometric", "chips", "editorial", "framed", "infogrid", "duotone", "monogram", "ticket", "floating"];
 
 export function HeaderEditor({ b, totalPoints, onChange }: { b: HeaderBlock; totalPoints: number; onChange: OnChange }) {

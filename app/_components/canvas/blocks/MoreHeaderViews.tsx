@@ -25,7 +25,7 @@ const DOTS_S = "............";
 // Keep "/ 20" left-to-right inside Arabic text.
 const ltr = (s: string) => `⁦${s}⁩`;
 
-export const MORE_HEADER_STYLES: HeaderStyle[] = ["official", "split", "compact", "evaluation", "playful", "cards"];
+export const MORE_HEADER_STYLES: HeaderStyle[] = ["official", "split", "compact", "evaluation", "playful", "cards", "algerian"];
 
 export function MoreHeaderView({ style, c }: { style: HeaderStyle; c: HeaderCtx }) {
   const { W, H, rtl, family, t, f, title, sub, outOf, at } = c;
@@ -36,6 +36,33 @@ export function MoreHeaderView({ style, c }: { style: HeaderStyle; c: HeaderCtx 
   );
 
   switch (style) {
+    case "algerian": {
+      // Algerian exam: the Republic and the Ministry centered, a two-column table (directorate and school
+      // on one side, year and level on the other), the framed exam title, then subject, duration, score.
+      const row = 48;
+      const rowH = 52;
+      const half = W / 2;
+      const band = row + rowH + 8;
+      const last = band + 46;
+      return (
+        <>
+          {L({ text: f.republic ?? "", x: 0, y: 0, width: W, size: 13, bold: true, align: "center" })}
+          {L({ text: f.authority ?? "", x: 0, y: 22, width: W, size: 12, bold: true, align: "center" })}
+          <Rect x={0} y={row} width={W} height={rowH} stroke={INK} strokeWidth={1.2} listening={false} />
+          <Line points={[half, row, half, row + rowH]} stroke={INK} strokeWidth={1} listening={false} />
+          {L({ text: f.directorate ?? "", x: at(8, half - 16), y: row + 9, width: half - 16, size: 12, align: start })}
+          {L({ text: f.school, x: at(8, half - 16), y: row + 30, width: half - 16, size: 12, align: start })}
+          {L({ text: `${t.year} : ${f.year}`, x: at(half + 8, half - 16), y: row + 9, width: half - 16, size: 12, align: end })}
+          {L({ text: `${t.level} : ${f.level}`, x: at(half + 8, half - 16), y: row + 30, width: half - 16, size: 12, align: end })}
+          <Rect x={0} y={band} width={W} height={36} stroke={c.accent ?? INK} strokeWidth={1.6} listening={false} />
+          {L({ text: title, x: 8, y: band + 9, width: W - 16, size: 17, bold: true, color: c.accent, align: "center" })}
+          {L({ text: `${t.subject} : ${f.subject}`, x: at(0, W * 0.4), y: last, width: W * 0.4, size: 12, bold: true, align: start })}
+          {L({ text: `${t.duration} : ${f.duration}`, x: at(W * 0.4, W * 0.3), y: last, width: W * 0.3, size: 12, align: "center" })}
+          {L({ text: `${t.score} : ${ltr(`...... / ${outOf}`)}`, x: at(W * 0.7, W * 0.3), y: last, width: W * 0.3, size: 12, bold: true, align: end })}
+          <Line points={[0, last + 24, W, last + 24]} stroke={INK} strokeWidth={1} listening={false} />
+        </>
+      );
+    }
     case "official": {
       // Authority and school on one side, subject / level / duration on the other, a framed title,
       // then the student lines and the score box.

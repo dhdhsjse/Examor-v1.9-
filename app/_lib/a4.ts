@@ -1,17 +1,13 @@
+import { A4, MM_TO_PX } from "./pageFormats";
 import type { PageMargins } from "./types";
 
-// A4 page size in pixels at 96 DPI (210mm x 297mm).
-export const PAGE_WIDTH = 794;
-export const PAGE_HEIGHT = 1123;
+// Page sizes live in pageFormats.ts (every page has its own). This file keeps the margin defaults.
 
 // White space kept around the edges of the page.
 export const PAGE_MARGIN = 48;
 
-// Width available for content inside the margins.
-export const CONTENT_WIDTH = PAGE_WIDTH - PAGE_MARGIN * 2;
-
-// Page pixels in one millimetre (96 DPI).
-export const MM_TO_PX = 3.7795275591;
+// Width available for content inside the default margins of an A4 page (default block width).
+export const CONTENT_WIDTH = A4.width - PAGE_MARGIN * 2;
 
 // Margins of a page that has none of its own.
 export const DEFAULT_MARGINS: PageMargins = { top: PAGE_MARGIN, right: PAGE_MARGIN, bottom: PAGE_MARGIN, left: PAGE_MARGIN };

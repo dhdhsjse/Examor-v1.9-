@@ -1,4 +1,5 @@
-import { CONTENT_WIDTH, PAGE_HEIGHT, PAGE_MARGIN, PAGE_WIDTH } from "./a4";
+import { CONTENT_WIDTH, PAGE_MARGIN } from "./a4";
+import { A4 } from "./pageFormats";
 import { createBlock, defaultHeaderFields, nextFreeY, blockHeights, type BlockPreset } from "./blocks";
 import { renderFigure, type Params } from "./figures";
 import { newId } from "./id";
@@ -142,7 +143,7 @@ function figureBlock(id: string, params: Params | undefined, width: number | und
   const bw = Math.min(CONTENT_WIDTH, width ?? w);
   const b = createBlock("image", lang, pageId, { src: svgUrl(r.svg), ratio: w / h, width: bw, height: (bw * h) / w, figure: { id, params: r.params } });
   // Figures are centered on the page.
-  return { ...b, layout: { ...b.layout, x: (PAGE_WIDTH - bw) / 2 } };
+  return { ...b, layout: { ...b.layout, x: (A4.width - bw) / 2 } };
 }
 
 // Build a fresh exam from a template: header on top, then the extra blocks stacked below,
@@ -159,7 +160,7 @@ export function buildDoc(t: Template): ExamDoc {
     const onPage = blocks.filter((x) => x.layout.pageId === page.id);
     let y = nextFreeY(onPage, heights);
     const h = heights.get(b.id) ?? blockHeights({ ...doc, blocks: [b] }).get(b.id) ?? 0;
-    if (onPage.length && y + h > PAGE_HEIGHT - PAGE_MARGIN) {
+    if (onPage.length && y + h > A4.height - PAGE_MARGIN) {
       page = { id: newId() };
       pages.push(page);
       y = PAGE_MARGIN;
@@ -182,9 +183,9 @@ export function buildDoc(t: Template): ExamDoc {
 
 export const templateById = (id: string) => TEMPLATES.find((t) => t.id === id) ?? TEMPLATES[0];
 
-// Move a template's blocks from the default 48px margins onto the margins the user chose.
+// Move a template's blocks (A4 pages) from the default 48px margins onto the margins the user chose.
 export function fitToMargins(doc: ExamDoc, m: PageMargins): ExamDoc {
-  const width = PAGE_WIDTH - m.left - m.right;
+  const width = A4.width - m.left - m.right;
   return {
     ...doc,
     pages: doc.pages.map((p) => ({ ...p, margins: { ...m } })),

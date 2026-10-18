@@ -1,7 +1,8 @@
 "use client";
 
 import { Text } from "react-konva";
-import { FONT_FAMILY, konvaFontStyle, type RichLine } from "@/app/_lib/measure";
+import { FONT_FAMILY, konvaFontStyle, wrapRich, type RichLine } from "@/app/_lib/measure";
+import { isRich } from "@/app/_lib/richText";
 
 export { INK } from "@/app/_lib/blockLayout";
 export const MUTED = "#4b5563";
@@ -70,8 +71,13 @@ interface OneLineProps {
   align?: "left" | "right" | "center";
 }
 
-// A single line of plain text, cut with "…" if too long (used in headers and labels).
+// A single line of text, cut with "…" if too long (used in headers and labels). Words styled on the
+// page (bigger, bold, colored…) are drawn as styled pieces; what does not fit is left out.
 export function OneLine({ text, x, y, width, size, bold, color = "#111827", family = FONT_FAMILY, rtl, align }: OneLineProps) {
+  if (isRich(text)) {
+    const [line] = wrapRich(text.replace(/\n/g, " "), width, { family, size, bold: !!bold, italic: false, underline: false, color }, size);
+    return line ? <RichText lines={[line]} x={x} y={y} width={width} rtl={rtl} align={align} /> : null;
+  }
   return (
     <Text
       x={x}

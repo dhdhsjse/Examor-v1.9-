@@ -64,6 +64,7 @@ export const HEADER_HEIGHT: Record<HeaderStyle, number> = {
   monogram: 128,
   ticket: 130,
   floating: 132,
+  algerian: 184,
 };
 
 // A font + its line height.

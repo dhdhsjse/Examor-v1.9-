@@ -17,11 +17,16 @@ export type HeaderFooterBuildCtx = {
   pageIndex: number; // 0 = first page
   pageCount: number;
   margins: PageMargins;
+  pageSize: { width: number; height: number }; // page pixels
   lang: Lang;
   now: Date;
   examTitle: string;
   t: T;
+  data: Record<string, string>; // texts typed in Page layout → Header and footer (missing = defaults)
 };
+
+// A text of a header/footer the teacher can change. `label` is an English key (translated).
+export type HeaderFooterField = { key: string; label: string };
 
 // A header or footer layout from the dedicated library. Plain data + a pure build function.
 export type HeaderFooterTemplate = {
@@ -30,6 +35,8 @@ export type HeaderFooterTemplate = {
   nameKey: string;
   sketch?: HeaderStyle; // preview: the exam header style it uses
   sample?: string; // preview: its text (English key), for text-only headers and footers
+  fields?: HeaderFooterField[]; // texts that can be typed for it (HeaderFooterBuildCtx.data)
+  countsPages?: boolean; // shows the page count: rebuilt when pages are added or removed
   build: (ctx: HeaderFooterBuildCtx) => Block[];
 };
 

@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import type Konva from 'konva';
-import type { Block, BlockType, ExamDoc, ExamMeta, PageMargins, ViewMode } from '@/app/_lib/types';
+import type { Block, BlockType, ExamDoc, ExamMeta, HeaderFooterConfig, PageFormat, PageMargins, ViewMode } from '@/app/_lib/types';
+import type { ChromeKind } from '@/app/_lib/pageChrome';
 import type { BlockPreset } from '@/app/_lib/blocks';
 import type { ToolAction } from '@/app/_lib/tools';
 import type { Subject } from '@/app/_lib/subjects';
@@ -40,6 +41,14 @@ export type Shell = {
   openMarginEdit: (open: boolean) => void; // closing saves an unsaved draft
   draftMargins: (margins: PageMargins | null) => void; // unsaved change (null = drop it), saved after a short pause
   setMargins: (margins: PageMargins) => void; // save now, on every page (one undo step); blocks stay where they are
+  // Page layout → Page format: paper size and orientation of ONE page. Changes with the same `key` are one
+  // undo step (typing a custom size). Blocks stay where they are, even outside a page that got smaller.
+  setPageFormat: (pageId: string, format: PageFormat, key?: string) => void;
+  // Page layout → Header and footer: the document's (no `pageId`) or one page's own (`config` undefined =
+  // back to the document's). The header/footer blocks of the pages it changes are rebuilt (pageChrome.ts).
+  setChrome: (kind: ChromeKind, config: HeaderFooterConfig | undefined, pageId?: string, key?: string) => void;
+  resetPageChrome: (pageId: string) => void; // the page shows the document's header and footer again
+  adoptHeader: (blockId: string) => void; // an exam header block that is not a page header becomes its page's header
   // files
   newExam: () => void;
   // Replace the exam with a ready document (onboarding). `keepOld` saves the current one in the history first.

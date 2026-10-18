@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { PAGE_HEIGHT, PAGE_WIDTH } from "./a4";
 import { CANVAS_TOP_GAP, LABEL_HEIGHT } from "./pageStack";
 
 // "Fit page" keeps the page label above the page and the page itself clear of the floating
@@ -17,8 +16,9 @@ export type FitMode = "page" | "width" | null;
 
 export const clampZoom = (z: number) => Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, z));
 
-// Zoom level of the workspace: any value between 10% and 400%, or "fit" to the window.
-export function useZoom(viewport: { width: number; height: number }) {
+// Zoom level of the workspace: any value between 10% and 400%, or "fit" to the window. The fit
+// follows `page` (the page in view), so it adapts when that page changes size or orientation.
+export function useZoom(viewport: { width: number; height: number }, page: { width: number; height: number }) {
   const [fitMode, setFitMode] = useState<FitMode>(null);
   const [custom, setCustom] = useState(DEFAULT_ZOOM);
 
@@ -26,8 +26,8 @@ export function useZoom(viewport: { width: number; height: number }) {
   const fit = !viewport.width
     ? DEFAULT_ZOOM
     : fitMode === "width"
-      ? clampZoom((viewport.width - 80) / PAGE_WIDTH)
-      : clampZoom(Math.min((viewport.width - 80) / PAGE_WIDTH, (viewport.height - FIT_SPACE_Y) / PAGE_HEIGHT));
+      ? clampZoom((viewport.width - 80) / page.width)
+      : clampZoom(Math.min((viewport.width - 80) / page.width, (viewport.height - FIT_SPACE_Y) / page.height));
   const zoom = fitMode ? fit : custom;
 
   const setZoom = useCallback((z: number) => {

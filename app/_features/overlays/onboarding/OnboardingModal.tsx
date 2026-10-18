@@ -20,6 +20,7 @@ import {
   type ChromeChoice,
 } from "@/app/_lib/onboarding";
 import type { BuildType } from "@/app/_lib/onboardingTypes";
+import { chromeRuleOf } from "@/app/_lib/pageChrome";
 import { loadAutosave } from "@/app/_lib/storage";
 import { templateById } from "@/app/_lib/templates";
 import type { ExamDoc, PageScope } from "@/app/_lib/types";
@@ -54,7 +55,7 @@ const FRESH: Draft = {
 
 // What the current exam already uses, so the window starts from it.
 function draftFromDoc(doc: ExamDoc, step: Step): Draft {
-  const rule = doc.meta.chrome;
+  const rule = chromeRuleOf(doc);
   const h = !!rule && rule.header.mode !== "none";
   const f = !!rule && rule.footer.mode !== "none";
   const build: BuildType = h && f ? "header-footer" : h ? "header-only" : f ? "footer-only" : "none";

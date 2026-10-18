@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { PAGE_HEIGHT, PAGE_WIDTH } from "@/app/_lib/a4";
+import { pageSize } from "@/app/_lib/pageFormats";
 import { blockHeights, isQuestion } from "@/app/_lib/blocks";
 import type { ExamDoc } from "@/app/_lib/types";
 import { useUi } from "@/app/_lib/uiLang";
@@ -175,17 +175,21 @@ export default function VersionHistory({ current, onRestore, onClose }: Props) {
 
 function VersionPages({ doc }: { doc: ExamDoc }) {
   const heights = useMemo(() => blockHeights(doc), [doc]);
-  const scale = THUMB_W / PAGE_WIDTH;
   return (
-    <div className="flex flex-wrap gap-3" dir="ltr">
-      {doc.pages.map((p, i) => (
-        <div key={p.id} className="flex flex-col items-center gap-1">
-          <div className="relative overflow-hidden rounded-[2px] bg-white shadow-sm ring-1 ring-black/10" style={{ width: THUMB_W, height: PAGE_HEIGHT * scale }}>
-            <PageBars pageId={p.id} blocks={doc.blocks} heights={heights} scale={scale} />
+    <div className="flex flex-wrap items-end gap-3" dir="ltr">
+      {doc.pages.map((p, i) => {
+        // Each page keeps its shape; a portrait A4 page is THUMB_W wide.
+        const { width, height } = pageSize(p);
+        const scale = Math.min(THUMB_W / width, (THUMB_W * Math.SQRT2) / height);
+        return (
+          <div key={p.id} className="flex flex-col items-center gap-1">
+            <div className="relative overflow-hidden rounded-[2px] bg-white shadow-sm ring-1 ring-black/10" style={{ width: width * scale, height: height * scale }}>
+              <PageBars pageId={p.id} blocks={doc.blocks} heights={heights} scale={scale} />
+            </div>
+            <span className="text-[10px] text-muted">{i + 1}</span>
           </div>
-          <span className="text-[10px] text-muted">{i + 1}</span>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }

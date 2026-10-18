@@ -1,4 +1,5 @@
-import { PAGE_HEIGHT, PAGE_MARGIN, PAGE_WIDTH } from "./a4";
+import { DEFAULT_MARGINS } from "./a4";
+import type { PageMargins } from "./types";
 
 export interface Box {
   x: number;
@@ -15,6 +16,13 @@ export interface Guide {
 
 type Axis = Guide["axis"];
 
+// The page a box is dragged on: its size and margins.
+export interface SnapPage {
+  width: number;
+  height: number;
+  margins?: PageMargins;
+}
+
 // Start, middle and end of a box along one axis.
 function edges(b: Box, axis: Axis): number[] {
   return axis === "x"
@@ -23,14 +31,14 @@ function edges(b: Box, axis: Axis): number[] {
 }
 
 // Page lines a block can snap to: both margins and the center.
-function pageLines(axis: Axis): number[] {
-  const size = axis === "x" ? PAGE_WIDTH : PAGE_HEIGHT;
-  return [PAGE_MARGIN, size / 2, size - PAGE_MARGIN];
+function pageLines(page: SnapPage, axis: Axis): number[] {
+  const m = page.margins ?? DEFAULT_MARGINS;
+  return axis === "x" ? [m.left, page.width / 2, page.width - m.right] : [m.top, page.height / 2, page.height - m.bottom];
 }
 
 // Find the smallest nudge (within `threshold`) that aligns the box on one axis.
-function snapAxis(box: Box, others: Box[], axis: Axis, threshold: number) {
-  const targets = [...pageLines(axis), ...others.flatMap((o) => edges(o, axis))];
+function snapAxis(box: Box, others: Box[], page: SnapPage, axis: Axis, threshold: number) {
+  const targets = [...pageLines(page, axis), ...others.flatMap((o) => edges(o, axis))];
   let best: number | null = null;
 
   for (const e of edges(box, axis)) {
@@ -48,9 +56,9 @@ function snapAxis(box: Box, others: Box[], axis: Axis, threshold: number) {
 }
 
 // Snap a dragged box to the page and to other blocks. Returns the new position + guides.
-export function snapBox(box: Box, others: Box[], threshold: number) {
-  const sx = snapAxis(box, others, "x", threshold);
-  const sy = snapAxis(box, others, "y", threshold);
+export function snapBox(box: Box, others: Box[], page: SnapPage, threshold: number) {
+  const sx = snapAxis(box, others, page, "x", threshold);
+  const sy = snapAxis(box, others, page, "y", threshold);
   const guides: Guide[] = [
     ...sx.lines.map((pos) => ({ axis: "x" as const, pos })),
     ...sy.lines.map((pos) => ({ axis: "y" as const, pos })),

@@ -1,10 +1,9 @@
 import type { Option } from "@/app/_features/core/types";
-import { headerGalleryPanel } from "@/app/_features/panels/header-gallery";
-import { toolInsertHeader } from "@/app/_features/tools/tool-insert-header";
+import { inspectorLayoutHeaderFooter } from "@/app/_features/inspectors/inspector-layout-header-footer";
 
+// No heading: the option is a single row that already says "Header and footer".
 export const layoutHeaderFooterOption: Option = {
   id: "option.layout.header-footer",
-  order: 10,
-  label: (t) => t("Header and footer"),
-  features: [toolInsertHeader, headerGalleryPanel],
+  order: 30,
+  features: [inspectorLayoutHeaderFooter],
 };

@@ -1,13 +1,18 @@
 "use client";
 
 import { useState } from "react";
-import { PAGE_HEIGHT, PAGE_WIDTH } from "@/app/_lib/a4";
+import { pageSize } from "@/app/_lib/pageFormats";
 import type { Block, Page } from "@/app/_lib/types";
 import { useUi } from "@/app/_lib/uiLang";
 import { PanelToggle } from "../PanelToggle";
 
+// A thumbnail fits in 40 x 57 (an A4 portrait page fills it), keeping its page's shape.
 const THUMB_W = 40;
-const SCALE = THUMB_W / PAGE_WIDTH;
+const THUMB_H = 57;
+export const thumbScale = (page: Page) => {
+  const { width, height } = pageSize(page);
+  return Math.min(THUMB_W / width, THUMB_H / height);
+};
 const STORAGE_KEY = "examBuilder.pageStripCollapsed";
 
 interface Props {
@@ -72,16 +77,18 @@ export default function PageStrip({ pages, blocks, heights, activeIndex, onJump,
       >
         {pages.map((page, i) => {
           const active = i === activeIndex;
+          const scale = thumbScale(page);
+          const { width, height } = pageSize(page);
           return (
             <div key={page.id} className="group relative flex flex-col items-center gap-0.5">
               <button
                 onClick={() => onJump(i)}
-                style={{ width: THUMB_W, height: PAGE_HEIGHT * SCALE }}
+                style={{ width: width * scale, height: height * scale }}
                 className={`relative overflow-hidden rounded-[2px] bg-white shadow-sm ring-1 transition-all ${
                   active ? "ring-2 ring-indigo-500" : "ring-black/10 group-hover:ring-indigo-300"
                 }`}
               >
-                <PageBars pageId={page.id} blocks={blocks} heights={heights} scale={SCALE} />
+                <PageBars pageId={page.id} blocks={blocks} heights={heights} scale={scale} />
               </button>
               <span className={`text-[10px] font-medium ${active ? "text-indigo-600" : "text-muted"}`}>{i + 1}</span>
 
