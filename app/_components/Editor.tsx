@@ -1,5 +1,6 @@
 "use client";
 
+import type { Editor as TextEditor, JSONContent } from "@tiptap/core";
 import type Konva from "konva";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CONTENT_WIDTH } from "@/app/_lib/a4";
@@ -23,6 +24,8 @@ import { figureDef } from "@/app/_lib/figures";
 import { newId } from "@/app/_lib/id";
 import { preloadImages, readImageFile } from "@/app/_lib/images";
 import { plainText } from "@/app/_lib/richText";
+import { richFromDoc } from "@/app/_lib/textboxDoc";
+import type { StyleMark } from "@/app/_lib/textboxEditor";
 import { BUILTIN_ASSETS, svgUrl, type Asset, type AssetKind } from "@/app/_lib/library";
 import { imagesToPdf, stagePageImages } from "@/app/_lib/pdf";
 import { loadAutosave, loadUserAssets, parseExamFile, pickFile, saveFile, saveUserAssets } from "@/app/_lib/storage";
@@ -36,6 +39,8 @@ import { addVersion, type Version } from "@/app/_lib/versions";
 import { appLayout } from "@/app/_features/app";
 import BarRenderer from "@/app/_features/core/BarRenderer";
 import type { BarPosition, Ctx, MarginEdit, RightTab, Shell } from "@/app/_features/core/types";
+import { blockInspectorFor, findSectionFeature } from "@/app/_features/sections";
+import type { DrawnBox } from "./canvas/ExamCanvas";
 import type { CanvasTool } from "./workspace/ToolRail";
 import Workspace, { type Editing } from "./workspace/Workspace";
 
@@ -75,7 +80,7 @@ const MARGIN_SAVE_DELAY = 500; // ms without a change before typed margins becom
 const SNAPSHOT_EVERY = 3 * 60 * 1000; // automatic copy in the version history
 
 // New blocks of these types start with their text selected on the page, ready to type over.
-const TYPE_ON_ADD: BlockType[] = ["mcq", "truefalse", "blank", "open", "match", "order", "classify", "text"];
+const TYPE_ON_ADD: BlockType[] = ["mcq", "truefalse", "blank", "open", "match", "order", "classify", "text", "textbox"];
 
 // The shell: owns the state and the actions. The screen itself is drawn from appLayout (app/_features/app.ts).
 export default function Editor() {
@@ -108,6 +113,7 @@ export default function Editor() {
   const eqTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const [tool, setTool] = useState<CanvasTool>("select");
   const [editing, setEditing] = useState<Editing | null>(null);
+  const [textEditor, setTextEditor] = useState<TextEditor | null>(null); // Tiptap editor of the text box being typed in
   const [session, setSession] = useState(0); // +1 for each new/opened exam (resets the zoom)
   const [mathKb, setMathKb] = useState(() => {
     try {
@@ -156,12 +162,19 @@ export default function Editor() {
 
   // Selecting a block shows its properties, so it also closes an inspector opened from the left panel.
   // A header or footer is set in Page layout → Header and footer: selecting one opens that inspector.
+  // A block with its own inspector (a text box: its ribbon) opens it. Otherwise an inspector that works on
+  // the selection (Home → Formatting) stays.
+  const inspectorFor = (b: Block | undefined) => {
+    if (b?.type === "header" || b?.meta?.role) return HEADER_FOOTER_INSPECTOR;
+    const own = blockInspectorFor(b?.type);
+    if (own) return own.id;
+    return findSectionFeature(activeInspectorId)?.followsSelection ? activeInspectorId : null;
+  };
   const select = (id: string | null) => {
     exam.setSelectedId(id);
     if (!id) return;
     setTab("properties");
-    const b = doc.blocks.find((x) => x.id === id);
-    setActiveInspectorId(b?.type === "header" || b?.meta?.role ? HEADER_FOOTER_INSPECTOR : null);
+    setActiveInspectorId(inspectorFor(doc.blocks.find((x) => x.id === id)));
   };
 
   // An inspector feature (target: 'inspector') takes the Properties tab of the right panel, reopened if closed.
@@ -279,12 +292,20 @@ export default function Editor() {
 
   // ---- Tools (click in the toolbox, or drop on the page) ----
 
+  // What a drag on the page does. The text box tool says how to use it, since nothing shows until drawn.
+  const setCanvasTool = (next: CanvasTool) => {
+    setTool(next);
+    if (next === "textbox" && tool !== "textbox") notify(tr("Drag on the page to draw a text box — Esc to cancel"));
+  };
+
   const runTool = (action: ToolAction, at?: DropPoint) => {
+    // Another tool used meanwhile: no text box is drawn any more.
+    setTool((cur) => (cur === "textbox" ? "select" : cur));
     switch (action.kind) {
       case "block": {
         const block = exam.addBlock(action.type, action.preset, at);
         setTab("properties");
-        setActiveInspectorId(block.type === "header" ? HEADER_FOOTER_INSPECTOR : null);
+        setActiveInspectorId(inspectorFor(block));
         // Write right away on the page: the starting text is selected, so typing replaces it.
         if (TYPE_ON_ADD.includes(block.type)) setEditing({ id: block.id, field: { kind: "text" }, selectAll: true });
         break;
@@ -295,7 +316,7 @@ export default function Editor() {
         const { type, preset } = assetToBlock(asset, doc.meta.lang);
         exam.addBlock(type, preset, at);
         setTab("properties");
-        setActiveInspectorId(type === "header" ? HEADER_FOOTER_INSPECTOR : null);
+        setActiveInspectorId(inspectorFor({ type } as Block));
         break;
       }
       case "importImage":
@@ -332,6 +353,20 @@ export default function Editor() {
     const block = editing && doc.blocks.find((b) => b.id === editing.id);
     if (!editing || !block) return;
     exam.updateBlock(block.id, fieldPatch(block, editing.field, value), { key: `${block.id}:inline:${fieldKey(editing.field)}` });
+  };
+
+  // Typing in a text box (its Tiptap editor): the document, and the same text as styled runs. Typing in a
+  // row is one undo step here; inside the editor, Ctrl+Z undoes step by step.
+  const editRich = (content: JSONContent) => {
+    if (!editing) return;
+    exam.updateBlock(editing.id, { content, text: richFromDoc(content) }, { key: `${editing.id}:inline:text` });
+  };
+  // The text box loses bold / italic / … of its own (its words got it instead, see textboxEditor.toggleStyle).
+  const dropBoxStyle = (mark: StyleMark) => {
+    const block = editing && doc.blocks.find((b) => b.id === editing.id);
+    if (!block?.font) return;
+    const font = { ...block.font, [mark]: mark === "bold" ? false : undefined };
+    exam.updateBlock(block.id, { font }, { key: `${block.id}:inline:text` });
   };
 
   // Tab / Shift+Tab: jump to the next / previous text of the same block.
@@ -383,12 +418,17 @@ export default function Editor() {
     setEditing(null);
   };
 
-  // T tool on empty paper: a new paragraph starting where the teacher clicked.
+  // T tool on empty paper: a new paragraph starting where the teacher clicked (its first line on the click).
   const createText = (at: DropPoint) => {
     const width = Math.max(160, Math.min(CONTENT_WIDTH, pageSize(doc.pages[at.pageIndex]).width - pageMargins(doc, at.pageIndex).right - at.x));
-    const block = exam.addBlock("text", { style: "body", text: "", width }, at);
+    const block = exam.addBlock("text", { style: "body", text: "", width }, { ...at, y: at.y - 10 });
     setEditing({ id: block.id, field: { kind: "text" }, created: true });
   };
+
+  // Text box tool: the box drawn on the page becomes a text box of that size, ready to type in (its ribbon
+  // opens in the right panel), and the select tool is back.
+  const drawTextbox = ({ pageIndex, x, y, width, height }: DrawnBox) =>
+    runTool({ kind: "block", type: "textbox", preset: { width, height } }, { pageIndex, x, y, corner: true });
 
   // Equation typed in MathLive: save the LaTeX now, redraw it shortly after.
   const onLatex = (block: Block, latex: string) => {
@@ -510,6 +550,8 @@ export default function Editor() {
         setTool("select");
       } else if (!mod && key === "t") {
         setTool("text");
+      } else if (!mod && key === "b") {
+        setCanvasTool("textbox");
       } else if (!mod && key === "v") {
         setTool("select");
       } else if (selected && key.startsWith("arrow")) {
@@ -545,6 +587,9 @@ export default function Editor() {
     redo: exam.redo,
     busy,
     runTool: (action) => runTool(action),
+    canvasTool: tool,
+    setCanvasTool,
+    textEditor,
     updateBlock: (id, patch, field) => exam.updateBlock(id, patch, { key: `${id}:${field}` }),
     onLatex,
     deleteBlock: exam.deleteBlock,
@@ -656,13 +701,17 @@ export default function Editor() {
         onChromeData={exam.editChrome}
         onChromeScope={exam.chromeScope}
         onChromeSettings={() => openInspector(HEADER_FOOTER_INSPECTOR)}
-              onToolChange={setTool}
+              onToolChange={setCanvasTool}
+              onDrawBox={drawTextbox}
               onPatch={(id, patch, field) => exam.updateBlock(id, patch, { key: `${id}:${field}` })}
               onEditStart={startEdit}
               onEditChange={editChange}
               onEditNext={editNext}
               onEditEnter={editEnter}
               onEditDone={editDone}
+              onRichChange={editRich}
+              onDropBoxStyle={dropBoxStyle}
+              onTextEditor={setTextEditor}
               onCreateText={createText}
               onSelect={select}
               onMove={exam.moveBlock}

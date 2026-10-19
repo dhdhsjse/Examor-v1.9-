@@ -105,6 +105,8 @@ export default function InlineEditor({ block, field, number, meta, mode, zoom, t
           fontSize: font.size,
           lineHeight: `${line}px`,
           fontWeight: font.bold ? 700 : 400,
+          fontStyle: font.italic ? "italic" : undefined,
+          textDecoration: [font.underline && "underline", font.strike && "line-through"].filter(Boolean).join(" ") || undefined,
           color: font.color,
           textAlign: region.align ?? (rtl ? "right" : "left"),
           background: region.answer ? "#fbfdfb" : "#ffffff",

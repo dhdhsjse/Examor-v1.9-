@@ -8,7 +8,7 @@ import { ColorGrid, FontSelect } from "../rich/FormatBar";
 import { Stepper } from "./fields";
 import type { OnChange } from "./QuestionEditors";
 
-const TEXT_TYPES: Block["type"][] = ["mcq", "truefalse", "blank", "open", "match", "order", "classify", "text", "table", "header"];
+const TEXT_TYPES: Block["type"][] = ["mcq", "truefalse", "blank", "open", "match", "order", "classify", "text", "textbox", "table", "header"];
 export const hasFontControls = (b: Block) => TEXT_TYPES.includes(b.type);
 
 const selectCls = "w-full rounded-md border border-line bg-white px-2 py-1.5 text-[13px] text-ink outline-none focus:border-indigo-400";

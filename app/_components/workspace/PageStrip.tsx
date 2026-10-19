@@ -92,8 +92,8 @@ export default function PageStrip({ pages, blocks, heights, activeIndex, onJump,
               </button>
               <span className={`text-[10px] font-medium ${active ? "text-indigo-600" : "text-muted"}`}>{i + 1}</span>
 
-              {/* Delete page (shown on hover, not for the last remaining page) */}
-              {pages.length > 1 && (
+              {/* Delete page (shown on hover; the first page always stays). Asks first (Workspace). */}
+              {i > 0 && (
                 <button
                   onClick={() => onDeletePage(page.id)}
                   title={t("Delete page")}

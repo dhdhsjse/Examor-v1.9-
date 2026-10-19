@@ -4,7 +4,8 @@ import { useT } from "@/app/_lib/uiLang";
 
 // "select" = click to select and drag blocks. "text" = like the T tool in Photoshop:
 // click a text to type in it, or click empty paper to write a new text there.
-export type CanvasTool = "select" | "text";
+// "textbox" = drag on a page to draw a text box (Insert → Text box); back to "select" once drawn.
+export type CanvasTool = "select" | "text" | "textbox";
 
 const TOOLS: { id: CanvasTool; label: string; key: string; icon: React.ReactNode }[] = [
   {
@@ -27,6 +28,17 @@ const TOOLS: { id: CanvasTool; label: string; key: string; icon: React.ReactNode
       </svg>
     ),
   },
+  {
+    id: "textbox",
+    label: "Text box — drag on the page to draw one",
+    key: "B",
+    icon: (
+      <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+        <rect x="1.75" y="2.75" width="12.5" height="10.5" rx="1.5" strokeDasharray="2.2 2" />
+        <path d="M5.5 5.75h5M8 5.75v4.5" />
+      </svg>
+    ),
+  },
 ];
 
 // Small floating toolbar next to the zoom bar (bottom-right), away from the page labels.
@@ -38,6 +50,7 @@ export default function ToolRail({ tool, onChange }: { tool: CanvasTool; onChang
         <button
           key={tl.id}
           onClick={() => onChange(tl.id)}
+          aria-pressed={tool === tl.id}
           title={`${t(tl.label)} (${tl.key})`}
           className={`grid size-7 place-items-center rounded-md transition-colors ${
             tool === tl.id ? "bg-indigo-600 text-white shadow-sm" : "text-muted hover:bg-black/5 hover:text-ink"

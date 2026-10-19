@@ -1,5 +1,5 @@
 // Styled text inside the plain string fields of a block.
-// A styled piece is written ⁅c=#dc2626;f=Georgia;s=18;b;i;u⁆text⁅/⁆ (rare brackets, so they
+// A styled piece is written ⁅c=#dc2626;f=Georgia;s=18;b;i;u;x;h=#fef08a⁆text⁅/⁆ (rare brackets, so they
 // never clash with what teachers type). Text without markers is plain, so older exams still work.
 
 export interface RunStyle {
@@ -9,6 +9,8 @@ export interface RunStyle {
   b?: boolean;
   i?: boolean;
   u?: boolean;
+  x?: boolean; // struck through
+  hl?: string; // highlight (background color of the words)
 }
 
 export interface Run {
@@ -34,6 +36,8 @@ function parseStyle(src: string): RunStyle {
     else if (k === "b") st.b = true;
     else if (k === "i") st.i = true;
     else if (k === "u") st.u = true;
+    else if (k === "x") st.x = true;
+    else if (k === "h" && v) st.hl = v;
   }
   return st;
 }
@@ -46,6 +50,8 @@ function styleString(st: RunStyle): string {
   if (st.b) out.push("b");
   if (st.i) out.push("i");
   if (st.u) out.push("u");
+  if (st.x) out.push("x");
+  if (st.hl) out.push(`h=${st.hl}`);
   return out.join(";");
 }
 
@@ -190,7 +196,8 @@ export function runCss(st: RunStyle, stack: (font: string) => string): Partial<C
     ...(st.size ? { fontSize: `${st.size}px` } : {}),
     ...(st.b ? { fontWeight: "700" } : {}),
     ...(st.i ? { fontStyle: "italic" } : {}),
-    ...(st.u ? { textDecoration: "underline" } : {}),
+    ...(st.u || st.x ? { textDecoration: [st.u && "underline", st.x && "line-through"].filter(Boolean).join(" ") } : {}),
+    ...(st.hl ? { backgroundColor: st.hl } : {}),
   };
 }
 

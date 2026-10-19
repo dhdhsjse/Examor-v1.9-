@@ -45,8 +45,8 @@ export function FontSelect({ value, onChange, defaultLabel, className }: { value
   );
 }
 
-// Color swatches + a custom color. `value` undefined = automatic.
-export function ColorGrid({ value, onChange, autoLabel }: { value: string | undefined; onChange: (v: string | undefined) => void; autoLabel?: string }) {
+// Color swatches + a custom color. `value` undefined = automatic. `colors`: the swatches (text colors by default).
+export function ColorGrid({ value, onChange, autoLabel, colors = TEXT_COLORS }: { value: string | undefined; onChange: (v: string | undefined) => void; autoLabel?: string; colors?: string[] }) {
   const t = useT();
   return (
     <div className="flex flex-wrap items-center gap-1">
@@ -60,7 +60,7 @@ export function ColorGrid({ value, onChange, autoLabel }: { value: string | unde
           {autoLabel}
         </button>
       )}
-      {TEXT_COLORS.map((c) => (
+      {colors.map((c) => (
         <button
           key={c}
           type="button"
@@ -72,7 +72,7 @@ export function ColorGrid({ value, onChange, autoLabel }: { value: string | unde
         />
       ))}
       <label className="relative grid size-5 cursor-pointer place-items-center rounded-full ring-1 ring-black/10" title={t("Custom color")} style={{ background: "conic-gradient(red, yellow, lime, aqua, blue, magenta, red)" }}>
-        <input type="color" value={value ?? "#111827"} onChange={(e) => onChange(e.target.value)} className="absolute inset-0 cursor-pointer opacity-0" />
+        <input type="color" value={value ?? colors[0]} onChange={(e) => onChange(e.target.value)} className="absolute inset-0 cursor-pointer opacity-0" />
       </label>
     </div>
   );

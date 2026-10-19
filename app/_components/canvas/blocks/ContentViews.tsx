@@ -1,11 +1,12 @@
 "use client";
 
 import { Group, Image as KImage, Line, Rect } from "react-konva";
-import { DEFAULT_ACCENT, layoutTable, layoutText } from "@/app/_lib/blockLayout";
+import { DEFAULT_ACCENT, layoutTable, layoutText, layoutTextbox } from "@/app/_lib/blockLayout";
 import { isRtl } from "@/app/_lib/i18n";
 import { useImage } from "@/app/_lib/images";
 import { svgUrl } from "@/app/_lib/library";
-import type { EquationBlock, ExamMeta, ImageBlock, TableBlock, TextBlock } from "@/app/_lib/types";
+import { plainText, serializeRich } from "@/app/_lib/richText";
+import type { EquationBlock, ExamMeta, ImageBlock, TableBlock, TextBlock, TextboxBlock } from "@/app/_lib/types";
 import { INK, RichText, tint } from "./shared";
 
 
@@ -34,6 +35,28 @@ export function TextView({ b, meta }: { b: TextBlock; meta: ExamMeta }) {
           d.width > 0 && <Line points={[d.x, d.y, d.x + d.width, d.y]} stroke={accent} strokeWidth={1.5} listening={false} />
         ))}
       <RichText lines={L.text.lines} x={L.x} y={L.text.y} width={L.width} rtl={rtl} align={L.align} />
+    </>
+  );
+}
+
+// A text box: its paragraphs wrapped inside it (each with its alignment), on its fill color and inside its
+// border (both printed). On screen the box shows as a light dashed frame, and an empty one shows a grey
+// hint (neither is printed).
+export function TextboxView({ b, meta, interactive }: { b: TextboxBlock; meta: ExamMeta; interactive: boolean }) {
+  const hint = interactive && !plainText(b.text).trim() ? serializeRich([{ text: meta.lang === "ar" ? "اكتب هنا…" : "Tapez ici…", style: { color: "#9ca3af" } }]) : undefined;
+  const L = layoutTextbox(b, meta, hint);
+  const rtl = isRtl(meta.lang);
+  return (
+    <>
+      {b.background && <Rect width={b.layout.width} height={L.height} fill={b.background} listening={false} />}
+      {b.border ? (
+        <Rect x={0.5} y={0.5} width={b.layout.width - 1} height={L.height - 1} stroke={b.border} strokeWidth={1} listening={false} />
+      ) : (
+        interactive && <Rect width={b.layout.width} height={L.height} stroke="#cbd5e1" strokeWidth={1} dash={[4, 3]} listening={false} />
+      )}
+      {L.paragraphs.map((p, k) => (
+        <RichText key={k} lines={p.lines} x={p.x} y={L.y + p.y} width={p.width} rtl={rtl} align={p.align} />
+      ))}
     </>
   );
 }

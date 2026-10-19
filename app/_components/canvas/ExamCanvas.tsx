@@ -22,6 +22,11 @@ const HANDLE_SHORT = 6;
 
 // Margins being edited (Page layout → Margins) and whether a handle is being dragged.
 export type MarginEditView = { margins: PageMargins; dragging: boolean };
+
+// A box drawn on a page with the text box tool (page pixels, relative to that page).
+export type DrawnBox = { pageIndex: number; x: number; y: number; width: number; height: number };
+const MIN_DRAWN = { width: 40, height: 20 }; // a smaller drag is taken for a click: no box
+type DrawDraft = { page: number; x0: number; y0: number; x1: number; y1: number };
 const SNAP_COLOR = "#ec4899"; // pink lines while dragging
 const ACCENT = "#4f46e5";
 
@@ -47,9 +52,24 @@ interface Props {
   onPatch?: (id: string, patch: BlockPatch) => void;
   onDragging?: (dragging: boolean) => void;
   onCreateText?: (at: { pageIndex: number; x: number; y: number }) => void;
+  // Text box tool: dragging on a page draws a box (dashed while drawn) instead of selecting.
+  drawBox?: boolean;
+  onDrawBox?: (box: DrawnBox) => void;
+  // A resize handle of the selected block is pressed (the text box editor stays open for it), and where
+  // the block is while it is resized (stage = page stack coordinates; null = done).
+  onHandleDown?: () => void;
+  onResizing?: (id: string, r: ResizeResult | null) => void;
 }
 
 const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(v, max));
+
+// The box between where the mouse went down and where it is now (whichever way it was dragged).
+const draftRect = (d: DrawDraft) => ({
+  x: Math.min(d.x0, d.x1),
+  y: Math.min(d.y0, d.y1),
+  width: Math.abs(d.x1 - d.x0),
+  height: Math.abs(d.y1 - d.y0),
+});
 
 // All pages on ONE Konva stage (real size: 794 x 1123 for an A4 page; each page has its own size,
 // see pageBoxes), so blocks can be dragged from one page to another. Zoom is applied by CSS outside.
@@ -75,6 +95,13 @@ export default function ExamCanvas(props: Props) {
   const edit = interactive ? props.marginEdit : null;
   const preview = edit?.margins;
   const totalPoints = useMemo(() => sumPoints(blocks), [blocks]);
+  const drawing = interactive && !!props.drawBox;
+  const [draft, setDraft] = useState<DrawDraft | null>(null);
+  const stopDraw = useRef<(() => void) | null>(null);
+  const onDrawBox = useRef(props.onDrawBox); // the latest one, for the release of a box drawn meanwhile
+  useEffect(() => {
+    onDrawBox.current = props.onDrawBox;
+  });
 
   // Draw at a higher resolution when zoomed in, so text stays sharp.
   useEffect(() => {
@@ -85,11 +112,11 @@ export default function ExamCanvas(props: Props) {
     layer.batchDraw();
   }, [zoom, height]);
 
-  // Attach the resize handles to the selected block.
+  // Attach the resize handles to the selected block (none while a box is being drawn).
   useEffect(() => {
     const tr = trRef.current;
     if (!tr) return;
-    const node = selected ? tr.getStage()?.findOne(`#${selected.id}`) : undefined;
+    const node = selected && !drawing ? tr.getStage()?.findOne(`#${selected.id}`) : undefined;
     tr.nodes(node ? [node] : []);
     tr.forceUpdate();
     tr.getLayer()?.batchDraw();
@@ -127,8 +154,8 @@ export default function ExamCanvas(props: Props) {
     const page = boxes[i];
     const width = clamp(r.width, 40, page.width);
     const ratio = b.type === "image" ? b.ratio : b.type === "equation" ? b.exW / Math.max(0.1, b.exH) : 0;
-    const graph = b.type === "graph"; // graphs can change shape freely
-    const h = graph ? clamp(r.height, 80, page.height) : ratio ? width / ratio : (heights.get(b.id) ?? 0);
+    const graph = b.type === "graph" || b.type === "textbox"; // graphs and text boxes can change shape freely
+    const h = graph ? clamp(r.height, b.type === "textbox" ? 30 : 80, page.height) : ratio ? width / ratio : (heights.get(b.id) ?? 0);
     props.onResize?.(b.id, {
       pageId: pages[i].id,
       x: clamp(r.x - page.left, 0, page.width - width),
@@ -138,20 +165,67 @@ export default function ExamCanvas(props: Props) {
     });
   };
 
+  // Text box tool: a crosshair over the pages. Leaving the tool (Escape, another tool) drops a box
+  // being drawn; so does closing the page.
+  useEffect(() => {
+    const container = layerRef.current?.getStage()?.container();
+    if (container) container.style.cursor = drawing ? "crosshair" : "";
+    if (!drawing) stopDraw.current?.();
+  }, [drawing]);
+  useEffect(() => () => stopDraw.current?.(), []);
+
+  // Mouse down on a page with the text box tool: follow the mouse (even outside the canvas) within that
+  // page, then hand the box over on release, unless it is too small to be meant.
+  const startDraw = (stage: Konva.Stage, x: number, y: number) => {
+    const page = pageAt(y, boxes);
+    const box = boxes[page];
+    let d: DrawDraft = { page, x0: x, y0: y, x1: x, y1: y };
+    setDraft(d);
+    const follow = (e: MouseEvent) => {
+      stage.setPointersPositions(e);
+      const p = stage.getPointerPosition();
+      if (!p) return;
+      d = { ...d, x1: clamp(p.x, box.left, box.left + box.width), y1: clamp(p.y, box.top, box.top + box.height) };
+      setDraft(d);
+    };
+    const stop = () => {
+      window.removeEventListener("mousemove", follow);
+      window.removeEventListener("mouseup", release);
+      stopDraw.current = null;
+      setDraft(null);
+    };
+    const release = (e: MouseEvent) => {
+      follow(e);
+      stop();
+      const r = draftRect(d);
+      if (r.width < MIN_DRAWN.width || r.height < MIN_DRAWN.height) return;
+      onDrawBox.current?.({ pageIndex: page, x: r.x - box.left, y: r.y - box.top, width: r.width, height: r.height });
+    };
+    window.addEventListener("mousemove", follow);
+    window.addEventListener("mouseup", release);
+    stopDraw.current = stop;
+  };
+
   const media = selected?.type === "image" || selected?.type === "equation";
   const corners = media || selected?.type === "graph";
+  const freeBox = selected?.type === "textbox"; // a text box: every side and corner
 
   return (
     <Stage
       ref={stageRef}
       width={width}
       height={height}
-      // Clicking empty paper clears the selection (with the T tool: starts a new text there).
+      // Clicking empty paper clears the selection (with the T tool: starts a new text there; with the
+      // text box tool: starts drawing a box, blocks let the mouse through then).
       onMouseDown={(e) => {
         if (e.target !== e.target.getStage() && e.target.name() !== "paper") return;
         props.onSelect?.(null);
-        const p = e.target.getStage()?.getPointerPosition();
-        if (props.textTool && p && e.target.name() === "paper") {
+        const stage = e.target.getStage();
+        const p = stage?.getPointerPosition();
+        if (drawing && stage && p && e.target.name() === "paper" && e.evt.button === 0) {
+          e.evt.preventDefault(); // no text selection while dragging
+          startDraw(stage, p.x, p.y);
+        } else if (props.textTool && p && e.target.name() === "paper") {
           e.evt.preventDefault(); // keep the focus in the new text box
           const i = pageAt(p.y, boxes);
           props.onCreateText?.({ pageIndex: i, x: p.x - boxes[i].left, y: p.y - boxes[i].top });
@@ -186,6 +260,7 @@ export default function ExamCanvas(props: Props) {
             selected={b.id === selectedId}
             interactive={interactive}
             textTool={!!props.textTool}
+            drawing={drawing}
             onSelect={() => props.onSelect?.(b.id)}
             onDragStart={() => props.onDragging?.(true)}
             onEdit={(field) => props.onEdit?.(b.id, field)}
@@ -193,6 +268,7 @@ export default function ExamCanvas(props: Props) {
             onDragMove={(x, y) => handleDragMove(b, x, y)}
             onDragEnd={(x, y) => handleDragEnd(b, x, y)}
             onResize={(r) => handleResize(b, r)}
+            onResizing={(r) => props.onResizing?.(b.id, r)}
           />
         ))}
 
@@ -202,6 +278,18 @@ export default function ExamCanvas(props: Props) {
           pages.map((page, i) => (
             <MarginHandles key={page.id} box={boxes[i]} margins={preview} zoom={zoom} onDrag={(m, done) => props.onMarginDrag?.(m, done)} />
           ))}
+
+        {/* The text box being drawn */}
+        {draft && (
+          <Rect
+            {...draftRect(draft)}
+            fill="rgba(0,0,0,0.05)"
+            stroke={ACCENT}
+            strokeWidth={1 / zoom}
+            dash={[4 / zoom, 4 / zoom]}
+            listening={false}
+          />
+        )}
 
         {/* Pink alignment lines on the page being dragged over */}
         {snap?.guides.map((g, k) => {
@@ -222,10 +310,17 @@ export default function ExamCanvas(props: Props) {
         {interactive && (
           <Transformer
             ref={trRef}
+            onMouseDown={() => props.onHandleDown?.()}
             rotateEnabled={false}
             keepRatio={media}
             enabledAnchors={
-              selected?.type === "header" ? [] : corners ? ["top-left", "top-right", "bottom-left", "bottom-right"] : ["middle-left", "middle-right"]
+              selected?.type === "header"
+                ? []
+                : freeBox
+                  ? ["top-left", "top-center", "top-right", "middle-left", "middle-right", "bottom-left", "bottom-center", "bottom-right"]
+                  : corners
+                    ? ["top-left", "top-right", "bottom-left", "bottom-right"]
+                    : ["middle-left", "middle-right"]
             }
             flipEnabled={false}
             borderStroke={ACCENT}

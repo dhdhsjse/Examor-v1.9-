@@ -1,5 +1,7 @@
 "use client";
 
+import type { Editor as TextEditor, JSONContent } from "@tiptap/core";
+import { Trash2 } from "lucide-react";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type DragEvent } from "react";
 import { isQuestion } from "@/app/_lib/blocks";
 import type { EditField } from "@/app/_lib/editRegions";
@@ -10,12 +12,16 @@ import { useT } from "@/app/_lib/uiLang";
 import type { BlockPatch, DropPoint, RevealRequest } from "@/app/_lib/useExam";
 import { useZoom } from "@/app/_lib/useZoom";
 import { chromeConfig, withChromeConfig } from "@/app/_lib/pageChrome";
-import ExamCanvas, { type MarginEditView } from "../canvas/ExamCanvas";
+import type { ResizeResult } from "../canvas/BlockNode";
+import ExamCanvas, { type DrawnBox, type MarginEditView } from "../canvas/ExamCanvas";
 import AnswerBar from "./AnswerBar";
 import ChromeBar from "./ChromeBar";
+import DeletePageDialog from "./DeletePageDialog";
 import CorrectionBar from "./CorrectionBar";
 import InlineEditor from "./InlineEditor";
 import PageStrip from "./PageStrip";
+import TextboxEditor from "./TextboxEditor";
+import type { StyleMark } from "@/app/_lib/textboxEditor";
 import ToolRail, { type CanvasTool } from "./ToolRail";
 import ZoomBar from "./ZoomBar";
 
@@ -52,7 +58,13 @@ interface Props {
   onEditNext: (back: boolean) => void;
   onEditEnter: () => void;
   onEditDone: (id: string) => void;
+  // The text box being typed in (Tiptap editor over it): its new document, the box losing a style of its
+  // own, and the editor itself (for the right panel; null when closed).
+  onRichChange: (content: JSONContent) => void;
+  onDropBoxStyle: (mark: StyleMark) => void;
+  onTextEditor: (editor: TextEditor | null) => void;
   onCreateText: (at: DropPoint) => void;
+  onDrawBox: (box: DrawnBox) => void; // a box drawn with the text box tool
   onAddPage: () => void;
   onDeletePage: (pageId: string) => void;
   onActivePageChange: (index: number) => void;
@@ -74,6 +86,7 @@ export default function Workspace(props: Props) {
   const [showGuides, setShowGuides] = useState(true);
   const [dropHover, setDropHover] = useState(false);
   const [dragging, setDragging] = useState(false);
+  const [askDelete, setAskDelete] = useState<string | null>(null); // page waiting for "Do you really want to delete it?"
   const [answerOpen, setAnswerOpen] = useState(() => {
     try {
       return localStorage.getItem(ANSWER_BAR_KEY) !== "0";
@@ -90,6 +103,9 @@ export default function Workspace(props: Props) {
   const pan = useRef<{ x: number; y: number; left: number; top: number } | null>(null);
   const height = canvasSize.height;
   const pageIndex = (pageId: string) => Math.max(0, pages.findIndex((p) => p.id === pageId));
+  // A resize handle is held (the text box editor stays open), and where the edited box is while resized.
+  const handleHeld = useRef(false);
+  const [liveBox, setLiveBox] = useState<(ResizeResult & { id: string }) | null>(null);
 
   // ---- Zoom that keeps the same spot of the page under the screen center (or the mouse) ----
 
@@ -267,7 +283,7 @@ export default function Workspace(props: Props) {
         activeIndex={activePage}
         onJump={scrollToPage}
         onAddPage={props.onAddPage}
-        onDeletePage={props.onDeletePage}
+        onDeletePage={setAskDelete}
       />
 
       <div className="relative min-w-0 flex-1">
@@ -309,9 +325,10 @@ export default function Workspace(props: Props) {
                     active={i === activePage}
                     keyMode={mode === "key"}
                     onClick={() => scrollToPage(i)}
+                    onDelete={i > 0 ? () => setAskDelete(page.id) : undefined}
                   />
                 ))}
-                <div className="absolute inset-0">
+                <div className={`absolute inset-0 ${props.tool === "textbox" ? "cursor-crosshair" : ""}`}>
                   <ExamCanvas
                     doc={doc}
                     heights={heights}
@@ -330,11 +347,39 @@ export default function Workspace(props: Props) {
                     onPatch={(id, patch) => props.onPatch(id, patch, "click")}
                     onDragging={setDragging}
                     onCreateText={(at) => props.onCreateText({ ...at, corner: true })}
+                    drawBox={props.tool === "textbox"}
+                    onDrawBox={props.onDrawBox}
+                    onHandleDown={() => {
+                      handleHeld.current = true;
+                      window.addEventListener("mouseup", () => setTimeout(() => (handleHeld.current = false)), { once: true });
+                    }}
+                    onResizing={(id, r) => setLiveBox(r && editing?.id === id ? { ...r, id } : null)}
                   />
                 </div>
 
+                {/* Typing in a text box: a rich-text editor over it, following it while it is resized */}
+                {editing && editBlock?.type === "textbox" && (
+                  <TextboxEditor
+                    key={editBlock.id}
+                    block={editBlock}
+                    meta={doc.meta}
+                    zoom={zoom}
+                    box={
+                      liveBox?.id === editBlock.id
+                        ? { left: liveBox.x, top: liveBox.y, width: liveBox.width, height: liveBox.height }
+                        : { left: blockLeft(editBlock), top: blockTop(editBlock), width: editBlock.layout.width, height: heights.get(editBlock.id) ?? editBlock.layout.height }
+                    }
+                    selectAll={!!editing.selectAll}
+                    keepOpen={handleHeld}
+                    onChange={props.onRichChange}
+                    onDropBoxStyle={props.onDropBoxStyle}
+                    onReady={props.onTextEditor}
+                    onDone={() => props.onEditDone(editBlock.id)}
+                  />
+                )}
+
                 {/* Typing directly on the page */}
-                {editing && editBlock && (
+                {editing && editBlock && editBlock.type !== "textbox" && (
                   <InlineEditor
                     block={editBlock}
                     field={editing.field}
@@ -407,6 +452,19 @@ export default function Workspace(props: Props) {
           </div>
         </div>
 
+        {/* Warning before a page goes */}
+        {askDelete && pageIndex(askDelete) > 0 && (
+          <DeletePageDialog
+            page={pageIndex(askDelete) + 1}
+            blocks={doc.blocks.filter((b) => b.layout.pageId === askDelete && !b.meta?.role).length}
+            onCancel={() => setAskDelete(null)}
+            onConfirm={() => {
+              props.onDeletePage(askDelete);
+              setAskDelete(null);
+            }}
+          />
+        )}
+
         {/* Space held: a layer that catches the mouse to drag the view around */}
         {panReady && (
           <div
@@ -460,9 +518,9 @@ export default function Workspace(props: Props) {
   );
 }
 
-// The paper shadow behind page `index` + its clickable "Page 1 of 3" label.
-// Sizes are divided by zoom so the label keeps the same size on screen.
-function PageFrame({ index, box, total, zoom, active, keyMode, onClick }: {
+// The paper shadow behind page `index` + its clickable "Page 1 of 3" label, and (not on the first page)
+// a button to delete the page at the other end. Sizes are divided by zoom so they keep the same size on screen.
+function PageFrame({ index, box, total, zoom, active, keyMode, onClick, onDelete }: {
   index: number;
   box: PageBox;
   total: number;
@@ -470,6 +528,7 @@ function PageFrame({ index, box, total, zoom, active, keyMode, onClick }: {
   active: boolean;
   keyMode: boolean;
   onClick: () => void;
+  onDelete?: () => void;
 }) {
   const t = useT();
   const { top, left } = box;
@@ -496,6 +555,25 @@ function PageFrame({ index, box, total, zoom, active, keyMode, onClick }: {
         {t("Page")} {index + 1} <span className="text-muted">{t("of {n}", { n: total })}</span>
         {keyMode && <span className="text-emerald-600"> · {t("Correction")}</span>}
       </button>
+      {onDelete && (
+        <button
+          onClick={onDelete}
+          title={t("Delete page")}
+          className="absolute z-10 flex items-center rounded font-medium text-muted transition-colors hover:bg-red-50 hover:text-red-600"
+          style={{
+            top,
+            left: left + box.width,
+            transform: "translate(-100%, -100%)",
+            marginTop: -4 / zoom,
+            fontSize: 12 / zoom,
+            gap: 4 / zoom,
+            padding: `${2 / zoom}px ${6 / zoom}px`,
+          }}
+        >
+          <Trash2 size={12 / zoom} strokeWidth={1.8} aria-hidden />
+          {t("Delete page")}
+        </button>
+      )}
     </>
   );
 }

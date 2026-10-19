@@ -2,6 +2,8 @@
 // this computer are shown greyed out. Every font falls back to Segoe UI / Tahoma / Arial, so
 // Arabic letters always render even with a Latin-only font.
 
+import { fontLibrary } from "@/app/_features/libraries/fonts";
+
 export interface FontChoice {
   name: string;
   script: "both" | "latin" | "arabic";
@@ -10,29 +12,8 @@ export interface FontChoice {
 export const DEFAULT_FONT = "Segoe UI";
 const FALLBACK = ["Segoe UI", "Tahoma", "Arial", "sans-serif"];
 
-export const FONT_CHOICES: FontChoice[] = [
-  { name: "Segoe UI", script: "both" },
-  { name: "Arial", script: "both" },
-  { name: "Tahoma", script: "both" },
-  { name: "Times New Roman", script: "both" },
-  { name: "Calibri", script: "latin" },
-  { name: "Cambria", script: "latin" },
-  { name: "Georgia", script: "latin" },
-  { name: "Verdana", script: "latin" },
-  { name: "Trebuchet MS", script: "latin" },
-  { name: "Century Gothic", script: "latin" },
-  { name: "Garamond", script: "latin" },
-  { name: "Book Antiqua", script: "latin" },
-  { name: "Comic Sans MS", script: "latin" },
-  { name: "Courier New", script: "both" },
-  { name: "Consolas", script: "latin" },
-  { name: "Traditional Arabic", script: "arabic" },
-  { name: "Simplified Arabic", script: "arabic" },
-  { name: "Arabic Typesetting", script: "arabic" },
-  { name: "Sakkal Majalla", script: "arabic" },
-  { name: "Aldhabi", script: "arabic" },
-  { name: "Andalus", script: "arabic" },
-];
+// The list lives in the font library (app/_features/libraries/fonts.ts).
+export const FONT_CHOICES: FontChoice[] = fontLibrary.map((f) => ({ name: f.value, script: f.script }));
 
 // "Georgia" → "Georgia, Segoe UI, Tahoma, Arial, sans-serif" (for the canvas and CSS).
 export function fontStack(name?: string): string {
@@ -69,3 +50,5 @@ export function installedFonts(): Promise<Set<string>> {
 
 // Colors offered in the color pickers (the last one is "custom").
 export const TEXT_COLORS = ["#111827", "#4b5563", "#dc2626", "#ea580c", "#ca8a04", "#15803d", "#0d9488", "#2563eb", "#4f46e5", "#9333ea", "#db2777"];
+// Light fills (text box background): dark text stays readable on them, also when printed.
+export const FILL_COLORS = ["#fef08a", "#fed7aa", "#fecaca", "#fbcfe8", "#e9d5ff", "#bfdbfe", "#a5f3fc", "#bbf7d0", "#f3f4f6", "#e5e7eb"];

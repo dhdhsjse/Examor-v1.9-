@@ -7,7 +7,7 @@ import { withHints } from "@/app/_lib/blocks";
 import { clickTargets, editRegions, type EditField } from "@/app/_lib/editRegions";
 import type { Block, ExamMeta, ViewMode } from "@/app/_lib/types";
 import type { BlockPatch } from "@/app/_lib/useExam";
-import { EquationView, ImageView, TableView, TextView } from "./blocks/ContentViews";
+import { EquationView, ImageView, TableView, TextboxView, TextView } from "./blocks/ContentViews";
 import { GraphView } from "./blocks/GraphView";
 import { HeaderNode } from "./blocks/headerParts";
 import { ClassifyView, MatchView, OrderView } from "./blocks/MoreQuestionViews";
@@ -34,11 +34,13 @@ interface Props {
   selected: boolean;
   interactive: boolean; // false when exporting
   textTool: boolean; // "T" tool: one click starts typing
+  drawing: boolean; // a box is being drawn on the page (text box tool): blocks ignore the mouse
   onSelect: () => void;
   onDragStart: () => void;
   onDragMove: (x: number, y: number) => { x: number; y: number };
   onDragEnd: (x: number, y: number) => void;
   onResize: (r: ResizeResult) => void;
+  onResizing?: (r: ResizeResult | null) => void; // where the block is while its handles are dragged (null = done)
   onEdit: (field: EditField | null) => void; // null = block without text (equation, image...)
   onPatch: (patch: BlockPatch) => void;
 }
@@ -64,6 +66,8 @@ function Content({ block: real, number, meta, mode, interactive, totalPoints }: 
       return <ClassifyView b={block} n={number} meta={meta} mode={mode} />;
     case "text":
       return <TextView b={block} meta={meta} />;
+    case "textbox":
+      return <TextboxView b={block} meta={meta} interactive={interactive} />;
     case "table":
       return <TableView b={block} meta={meta} />;
     case "equation":
@@ -85,7 +89,7 @@ const setCursor = (e: Konva.KonvaEventObject<MouseEvent>, cursor: string) => {
 
 // One block on the canvas: handles select, hover, drag and resize. Draws its content inside.
 export default function BlockNode(props: Props) {
-  const { block, x, y, height, selected, interactive, textTool, onSelect, onDragMove, onDragEnd, onResize, onEdit } = props;
+  const { block, x, y, height, selected, interactive, textTool, drawing, onSelect, onDragMove, onDragEnd, onResize, onEdit } = props;
   const [hover, setHover] = useState(false);
   // Was the block already selected when the mouse went down? Then one click on a text types in it.
   const wasSelected = useRef(false);
@@ -93,13 +97,15 @@ export default function BlockNode(props: Props) {
   const media = block.type === "image" || block.type === "equation";
   const moveCursor = textTool ? "text" : "move";
 
-  // Resizing scales the group; turn that scale into a real width/height.
+  // Resizing scales the group; turn that scale into a real width/height. The drawn height is what was
+  // scaled (a text box can be taller than it was made, to fit its text).
   const handleTransformEnd = (e: Konva.KonvaEventObject<Event>) => {
     const node = e.target;
     const sx = node.scaleX();
     const sy = node.scaleY();
     node.scale({ x: 1, y: 1 });
-    onResize({ x: node.x(), y: node.y(), width: width * sx, height: block.layout.height * sy });
+    props.onResizing?.(null);
+    onResize({ x: node.x(), y: node.y(), width: width * sx, height: height * sy });
   };
 
   return (
@@ -107,8 +113,8 @@ export default function BlockNode(props: Props) {
       id={block.id}
       x={x}
       y={y}
-      draggable={interactive && !textTool}
-      listening={interactive}
+      draggable={interactive && !textTool && !drawing}
+      listening={interactive && !drawing}
       onMouseDown={() => {
         wasSelected.current = selected;
         onSelect();
@@ -121,6 +127,7 @@ export default function BlockNode(props: Props) {
       }}
       onDragMove={(e) => e.target.position(onDragMove(e.target.x(), e.target.y()))}
       onDragEnd={(e) => onDragEnd(e.target.x(), e.target.y())}
+      onTransform={(e) => props.onResizing?.({ x: e.target.x(), y: e.target.y(), width: width * e.target.scaleX(), height: height * e.target.scaleY() })}
       onTransformEnd={handleTransformEnd}
       onMouseEnter={(e) => {
         setHover(true);
@@ -144,23 +151,20 @@ export default function BlockNode(props: Props) {
       <Content block={block} number={props.number} meta={props.meta} mode={props.mode} interactive={interactive} totalPoints={props.totalPoints} />
 
       {/* Invisible areas on top of the texts: double-click, click a selected block (or click with
-          the T tool) to type there */}
+          the T tool) to type there. A text box types on the first click, anywhere inside it. */}
       {interactive &&
         editRegions(withHints(block, props.meta.lang), props.number, props.meta, props.mode).map((r, k) => (
           <Rect
             key={`e${k}`}
-            x={r.x - 2}
-            y={r.y - 1}
-            width={r.width + 4}
-            height={Math.max(r.height, 16) + 2}
+            {...(r.hit ?? { x: r.x - 2, y: r.y - 1, width: r.width + 4, height: Math.max(r.height, 16) + 2 })}
             fill="transparent"
-            stroke={hover && (textTool || selected) ? "#e0e7ff" : undefined}
+            stroke={hover && (textTool || selected) && !r.hit ? "#e0e7ff" : undefined}
             strokeWidth={1}
             cornerRadius={3}
-            onMouseEnter={(e) => setCursor(e, textTool || selected ? "text" : moveCursor)}
+            onMouseEnter={(e) => setCursor(e, textTool || selected || r.direct ? "text" : moveCursor)}
             onMouseLeave={(e) => setCursor(e, moveCursor)}
             onClick={(e) => {
-              if (!textTool && !wasSelected.current) return;
+              if (!textTool && !wasSelected.current && !r.direct) return;
               e.cancelBubble = true;
               onEdit(r.field);
             }}

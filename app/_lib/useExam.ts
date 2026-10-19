@@ -107,11 +107,16 @@ export function useExam(initial: ExamDoc, t?: T) {
   }, []);
 
   // Autosave shortly after each change (the top bar shows "Saving…" then "Saved ✓").
-  const firstDoc = useRef(doc);
+  // Compared with what was saved last (not with the opened exam): undoing back to it must be saved too.
+  const savedDoc = useRef(doc);
   useEffect(() => {
-    if (doc === firstDoc.current) return; // just opened: nothing new to save
+    if (doc === savedDoc.current) return; // nothing new to save
     const pending = setTimeout(() => setSave((s) => (s.status === "saving" ? s : { ...s, status: "saving" })), 0);
-    const t = setTimeout(() => setSave({ status: saveAutosave(doc) ? "saved" : "error", at: Date.now() }), 400);
+    const t = setTimeout(() => {
+      const ok = saveAutosave(doc);
+      if (ok) savedDoc.current = doc;
+      setSave({ status: ok ? "saved" : "error", at: Date.now() });
+    }, 400);
     return () => {
       clearTimeout(pending);
       clearTimeout(t);
@@ -161,7 +166,7 @@ export function useExam(initial: ExamDoc, t?: T) {
           ...block.layout,
           pageId: page.id,
           x: clamp(at.corner ? at.x : at.x - w / 2, 0, size.width - w),
-          y: clamp(at.corner ? at.y - 10 : at.y - Math.min(h, 40) / 2, 0, size.height - h),
+          y: clamp(at.corner ? at.y : at.y - Math.min(h, 40) / 2, 0, size.height - h),
         };
       } else {
         const heights = blockHeights(doc);
@@ -257,11 +262,11 @@ export function useExam(initial: ExamDoc, t?: T) {
     revealPage(page.id);
   }, [commit, doc.pages]);
 
-  // Remove a page and everything on it (the last page can't be removed).
+  // Remove a page and everything on it (the first page, the main one, can't be removed).
   const deletePage = useCallback(
     (pageId: string) => {
       commit((d) => {
-        if (d.pages.length <= 1) return d;
+        if (d.pages.length <= 1 || d.pages[0].id === pageId) return d;
         const next = { ...d, pages: d.pages.filter((p) => p.id !== pageId), blocks: d.blocks.filter((b) => b.layout.pageId !== pageId) };
         return tRef.current ? syncChrome(d, next, tRef.current, { pageCount: true }) : next;
       });

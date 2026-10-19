@@ -1,7 +1,9 @@
 import { fontStack } from "./fonts";
 import { isRtl, optionLabel, words } from "./i18n";
 import { linesHeight, wrapRich, type RichLine, type TextFont } from "./measure";
-import { plainText, replaceBlanks, serializeRich } from "./richText";
+import { parseRich, plainText, replaceBlanks, serializeRich } from "./richText";
+import { docParagraphs, textboxDoc } from "./textboxDoc";
+import { INDENT_PX } from "./tiptap-indent";
 import { fixOrder, shuffled } from "./shuffle";
 import type {
   BlankBlock,
@@ -17,8 +19,11 @@ import type {
   OrderBlock,
   PartNumbering,
   QuestionBlock,
+  ParagraphAlign,
+  BlockFont,
   TableBlock,
   TextBlock,
+  TextboxBlock,
   TextStyle,
   TrueFalseBlock,
 } from "./types";
@@ -84,9 +89,10 @@ export interface Fonts {
   hidePoints: boolean;
 }
 
-const spec = (family: string, size: number, bold: boolean, color: string, ratio: number): Spec => ({
-  font: { family, size, bold, italic: false, underline: false, color },
-  line: Math.round(size * ratio),
+// `f`: the block's formatting (Home → Formatting): italic, underline, strikethrough and line spacing.
+const spec = (family: string, size: number, bold: boolean, color: string, ratio: number, f?: BlockFont): Spec => ({
+  font: { family, size, bold, italic: !!f?.italic, underline: !!f?.underline, strike: !!f?.strike, color },
+  line: Math.round(size * ratio * (f?.lineHeight ?? 1)),
 });
 
 export function blockFonts(b: Block, meta: ExamMeta): Fonts {
@@ -98,8 +104,8 @@ export function blockFonts(b: Block, meta: ExamMeta): Fonts {
   return {
     lang: meta.lang,
     rtl: isRtl(meta.lang),
-    title: spec(family, size + 1, true, color, 21 / 15),
-    body: spec(family, size, false, color, 20 / 14),
+    title: spec(family, size + 1, b.font?.bold ?? true, color, 21 / 15, b.font),
+    body: spec(family, size, b.font?.bold ?? false, color, 20 / 14, b.font),
     answer: { ...spec(family, answerSize, false, keyColor, 2), line: answerLine(answerSize) },
     keyColor,
     hidePoints: !!meta.hidePoints,
@@ -385,7 +391,56 @@ export function textSpec(b: TextBlock, meta: ExamMeta): Spec {
   const decor = b.decor ?? "plain";
   // White text on filled decorations, unless the teacher picked a color.
   const color = b.font?.color ?? (decor === "band" || decor === "pill" ? "#ffffff" : INK);
-  return spec(fontStack(b.font?.family || meta.fontFamily), size, s.bold, color, s.line / s.size);
+  return spec(fontStack(b.font?.family || meta.fontFamily), size, b.font?.bold ?? s.bold, color, s.line / s.size, b.font);
+}
+
+export const TEXTBOX_PAD = 8; // room between a text box's edge and its text (TextboxBlock.padding)
+export const TEXTBOX_MAX_PAD = 40;
+
+// The text of a text box: the block's formatting, else the exam's body text.
+export function textboxSpec(b: TextboxBlock, meta: ExamMeta): Spec {
+  const size = b.font?.size ?? meta.fontSize ?? DEFAULT_SIZE;
+  return spec(fontStack(b.font?.family || meta.fontFamily), size, b.font?.bold ?? false, b.font?.color ?? INK, 20 / 14, b.font);
+}
+
+// Room between a text box's edge and its text (kept small enough to leave the text some width).
+export const textboxPad = (b: TextboxBlock) => Math.max(0, Math.min(b.padding ?? TEXTBOX_PAD, TEXTBOX_MAX_PAD, (b.layout.width - 20) / 2));
+
+// A paragraph of a text box, wrapped: `y` is from the top of the text, `x` / `width` its own (indented
+// from the start side).
+export interface TextboxParagraph {
+  lines: RichLine[];
+  x: number;
+  y: number;
+  width: number;
+  align?: ParagraphAlign;
+}
+
+// A text box: its paragraphs (textboxDoc.ts) wrapped inside the box, each with its own alignment (else the
+// box's), the text placed at the top / middle / bottom. The box is as tall as it was made, or taller when
+// the text needs it. `hint`: drawn instead while the box is empty (one styled paragraph).
+export function layoutTextbox(b: TextboxBlock, meta: ExamMeta, hint?: string) {
+  const s = textboxSpec(b, meta);
+  const pad = textboxPad(b);
+  const width = Math.max(20, b.layout.width - pad * 2);
+  const rtl = isRtl(meta.lang);
+  const source = hint ? [{ runs: parseRich(hint), align: undefined, indent: 0 }] : docParagraphs(textboxDoc(b));
+  let top = 0;
+  const paragraphs: TextboxParagraph[] = (source.length ? source : [{ runs: [], align: undefined, indent: 0 }]).map((p) => {
+    // Indented from the start side, keeping some room for the text.
+    const indent = Math.min(p.indent * INDENT_PX, Math.max(0, width - 20));
+    // An empty paragraph is an empty line.
+    const lines = wrapRich(serializeRich(p.runs) || " ", width - indent, s.font, s.line);
+    const out = { lines, x: pad + (rtl ? 0 : indent), y: top, width: width - indent, align: p.align ?? b.align };
+    top += linesHeight(lines);
+    return out;
+  });
+  const content = Math.max(top, s.line);
+  const height = Math.max(b.layout.height, content + pad * 2);
+  const free = height - content - pad * 2;
+  const y = pad + (b.valign === "middle" ? free / 2 : b.valign === "bottom" ? free : 0);
+  const align: ParagraphAlign | undefined = b.align;
+  return { spec: s, paragraphs, x: pad, y, width, content, height, align };
 }
 
 export interface Decoration {
@@ -402,7 +457,7 @@ export function layoutText(b: TextBlock, meta: ExamMeta) {
   const w = b.layout.width;
   const W = inner(b);
   const kind = b.decor ?? "plain";
-  const align: "left" | "right" | "center" | undefined = b.style === "title" ? "center" : undefined;
+  const align: ParagraphAlign | undefined = b.align ?? (b.style === "title" ? "center" : undefined);
   let x = PAD;
   let width = W;
   let y = PAD / 2;
@@ -526,6 +581,8 @@ export function blockHeight(b: Block, n: number, meta: ExamMeta): number {
       return layoutClassify(b, n, meta).height;
     case "text":
       return layoutText(b, meta).height;
+    case "textbox":
+      return layoutTextbox(b, meta).height;
     case "table":
       return layoutTable(b, meta).height;
     case "header":

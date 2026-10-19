@@ -156,6 +156,7 @@ function ExamSettings({ meta, stats, hasHeader, onMeta, onChangeTemplate }: Prop
         <p>{t("Space + drag — move around the page")}</p>
         <p>{t("Click a selected block's text — type there")}</p>
         <p>{t("T — text tool · V — select tool")}</p>
+        <p>{t("B — draw a text box · Esc — stop")}</p>
       </div>
     </div>
   );

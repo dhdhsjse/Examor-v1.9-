@@ -1,3 +1,5 @@
+import type { JSONContent } from "@tiptap/core";
+
 // Language of the exam content. "ar" = Arabic, written right-to-left.
 export type Lang = "fr" | "ar";
 
@@ -75,6 +77,12 @@ export interface BlockFont {
   family?: string; // one of FONT_CHOICES (see fonts.ts)
   size?: number; // main text size in px
   color?: string;
+  // Home → Formatting, for the whole block (single words are styled in the text itself, see richText.ts)
+  bold?: boolean; // missing = the block's own (titles bold, the rest not)
+  italic?: boolean;
+  underline?: boolean;
+  strike?: boolean; // struck through
+  lineHeight?: number; // line spacing, times the normal one (1, 1.15, 1.5, 2)
 }
 
 interface BlockBase {
@@ -195,7 +203,11 @@ export type TextStyle = "title" | "heading" | "body";
 // Look of a title / heading: a plain text, or a modern decoration around it.
 export type HeadingDecor = "plain" | "underline" | "bar" | "band" | "pill" | "boxed" | "rule";
 
+// Alignment of a paragraph of text.
+export type ParagraphAlign = "left" | "center" | "right" | "justify";
+
 export interface TextBlock extends BlockBase {
+  align?: ParagraphAlign; // missing = titles centered, the rest along the writing direction
   type: "text";
   text: string;
   style: TextStyle;
@@ -297,7 +309,21 @@ export interface HeaderBlock extends BlockBase {
 export type TextAlign = "left" | "center" | "right";
 
 export type QuestionBlock = McqBlock | TrueFalseBlock | BlankBlock | OpenBlock | MatchBlock | OrderBlock | ClassifyBlock;
-export type Block = QuestionBlock | TextBlock | EquationBlock | ImageBlock | TableBlock | GraphBlock | HeaderBlock;
+// A text in a box of a chosen size (Insert → Text box, drawn on the page): the text wraps inside it and can
+// sit at the top, middle or bottom. The box grows when the text needs more room. Whole-box formatting:
+// `font`, `align`; words and paragraphs are formatted in `content` (typed in the Tiptap editor on the page).
+export interface TextboxBlock extends BlockBase {
+  type: "textbox";
+  content?: JSONContent; // Tiptap document (textboxDoc.ts); missing in older files: made from `text`
+  text: string; // the same text as styled runs (kept up to date from `content`)
+  align?: ParagraphAlign; // missing = along the writing direction
+  valign?: "top" | "middle" | "bottom"; // missing = top
+  background?: string; // fill color of the box, printed (missing = none)
+  border?: string; // color of a line around the box, printed (missing = none)
+  padding?: number; // room between the box's edge and its text, px (missing = TEXTBOX_PAD)
+}
+
+export type Block = QuestionBlock | TextBlock | TextboxBlock | EquationBlock | ImageBlock | TableBlock | GraphBlock | HeaderBlock;
 export type BlockType = Block["type"];
 
 // The editable fields of any one block type, all optional (used for changes and presets).

@@ -3,13 +3,38 @@
 import type { ReactNode } from "react";
 import { isRtl } from "@/app/_lib/i18n";
 import { DEFAULT_ACCENT } from "@/app/_lib/blockLayout";
-import type { HeaderBlock, HeaderFields, HeaderStyle, HeadingDecor, ImageBlock, Lang, TableBlock, TextBlock } from "@/app/_lib/types";
+import { docFromRich } from "@/app/_lib/textboxDoc";
+import type { HeaderBlock, HeaderFields, HeaderStyle, HeadingDecor, ImageBlock, Lang, TableBlock, TextBlock, TextboxBlock } from "@/app/_lib/types";
 import { useT } from "@/app/_lib/uiLang";
 import { HEADER_STYLE_OPTIONS, HeaderSketch } from "../HeaderSketch";
 import { ColorGrid } from "../rich/FormatBar";
 import { FigureEditor } from "./FigureEditor";
 import { ChoiceGrid, Field, NumberInput, RichInput, Segmented, SmallButton, TextInput } from "./fields";
 import type { OnChange } from "./QuestionEditors";
+
+// A text box: its text, and where it sits in the box. Font, size and alignment: Home → Formatting.
+export function TextboxEditor({ b, onChange }: { b: TextboxBlock; onChange: OnChange }) {
+  const t = useT();
+  return (
+    <>
+      <Field label={t("Text")}>
+        <RichInput value={b.text} onChange={(text) => onChange({ text, content: docFromRich(text) }, "text")} rows={5} multiline />
+      </Field>
+      <Field label={t("In the box")}>
+        <Segmented
+          value={b.valign ?? "top"}
+          onChange={(valign) => onChange({ valign }, "valign")}
+          options={[
+            { value: "top", label: t("Top") },
+            { value: "middle", label: t("Middle") },
+            { value: "bottom", label: t("Bottom") },
+          ]}
+        />
+      </Field>
+      <p className="text-[11px] leading-snug text-faint">{t("Drag the handles of the box to change its size. Font, size and alignment: Home → Formatting.")}</p>
+    </>
+  );
+}
 
 export function TextEditor({ b, onChange }: { b: TextBlock; onChange: OnChange }) {
   const t = useT();

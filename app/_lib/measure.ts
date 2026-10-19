@@ -14,6 +14,8 @@ export interface TextFont {
   bold: boolean;
   italic: boolean;
   underline: boolean;
+  strike?: boolean; // struck through (BlockFont.strike, or the words' own style)
+  highlight?: string; // background color of the words
   color: string;
 }
 
@@ -53,7 +55,14 @@ export function measureText(text: string, f: Pick<TextFont, "family" | "size" | 
 }
 
 const sameFont = (a: TextFont, b: TextFont) =>
-  a.family === b.family && a.size === b.size && a.bold === b.bold && a.italic === b.italic && a.underline === b.underline && a.color === b.color;
+  a.family === b.family &&
+  a.size === b.size &&
+  a.bold === b.bold &&
+  a.italic === b.italic &&
+  a.underline === b.underline &&
+  !!a.strike === !!b.strike &&
+  a.highlight === b.highlight &&
+  a.color === b.color;
 
 interface Token {
   text: string;
@@ -66,7 +75,7 @@ const cache = new Map<string, RichLine[]>();
 // Split (styled) text into lines that fit in `width` (keeps the user's own line breaks).
 // `line` = line height for the base size; bigger pieces make their line taller.
 export function wrapRich(src: string, width: number, base: TextFont, line: number): RichLine[] {
-  const key = `${base.family}|${base.size}|${base.bold}|${base.italic}|${base.color}|${line}|${Math.round(width)}|${src}`;
+  const key = `${base.family}|${base.size}|${base.bold}|${base.italic}|${base.underline}|${!!base.strike}|${base.color}|${line}|${Math.round(width)}|${src}`;
   const hit = cache.get(key);
   if (hit) return hit;
 
@@ -80,6 +89,8 @@ export function wrapRich(src: string, width: number, base: TextFont, line: numbe
       bold: base.bold || !!st.b,
       italic: base.italic || !!st.i,
       underline: base.underline || !!st.u,
+      strike: !!base.strike || !!st.x,
+      highlight: st.hl,
       color: st.color ?? base.color,
     };
     for (const part of run.text.split(/(\n| +)/)) {

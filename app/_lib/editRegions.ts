@@ -13,6 +13,7 @@ import {
   layoutOrder,
   layoutTable,
   layoutText,
+  layoutTextbox,
   layoutTrueFalse,
   type AnswerArea,
   type PlacedBox,
@@ -52,7 +53,9 @@ export interface EditRegion {
   spec: Spec;
   answer?: boolean; // a model answer (correction sheet)
   multiline: boolean; // Enter = new line (otherwise Enter = done)
-  align?: "left" | "right" | "center";
+  align?: "left" | "right" | "center" | "justify";
+  hit?: { x: number; y: number; width: number; height: number }; // where a click types here (missing = the text itself)
+  direct?: boolean; // one click types here even when the block was not selected (a text box, like in Word)
 }
 
 // A spot you click to set the correct answer (MCQ circle, True/False box).
@@ -65,6 +68,8 @@ export interface ClickTarget {
 }
 
 export const fieldKey = (f: EditField) => JSON.stringify(f);
+
+const TEXTBOX_EDGE = 5; // band along a text box's edge that drags it instead of typing
 
 // The model answer is typed on the dotted lines, only on the correction sheet.
 const answerRegion = (field: EditField, a: AnswerArea, spec: Spec): EditRegion => {
@@ -159,6 +164,13 @@ export function editRegions(b: Block, n: number, meta: ExamMeta, mode: ViewMode 
       if (b.meta?.role && !chromeTextField(b)) return [];
       const L = layoutText(b, meta);
       return [{ field: { kind: "text" }, x: L.x, y: L.text.y, width: L.width, height: L.text.height, spec: L.spec, multiline: b.style === "body", align: L.align }];
+    }
+    case "textbox": {
+      // Clicking anywhere in the box types in it; its edge (a few px wide) is left for dragging the box.
+      const L = layoutTextbox(b, meta);
+      const edge = Math.min(TEXTBOX_EDGE, b.layout.width / 4, L.height / 4);
+      const hit = { x: edge, y: edge, width: b.layout.width - edge * 2, height: L.height - edge * 2 };
+      return [{ field: { kind: "text" }, x: L.x, y: L.y, width: L.width, height: L.content, spec: L.spec, multiline: true, align: L.align, hit, direct: true }];
     }
     case "table": {
       const L = layoutTable(b, meta);

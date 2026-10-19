@@ -44,6 +44,7 @@ export const BLOCK_TYPE_NAMES: Record<BlockType, string> = {
   equation: "Equation",
   image: "Image",
   header: "Exam header",
+  textbox: "Text box",
 };
 
 // Questions start empty, so the teacher types right away instead of deleting sample text first.
@@ -163,6 +164,11 @@ export function createBlock(type: BlockType, lang: Lang, pageId: string, preset:
     layout.width = 20 * EX_PX;
     layout.height = 4 * EX_PX;
   }
+  // A text box starts as a small box; its handles make it any size.
+  if (type === "textbox") {
+    layout.width = width ?? 300;
+    layout.height = height ?? 100;
+  }
   // Graphs have a fixed size (resized with the corner handles).
   if (type === "graph" && width === undefined) {
     layout.width = 320;
@@ -204,6 +210,8 @@ export function createBlock(type: BlockType, lang: Lang, pageId: string, preset:
         return { type, functions: ["x^2 - 2"], xMin: -5, xMax: 5, yMin: -4, yMax: 6, grid: true };
       case "header":
         return { type, style: "classic" as HeaderStyle, fields: defaultHeaderFields(lang) };
+      case "textbox":
+        return { type, text: "" };
     }
   })();
 

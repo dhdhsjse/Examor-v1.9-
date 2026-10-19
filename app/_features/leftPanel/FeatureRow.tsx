@@ -13,7 +13,8 @@ interface Props {
 
 // One feature as a full-width row. An inspector feature opens its settings in the right panel (the left
 // panel stays where it is); a feature with a library opens it; otherwise clicking runs the feature.
-// Tools with a drag payload can also be dragged onto the page.
+// Tools with a drag payload can also be dragged onto the page. A tool that is a mode (`checked`, e.g.
+// drawing a text box) shows as pressed while it is on.
 export default function FeatureRow({ feature, ctx, onLibrary }: Props) {
   const inspector = feature.target === "inspector";
   // Features that only render their own surface (fields, panels) are drawn as they are.
@@ -21,7 +22,7 @@ export default function FeatureRow({ feature, ctx, onLibrary }: Props) {
 
   const label = resolveLabel(feature.label, ctx.t);
   const drag = inspector ? undefined : feature.dragPayload;
-  const open = inspector && ctx.activeInspectorId === feature.id;
+  const open = inspector ? ctx.activeInspectorId === feature.id : !!feature.checked?.(ctx);
   const onClick = () => {
     if (inspector) return ctx.openInspector(feature.id);
     if (feature.library) return onLibrary(feature);
@@ -31,7 +32,7 @@ export default function FeatureRow({ feature, ctx, onLibrary }: Props) {
     <button
       type="button"
       onClick={onClick}
-      aria-pressed={inspector ? open : undefined}
+      aria-pressed={inspector || feature.checked ? open : undefined}
       draggable={!!drag}
       onDragStart={(e) => {
         if (!drag) return;

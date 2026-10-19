@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import type { Editor as TextEditor } from '@tiptap/core';
 import type Konva from 'konva';
 import type { Block, BlockType, ExamDoc, ExamMeta, HeaderFooterConfig, PageFormat, PageMargins, ViewMode } from '@/app/_lib/types';
 import type { ChromeKind } from '@/app/_lib/pageChrome';
@@ -11,6 +12,7 @@ import type { Asset, AssetKind } from '@/app/_lib/library';
 import type { Template } from '@/app/_lib/templates';
 import type { Version } from '@/app/_lib/versions';
 import type { Tone } from '@/app/_components/ToolTile';
+import type { CanvasTool } from '@/app/_components/workspace/ToolRail';
 
 export type RightTab = 'properties' | 'library';
 
@@ -31,6 +33,13 @@ export type Shell = {
   redo: () => void;
   busy: boolean;
   runTool: (action: ToolAction) => void;
+  // What a mouse drag on the page does (the tools of the bar under the page). "textbox" draws a text box
+  // (Insert → Text box); Escape, the select arrow or drawing one goes back to "select".
+  canvasTool: CanvasTool;
+  setCanvasTool: (tool: CanvasTool) => void;
+  // The rich-text editor of the text box being typed in on the page (null otherwise): the right panel
+  // formats the selected words through it.
+  textEditor: TextEditor | null;
   updateBlock: (id: string, patch: BlockPatch, field: string) => void;
   onLatex: (block: Block, latex: string) => void;
   deleteBlock: (id: string) => void;
@@ -151,6 +160,7 @@ export type Feature<TConfig = unknown> = {
   // in the right panel and leaves the left panel where it is. An inspector feature has no create / run.
   target?: 'canvas' | 'left-panel' | 'inspector';
   renderInspector?: (p: { ctx: Ctx }) => ReactNode; // required with target: 'inspector'
+  followsSelection?: boolean; // inspector: stays open while blocks are selected (it works on the selection)
 };
 
 // An ordered list of features with a label.

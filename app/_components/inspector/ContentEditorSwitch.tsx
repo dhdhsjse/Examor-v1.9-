@@ -1,7 +1,7 @@
 "use client";
 
 import type { Block, Lang } from "@/app/_lib/types";
-import { HeaderEditor, ImageEditor, TableEditor, TextEditor } from "./ContentEditors";
+import { HeaderEditor, ImageEditor, TableEditor, TextboxEditor, TextEditor } from "./ContentEditors";
 import EquationEditor from "./EquationEditor";
 import { GraphEditor } from "./GraphEditor";
 import { ClassifyEditor, MatchEditor, OrderEditor } from "./MoreQuestionEditors";
@@ -38,6 +38,8 @@ export function ContentEditorSwitch({ block, number, lang, totalPoints, onChange
       return <ClassifyEditor b={block} onChange={onChange} />;
     case "text":
       return <TextEditor b={block} onChange={onChange} />;
+    case "textbox":
+      return <TextboxEditor b={block} onChange={onChange} />;
     case "table":
       return <TableEditor b={block} lang={lang} onChange={onChange} />;
     case "equation":
