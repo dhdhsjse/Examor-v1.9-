@@ -1,0 +1,11 @@
+{
+  "formula": "C3H9N",
+  "total": 4,
+  "schoolTotal": 4,
+  "entries": [
+    {"smiles":"CCCN","groups":["amine"],"ring":false,"branched":false,"skeleton":"CCC","school":true},
+    {"smiles":"CCNC","groups":["amine"],"ring":false,"branched":false,"skeleton":"C.CC","school":true},
+    {"smiles":"CC(C)N","groups":["amine"],"ring":false,"branched":false,"skeleton":"CCC","school":true},
+    {"smiles":"CN(C)C","groups":["amine"],"ring":false,"branched":false,"skeleton":"C.C.C","school":true}
+  ]
+}

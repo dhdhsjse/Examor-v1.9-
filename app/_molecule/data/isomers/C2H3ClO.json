@@ -1,0 +1,13 @@
+{
+  "formula": "C2H3ClO",
+  "total": 6,
+  "schoolTotal": 3,
+  "entries": [
+    {"smiles":"C=COCl","groups":["alkene"],"ring":false,"branched":false,"skeleton":"CC","school":true},
+    {"smiles":"CC(=O)Cl","groups":["halide"],"ring":false,"branched":false,"skeleton":"CC","school":true},
+    {"smiles":"O=CCCl","groups":["aldehyde","halide"],"ring":false,"branched":false,"skeleton":"CC","school":true},
+    {"smiles":"OC=CCl","groups":["alkene","halide"],"ring":false,"branched":false,"skeleton":"CC","school":false,"issues":["enol"]},
+    {"smiles":"C=C(O)Cl","groups":["alkene","halide"],"ring":false,"branched":false,"skeleton":"CC","school":false,"issues":["enol"]},
+    {"smiles":"ClC1CO1","groups":["ether","halide"],"ring":true,"branched":false,"skeleton":"CC","school":false,"issues":["small-ring"]}
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "formula": "C2H5ClO",
+  "total": 4,
+  "schoolTotal": 4,
+  "entries": [
+    {"smiles":"OCCCl","groups":["alcohol","halide"],"ring":false,"branched":false,"skeleton":"CC","school":true},
+    {"smiles":"CC(O)Cl","groups":["alcohol","halide"],"ring":false,"branched":false,"skeleton":"CC","school":true},
+    {"smiles":"COCCl","groups":["ether","halide"],"ring":false,"branched":false,"skeleton":"C.C","school":true},
+    {"smiles":"CCOCl","groups":["other"],"ring":false,"branched":false,"skeleton":"CC","school":true}
+  ]
+}

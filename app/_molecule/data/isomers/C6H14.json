@@ -1,0 +1,12 @@
+{
+  "formula": "C6H14",
+  "total": 5,
+  "schoolTotal": 5,
+  "entries": [
+    {"smiles":"CCCCCC","groups":["alkane"],"ring":false,"branched":false,"skeleton":"CCCCCC","school":true,"name":{"en":"hexane","fr":"hexane"}},
+    {"smiles":"CCC(C)CC","groups":["alkane"],"ring":false,"branched":true,"skeleton":"CCC(C)CC","school":true},
+    {"smiles":"CCCC(C)C","groups":["alkane"],"ring":false,"branched":true,"skeleton":"CCCC(C)C","school":true},
+    {"smiles":"CCC(C)(C)C","groups":["alkane"],"ring":false,"branched":true,"skeleton":"CCC(C)(C)C","school":true},
+    {"smiles":"CC(C)C(C)C","groups":["alkane"],"ring":false,"branched":true,"skeleton":"CC(C)C(C)C","school":true}
+  ]
+}

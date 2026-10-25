@@ -1,0 +1,16 @@
+{
+  "formula": "C2H2O2",
+  "total": 9,
+  "schoolTotal": 2,
+  "entries": [
+    {"smiles":"O=CC=O","groups":["aldehyde"],"ring":false,"branched":false,"skeleton":"CC","school":true},
+    {"smiles":"OC#CO","groups":["alkyne"],"ring":false,"branched":false,"skeleton":"CC","school":true},
+    {"smiles":"O=C=CO","groups":["alkene"],"ring":false,"branched":false,"skeleton":"CC","school":false,"issues":["cumulated","enol"]},
+    {"smiles":"C#COO","groups":["alkyne"],"ring":false,"branched":false,"skeleton":"CC","school":false,"issues":["peroxide"]},
+    {"smiles":"c1coo1","groups":["alkene"],"ring":true,"branched":false,"skeleton":"CC","school":false,"issues":["small-ring","peroxide"]},
+    {"smiles":"C=C1OO1","groups":["alkene"],"ring":true,"branched":false,"skeleton":"CC","school":false,"issues":["small-ring","peroxide"]},
+    {"smiles":"O=C1CO1","groups":["ester"],"ring":true,"branched":false,"skeleton":"CC","school":false,"issues":["small-ring"]},
+    {"smiles":"OC1=CO1","groups":["alkene"],"ring":true,"branched":false,"skeleton":"CC","school":false,"issues":["small-ring","enol"]},
+    {"smiles":"O1C2OC12","groups":["ether"],"ring":true,"branched":false,"skeleton":"CC","school":false,"issues":["small-ring"]}
+  ]
+}

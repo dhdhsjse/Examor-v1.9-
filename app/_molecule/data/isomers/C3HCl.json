@@ -1,0 +1,9 @@
+{
+  "formula": "C3HCl",
+  "total": 2,
+  "schoolTotal": 0,
+  "entries": [
+    {"smiles":"ClC1=C=C1","groups":["alkene","halide"],"ring":true,"branched":false,"skeleton":"C1CC1","school":false,"issues":["small-ring","cumulated"]},
+    {"smiles":"ClC1C#C1","groups":["alkyne","halide"],"ring":true,"branched":false,"skeleton":"C1CC1","school":false,"issues":["small-ring"]}
+  ]
+}

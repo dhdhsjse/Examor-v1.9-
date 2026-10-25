@@ -1,5 +1,7 @@
 // Translations of the app interface. The key is the English text (see uiLang.tsx);
 // "{name}" placeholders are kept as they are.
+import { STUDIO_AR, STUDIO_FR } from "@/app/_lib/chemistry/strings";
+import { MOLECULE_AR, MOLECULE_FR } from "@/app/_molecule/strings";
 
 export const FR: Record<string, string> = {
   // ---- Top bar, files ----
@@ -1614,3 +1616,11 @@ export const AR: Record<string, string> = {
   "Colorful band with stars, for young pupils": "شريط ملون بنجوم، للتلاميذ الصغار",
   "Arabic official header with the ministry line": "ترويسة رسمية بالعربية مع سطر الوزارة",
 };
+
+// Molecule Studio (app/_molecule/strings.ts)
+Object.assign(FR, MOLECULE_FR);
+Object.assign(AR, MOLECULE_AR);
+
+// Drawing Studio (app/_lib/chemistry/strings.ts)
+Object.assign(FR, STUDIO_FR);
+Object.assign(AR, STUDIO_AR);

@@ -1,0 +1,10 @@
+{
+  "formula": "CH3Cl2N",
+  "total": 3,
+  "schoolTotal": 3,
+  "entries": [
+    {"smiles":"CN(Cl)Cl","groups":["amine"],"ring":false,"branched":false,"skeleton":"C","school":true},
+    {"smiles":"ClCNCl","groups":["amine","halide"],"ring":false,"branched":false,"skeleton":"C","school":true},
+    {"smiles":"NC(Cl)Cl","groups":["amine","halide"],"ring":false,"branched":false,"skeleton":"C","school":true}
+  ]
+}

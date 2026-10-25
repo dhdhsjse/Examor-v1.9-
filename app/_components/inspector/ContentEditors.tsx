@@ -137,8 +137,8 @@ export function ImageEditor({ b, lang, onChange, onReplace }: { b: ImageBlock; l
           onChange={(width) => onChange({ layout: { width, height: width / b.ratio } }, "width")}
         />
       </Field>
-      {/* A figure is redrawn from its settings: replacing it with a picture drops them. */}
-      <SmallButton onClick={onReplace}>{t(b.figure ? "Replace with an image…" : "Replace image…")}</SmallButton>
+      {/* A figure is redrawn from its settings, a molecule or a drawing from its data: replacing it with a picture drops them. */}
+      <SmallButton onClick={onReplace}>{t(b.figure || b.molecule || b.drawing ? "Replace with an image…" : "Replace image…")}</SmallButton>
     </>
   );
 }

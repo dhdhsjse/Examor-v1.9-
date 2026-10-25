@@ -1,0 +1,12 @@
+{
+  "formula": "C3H3Cl",
+  "total": 5,
+  "schoolTotal": 2,
+  "entries": [
+    {"smiles":"C#CCCl","groups":["alkyne","halide"],"ring":false,"branched":false,"skeleton":"CCC","school":true},
+    {"smiles":"CC#CCl","groups":["alkyne","halide"],"ring":false,"branched":false,"skeleton":"CCC","school":true},
+    {"smiles":"C=C=CCl","groups":["alkene","halide"],"ring":false,"branched":false,"skeleton":"CCC","school":false,"issues":["cumulated"]},
+    {"smiles":"ClC1=CC1","groups":["alkene","halide"],"ring":true,"branched":false,"skeleton":"C1CC1","school":false,"issues":["small-ring"]},
+    {"smiles":"ClC1C=C1","groups":["alkene","halide"],"ring":true,"branched":false,"skeleton":"C1CC1","school":false,"issues":["small-ring"]}
+  ]
+}

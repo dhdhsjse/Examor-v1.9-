@@ -1,0 +1,10 @@
+{
+  "formula": "C5H12",
+  "total": 3,
+  "schoolTotal": 3,
+  "entries": [
+    {"smiles":"CCCCC","groups":["alkane"],"ring":false,"branched":false,"skeleton":"CCCCC","school":true,"name":{"en":"pentane","fr":"pentane"}},
+    {"smiles":"CCC(C)C","groups":["alkane"],"ring":false,"branched":true,"skeleton":"CCC(C)C","school":true,"name":{"en":"2-methylbutane","fr":"2-méthylbutane"}},
+    {"smiles":"CC(C)(C)C","groups":["alkane"],"ring":false,"branched":true,"skeleton":"CC(C)(C)C","school":true,"name":{"en":"2,2-dimethylpropane","fr":"2,2-diméthylpropane"}}
+  ]
+}

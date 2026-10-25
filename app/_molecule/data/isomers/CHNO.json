@@ -1,0 +1,10 @@
+{
+  "formula": "CHNO",
+  "total": 3,
+  "schoolTotal": 1,
+  "entries": [
+    {"smiles":"N#CO","groups":["nitrile"],"ring":false,"branched":false,"skeleton":"C","school":true},
+    {"smiles":"N=C=O","groups":["other"],"ring":false,"branched":false,"skeleton":"C","school":false,"issues":["cumulated"]},
+    {"smiles":"C1=NO1","groups":["other"],"ring":true,"branched":false,"skeleton":"C","school":false,"issues":["small-ring"]}
+  ]
+}

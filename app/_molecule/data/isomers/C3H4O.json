@@ -1,0 +1,20 @@
+{
+  "formula": "C3H4O",
+  "total": 13,
+  "schoolTotal": 4,
+  "entries": [
+    {"smiles":"C#COC","groups":["alkyne"],"ring":false,"branched":false,"skeleton":"C.CC","school":true},
+    {"smiles":"CC#CO","groups":["alkyne"],"ring":false,"branched":false,"skeleton":"CCC","school":true},
+    {"smiles":"C=CC=O","groups":["alkene","aldehyde"],"ring":false,"branched":false,"skeleton":"CCC","school":true},
+    {"smiles":"C#CCO","groups":["alkyne","alcohol"],"ring":false,"branched":false,"skeleton":"CCC","school":true},
+    {"smiles":"C=C=CO","groups":["alkene"],"ring":false,"branched":false,"skeleton":"CCC","school":false,"issues":["enol","cumulated"]},
+    {"smiles":"CC=C=O","groups":["alkene"],"ring":false,"branched":false,"skeleton":"CCC","school":false,"issues":["cumulated"]},
+    {"smiles":"C=C1CO1","groups":["alkene"],"ring":true,"branched":false,"skeleton":"CCC","school":false,"issues":["small-ring"]},
+    {"smiles":"C1=COC1","groups":["alkene"],"ring":true,"branched":false,"skeleton":"CCC","school":false,"issues":["small-ring"]},
+    {"smiles":"CC1=CO1","groups":["alkene"],"ring":true,"branched":false,"skeleton":"CCC","school":false,"issues":["small-ring"]},
+    {"smiles":"O=C1CC1","groups":["ketone"],"ring":true,"branched":false,"skeleton":"C1CC1","school":false,"issues":["small-ring"]},
+    {"smiles":"OC1=CC1","groups":["alkene"],"ring":true,"branched":false,"skeleton":"C1CC1","school":false,"issues":["small-ring","enol"]},
+    {"smiles":"OC1C=C1","groups":["alkene","alcohol"],"ring":true,"branched":false,"skeleton":"C1CC1","school":false,"issues":["small-ring"]},
+    {"smiles":"C1C2OC12","groups":["cycloalkane","ether"],"ring":true,"branched":false,"skeleton":"C1CC1","school":false,"issues":["small-ring"]}
+  ]
+}

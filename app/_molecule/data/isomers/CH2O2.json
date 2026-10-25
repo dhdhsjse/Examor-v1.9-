@@ -1,0 +1,9 @@
+{
+  "formula": "CH2O2",
+  "total": 2,
+  "schoolTotal": 1,
+  "entries": [
+    {"smiles":"O=CO","groups":["carboxylic-acid"],"ring":false,"branched":false,"skeleton":"C","school":true,"name":{"en":"methanoic acid","fr":"acide méthanoïque"}},
+    {"smiles":"C1OO1","groups":["other"],"ring":true,"branched":false,"skeleton":"C","school":false,"issues":["small-ring","peroxide"]}
+  ]
+}

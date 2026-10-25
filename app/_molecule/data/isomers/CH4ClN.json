@@ -1,0 +1,9 @@
+{
+  "formula": "CH4ClN",
+  "total": 2,
+  "schoolTotal": 2,
+  "entries": [
+    {"smiles":"CNCl","groups":["amine"],"ring":false,"branched":false,"skeleton":"C","school":true},
+    {"smiles":"NCCl","groups":["amine","halide"],"ring":false,"branched":false,"skeleton":"C","school":true}
+  ]
+}

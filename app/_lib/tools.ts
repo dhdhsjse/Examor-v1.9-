@@ -9,7 +9,10 @@ export type ToolAction =
   | { kind: "block"; type: BlockType; preset?: BlockPreset }
   | { kind: "asset"; assetId: string }
   | { kind: "importImage" }
-  | { kind: "library" };
+  | { kind: "library" }
+  | { kind: "molecule" } // opens the Molecule Studio
+  | { kind: "molecule-lab" } // opens the drawing Studio
+  | { kind: "blocks"; items: { type: BlockType; preset?: BlockPreset }[] }; // several blocks, one under the other
 
 // Data type used for HTML drag & drop onto the page.
 export const DRAG_MIME = "application/x-exam-builder";

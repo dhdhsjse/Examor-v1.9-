@@ -1,0 +1,16 @@
+{
+  "formula": "C7H16",
+  "total": 9,
+  "schoolTotal": 9,
+  "entries": [
+    {"smiles":"CCCCCCC","groups":["alkane"],"ring":false,"branched":false,"skeleton":"CCCCCCC","school":true,"name":{"en":"heptane","fr":"heptane"}},
+    {"smiles":"CCC(CC)CC","groups":["alkane"],"ring":false,"branched":true,"skeleton":"CCC(CC)CC","school":true},
+    {"smiles":"CCCC(C)CC","groups":["alkane"],"ring":false,"branched":true,"skeleton":"CCCC(C)CC","school":true},
+    {"smiles":"CCCCC(C)C","groups":["alkane"],"ring":false,"branched":true,"skeleton":"CCCCC(C)C","school":true},
+    {"smiles":"CCC(C)(C)CC","groups":["alkane"],"ring":false,"branched":true,"skeleton":"CCC(C)(C)CC","school":true},
+    {"smiles":"CCCC(C)(C)C","groups":["alkane"],"ring":false,"branched":true,"skeleton":"CCCC(C)(C)C","school":true},
+    {"smiles":"CC(C)CC(C)C","groups":["alkane"],"ring":false,"branched":true,"skeleton":"CC(C)CC(C)C","school":true},
+    {"smiles":"CCC(C)C(C)C","groups":["alkane"],"ring":false,"branched":true,"skeleton":"CCC(C)C(C)C","school":true},
+    {"smiles":"CC(C)C(C)(C)C","groups":["alkane"],"ring":false,"branched":true,"skeleton":"CC(C)C(C)(C)C","school":true}
+  ]
+}

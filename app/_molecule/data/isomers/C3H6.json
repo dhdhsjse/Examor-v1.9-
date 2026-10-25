@@ -1,0 +1,9 @@
+{
+  "formula": "C3H6",
+  "total": 2,
+  "schoolTotal": 1,
+  "entries": [
+    {"smiles":"C=CC","groups":["alkene"],"ring":false,"branched":false,"skeleton":"CCC","school":true,"name":{"en":"propene","fr":"propène"}},
+    {"smiles":"C1CC1","groups":["cycloalkane"],"ring":true,"branched":false,"skeleton":"C1CC1","school":false,"issues":["small-ring"]}
+  ]
+}

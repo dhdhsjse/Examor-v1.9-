@@ -1,0 +1,25 @@
+{
+  "formula": "C8H18",
+  "total": 18,
+  "schoolTotal": 18,
+  "entries": [
+    {"smiles":"CCCCCCCC","groups":["alkane"],"ring":false,"branched":false,"skeleton":"CCCCCCCC","school":true,"name":{"en":"octane","fr":"octane"}},
+    {"smiles":"CCCC(C)CCC","groups":["alkane"],"ring":false,"branched":true,"skeleton":"CCCC(C)CCC","school":true},
+    {"smiles":"CCCC(CC)CC","groups":["alkane"],"ring":false,"branched":true,"skeleton":"CCCC(CC)CC","school":true},
+    {"smiles":"CCCCC(C)CC","groups":["alkane"],"ring":false,"branched":true,"skeleton":"CCCCC(C)CC","school":true},
+    {"smiles":"CCCCCC(C)C","groups":["alkane"],"ring":false,"branched":true,"skeleton":"CCCCCC(C)C","school":true},
+    {"smiles":"CCC(C)(CC)CC","groups":["alkane"],"ring":false,"branched":true,"skeleton":"CCC(C)(CC)CC","school":true},
+    {"smiles":"CCCC(C)(C)CC","groups":["alkane"],"ring":false,"branched":true,"skeleton":"CCCC(C)(C)CC","school":true},
+    {"smiles":"CCCCC(C)(C)C","groups":["alkane"],"ring":false,"branched":true,"skeleton":"CCCCC(C)(C)C","school":true},
+    {"smiles":"CC(C)CCC(C)C","groups":["alkane"],"ring":false,"branched":true,"skeleton":"CC(C)CCC(C)C","school":true},
+    {"smiles":"CCC(C)C(C)CC","groups":["alkane"],"ring":false,"branched":true,"skeleton":"CCC(C)C(C)CC","school":true},
+    {"smiles":"CCC(C)CC(C)C","groups":["alkane"],"ring":false,"branched":true,"skeleton":"CCC(C)CC(C)C","school":true},
+    {"smiles":"CCC(CC)C(C)C","groups":["alkane"],"ring":false,"branched":true,"skeleton":"CCC(CC)C(C)C","school":true},
+    {"smiles":"CCCC(C)C(C)C","groups":["alkane"],"ring":false,"branched":true,"skeleton":"CCCC(C)C(C)C","school":true},
+    {"smiles":"CC(C)CC(C)(C)C","groups":["alkane"],"ring":false,"branched":true,"skeleton":"CC(C)CC(C)(C)C","school":true},
+    {"smiles":"CCC(C)(C)C(C)C","groups":["alkane"],"ring":false,"branched":true,"skeleton":"CCC(C)(C)C(C)C","school":true},
+    {"smiles":"CCC(C)C(C)(C)C","groups":["alkane"],"ring":false,"branched":true,"skeleton":"CCC(C)C(C)(C)C","school":true},
+    {"smiles":"CC(C)(C)C(C)(C)C","groups":["alkane"],"ring":false,"branched":true,"skeleton":"CC(C)(C)C(C)(C)C","school":true},
+    {"smiles":"CC(C)C(C)C(C)C","groups":["alkane"],"ring":false,"branched":true,"skeleton":"CC(C)C(C)C(C)C","school":true}
+  ]
+}

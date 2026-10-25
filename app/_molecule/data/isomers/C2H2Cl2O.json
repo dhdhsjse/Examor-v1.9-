@@ -1,0 +1,15 @@
+{
+  "formula": "C2H2Cl2O",
+  "total": 8,
+  "schoolTotal": 4,
+  "entries": [
+    {"smiles":"O=C(Cl)CCl","groups":["halide"],"ring":false,"branched":false,"skeleton":"CC","school":true},
+    {"smiles":"ClC=COCl","groups":["alkene","halide"],"ring":false,"branched":false,"skeleton":"CC","school":true},
+    {"smiles":"C=C(Cl)OCl","groups":["alkene","halide"],"ring":false,"branched":false,"skeleton":"CC","school":true},
+    {"smiles":"O=CC(Cl)Cl","groups":["aldehyde","halide"],"ring":false,"branched":false,"skeleton":"CC","school":true},
+    {"smiles":"OC(Cl)=CCl","groups":["alkene","halide"],"ring":false,"branched":false,"skeleton":"CC","school":false,"issues":["enol"]},
+    {"smiles":"OC=C(Cl)Cl","groups":["alkene","halide"],"ring":false,"branched":false,"skeleton":"CC","school":false,"issues":["enol"]},
+    {"smiles":"ClC1OC1Cl","groups":["ether","halide"],"ring":true,"branched":false,"skeleton":"CC","school":false,"issues":["small-ring"]},
+    {"smiles":"ClC1(Cl)CO1","groups":["ether","halide"],"ring":true,"branched":false,"skeleton":"CC","school":false,"issues":["small-ring"]}
+  ]
+}

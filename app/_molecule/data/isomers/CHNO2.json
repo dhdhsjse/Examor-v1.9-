@@ -1,0 +1,15 @@
+{
+  "formula": "CHNO2",
+  "total": 8,
+  "schoolTotal": 1,
+  "entries": [
+    {"smiles":"O=CN=O","groups":["amide"],"ring":false,"branched":false,"skeleton":"C","school":true},
+    {"smiles":"N#COO","groups":["nitrile"],"ring":false,"branched":false,"skeleton":"C","school":false,"issues":["peroxide"]},
+    {"smiles":"O1C2ON12","groups":["amine"],"ring":true,"branched":false,"skeleton":"C","school":false,"issues":["small-ring"]},
+    {"smiles":"O=C=NO","groups":["other"],"ring":false,"branched":false,"skeleton":"C","school":false,"issues":["cumulated"]},
+    {"smiles":"c1noo1","groups":["other"],"ring":true,"branched":false,"skeleton":"C","school":false,"issues":["small-ring","peroxide"]},
+    {"smiles":"N=C1OO1","groups":["other"],"ring":true,"branched":false,"skeleton":"C","school":false,"issues":["small-ring","peroxide"]},
+    {"smiles":"O=C1NO1","groups":["other"],"ring":true,"branched":false,"skeleton":"C","school":false,"issues":["small-ring"]},
+    {"smiles":"OC1=NO1","groups":["other"],"ring":true,"branched":false,"skeleton":"C","school":false,"issues":["small-ring"]}
+  ]
+}

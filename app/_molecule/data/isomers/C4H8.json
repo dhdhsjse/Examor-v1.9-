@@ -1,0 +1,12 @@
+{
+  "formula": "C4H8",
+  "total": 5,
+  "schoolTotal": 3,
+  "entries": [
+    {"smiles":"C=CCC","groups":["alkene"],"ring":false,"branched":false,"skeleton":"CCCC","school":true,"name":{"en":"but-1-ene","fr":"but-1-ène"}},
+    {"smiles":"CC=CC","groups":["alkene"],"ring":false,"branched":false,"skeleton":"CCCC","school":true,"name":{"en":"but-2-ene","fr":"but-2-ène"}},
+    {"smiles":"C=C(C)C","groups":["alkene"],"ring":false,"branched":true,"skeleton":"CC(C)C","school":true},
+    {"smiles":"C1CCC1","groups":["cycloalkane"],"ring":true,"branched":false,"skeleton":"C1CCC1","school":false,"issues":["small-ring"]},
+    {"smiles":"CC1CC1","groups":["cycloalkane"],"ring":true,"branched":false,"skeleton":"CC1CC1","school":false,"issues":["small-ring"]}
+  ]
+}

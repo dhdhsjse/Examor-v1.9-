@@ -1,0 +1,9 @@
+{
+  "formula": "C2H4Cl2",
+  "total": 2,
+  "schoolTotal": 2,
+  "entries": [
+    {"smiles":"ClCCCl","groups":["halide"],"ring":false,"branched":false,"skeleton":"CC","school":true},
+    {"smiles":"CC(Cl)Cl","groups":["halide"],"ring":false,"branched":false,"skeleton":"CC","school":true}
+  ]
+}

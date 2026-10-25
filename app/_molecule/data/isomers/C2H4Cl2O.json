@@ -1,0 +1,14 @@
+{
+  "formula": "C2H4Cl2O",
+  "total": 7,
+  "schoolTotal": 7,
+  "entries": [
+    {"smiles":"ClCCOCl","groups":["halide"],"ring":false,"branched":false,"skeleton":"CC","school":true},
+    {"smiles":"CC(Cl)OCl","groups":["halide"],"ring":false,"branched":false,"skeleton":"CC","school":true},
+    {"smiles":"OC(Cl)CCl","groups":["alcohol","halide"],"ring":false,"branched":false,"skeleton":"CC","school":true},
+    {"smiles":"OCC(Cl)Cl","groups":["alcohol","halide"],"ring":false,"branched":false,"skeleton":"CC","school":true},
+    {"smiles":"CC(O)(Cl)Cl","groups":["alcohol","halide"],"ring":false,"branched":false,"skeleton":"CC","school":true},
+    {"smiles":"ClCOCCl","groups":["ether","halide"],"ring":false,"branched":false,"skeleton":"C.C","school":true},
+    {"smiles":"COC(Cl)Cl","groups":["ether","halide"],"ring":false,"branched":false,"skeleton":"C.C","school":true}
+  ]
+}

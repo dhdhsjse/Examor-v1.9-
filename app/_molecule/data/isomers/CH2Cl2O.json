@@ -1,0 +1,9 @@
+{
+  "formula": "CH2Cl2O",
+  "total": 2,
+  "schoolTotal": 2,
+  "entries": [
+    {"smiles":"ClCOCl","groups":["halide"],"ring":false,"branched":false,"skeleton":"C","school":true},
+    {"smiles":"OC(Cl)Cl","groups":["alcohol","halide"],"ring":false,"branched":false,"skeleton":"C","school":true}
+  ]
+}

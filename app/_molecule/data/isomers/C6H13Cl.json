@@ -1,0 +1,24 @@
+{
+  "formula": "C6H13Cl",
+  "total": 17,
+  "schoolTotal": 17,
+  "entries": [
+    {"smiles":"CCCCCCCl","groups":["halide"],"ring":false,"branched":false,"skeleton":"CCCCCC","school":true},
+    {"smiles":"CCCC(Cl)CC","groups":["halide"],"ring":false,"branched":false,"skeleton":"CCCCCC","school":true},
+    {"smiles":"CCCCC(C)Cl","groups":["halide"],"ring":false,"branched":false,"skeleton":"CCCCCC","school":true},
+    {"smiles":"CC(C)CCCCl","groups":["halide"],"ring":false,"branched":true,"skeleton":"CCCC(C)C","school":true},
+    {"smiles":"CCC(C)CCCl","groups":["halide"],"ring":false,"branched":true,"skeleton":"CCC(C)CC","school":true},
+    {"smiles":"CCC(CC)CCl","groups":["halide"],"ring":false,"branched":true,"skeleton":"CCC(C)CC","school":true},
+    {"smiles":"CCCC(C)CCl","groups":["halide"],"ring":false,"branched":true,"skeleton":"CCCC(C)C","school":true},
+    {"smiles":"CC(C)(C)CCCl","groups":["halide"],"ring":false,"branched":true,"skeleton":"CCC(C)(C)C","school":true},
+    {"smiles":"CC(C)CC(C)Cl","groups":["halide"],"ring":false,"branched":true,"skeleton":"CCCC(C)C","school":true},
+    {"smiles":"CCC(C)(C)CCl","groups":["halide"],"ring":false,"branched":true,"skeleton":"CCC(C)(C)C","school":true},
+    {"smiles":"CCC(C)(Cl)CC","groups":["halide"],"ring":false,"branched":true,"skeleton":"CCC(C)CC","school":true},
+    {"smiles":"CCC(C)C(C)Cl","groups":["halide"],"ring":false,"branched":true,"skeleton":"CCC(C)CC","school":true},
+    {"smiles":"CCC(Cl)C(C)C","groups":["halide"],"ring":false,"branched":true,"skeleton":"CCCC(C)C","school":true},
+    {"smiles":"CCCC(C)(C)Cl","groups":["halide"],"ring":false,"branched":true,"skeleton":"CCCC(C)C","school":true},
+    {"smiles":"CC(Cl)C(C)(C)C","groups":["halide"],"ring":false,"branched":true,"skeleton":"CCC(C)(C)C","school":true},
+    {"smiles":"CC(C)C(C)CCl","groups":["halide"],"ring":false,"branched":true,"skeleton":"CC(C)C(C)C","school":true},
+    {"smiles":"CC(C)C(C)(C)Cl","groups":["halide"],"ring":false,"branched":true,"skeleton":"CC(C)C(C)C","school":true}
+  ]
+}

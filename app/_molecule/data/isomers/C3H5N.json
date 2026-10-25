@@ -1,0 +1,28 @@
+{
+  "formula": "C3H5N",
+  "total": 21,
+  "schoolTotal": 6,
+  "entries": [
+    {"smiles":"C=CC=N","groups":["alkene"],"ring":false,"branched":false,"skeleton":"CCC","school":true},
+    {"smiles":"C=CN=C","groups":["alkene"],"ring":false,"branched":false,"skeleton":"C.CC","school":true},
+    {"smiles":"CC#CN","groups":["alkyne"],"ring":false,"branched":false,"skeleton":"CCC","school":true},
+    {"smiles":"CCC#N","groups":["nitrile"],"ring":false,"branched":false,"skeleton":"CCC","school":true},
+    {"smiles":"C#CCN","groups":["alkyne","amine"],"ring":false,"branched":false,"skeleton":"CCC","school":true},
+    {"smiles":"C#CNC","groups":["alkyne","amine"],"ring":false,"branched":false,"skeleton":"C.CC","school":true},
+    {"smiles":"C=C=CN","groups":["alkene"],"ring":false,"branched":false,"skeleton":"CCC","school":false,"issues":["cumulated"]},
+    {"smiles":"C=C=NC","groups":["alkene"],"ring":false,"branched":false,"skeleton":"C.CC","school":false,"issues":["cumulated"]},
+    {"smiles":"CC=C=N","groups":["alkene"],"ring":false,"branched":false,"skeleton":"CCC","school":false,"issues":["cumulated"]},
+    {"smiles":"CC1=CN1","groups":["alkene"],"ring":true,"branched":false,"skeleton":"CCC","school":false,"issues":["small-ring"]},
+    {"smiles":"NC1=CC1","groups":["alkene"],"ring":true,"branched":false,"skeleton":"C1CC1","school":false,"issues":["small-ring"]},
+    {"smiles":"C=C1CN1","groups":["alkene","amine"],"ring":true,"branched":false,"skeleton":"CCC","school":false,"issues":["small-ring"]},
+    {"smiles":"C1=CNC1","groups":["alkene","amine"],"ring":true,"branched":false,"skeleton":"CCC","school":false,"issues":["small-ring"]},
+    {"smiles":"CN1C=C1","groups":["alkene","amine"],"ring":true,"branched":false,"skeleton":"C.CC","school":false,"issues":["small-ring"]},
+    {"smiles":"NC1C=C1","groups":["alkene","amine"],"ring":true,"branched":false,"skeleton":"C1CC1","school":false,"issues":["small-ring"]},
+    {"smiles":"C1C2CN12","groups":["amine"],"ring":true,"branched":false,"skeleton":"CCC","school":false,"issues":["small-ring"]},
+    {"smiles":"C1C2NC12","groups":["cycloalkane","amine"],"ring":true,"branched":false,"skeleton":"C1CC1","school":false,"issues":["small-ring"]},
+    {"smiles":"C1=NCC1","groups":["other"],"ring":true,"branched":false,"skeleton":"CCC","school":false,"issues":["small-ring"]},
+    {"smiles":"CC1=NC1","groups":["other"],"ring":true,"branched":false,"skeleton":"CCC","school":false,"issues":["small-ring"]},
+    {"smiles":"CC1C=N1","groups":["other"],"ring":true,"branched":false,"skeleton":"CCC","school":false,"issues":["small-ring"]},
+    {"smiles":"N=C1CC1","groups":["other"],"ring":true,"branched":false,"skeleton":"C1CC1","school":false,"issues":["small-ring"]}
+  ]
+}

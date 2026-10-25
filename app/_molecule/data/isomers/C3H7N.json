@@ -1,0 +1,19 @@
+{
+  "formula": "C3H7N",
+  "total": 12,
+  "schoolTotal": 8,
+  "entries": [
+    {"smiles":"CC=CN","groups":["alkene"],"ring":false,"branched":false,"skeleton":"CCC","school":true},
+    {"smiles":"C=C(C)N","groups":["alkene"],"ring":false,"branched":false,"skeleton":"CCC","school":true},
+    {"smiles":"C=CCN","groups":["alkene","amine"],"ring":false,"branched":false,"skeleton":"CCC","school":true},
+    {"smiles":"C=CNC","groups":["alkene","amine"],"ring":false,"branched":false,"skeleton":"C.CC","school":true},
+    {"smiles":"C=NCC","groups":["other"],"ring":false,"branched":false,"skeleton":"C.CC","school":true},
+    {"smiles":"CC=NC","groups":["other"],"ring":false,"branched":false,"skeleton":"C.CC","school":true},
+    {"smiles":"CCC=N","groups":["other"],"ring":false,"branched":false,"skeleton":"CCC","school":true},
+    {"smiles":"CC(C)=N","groups":["other"],"ring":false,"branched":false,"skeleton":"CCC","school":true},
+    {"smiles":"C1CNC1","groups":["amine"],"ring":true,"branched":false,"skeleton":"CCC","school":false,"issues":["small-ring"]},
+    {"smiles":"CC1CN1","groups":["amine"],"ring":true,"branched":false,"skeleton":"CCC","school":false,"issues":["small-ring"]},
+    {"smiles":"CN1CC1","groups":["amine"],"ring":true,"branched":false,"skeleton":"C.CC","school":false,"issues":["small-ring"]},
+    {"smiles":"NC1CC1","groups":["cycloalkane","amine"],"ring":true,"branched":false,"skeleton":"C1CC1","school":false,"issues":["small-ring"]}
+  ]
+}

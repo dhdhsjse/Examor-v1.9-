@@ -1,0 +1,12 @@
+{
+  "formula": "CH2Cl2O2",
+  "total": 5,
+  "schoolTotal": 2,
+  "entries": [
+    {"smiles":"OC(Cl)OCl","groups":["alcohol","halide"],"ring":false,"branched":false,"skeleton":"C","school":true},
+    {"smiles":"ClOCOCl","groups":["other"],"ring":false,"branched":false,"skeleton":"C","school":true},
+    {"smiles":"ClCOOCl","groups":["halide"],"ring":false,"branched":false,"skeleton":"C","school":false,"issues":["peroxide"]},
+    {"smiles":"OOC(Cl)Cl","groups":["halide"],"ring":false,"branched":false,"skeleton":"C","school":false,"issues":["peroxide"]},
+    {"smiles":"OC(O)(Cl)Cl","groups":["alcohol","halide"],"ring":false,"branched":false,"skeleton":"C","school":false,"issues":["gem-diol"]}
+  ]
+}

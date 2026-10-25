@@ -1,0 +1,12 @@
+{
+  "formula": "C2H3N",
+  "total": 5,
+  "schoolTotal": 2,
+  "entries": [
+    {"smiles":"C#CN","groups":["alkyne"],"ring":false,"branched":false,"skeleton":"CC","school":true},
+    {"smiles":"CC#N","groups":["nitrile"],"ring":false,"branched":false,"skeleton":"CC","school":true},
+    {"smiles":"C=C=N","groups":["alkene"],"ring":false,"branched":false,"skeleton":"CC","school":false,"issues":["cumulated"]},
+    {"smiles":"C1=CN1","groups":["alkene"],"ring":true,"branched":false,"skeleton":"CC","school":false,"issues":["small-ring"]},
+    {"smiles":"C1=NC1","groups":["other"],"ring":true,"branched":false,"skeleton":"CC","school":false,"issues":["small-ring"]}
+  ]
+}

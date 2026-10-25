@@ -1,0 +1,14 @@
+{
+  "formula": "C3H2Cl2",
+  "total": 7,
+  "schoolTotal": 2,
+  "entries": [
+    {"smiles":"ClC#CCCl","groups":["alkyne","halide"],"ring":false,"branched":false,"skeleton":"CCC","school":true},
+    {"smiles":"C#CC(Cl)Cl","groups":["alkyne","halide"],"ring":false,"branched":false,"skeleton":"CCC","school":true},
+    {"smiles":"ClC=C=CCl","groups":["alkene","halide"],"ring":false,"branched":false,"skeleton":"CCC","school":false,"issues":["cumulated"]},
+    {"smiles":"C=C=C(Cl)Cl","groups":["alkene","halide"],"ring":false,"branched":false,"skeleton":"CCC","school":false,"issues":["cumulated"]},
+    {"smiles":"ClC1=CC1Cl","groups":["alkene","halide"],"ring":true,"branched":false,"skeleton":"C1CC1","school":false,"issues":["small-ring"]},
+    {"smiles":"ClC1(Cl)C=C1","groups":["alkene","halide"],"ring":true,"branched":false,"skeleton":"C1CC1","school":false,"issues":["small-ring"]},
+    {"smiles":"ClC1=C(Cl)C1","groups":["alkene","halide"],"ring":true,"branched":false,"skeleton":"C1CC1","school":false,"issues":["small-ring"]}
+  ]
+}

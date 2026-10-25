@@ -1,0 +1,17 @@
+{
+  "formula": "C2H4O2",
+  "total": 10,
+  "schoolTotal": 3,
+  "entries": [
+    {"smiles":"CC(=O)O","groups":["carboxylic-acid"],"ring":false,"branched":false,"skeleton":"CC","school":true,"name":{"en":"ethanoic acid","fr":"acide éthanoïque","ar":"حمض الإيثانويك"}},
+    {"smiles":"COC=O","groups":["ester"],"ring":false,"branched":false,"skeleton":"C.C","school":true,"name":{"en":"methyl methanoate","fr":"méthanoate de méthyle"}},
+    {"smiles":"O=CCO","groups":["alcohol","aldehyde"],"ring":false,"branched":false,"skeleton":"CC","school":true},
+    {"smiles":"C=COO","groups":["alkene"],"ring":false,"branched":false,"skeleton":"CC","school":false,"issues":["peroxide"]},
+    {"smiles":"OC=CO","groups":["alkene"],"ring":false,"branched":false,"skeleton":"CC","school":false,"issues":["enol"]},
+    {"smiles":"C=C(O)O","groups":["alkene"],"ring":false,"branched":false,"skeleton":"CC","school":false,"issues":["enol"]},
+    {"smiles":"C1OCO1","groups":["ether"],"ring":true,"branched":false,"skeleton":"C.C","school":false,"issues":["small-ring"]},
+    {"smiles":"OC1CO1","groups":["alcohol","ether"],"ring":true,"branched":false,"skeleton":"CC","school":false,"issues":["small-ring"]},
+    {"smiles":"C1COO1","groups":["other"],"ring":true,"branched":false,"skeleton":"CC","school":false,"issues":["small-ring","peroxide"]},
+    {"smiles":"CC1OO1","groups":["other"],"ring":true,"branched":false,"skeleton":"CC","school":false,"issues":["small-ring","peroxide"]}
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "formula": "CH3ClO",
+  "total": 2,
+  "schoolTotal": 2,
+  "entries": [
+    {"smiles":"OCCl","groups":["alcohol","halide"],"ring":false,"branched":false,"skeleton":"C","school":true},
+    {"smiles":"COCl","groups":["other"],"ring":false,"branched":false,"skeleton":"C","school":true}
+  ]
+}

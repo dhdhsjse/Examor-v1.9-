@@ -1,0 +1,28 @@
+{
+  "formula": "C5H10Cl2",
+  "total": 21,
+  "schoolTotal": 21,
+  "entries": [
+    {"smiles":"ClCCCCCCl","groups":["halide"],"ring":false,"branched":false,"skeleton":"CCCCC","school":true},
+    {"smiles":"CC(Cl)CCCCl","groups":["halide"],"ring":false,"branched":false,"skeleton":"CCCCC","school":true},
+    {"smiles":"CCC(Cl)CCCl","groups":["halide"],"ring":false,"branched":false,"skeleton":"CCCCC","school":true},
+    {"smiles":"CCCC(Cl)CCl","groups":["halide"],"ring":false,"branched":false,"skeleton":"CCCCC","school":true},
+    {"smiles":"CCCCC(Cl)Cl","groups":["halide"],"ring":false,"branched":false,"skeleton":"CCCCC","school":true},
+    {"smiles":"CC(Cl)CC(C)Cl","groups":["halide"],"ring":false,"branched":false,"skeleton":"CCCCC","school":true},
+    {"smiles":"CCC(Cl)(Cl)CC","groups":["halide"],"ring":false,"branched":false,"skeleton":"CCCCC","school":true},
+    {"smiles":"CCC(Cl)C(C)Cl","groups":["halide"],"ring":false,"branched":false,"skeleton":"CCCCC","school":true},
+    {"smiles":"CCCC(C)(Cl)Cl","groups":["halide"],"ring":false,"branched":false,"skeleton":"CCCCC","school":true},
+    {"smiles":"CC(CCl)CCCl","groups":["halide"],"ring":false,"branched":true,"skeleton":"CCC(C)C","school":true},
+    {"smiles":"CCC(CCl)CCl","groups":["halide"],"ring":false,"branched":true,"skeleton":"CCC(C)C","school":true},
+    {"smiles":"CC(C)(CCl)CCl","groups":["halide"],"ring":false,"branched":true,"skeleton":"CC(C)(C)C","school":true},
+    {"smiles":"CC(C)(Cl)CCCl","groups":["halide"],"ring":false,"branched":true,"skeleton":"CCC(C)C","school":true},
+    {"smiles":"CC(C)C(Cl)CCl","groups":["halide"],"ring":false,"branched":true,"skeleton":"CCC(C)C","school":true},
+    {"smiles":"CC(C)CC(Cl)Cl","groups":["halide"],"ring":false,"branched":true,"skeleton":"CCC(C)C","school":true},
+    {"smiles":"CC(Cl)C(C)CCl","groups":["halide"],"ring":false,"branched":true,"skeleton":"CCC(C)C","school":true},
+    {"smiles":"CCC(C)(Cl)CCl","groups":["halide"],"ring":false,"branched":true,"skeleton":"CCC(C)C","school":true},
+    {"smiles":"CCC(C)C(Cl)Cl","groups":["halide"],"ring":false,"branched":true,"skeleton":"CCC(C)C","school":true},
+    {"smiles":"CC(C)(C)C(Cl)Cl","groups":["halide"],"ring":false,"branched":true,"skeleton":"CC(C)(C)C","school":true},
+    {"smiles":"CC(C)C(C)(Cl)Cl","groups":["halide"],"ring":false,"branched":true,"skeleton":"CCC(C)C","school":true},
+    {"smiles":"CC(Cl)C(C)(C)Cl","groups":["halide"],"ring":false,"branched":true,"skeleton":"CCC(C)C","school":true}
+  ]
+}

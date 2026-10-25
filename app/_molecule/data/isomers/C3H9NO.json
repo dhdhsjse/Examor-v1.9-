@@ -1,0 +1,28 @@
+{
+  "formula": "C3H9NO",
+  "total": 21,
+  "schoolTotal": 21,
+  "entries": [
+    {"smiles":"CCCNO","groups":["amine"],"ring":false,"branched":false,"skeleton":"CCC","school":true},
+    {"smiles":"CCNOC","groups":["amine"],"ring":false,"branched":false,"skeleton":"C.CC","school":true},
+    {"smiles":"CCONC","groups":["amine"],"ring":false,"branched":false,"skeleton":"C.CC","school":true},
+    {"smiles":"CC(C)NO","groups":["amine"],"ring":false,"branched":false,"skeleton":"CCC","school":true},
+    {"smiles":"CCN(C)O","groups":["amine"],"ring":false,"branched":false,"skeleton":"C.CC","school":true},
+    {"smiles":"CON(C)C","groups":["amine"],"ring":false,"branched":false,"skeleton":"C.C.C","school":true},
+    {"smiles":"CCNCO","groups":["alcohol","amine"],"ring":false,"branched":false,"skeleton":"C.CC","school":true},
+    {"smiles":"CNCCO","groups":["alcohol","amine"],"ring":false,"branched":false,"skeleton":"C.CC","school":true},
+    {"smiles":"NCCCO","groups":["alcohol","amine"],"ring":false,"branched":false,"skeleton":"CCC","school":true},
+    {"smiles":"CC(N)CO","groups":["alcohol","amine"],"ring":false,"branched":false,"skeleton":"CCC","school":true},
+    {"smiles":"CC(O)CN","groups":["alcohol","amine"],"ring":false,"branched":false,"skeleton":"CCC","school":true},
+    {"smiles":"CCC(N)O","groups":["alcohol","amine"],"ring":false,"branched":false,"skeleton":"CCC","school":true},
+    {"smiles":"CN(C)CO","groups":["alcohol","amine"],"ring":false,"branched":false,"skeleton":"C.C.C","school":true},
+    {"smiles":"CNC(C)O","groups":["alcohol","amine"],"ring":false,"branched":false,"skeleton":"C.CC","school":true},
+    {"smiles":"CC(C)(N)O","groups":["alcohol","amine"],"ring":false,"branched":false,"skeleton":"CCC","school":true},
+    {"smiles":"CCOCN","groups":["ether","amine"],"ring":false,"branched":false,"skeleton":"C.CC","school":true},
+    {"smiles":"CNCOC","groups":["ether","amine"],"ring":false,"branched":false,"skeleton":"C.C.C","school":true},
+    {"smiles":"COCCN","groups":["ether","amine"],"ring":false,"branched":false,"skeleton":"C.CC","school":true},
+    {"smiles":"COC(C)N","groups":["ether","amine"],"ring":false,"branched":false,"skeleton":"C.CC","school":true},
+    {"smiles":"CCCON","groups":["other"],"ring":false,"branched":false,"skeleton":"CCC","school":true},
+    {"smiles":"CC(C)ON","groups":["other"],"ring":false,"branched":false,"skeleton":"CCC","school":true}
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "formula": "C2H2O",
+  "total": 3,
+  "schoolTotal": 1,
+  "entries": [
+    {"smiles":"C#CO","groups":["alkyne"],"ring":false,"branched":false,"skeleton":"CC","school":true},
+    {"smiles":"C=C=O","groups":["alkene"],"ring":false,"branched":false,"skeleton":"CC","school":false,"issues":["cumulated"]},
+    {"smiles":"C1=CO1","groups":["alkene"],"ring":true,"branched":false,"skeleton":"CC","school":false,"issues":["small-ring"]}
+  ]
+}

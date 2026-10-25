@@ -1,0 +1,18 @@
+{
+  "formula": "C2HNO",
+  "total": 11,
+  "schoolTotal": 2,
+  "entries": [
+    {"smiles":"C#CN=O","groups":["alkyne"],"ring":false,"branched":false,"skeleton":"CC","school":true},
+    {"smiles":"N#CC=O","groups":["aldehyde","nitrile"],"ring":false,"branched":false,"skeleton":"CC","school":true},
+    {"smiles":"N=C=C=O","groups":["alkene"],"ring":false,"branched":false,"skeleton":"CC","school":false,"issues":["cumulated"]},
+    {"smiles":"O=c1cn1","groups":["amide"],"ring":true,"branched":false,"skeleton":"CC","school":false,"issues":["small-ring"]},
+    {"smiles":"C1=CON=1","groups":["alkene"],"ring":true,"branched":false,"skeleton":"CC","school":false,"issues":["small-ring","cumulated"]},
+    {"smiles":"OC1=C=N1","groups":["alkene"],"ring":true,"branched":false,"skeleton":"CC","school":false,"issues":["small-ring","enol","cumulated"]},
+    {"smiles":"ON1C#C1","groups":["alkyne"],"ring":true,"branched":false,"skeleton":"CC","school":false,"issues":["small-ring"]},
+    {"smiles":"c1[nH]oc#1","groups":["alkyne"],"ring":true,"branched":false,"skeleton":"CC","school":false,"issues":["small-ring"]},
+    {"smiles":"c1c2on1-2","groups":["alkene"],"ring":true,"branched":false,"skeleton":"CC","school":false,"issues":["small-ring"]},
+    {"smiles":"[nH]1c2oc1=2","groups":["alkene"],"ring":true,"branched":false,"skeleton":"CC","school":false,"issues":["small-ring"]},
+    {"smiles":"N1=C2OC12","groups":["other"],"ring":true,"branched":false,"skeleton":"CC","school":false,"issues":["small-ring"]}
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "formula": "CH4ClNO2",
+  "total": 23,
+  "schoolTotal": 13,
+  "entries": [
+    {"smiles":"OCONCl","groups":["alcohol"],"ring":false,"branched":false,"skeleton":"C","school":true},
+    {"smiles":"ONCOCl","groups":["amine"],"ring":false,"branched":false,"skeleton":"C","school":true},
+    {"smiles":"ONOCCl","groups":["halide"],"ring":false,"branched":false,"skeleton":"C","school":true},
+    {"smiles":"CN(O)OCl","groups":["amine"],"ring":false,"branched":false,"skeleton":"C","school":true},
+    {"smiles":"OCNOCl","groups":["alcohol","amine"],"ring":false,"branched":false,"skeleton":"C","school":true},
+    {"smiles":"NC(O)OCl","groups":["alcohol","amine"],"ring":false,"branched":false,"skeleton":"C","school":true},
+    {"smiles":"NOC(O)Cl","groups":["alcohol","halide"],"ring":false,"branched":false,"skeleton":"C","school":true},
+    {"smiles":"OCN(O)Cl","groups":["alcohol","amine"],"ring":false,"branched":false,"skeleton":"C","school":true},
+    {"smiles":"ON(O)CCl","groups":["amine","halide"],"ring":false,"branched":false,"skeleton":"C","school":true},
+    {"smiles":"ONC(O)Cl","groups":["alcohol","amine","halide"],"ring":false,"branched":false,"skeleton":"C","school":true},
+    {"smiles":"CONOCl","groups":["other"],"ring":false,"branched":false,"skeleton":"C","school":true},
+    {"smiles":"NOCOCl","groups":["other"],"ring":false,"branched":false,"skeleton":"C","school":true},
+    {"smiles":"CON(O)Cl","groups":["other"],"ring":false,"branched":false,"skeleton":"C","school":true},
+    {"smiles":"CNOOCl","groups":["amine"],"ring":false,"branched":false,"skeleton":"C","school":false,"issues":["peroxide"]},
+    {"smiles":"NCOOCl","groups":["amine"],"ring":false,"branched":false,"skeleton":"C","school":false,"issues":["peroxide"]},
+    {"smiles":"NOOCCl","groups":["halide"],"ring":false,"branched":false,"skeleton":"C","school":false,"issues":["peroxide"]},
+    {"smiles":"OOCNCl","groups":["amine"],"ring":false,"branched":false,"skeleton":"C","school":false,"issues":["peroxide"]},
+    {"smiles":"CN(Cl)OO","groups":["amine"],"ring":false,"branched":false,"skeleton":"C","school":false,"issues":["peroxide"]},
+    {"smiles":"OONCCl","groups":["amine","halide"],"ring":false,"branched":false,"skeleton":"C","school":false,"issues":["peroxide"]},
+    {"smiles":"NC(Cl)OO","groups":["amine","halide"],"ring":false,"branched":false,"skeleton":"C","school":false,"issues":["peroxide"]},
+    {"smiles":"OC(O)NCl","groups":["alcohol","amine"],"ring":false,"branched":false,"skeleton":"C","school":false,"issues":["gem-diol"]},
+    {"smiles":"NC(O)(O)Cl","groups":["alcohol","amine","halide"],"ring":false,"branched":false,"skeleton":"C","school":false,"issues":["gem-diol"]},
+    {"smiles":"COONCl","groups":["other"],"ring":false,"branched":false,"skeleton":"C","school":false,"issues":["peroxide"]}
+  ]
+}

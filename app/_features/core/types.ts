@@ -95,6 +95,14 @@ export type Shell = {
   renderPages: (mode: ViewMode, pixelRatio: number, quality: number) => Promise<string[]>;
   history: boolean;
   closeHistory: () => void;
+  // Molecule Studio: `blockId` = the molecule block being edited, null = a new molecule.
+  molecule: { open: boolean; blockId: string | null };
+  openMolecule: (blockId?: string) => void;
+  closeMolecule: () => void;
+  // The drawing Studio (molecule-studio/): `blockId` = the drawing block being edited, null = a new drawing.
+  moleculeLab: { open: boolean; blockId: string | null };
+  openMoleculeLab: (blockId?: string) => void;
+  closeMoleculeLab: () => void;
   restore: (version: Version) => void;
   exportJob: { doc: ExamDoc; mode: ViewMode; resolve: (stage: Konva.Stage) => void } | null;
   toast: string | null;

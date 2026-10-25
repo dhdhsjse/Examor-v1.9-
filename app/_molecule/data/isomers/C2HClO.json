@@ -1,0 +1,11 @@
+{
+  "formula": "C2HClO",
+  "total": 4,
+  "schoolTotal": 2,
+  "entries": [
+    {"smiles":"C#COCl","groups":["alkyne"],"ring":false,"branched":false,"skeleton":"CC","school":true},
+    {"smiles":"OC#CCl","groups":["alkyne","halide"],"ring":false,"branched":false,"skeleton":"CC","school":true},
+    {"smiles":"O=C=CCl","groups":["alkene","halide"],"ring":false,"branched":false,"skeleton":"CC","school":false,"issues":["cumulated"]},
+    {"smiles":"ClC1=CO1","groups":["alkene","halide"],"ring":true,"branched":false,"skeleton":"CC","school":false,"issues":["small-ring"]}
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "formula": "C3H6Cl2",
+  "total": 4,
+  "schoolTotal": 4,
+  "entries": [
+    {"smiles":"ClCCCCl","groups":["halide"],"ring":false,"branched":false,"skeleton":"CCC","school":true},
+    {"smiles":"CC(Cl)CCl","groups":["halide"],"ring":false,"branched":false,"skeleton":"CCC","school":true},
+    {"smiles":"CCC(Cl)Cl","groups":["halide"],"ring":false,"branched":false,"skeleton":"CCC","school":true},
+    {"smiles":"CC(C)(Cl)Cl","groups":["halide"],"ring":false,"branched":false,"skeleton":"CCC","school":true}
+  ]
+}

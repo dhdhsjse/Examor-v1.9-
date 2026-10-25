@@ -1,0 +1,15 @@
+{
+  "formula": "CH4ClNO",
+  "total": 8,
+  "schoolTotal": 8,
+  "entries": [
+    {"smiles":"CNOCl","groups":["amine"],"ring":false,"branched":false,"skeleton":"C","school":true},
+    {"smiles":"NCOCl","groups":["amine"],"ring":false,"branched":false,"skeleton":"C","school":true},
+    {"smiles":"NOCCl","groups":["halide"],"ring":false,"branched":false,"skeleton":"C","school":true},
+    {"smiles":"CN(O)Cl","groups":["amine"],"ring":false,"branched":false,"skeleton":"C","school":true},
+    {"smiles":"OCNCl","groups":["alcohol","amine"],"ring":false,"branched":false,"skeleton":"C","school":true},
+    {"smiles":"ONCCl","groups":["amine","halide"],"ring":false,"branched":false,"skeleton":"C","school":true},
+    {"smiles":"NC(O)Cl","groups":["alcohol","amine","halide"],"ring":false,"branched":false,"skeleton":"C","school":true},
+    {"smiles":"CONCl","groups":["other"],"ring":false,"branched":false,"skeleton":"C","school":true}
+  ]
+}

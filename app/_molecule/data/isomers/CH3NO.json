@@ -1,0 +1,12 @@
+{
+  "formula": "CH3NO",
+  "total": 5,
+  "schoolTotal": 4,
+  "entries": [
+    {"smiles":"NC=O","groups":["amide"],"ring":false,"branched":false,"skeleton":"C","school":true},
+    {"smiles":"C=NO","groups":["other"],"ring":false,"branched":false,"skeleton":"C","school":true},
+    {"smiles":"CN=O","groups":["other"],"ring":false,"branched":false,"skeleton":"C","school":true},
+    {"smiles":"N=CO","groups":["other"],"ring":false,"branched":false,"skeleton":"C","school":true},
+    {"smiles":"C1NO1","groups":["amine"],"ring":true,"branched":false,"skeleton":"C","school":false,"issues":["small-ring"]}
+  ]
+}

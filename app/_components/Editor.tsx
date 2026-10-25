@@ -107,6 +107,8 @@ export default function Editor() {
   const [exportJob, setExportJob] = useState<Shell["exportJob"]>(null);
   const [preview, setPreview] = useState(false);
   const [history, setHistory] = useState(false);
+  const [molecule, setMolecule] = useState<Shell["molecule"]>({ open: false, blockId: null }); // Molecule Studio
+  const [moleculeLab, setMoleculeLab] = useState<Shell["moleculeLab"]>({ open: false, blockId: null }); // the drawing Studio
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -260,7 +262,8 @@ export default function Editor() {
     const block = doc.blocks.find((b) => b.id === id);
     if (!file || !block) return;
     const { src, ratio } = await readImageFile(file);
-    exam.updateBlock(id, { src, ratio, layout: { height: block.layout.width / ratio } });
+    // A picture that was drawn in a Studio is no longer that drawing: double-click must not reopen the old one.
+    exam.updateBlock(id, { src, ratio, drawing: undefined, molecule: undefined, layout: { height: block.layout.width / ratio } });
   };
 
   // Keep a copy of a block in "My blocks" (without its place on the page or its header/footer role).
@@ -310,6 +313,17 @@ export default function Editor() {
         if (TYPE_ON_ADD.includes(block.type)) setEditing({ id: block.id, field: { kind: "text" }, selectAll: true });
         break;
       }
+      case "blocks": {
+        // Each block goes under the one before (the document is only updated after this call, so the
+        // automatic "next free spot" would give them all the same place).
+        let prev: Block | undefined;
+        for (const item of action.items) {
+          const under = prev && { pageIndex: Math.max(0, doc.pages.findIndex((p) => p.id === prev!.layout.pageId)), x: prev.layout.x, y: prev.layout.y + prev.layout.height + 24, corner: true };
+          prev = exam.addBlock(item.type, item.preset, under);
+        }
+        setTab("properties");
+        break;
+      }
       case "asset": {
         const asset = [...userAssets, ...BUILTIN_ASSETS].find((a) => a.id === action.assetId);
         if (!asset) return;
@@ -321,6 +335,12 @@ export default function Editor() {
       }
       case "importImage":
         void importImage(true);
+        break;
+      case "molecule":
+        setMolecule({ open: true, blockId: null });
+        break;
+      case "molecule-lab":
+        setMoleculeLab({ open: true, blockId: null });
         break;
       case "library":
         setTab("library");
@@ -342,6 +362,10 @@ export default function Editor() {
   const startEdit = (id: string, field: EditField | null) => {
     select(id);
     const block = doc.blocks.find((b) => b.id === id);
+    // A molecule reopens in the Molecule Studio, with everything it was made of.
+    if (block?.type === "image" && block.molecule) return setMolecule({ open: true, blockId: id });
+    // A drawing made by hand reopens in the drawing Studio, with all its atoms, bonds, texts and arrows.
+    if (block?.type === "image" && block.drawing) return setMoleculeLab({ open: true, blockId: id });
     if (field) setEditing({ id, field });
     else if (block?.type === "equation") {
       toggleKeyboard(true);
@@ -530,7 +554,7 @@ export default function Editor() {
         setBarOpen(bar.id);
         return;
       }
-      if (typing || picker.open || preview || history) return;
+      if (typing || picker.open || preview || history || molecule.open || moleculeLab.open) return;
 
       if (mod && key === "z") {
         e.preventDefault();
@@ -646,6 +670,12 @@ export default function Editor() {
     renderPages,
     history,
     closeHistory: () => setHistory(false),
+    molecule,
+    openMolecule: (blockId) => setMolecule({ open: true, blockId: blockId ?? null }),
+    closeMolecule: () => setMolecule({ open: false, blockId: null }),
+    moleculeLab,
+    openMoleculeLab: (blockId) => setMoleculeLab({ open: true, blockId: blockId ?? null }),
+    closeMoleculeLab: () => setMoleculeLab({ open: false, blockId: null }),
     restore,
     exportJob,
     toast,

@@ -1,0 +1,15 @@
+{
+  "formula": "C4H11N",
+  "total": 8,
+  "schoolTotal": 8,
+  "entries": [
+    {"smiles":"CCCCN","groups":["amine"],"ring":false,"branched":false,"skeleton":"CCCC","school":true},
+    {"smiles":"CCCNC","groups":["amine"],"ring":false,"branched":false,"skeleton":"C.CCC","school":true},
+    {"smiles":"CCNCC","groups":["amine"],"ring":false,"branched":false,"skeleton":"CC.CC","school":true},
+    {"smiles":"CCC(C)N","groups":["amine"],"ring":false,"branched":false,"skeleton":"CCCC","school":true},
+    {"smiles":"CCN(C)C","groups":["amine"],"ring":false,"branched":false,"skeleton":"C.C.CC","school":true},
+    {"smiles":"CNC(C)C","groups":["amine"],"ring":false,"branched":false,"skeleton":"C.CCC","school":true},
+    {"smiles":"CC(C)CN","groups":["amine"],"ring":false,"branched":true,"skeleton":"CC(C)C","school":true},
+    {"smiles":"CC(C)(C)N","groups":["amine"],"ring":false,"branched":true,"skeleton":"CC(C)C","school":true}
+  ]
+}

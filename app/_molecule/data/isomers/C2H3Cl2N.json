@@ -1,0 +1,22 @@
+{
+  "formula": "C2H3Cl2N",
+  "total": 15,
+  "schoolTotal": 12,
+  "entries": [
+    {"smiles":"ClC=NCCl","groups":["halide"],"ring":false,"branched":false,"skeleton":"C.C","school":true},
+    {"smiles":"ClCC=NCl","groups":["halide"],"ring":false,"branched":false,"skeleton":"CC","school":true},
+    {"smiles":"C=CN(Cl)Cl","groups":["alkene"],"ring":false,"branched":false,"skeleton":"CC","school":true},
+    {"smiles":"C=NC(Cl)Cl","groups":["halide"],"ring":false,"branched":false,"skeleton":"C.C","school":true},
+    {"smiles":"CC(Cl)=NCl","groups":["halide"],"ring":false,"branched":false,"skeleton":"CC","school":true},
+    {"smiles":"CN=C(Cl)Cl","groups":["halide"],"ring":false,"branched":false,"skeleton":"C.C","school":true},
+    {"smiles":"N=C(Cl)CCl","groups":["halide"],"ring":false,"branched":false,"skeleton":"CC","school":true},
+    {"smiles":"N=CC(Cl)Cl","groups":["halide"],"ring":false,"branched":false,"skeleton":"CC","school":true},
+    {"smiles":"ClC=CNCl","groups":["alkene","halide"],"ring":false,"branched":false,"skeleton":"CC","school":true},
+    {"smiles":"C=C(Cl)NCl","groups":["alkene","halide"],"ring":false,"branched":false,"skeleton":"CC","school":true},
+    {"smiles":"NC(Cl)=CCl","groups":["alkene","halide"],"ring":false,"branched":false,"skeleton":"CC","school":true},
+    {"smiles":"NC=C(Cl)Cl","groups":["alkene","halide"],"ring":false,"branched":false,"skeleton":"CC","school":true},
+    {"smiles":"ClC1CN1Cl","groups":["amine","halide"],"ring":true,"branched":false,"skeleton":"CC","school":false,"issues":["small-ring"]},
+    {"smiles":"ClC1NC1Cl","groups":["amine","halide"],"ring":true,"branched":false,"skeleton":"CC","school":false,"issues":["small-ring"]},
+    {"smiles":"ClC1(Cl)CN1","groups":["amine","halide"],"ring":true,"branched":false,"skeleton":"CC","school":false,"issues":["small-ring"]}
+  ]
+}

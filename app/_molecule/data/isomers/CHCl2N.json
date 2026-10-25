@@ -1,0 +1,9 @@
+{
+  "formula": "CHCl2N",
+  "total": 2,
+  "schoolTotal": 2,
+  "entries": [
+    {"smiles":"ClC=NCl","groups":["halide"],"ring":false,"branched":false,"skeleton":"C","school":true},
+    {"smiles":"N=C(Cl)Cl","groups":["halide"],"ring":false,"branched":false,"skeleton":"C","school":true}
+  ]
+}

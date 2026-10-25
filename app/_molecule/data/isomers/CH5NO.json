@@ -1,0 +1,10 @@
+{
+  "formula": "CH5NO",
+  "total": 3,
+  "schoolTotal": 3,
+  "entries": [
+    {"smiles":"CNO","groups":["amine"],"ring":false,"branched":false,"skeleton":"C","school":true},
+    {"smiles":"NCO","groups":["alcohol","amine"],"ring":false,"branched":false,"skeleton":"C","school":true},
+    {"smiles":"CON","groups":["other"],"ring":false,"branched":false,"skeleton":"C","school":true}
+  ]
+}

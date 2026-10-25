@@ -1,0 +1,12 @@
+{
+  "formula": "C2H6ClN",
+  "total": 5,
+  "schoolTotal": 5,
+  "entries": [
+    {"smiles":"CCNCl","groups":["amine"],"ring":false,"branched":false,"skeleton":"CC","school":true},
+    {"smiles":"CN(C)Cl","groups":["amine"],"ring":false,"branched":false,"skeleton":"C.C","school":true},
+    {"smiles":"CNCCl","groups":["amine","halide"],"ring":false,"branched":false,"skeleton":"C.C","school":true},
+    {"smiles":"NCCCl","groups":["amine","halide"],"ring":false,"branched":false,"skeleton":"CC","school":true},
+    {"smiles":"CC(N)Cl","groups":["amine","halide"],"ring":false,"branched":false,"skeleton":"CC","school":true}
+  ]
+}

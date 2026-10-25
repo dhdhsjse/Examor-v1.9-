@@ -1,0 +1,27 @@
+{
+  "formula": "C3H6Cl2O",
+  "total": 20,
+  "schoolTotal": 20,
+  "entries": [
+    {"smiles":"ClCCCOCl","groups":["halide"],"ring":false,"branched":false,"skeleton":"CCC","school":true},
+    {"smiles":"CC(CCl)OCl","groups":["halide"],"ring":false,"branched":false,"skeleton":"CCC","school":true},
+    {"smiles":"CC(Cl)COCl","groups":["halide"],"ring":false,"branched":false,"skeleton":"CCC","school":true},
+    {"smiles":"CCC(Cl)OCl","groups":["halide"],"ring":false,"branched":false,"skeleton":"CCC","school":true},
+    {"smiles":"CC(C)(Cl)OCl","groups":["halide"],"ring":false,"branched":false,"skeleton":"CCC","school":true},
+    {"smiles":"OC(CCl)CCl","groups":["alcohol","halide"],"ring":false,"branched":false,"skeleton":"CCC","school":true},
+    {"smiles":"OC(Cl)CCCl","groups":["alcohol","halide"],"ring":false,"branched":false,"skeleton":"CCC","school":true},
+    {"smiles":"OCC(Cl)CCl","groups":["alcohol","halide"],"ring":false,"branched":false,"skeleton":"CCC","school":true},
+    {"smiles":"OCCC(Cl)Cl","groups":["alcohol","halide"],"ring":false,"branched":false,"skeleton":"CCC","school":true},
+    {"smiles":"CC(Cl)(Cl)CO","groups":["alcohol","halide"],"ring":false,"branched":false,"skeleton":"CCC","school":true},
+    {"smiles":"CC(Cl)C(O)Cl","groups":["alcohol","halide"],"ring":false,"branched":false,"skeleton":"CCC","school":true},
+    {"smiles":"CC(O)(Cl)CCl","groups":["alcohol","halide"],"ring":false,"branched":false,"skeleton":"CCC","school":true},
+    {"smiles":"CC(O)C(Cl)Cl","groups":["alcohol","halide"],"ring":false,"branched":false,"skeleton":"CCC","school":true},
+    {"smiles":"CCC(O)(Cl)Cl","groups":["alcohol","halide"],"ring":false,"branched":false,"skeleton":"CCC","school":true},
+    {"smiles":"ClCCOCCl","groups":["ether","halide"],"ring":false,"branched":false,"skeleton":"C.CC","school":true},
+    {"smiles":"CC(Cl)OCCl","groups":["ether","halide"],"ring":false,"branched":false,"skeleton":"C.CC","school":true},
+    {"smiles":"CCOC(Cl)Cl","groups":["ether","halide"],"ring":false,"branched":false,"skeleton":"C.CC","school":true},
+    {"smiles":"COC(Cl)CCl","groups":["ether","halide"],"ring":false,"branched":false,"skeleton":"C.CC","school":true},
+    {"smiles":"COCC(Cl)Cl","groups":["ether","halide"],"ring":false,"branched":false,"skeleton":"C.CC","school":true},
+    {"smiles":"COC(C)(Cl)Cl","groups":["ether","halide"],"ring":false,"branched":false,"skeleton":"C.CC","school":true}
+  ]
+}

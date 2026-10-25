@@ -1,0 +1,10 @@
+{
+  "formula": "C3H4",
+  "total": 3,
+  "schoolTotal": 1,
+  "entries": [
+    {"smiles":"C#CC","groups":["alkyne"],"ring":false,"branched":false,"skeleton":"CCC","school":true,"name":{"en":"propyne","fr":"propyne"}},
+    {"smiles":"C=C=C","groups":["alkene"],"ring":false,"branched":false,"skeleton":"CCC","school":false,"issues":["cumulated"]},
+    {"smiles":"C1=CC1","groups":["alkene"],"ring":true,"branched":false,"skeleton":"C1CC1","school":false,"issues":["small-ring"]}
+  ]
+}

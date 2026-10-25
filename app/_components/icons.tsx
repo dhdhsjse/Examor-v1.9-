@@ -260,3 +260,12 @@ export const CopyIcon = () => (
     <path d="M12 6V4.5A1.5 1.5 0 0010.5 3h-6A1.5 1.5 0 003 4.5v6A1.5 1.5 0 004.5 12H6" />
   </svg>
 );
+
+export const MoleculeIcon = () => (
+  <svg {...base}>
+    <circle cx="4" cy="12.5" r="2" />
+    <circle cx="9" cy="5" r="2" />
+    <circle cx="14" cy="12.5" r="2" />
+    <path d="M5.2 10.9 7.8 6.6M10.2 6.6l2.6 4.3M6 12.5h6" />
+  </svg>
+);

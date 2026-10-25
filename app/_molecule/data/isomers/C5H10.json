@@ -1,0 +1,17 @@
+{
+  "formula": "C5H10",
+  "total": 10,
+  "schoolTotal": 6,
+  "entries": [
+    {"smiles":"C=CCCC","groups":["alkene"],"ring":false,"branched":false,"skeleton":"CCCCC","school":true},
+    {"smiles":"CC=CCC","groups":["alkene"],"ring":false,"branched":false,"skeleton":"CCCCC","school":true},
+    {"smiles":"C=C(C)CC","groups":["alkene"],"ring":false,"branched":true,"skeleton":"CCC(C)C","school":true},
+    {"smiles":"C=CC(C)C","groups":["alkene"],"ring":false,"branched":true,"skeleton":"CCC(C)C","school":true},
+    {"smiles":"CC=C(C)C","groups":["alkene"],"ring":false,"branched":true,"skeleton":"CCC(C)C","school":true},
+    {"smiles":"C1CCCC1","groups":["cycloalkane"],"ring":true,"branched":false,"skeleton":"C1CCCC1","school":true},
+    {"smiles":"CC1CCC1","groups":["cycloalkane"],"ring":true,"branched":false,"skeleton":"CC1CCC1","school":false,"issues":["small-ring"]},
+    {"smiles":"CCC1CC1","groups":["cycloalkane"],"ring":true,"branched":false,"skeleton":"CCC1CC1","school":false,"issues":["small-ring"]},
+    {"smiles":"CC1(C)CC1","groups":["cycloalkane"],"ring":true,"branched":false,"skeleton":"CC1(C)CC1","school":false,"issues":["small-ring"]},
+    {"smiles":"CC1CC1C","groups":["cycloalkane"],"ring":true,"branched":false,"skeleton":"CC1CC1C","school":false,"issues":["small-ring"]}
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "formula": "C4H10",
+  "total": 2,
+  "schoolTotal": 2,
+  "entries": [
+    {"smiles":"CCCC","groups":["alkane"],"ring":false,"branched":false,"skeleton":"CCCC","school":true,"name":{"en":"butane","fr":"butane"}},
+    {"smiles":"CC(C)C","groups":["alkane"],"ring":false,"branched":true,"skeleton":"CC(C)C","school":true,"name":{"en":"methylpropane","fr":"méthylpropane"}}
+  ]
+}

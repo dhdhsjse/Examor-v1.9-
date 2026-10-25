@@ -1,0 +1,15 @@
+{
+  "formula": "C2H7NO",
+  "total": 8,
+  "schoolTotal": 8,
+  "entries": [
+    {"smiles":"CCNO","groups":["amine"],"ring":false,"branched":false,"skeleton":"CC","school":true},
+    {"smiles":"CNOC","groups":["amine"],"ring":false,"branched":false,"skeleton":"C.C","school":true},
+    {"smiles":"CN(C)O","groups":["amine"],"ring":false,"branched":false,"skeleton":"C.C","school":true},
+    {"smiles":"CNCO","groups":["alcohol","amine"],"ring":false,"branched":false,"skeleton":"C.C","school":true},
+    {"smiles":"NCCO","groups":["alcohol","amine"],"ring":false,"branched":false,"skeleton":"CC","school":true},
+    {"smiles":"CC(N)O","groups":["alcohol","amine"],"ring":false,"branched":false,"skeleton":"CC","school":true},
+    {"smiles":"COCN","groups":["ether","amine"],"ring":false,"branched":false,"skeleton":"C.C","school":true},
+    {"smiles":"CCON","groups":["other"],"ring":false,"branched":false,"skeleton":"CC","school":true}
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "formula": "C2HN",
+  "total": 2,
+  "schoolTotal": 0,
+  "entries": [
+    {"smiles":"C1=CN=1","groups":["alkene"],"ring":true,"branched":false,"skeleton":"CC","school":false,"issues":["small-ring","cumulated"]},
+    {"smiles":"C1#CN1","groups":["alkyne"],"ring":true,"branched":false,"skeleton":"CC","school":false,"issues":["small-ring"]}
+  ]
+}

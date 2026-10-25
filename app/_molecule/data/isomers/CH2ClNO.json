@@ -1,0 +1,17 @@
+{
+  "formula": "CH2ClNO",
+  "total": 10,
+  "schoolTotal": 8,
+  "entries": [
+    {"smiles":"O=CNCl","groups":["amide"],"ring":false,"branched":false,"skeleton":"C","school":true},
+    {"smiles":"O=NCCl","groups":["halide"],"ring":false,"branched":false,"skeleton":"C","school":true},
+    {"smiles":"ON=CCl","groups":["halide"],"ring":false,"branched":false,"skeleton":"C","school":true},
+    {"smiles":"N=C(O)Cl","groups":["halide"],"ring":false,"branched":false,"skeleton":"C","school":true},
+    {"smiles":"NC(=O)Cl","groups":["amide","halide"],"ring":false,"branched":false,"skeleton":"C","school":true},
+    {"smiles":"C=NOCl","groups":["other"],"ring":false,"branched":false,"skeleton":"C","school":true},
+    {"smiles":"N=COCl","groups":["other"],"ring":false,"branched":false,"skeleton":"C","school":true},
+    {"smiles":"OC=NCl","groups":["other"],"ring":false,"branched":false,"skeleton":"C","school":true},
+    {"smiles":"ClN1CO1","groups":["amine"],"ring":true,"branched":false,"skeleton":"C","school":false,"issues":["small-ring"]},
+    {"smiles":"ClC1NO1","groups":["amine","halide"],"ring":true,"branched":false,"skeleton":"C","school":false,"issues":["small-ring"]}
+  ]
+}

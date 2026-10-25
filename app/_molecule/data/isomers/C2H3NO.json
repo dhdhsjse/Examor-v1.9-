@@ -1,0 +1,33 @@
+{
+  "formula": "C2H3NO",
+  "total": 26,
+  "schoolTotal": 8,
+  "entries": [
+    {"smiles":"C=CN=O","groups":["alkene"],"ring":false,"branched":false,"skeleton":"CC","school":true},
+    {"smiles":"C=NC=O","groups":["amide"],"ring":false,"branched":false,"skeleton":"C.C","school":true},
+    {"smiles":"N=CC=O","groups":["aldehyde"],"ring":false,"branched":false,"skeleton":"CC","school":true},
+    {"smiles":"C#CNO","groups":["alkyne"],"ring":false,"branched":false,"skeleton":"CC","school":true},
+    {"smiles":"C#CON","groups":["alkyne"],"ring":false,"branched":false,"skeleton":"CC","school":true},
+    {"smiles":"COC#N","groups":["nitrile"],"ring":false,"branched":false,"skeleton":"C.C","school":true},
+    {"smiles":"NC#CO","groups":["alkyne"],"ring":false,"branched":false,"skeleton":"CC","school":true},
+    {"smiles":"N#CCO","groups":["alcohol","nitrile"],"ring":false,"branched":false,"skeleton":"CC","school":true},
+    {"smiles":"C=C=NO","groups":["alkene"],"ring":false,"branched":false,"skeleton":"CC","school":false,"issues":["cumulated"]},
+    {"smiles":"N=C=CO","groups":["alkene"],"ring":false,"branched":false,"skeleton":"CC","school":false,"issues":["cumulated","enol"]},
+    {"smiles":"NC=C=O","groups":["alkene"],"ring":false,"branched":false,"skeleton":"CC","school":false,"issues":["cumulated"]},
+    {"smiles":"C=C1NO1","groups":["alkene"],"ring":true,"branched":false,"skeleton":"CC","school":false,"issues":["small-ring"]},
+    {"smiles":"NC1=CO1","groups":["alkene"],"ring":true,"branched":false,"skeleton":"CC","school":false,"issues":["small-ring"]},
+    {"smiles":"O=C1CN1","groups":["amide"],"ring":true,"branched":false,"skeleton":"CC","school":false,"issues":["small-ring"]},
+    {"smiles":"OC1=CN1","groups":["alkene"],"ring":true,"branched":false,"skeleton":"CC","school":false,"issues":["small-ring","enol"]},
+    {"smiles":"OC1C=N1","groups":["alcohol"],"ring":true,"branched":false,"skeleton":"CC","school":false,"issues":["small-ring"]},
+    {"smiles":"ON1C=C1","groups":["alkene"],"ring":true,"branched":false,"skeleton":"CC","school":false,"issues":["small-ring"]},
+    {"smiles":"c1co[nH]1","groups":["alkene"],"ring":true,"branched":false,"skeleton":"CC","school":false,"issues":["small-ring"]},
+    {"smiles":"C1C2ON12","groups":["amine"],"ring":true,"branched":false,"skeleton":"CC","school":false,"issues":["small-ring"]},
+    {"smiles":"CN=C=O","groups":["other"],"ring":false,"branched":false,"skeleton":"C.C","school":false,"issues":["cumulated"]},
+    {"smiles":"N1C2OC12","groups":["ether","amine"],"ring":true,"branched":false,"skeleton":"CC","school":false,"issues":["small-ring"]},
+    {"smiles":"C1=NCO1","groups":["other"],"ring":true,"branched":false,"skeleton":"C.C","school":false,"issues":["small-ring"]},
+    {"smiles":"C1=NOC1","groups":["other"],"ring":true,"branched":false,"skeleton":"CC","school":false,"issues":["small-ring"]},
+    {"smiles":"CC1=NO1","groups":["other"],"ring":true,"branched":false,"skeleton":"CC","school":false,"issues":["small-ring"]},
+    {"smiles":"N=C1CO1","groups":["other"],"ring":true,"branched":false,"skeleton":"CC","school":false,"issues":["small-ring"]},
+    {"smiles":"OC1=NC1","groups":["other"],"ring":true,"branched":false,"skeleton":"CC","school":false,"issues":["small-ring"]}
+  ]
+}

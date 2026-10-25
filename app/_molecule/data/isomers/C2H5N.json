@@ -1,0 +1,11 @@
+{
+  "formula": "C2H5N",
+  "total": 4,
+  "schoolTotal": 3,
+  "entries": [
+    {"smiles":"C=CN","groups":["alkene"],"ring":false,"branched":false,"skeleton":"CC","school":true},
+    {"smiles":"C=NC","groups":["other"],"ring":false,"branched":false,"skeleton":"C.C","school":true},
+    {"smiles":"CC=N","groups":["other"],"ring":false,"branched":false,"skeleton":"CC","school":true},
+    {"smiles":"C1CN1","groups":["amine"],"ring":true,"branched":false,"skeleton":"CC","school":false,"issues":["small-ring"]}
+  ]
+}

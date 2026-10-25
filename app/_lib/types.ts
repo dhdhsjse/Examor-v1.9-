@@ -1,4 +1,6 @@
 import type { JSONContent } from "@tiptap/core";
+import type { MoleculeGraph } from "@/app/_lib/chemistry/types";
+import type { MoleculeBlockData } from "@/app/_molecule/model";
 
 // Language of the exam content. "ar" = Arabic, written right-to-left.
 export type Lang = "fr" | "ar";
@@ -237,6 +239,8 @@ export interface ImageBlock extends BlockBase {
   src: string; // data URL (imported image or library diagram)
   ratio: number; // width / height
   figure?: FigureSpec; // a library figure: `src` is redrawn when its settings change
+  molecule?: MoleculeBlockData; // a molecule from the Molecule Studio: `src` is its drawing, redrawn on edit
+  drawing?: MoleculeGraph; // a drawing made by hand in the drawing Studio: `src` is its picture, redrawn on edit
 }
 
 export interface TableBlock extends BlockBase {

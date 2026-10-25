@@ -1,0 +1,14 @@
+{
+  "formula": "C4H10O",
+  "total": 7,
+  "schoolTotal": 7,
+  "entries": [
+    {"smiles":"CCCCO","groups":["alcohol"],"ring":false,"branched":false,"skeleton":"CCCC","school":true,"name":{"en":"butan-1-ol","fr":"butan-1-ol"}},
+    {"smiles":"CCC(C)O","groups":["alcohol"],"ring":false,"branched":false,"skeleton":"CCCC","school":true},
+    {"smiles":"CCCOC","groups":["ether"],"ring":false,"branched":false,"skeleton":"C.CCC","school":true},
+    {"smiles":"CCOCC","groups":["ether"],"ring":false,"branched":false,"skeleton":"CC.CC","school":true},
+    {"smiles":"COC(C)C","groups":["ether"],"ring":false,"branched":false,"skeleton":"C.CCC","school":true},
+    {"smiles":"CC(C)CO","groups":["alcohol"],"ring":false,"branched":true,"skeleton":"CC(C)C","school":true},
+    {"smiles":"CC(C)(C)O","groups":["alcohol"],"ring":false,"branched":true,"skeleton":"CC(C)C","school":true}
+  ]
+}

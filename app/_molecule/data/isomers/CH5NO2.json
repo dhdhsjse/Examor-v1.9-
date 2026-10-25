@@ -1,0 +1,15 @@
+{
+  "formula": "CH5NO2",
+  "total": 8,
+  "schoolTotal": 4,
+  "entries": [
+    {"smiles":"NOCO","groups":["alcohol"],"ring":false,"branched":false,"skeleton":"C","school":true},
+    {"smiles":"CN(O)O","groups":["amine"],"ring":false,"branched":false,"skeleton":"C","school":true},
+    {"smiles":"OCNO","groups":["alcohol","amine"],"ring":false,"branched":false,"skeleton":"C","school":true},
+    {"smiles":"CONO","groups":["other"],"ring":false,"branched":false,"skeleton":"C","school":true},
+    {"smiles":"CNOO","groups":["amine"],"ring":false,"branched":false,"skeleton":"C","school":false,"issues":["peroxide"]},
+    {"smiles":"NCOO","groups":["amine"],"ring":false,"branched":false,"skeleton":"C","school":false,"issues":["peroxide"]},
+    {"smiles":"NC(O)O","groups":["alcohol","amine"],"ring":false,"branched":false,"skeleton":"C","school":false,"issues":["gem-diol"]},
+    {"smiles":"COON","groups":["other"],"ring":false,"branched":false,"skeleton":"C","school":false,"issues":["peroxide"]}
+  ]
+}

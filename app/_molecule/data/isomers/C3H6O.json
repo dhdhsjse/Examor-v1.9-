@@ -1,0 +1,16 @@
+{
+  "formula": "C3H6O",
+  "total": 9,
+  "schoolTotal": 4,
+  "entries": [
+    {"smiles":"CCC=O","groups":["aldehyde"],"ring":false,"branched":false,"skeleton":"CCC","school":true,"name":{"en":"propanal","fr":"propanal"}},
+    {"smiles":"CC(C)=O","groups":["ketone"],"ring":false,"branched":false,"skeleton":"CCC","school":true,"name":{"en":"propanone","fr":"propanone"}},
+    {"smiles":"C=COC","groups":["alkene"],"ring":false,"branched":false,"skeleton":"C.CC","school":true},
+    {"smiles":"C=CCO","groups":["alkene","alcohol"],"ring":false,"branched":false,"skeleton":"CCC","school":true},
+    {"smiles":"CC=CO","groups":["alkene"],"ring":false,"branched":false,"skeleton":"CCC","school":false,"issues":["enol"]},
+    {"smiles":"C=C(C)O","groups":["alkene"],"ring":false,"branched":false,"skeleton":"CCC","school":false,"issues":["enol"]},
+    {"smiles":"C1COC1","groups":["ether"],"ring":true,"branched":false,"skeleton":"CCC","school":false,"issues":["small-ring"]},
+    {"smiles":"CC1CO1","groups":["ether"],"ring":true,"branched":false,"skeleton":"CCC","school":false,"issues":["small-ring"]},
+    {"smiles":"OC1CC1","groups":["cycloalkane","alcohol"],"ring":true,"branched":false,"skeleton":"C1CC1","school":false,"issues":["small-ring"]}
+  ]
+}

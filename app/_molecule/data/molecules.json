@@ -1,0 +1,1168 @@
+[
+  {
+    "id": "methane",
+    "smiles": "C",
+    "formula": "CH4",
+    "names": {
+      "ar": [],
+      "fr": [
+        "méthane"
+      ],
+      "en": [
+        "methane"
+      ]
+    },
+    "tags": [
+      "alkane"
+    ],
+    "level": "secondary",
+    "reviewed": false
+  },
+  {
+    "id": "ethane",
+    "smiles": "CC",
+    "formula": "C2H6",
+    "names": {
+      "ar": [],
+      "fr": [
+        "éthane"
+      ],
+      "en": [
+        "ethane"
+      ]
+    },
+    "tags": [
+      "alkane"
+    ],
+    "level": "secondary",
+    "reviewed": false
+  },
+  {
+    "id": "propane",
+    "smiles": "CCC",
+    "formula": "C3H8",
+    "names": {
+      "ar": [],
+      "fr": [
+        "propane"
+      ],
+      "en": [
+        "propane"
+      ]
+    },
+    "tags": [
+      "alkane"
+    ],
+    "level": "secondary",
+    "reviewed": false
+  },
+  {
+    "id": "butane",
+    "smiles": "CCCC",
+    "formula": "C4H10",
+    "names": {
+      "ar": [],
+      "fr": [
+        "butane"
+      ],
+      "en": [
+        "butane"
+      ]
+    },
+    "tags": [
+      "alkane"
+    ],
+    "level": "secondary",
+    "reviewed": false
+  },
+  {
+    "id": "methylpropane",
+    "smiles": "CC(C)C",
+    "formula": "C4H10",
+    "names": {
+      "ar": [],
+      "fr": [
+        "méthylpropane",
+        "2-méthylpropane",
+        "isobutane"
+      ],
+      "en": [
+        "methylpropane",
+        "2-methylpropane",
+        "isobutane"
+      ]
+    },
+    "tags": [
+      "alkane",
+      "branched"
+    ],
+    "level": "secondary",
+    "reviewed": false
+  },
+  {
+    "id": "pentane",
+    "smiles": "CCCCC",
+    "formula": "C5H12",
+    "names": {
+      "ar": [],
+      "fr": [
+        "pentane"
+      ],
+      "en": [
+        "pentane"
+      ]
+    },
+    "tags": [
+      "alkane"
+    ],
+    "level": "secondary",
+    "reviewed": false
+  },
+  {
+    "id": "methylbutane",
+    "smiles": "CCC(C)C",
+    "formula": "C5H12",
+    "names": {
+      "ar": [],
+      "fr": [
+        "2-méthylbutane",
+        "méthylbutane",
+        "isopentane"
+      ],
+      "en": [
+        "2-methylbutane",
+        "methylbutane",
+        "isopentane"
+      ]
+    },
+    "tags": [
+      "alkane",
+      "branched"
+    ],
+    "level": "secondary",
+    "reviewed": false
+  },
+  {
+    "id": "dimethylpropane",
+    "smiles": "CC(C)(C)C",
+    "formula": "C5H12",
+    "names": {
+      "ar": [],
+      "fr": [
+        "2,2-diméthylpropane",
+        "diméthylpropane",
+        "néopentane"
+      ],
+      "en": [
+        "2,2-dimethylpropane",
+        "dimethylpropane",
+        "neopentane"
+      ]
+    },
+    "tags": [
+      "alkane",
+      "branched"
+    ],
+    "level": "secondary",
+    "reviewed": false
+  },
+  {
+    "id": "hexane",
+    "smiles": "CCCCCC",
+    "formula": "C6H14",
+    "names": {
+      "ar": [],
+      "fr": [
+        "hexane"
+      ],
+      "en": [
+        "hexane"
+      ]
+    },
+    "tags": [
+      "alkane"
+    ],
+    "level": "secondary",
+    "reviewed": false
+  },
+  {
+    "id": "heptane",
+    "smiles": "CCCCCCC",
+    "formula": "C7H16",
+    "names": {
+      "ar": [],
+      "fr": [
+        "heptane"
+      ],
+      "en": [
+        "heptane"
+      ]
+    },
+    "tags": [
+      "alkane"
+    ],
+    "level": "secondary",
+    "reviewed": false
+  },
+  {
+    "id": "octane",
+    "smiles": "CCCCCCCC",
+    "formula": "C8H18",
+    "names": {
+      "ar": [],
+      "fr": [
+        "octane"
+      ],
+      "en": [
+        "octane"
+      ]
+    },
+    "tags": [
+      "alkane"
+    ],
+    "level": "secondary",
+    "reviewed": false
+  },
+  {
+    "id": "nonane",
+    "smiles": "CCCCCCCCC",
+    "formula": "C9H20",
+    "names": {
+      "ar": [],
+      "fr": [
+        "nonane"
+      ],
+      "en": [
+        "nonane"
+      ]
+    },
+    "tags": [
+      "alkane"
+    ],
+    "level": "secondary",
+    "reviewed": false
+  },
+  {
+    "id": "decane",
+    "smiles": "CCCCCCCCCC",
+    "formula": "C10H22",
+    "names": {
+      "ar": [],
+      "fr": [
+        "décane"
+      ],
+      "en": [
+        "decane"
+      ]
+    },
+    "tags": [
+      "alkane"
+    ],
+    "level": "secondary",
+    "reviewed": false
+  },
+  {
+    "id": "ethene",
+    "smiles": "C=C",
+    "formula": "C2H4",
+    "names": {
+      "ar": [],
+      "fr": [
+        "éthène",
+        "éthylène"
+      ],
+      "en": [
+        "ethene",
+        "ethylene"
+      ]
+    },
+    "tags": [
+      "alkene"
+    ],
+    "level": "secondary",
+    "reviewed": false
+  },
+  {
+    "id": "propene",
+    "smiles": "C=CC",
+    "formula": "C3H6",
+    "names": {
+      "ar": [],
+      "fr": [
+        "propène",
+        "propylène"
+      ],
+      "en": [
+        "propene",
+        "propylene"
+      ]
+    },
+    "tags": [
+      "alkene"
+    ],
+    "level": "secondary",
+    "reviewed": false
+  },
+  {
+    "id": "but-1-ene",
+    "smiles": "C=CCC",
+    "formula": "C4H8",
+    "names": {
+      "ar": [],
+      "fr": [
+        "but-1-ène"
+      ],
+      "en": [
+        "but-1-ene",
+        "1-butene"
+      ]
+    },
+    "tags": [
+      "alkene"
+    ],
+    "level": "secondary",
+    "reviewed": false
+  },
+  {
+    "id": "but-2-ene",
+    "smiles": "CC=CC",
+    "formula": "C4H8",
+    "names": {
+      "ar": [],
+      "fr": [
+        "but-2-ène"
+      ],
+      "en": [
+        "but-2-ene",
+        "2-butene"
+      ]
+    },
+    "tags": [
+      "alkene"
+    ],
+    "level": "secondary",
+    "reviewed": false
+  },
+  {
+    "id": "ethyne",
+    "smiles": "C#C",
+    "formula": "C2H2",
+    "names": {
+      "ar": [],
+      "fr": [
+        "éthyne",
+        "acétylène"
+      ],
+      "en": [
+        "ethyne",
+        "acetylene"
+      ]
+    },
+    "tags": [
+      "alkyne"
+    ],
+    "level": "secondary",
+    "reviewed": false
+  },
+  {
+    "id": "propyne",
+    "smiles": "C#CC",
+    "formula": "C3H4",
+    "names": {
+      "ar": [],
+      "fr": [
+        "propyne"
+      ],
+      "en": [
+        "propyne"
+      ]
+    },
+    "tags": [
+      "alkyne"
+    ],
+    "level": "secondary",
+    "reviewed": false
+  },
+  {
+    "id": "methanol",
+    "smiles": "CO",
+    "formula": "CH4O",
+    "names": {
+      "ar": [],
+      "fr": [
+        "méthanol",
+        "alcool méthylique"
+      ],
+      "en": [
+        "methanol",
+        "methyl alcohol"
+      ]
+    },
+    "tags": [
+      "alcohol"
+    ],
+    "level": "secondary",
+    "reviewed": false
+  },
+  {
+    "id": "ethanol",
+    "smiles": "CCO",
+    "formula": "C2H6O",
+    "names": {
+      "ar": [],
+      "fr": [
+        "éthanol",
+        "alcool éthylique"
+      ],
+      "en": [
+        "ethanol",
+        "ethyl alcohol"
+      ]
+    },
+    "tags": [
+      "alcohol"
+    ],
+    "level": "secondary",
+    "reviewed": false
+  },
+  {
+    "id": "propan-1-ol",
+    "smiles": "CCCO",
+    "formula": "C3H8O",
+    "names": {
+      "ar": [],
+      "fr": [
+        "propan-1-ol"
+      ],
+      "en": [
+        "propan-1-ol",
+        "1-propanol"
+      ]
+    },
+    "tags": [
+      "alcohol"
+    ],
+    "level": "secondary",
+    "reviewed": false
+  },
+  {
+    "id": "propan-2-ol",
+    "smiles": "CC(C)O",
+    "formula": "C3H8O",
+    "names": {
+      "ar": [],
+      "fr": [
+        "propan-2-ol",
+        "isopropanol"
+      ],
+      "en": [
+        "propan-2-ol",
+        "2-propanol",
+        "isopropanol"
+      ]
+    },
+    "tags": [
+      "alcohol"
+    ],
+    "level": "secondary",
+    "reviewed": false
+  },
+  {
+    "id": "butan-1-ol",
+    "smiles": "CCCCO",
+    "formula": "C4H10O",
+    "names": {
+      "ar": [],
+      "fr": [
+        "butan-1-ol"
+      ],
+      "en": [
+        "butan-1-ol",
+        "1-butanol"
+      ]
+    },
+    "tags": [
+      "alcohol"
+    ],
+    "level": "secondary",
+    "reviewed": false
+  },
+  {
+    "id": "methanal",
+    "smiles": "C=O",
+    "formula": "CH2O",
+    "names": {
+      "ar": [],
+      "fr": [
+        "méthanal",
+        "formaldéhyde"
+      ],
+      "en": [
+        "methanal",
+        "formaldehyde"
+      ]
+    },
+    "tags": [
+      "aldehyde"
+    ],
+    "level": "secondary",
+    "reviewed": false
+  },
+  {
+    "id": "ethanal",
+    "smiles": "CC=O",
+    "formula": "C2H4O",
+    "names": {
+      "ar": [],
+      "fr": [
+        "éthanal",
+        "acétaldéhyde"
+      ],
+      "en": [
+        "ethanal",
+        "acetaldehyde"
+      ]
+    },
+    "tags": [
+      "aldehyde"
+    ],
+    "level": "secondary",
+    "reviewed": false
+  },
+  {
+    "id": "propanal",
+    "smiles": "CCC=O",
+    "formula": "C3H6O",
+    "names": {
+      "ar": [],
+      "fr": [
+        "propanal"
+      ],
+      "en": [
+        "propanal"
+      ]
+    },
+    "tags": [
+      "aldehyde"
+    ],
+    "level": "secondary",
+    "reviewed": false
+  },
+  {
+    "id": "propanone",
+    "smiles": "CC(C)=O",
+    "formula": "C3H6O",
+    "names": {
+      "ar": [],
+      "fr": [
+        "propanone",
+        "acétone"
+      ],
+      "en": [
+        "propanone",
+        "acetone"
+      ]
+    },
+    "tags": [
+      "ketone"
+    ],
+    "level": "secondary",
+    "reviewed": false
+  },
+  {
+    "id": "butanone",
+    "smiles": "CCC(C)=O",
+    "formula": "C4H8O",
+    "names": {
+      "ar": [],
+      "fr": [
+        "butanone",
+        "butan-2-one"
+      ],
+      "en": [
+        "butanone",
+        "butan-2-one",
+        "methyl ethyl ketone"
+      ]
+    },
+    "tags": [
+      "ketone"
+    ],
+    "level": "secondary",
+    "reviewed": false
+  },
+  {
+    "id": "methanoic-acid",
+    "smiles": "O=CO",
+    "formula": "CH2O2",
+    "names": {
+      "ar": [],
+      "fr": [
+        "acide méthanoïque",
+        "acide formique"
+      ],
+      "en": [
+        "methanoic acid",
+        "formic acid"
+      ]
+    },
+    "tags": [
+      "carboxylic-acid"
+    ],
+    "level": "secondary",
+    "reviewed": false
+  },
+  {
+    "id": "ethanoic-acid",
+    "smiles": "CC(=O)O",
+    "formula": "C2H4O2",
+    "names": {
+      "ar": [
+        "حمض الإيثانويك",
+        "حمض الخل"
+      ],
+      "fr": [
+        "acide éthanoïque",
+        "acide acétique"
+      ],
+      "en": [
+        "ethanoic acid",
+        "acetic acid"
+      ]
+    },
+    "tags": [
+      "carboxylic-acid"
+    ],
+    "level": "secondary",
+    "reviewed": false
+  },
+  {
+    "id": "propanoic-acid",
+    "smiles": "CCC(=O)O",
+    "formula": "C3H6O2",
+    "names": {
+      "ar": [],
+      "fr": [
+        "acide propanoïque",
+        "acide propionique"
+      ],
+      "en": [
+        "propanoic acid",
+        "propionic acid"
+      ]
+    },
+    "tags": [
+      "carboxylic-acid"
+    ],
+    "level": "secondary",
+    "reviewed": false
+  },
+  {
+    "id": "methyl-methanoate",
+    "smiles": "COC=O",
+    "formula": "C2H4O2",
+    "names": {
+      "ar": [],
+      "fr": [
+        "méthanoate de méthyle",
+        "formiate de méthyle"
+      ],
+      "en": [
+        "methyl methanoate",
+        "methyl formate"
+      ]
+    },
+    "tags": [
+      "ester"
+    ],
+    "level": "secondary",
+    "reviewed": false
+  },
+  {
+    "id": "methyl-ethanoate",
+    "smiles": "COC(C)=O",
+    "formula": "C3H6O2",
+    "names": {
+      "ar": [],
+      "fr": [
+        "éthanoate de méthyle",
+        "acétate de méthyle"
+      ],
+      "en": [
+        "methyl ethanoate",
+        "methyl acetate"
+      ]
+    },
+    "tags": [
+      "ester"
+    ],
+    "level": "secondary",
+    "reviewed": false
+  },
+  {
+    "id": "ethyl-ethanoate",
+    "smiles": "CCOC(C)=O",
+    "formula": "C4H8O2",
+    "names": {
+      "ar": [],
+      "fr": [
+        "éthanoate d'éthyle",
+        "acétate d'éthyle"
+      ],
+      "en": [
+        "ethyl ethanoate",
+        "ethyl acetate"
+      ]
+    },
+    "tags": [
+      "ester"
+    ],
+    "level": "secondary",
+    "reviewed": false
+  },
+  {
+    "id": "methylamine",
+    "smiles": "CN",
+    "formula": "CH5N",
+    "names": {
+      "ar": [],
+      "fr": [
+        "méthanamine",
+        "méthylamine"
+      ],
+      "en": [
+        "methanamine",
+        "methylamine"
+      ]
+    },
+    "tags": [
+      "amine"
+    ],
+    "level": "secondary",
+    "reviewed": false
+  },
+  {
+    "id": "ethylamine",
+    "smiles": "CCN",
+    "formula": "C2H7N",
+    "names": {
+      "ar": [],
+      "fr": [
+        "éthanamine",
+        "éthylamine"
+      ],
+      "en": [
+        "ethanamine",
+        "ethylamine"
+      ]
+    },
+    "tags": [
+      "amine"
+    ],
+    "level": "secondary",
+    "reviewed": false
+  },
+  {
+    "id": "ethanamide",
+    "smiles": "CC(N)=O",
+    "formula": "C2H5NO",
+    "names": {
+      "ar": [],
+      "fr": [
+        "éthanamide",
+        "acétamide"
+      ],
+      "en": [
+        "ethanamide",
+        "acetamide"
+      ]
+    },
+    "tags": [
+      "amide"
+    ],
+    "level": "secondary",
+    "reviewed": false
+  },
+  {
+    "id": "chloromethane",
+    "smiles": "CCl",
+    "formula": "CH3Cl",
+    "names": {
+      "ar": [],
+      "fr": [
+        "chlorométhane",
+        "chlorure de méthyle"
+      ],
+      "en": [
+        "chloromethane",
+        "methyl chloride"
+      ]
+    },
+    "tags": [
+      "halogenoalkane"
+    ],
+    "level": "secondary",
+    "reviewed": false
+  },
+  {
+    "id": "dichloromethane",
+    "smiles": "ClCCl",
+    "formula": "CH2Cl2",
+    "names": {
+      "ar": [],
+      "fr": [
+        "dichlorométhane"
+      ],
+      "en": [
+        "dichloromethane"
+      ]
+    },
+    "tags": [
+      "halogenoalkane"
+    ],
+    "level": "secondary",
+    "reviewed": false
+  },
+  {
+    "id": "chloroethane",
+    "smiles": "CCCl",
+    "formula": "C2H5Cl",
+    "names": {
+      "ar": [],
+      "fr": [
+        "chloroéthane",
+        "chlorure d'éthyle"
+      ],
+      "en": [
+        "chloroethane",
+        "ethyl chloride"
+      ]
+    },
+    "tags": [
+      "halogenoalkane"
+    ],
+    "level": "secondary",
+    "reviewed": false
+  },
+  {
+    "id": "bromoethane",
+    "smiles": "CCBr",
+    "formula": "C2H5Br",
+    "names": {
+      "ar": [],
+      "fr": [
+        "bromoéthane",
+        "bromure d'éthyle"
+      ],
+      "en": [
+        "bromoethane",
+        "ethyl bromide"
+      ]
+    },
+    "tags": [
+      "halogenoalkane"
+    ],
+    "level": "secondary",
+    "reviewed": false
+  },
+  {
+    "id": "benzene",
+    "smiles": "c1ccccc1",
+    "formula": "C6H6",
+    "names": {
+      "ar": [],
+      "fr": [
+        "benzène"
+      ],
+      "en": [
+        "benzene"
+      ]
+    },
+    "tags": [
+      "aromatic"
+    ],
+    "level": "secondary",
+    "reviewed": false
+  },
+  {
+    "id": "toluene",
+    "smiles": "Cc1ccccc1",
+    "formula": "C7H8",
+    "names": {
+      "ar": [],
+      "fr": [
+        "toluène",
+        "méthylbenzène"
+      ],
+      "en": [
+        "toluene",
+        "methylbenzene"
+      ]
+    },
+    "tags": [
+      "aromatic"
+    ],
+    "level": "secondary",
+    "reviewed": false
+  },
+  {
+    "id": "phenol",
+    "smiles": "Oc1ccccc1",
+    "formula": "C6H6O",
+    "names": {
+      "ar": [],
+      "fr": [
+        "phénol"
+      ],
+      "en": [
+        "phenol"
+      ]
+    },
+    "tags": [
+      "aromatic",
+      "alcohol"
+    ],
+    "level": "secondary",
+    "reviewed": false
+  },
+  {
+    "id": "water",
+    "smiles": "O",
+    "formula": "H2O",
+    "names": {
+      "ar": [],
+      "fr": [
+        "eau"
+      ],
+      "en": [
+        "water"
+      ]
+    },
+    "tags": [
+      "inorganic"
+    ],
+    "level": "secondary",
+    "reviewed": false
+  },
+  {
+    "id": "ammonia",
+    "smiles": "N",
+    "formula": "H3N",
+    "names": {
+      "ar": [],
+      "fr": [
+        "ammoniac"
+      ],
+      "en": [
+        "ammonia"
+      ]
+    },
+    "tags": [
+      "inorganic"
+    ],
+    "level": "secondary",
+    "reviewed": false
+  },
+  {
+    "id": "carbon-dioxide",
+    "smiles": "O=C=O",
+    "formula": "CO2",
+    "names": {
+      "ar": [],
+      "fr": [
+        "dioxyde de carbone"
+      ],
+      "en": [
+        "carbon dioxide"
+      ]
+    },
+    "tags": [
+      "inorganic"
+    ],
+    "level": "secondary",
+    "reviewed": false
+  },
+  {
+    "id": "hydrogen-chloride",
+    "smiles": "Cl",
+    "formula": "ClH",
+    "names": {
+      "ar": [],
+      "fr": [
+        "chlorure d'hydrogène"
+      ],
+      "en": [
+        "hydrogen chloride",
+        "hydrochloric acid gas"
+      ]
+    },
+    "tags": [
+      "inorganic"
+    ],
+    "level": "secondary",
+    "reviewed": false
+  },
+  {
+    "id": "hydrogen-sulfide",
+    "smiles": "S",
+    "formula": "H2S",
+    "names": {
+      "ar": [],
+      "fr": [
+        "sulfure d'hydrogène"
+      ],
+      "en": [
+        "hydrogen sulfide",
+        "hydrogen sulphide"
+      ]
+    },
+    "tags": [
+      "inorganic"
+    ],
+    "level": "secondary",
+    "reviewed": false
+  },
+  {
+    "id": "sulfur-dioxide",
+    "smiles": "O=S=O",
+    "formula": "O2S",
+    "names": {
+      "ar": [],
+      "fr": [
+        "dioxyde de soufre"
+      ],
+      "en": [
+        "sulfur dioxide",
+        "sulphur dioxide"
+      ]
+    },
+    "tags": [
+      "inorganic"
+    ],
+    "level": "secondary",
+    "reviewed": false
+  },
+  {
+    "id": "dioxygen",
+    "smiles": "O=O",
+    "formula": "O2",
+    "names": {
+      "ar": [],
+      "fr": [
+        "dioxygène",
+        "oxygène"
+      ],
+      "en": [
+        "dioxygen",
+        "oxygen"
+      ]
+    },
+    "tags": [
+      "inorganic"
+    ],
+    "level": "secondary",
+    "reviewed": false
+  },
+  {
+    "id": "dinitrogen",
+    "smiles": "N#N",
+    "formula": "N2",
+    "names": {
+      "ar": [],
+      "fr": [
+        "diazote",
+        "azote"
+      ],
+      "en": [
+        "dinitrogen",
+        "nitrogen"
+      ]
+    },
+    "tags": [
+      "inorganic"
+    ],
+    "level": "secondary",
+    "reviewed": false
+  },
+  {
+    "id": "dihydrogen",
+    "smiles": "[H][H]",
+    "formula": "H2",
+    "names": {
+      "ar": [],
+      "fr": [
+        "dihydrogène",
+        "hydrogène"
+      ],
+      "en": [
+        "dihydrogen",
+        "hydrogen"
+      ]
+    },
+    "tags": [
+      "inorganic"
+    ],
+    "level": "secondary",
+    "reviewed": false
+  },
+  {
+    "id": "dichlorine",
+    "smiles": "ClCl",
+    "formula": "Cl2",
+    "names": {
+      "ar": [],
+      "fr": [
+        "dichlore",
+        "chlore"
+      ],
+      "en": [
+        "dichlorine",
+        "chlorine"
+      ]
+    },
+    "tags": [
+      "inorganic"
+    ],
+    "level": "secondary",
+    "reviewed": false
+  },
+  {
+    "id": "hydrogen-peroxide",
+    "smiles": "OO",
+    "formula": "H2O2",
+    "names": {
+      "ar": [],
+      "fr": [
+        "peroxyde d'hydrogène",
+        "eau oxygénée"
+      ],
+      "en": [
+        "hydrogen peroxide"
+      ]
+    },
+    "tags": [
+      "inorganic"
+    ],
+    "level": "secondary",
+    "reviewed": false
+  },
+  {
+    "id": "hydrogen-fluoride",
+    "smiles": "F",
+    "formula": "FH",
+    "names": {
+      "ar": [],
+      "fr": [
+        "fluorure d'hydrogène"
+      ],
+      "en": [
+        "hydrogen fluoride"
+      ]
+    },
+    "tags": [
+      "inorganic"
+    ],
+    "level": "secondary",
+    "reviewed": false
+  }
+]

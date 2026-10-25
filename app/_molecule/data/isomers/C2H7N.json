@@ -1,0 +1,9 @@
+{
+  "formula": "C2H7N",
+  "total": 2,
+  "schoolTotal": 2,
+  "entries": [
+    {"smiles":"CCN","groups":["amine"],"ring":false,"branched":false,"skeleton":"CC","school":true,"name":{"en":"ethanamine","fr":"éthanamine"}},
+    {"smiles":"CNC","groups":["amine"],"ring":false,"branched":false,"skeleton":"C.C","school":true}
+  ]
+}

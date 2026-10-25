@@ -1,0 +1,10 @@
+{
+  "formula": "C3H8O",
+  "total": 3,
+  "schoolTotal": 3,
+  "entries": [
+    {"smiles":"CCCO","groups":["alcohol"],"ring":false,"branched":false,"skeleton":"CCC","school":true,"name":{"en":"propan-1-ol","fr":"propan-1-ol"}},
+    {"smiles":"CC(C)O","groups":["alcohol"],"ring":false,"branched":false,"skeleton":"CCC","school":true,"name":{"en":"propan-2-ol","fr":"propan-2-ol"}},
+    {"smiles":"CCOC","groups":["ether"],"ring":false,"branched":false,"skeleton":"C.CC","school":true}
+  ]
+}

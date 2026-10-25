@@ -1,0 +1,22 @@
+{
+  "formula": "CH3NO2",
+  "total": 15,
+  "schoolTotal": 7,
+  "entries": [
+    {"smiles":"NC(=O)O","groups":["carboxylic-acid"],"ring":false,"branched":false,"skeleton":"C","school":true},
+    {"smiles":"O=CNO","groups":["amide"],"ring":false,"branched":false,"skeleton":"C","school":true},
+    {"smiles":"O=NCO","groups":["alcohol"],"ring":false,"branched":false,"skeleton":"C","school":true},
+    {"smiles":"CON=O","groups":["other"],"ring":false,"branched":false,"skeleton":"C","school":true},
+    {"smiles":"NOC=O","groups":["other"],"ring":false,"branched":false,"skeleton":"C","school":true},
+    {"smiles":"OC=NO","groups":["other"],"ring":false,"branched":false,"skeleton":"C","school":true},
+    {"smiles":"N=C(O)O","groups":["other"],"ring":false,"branched":false,"skeleton":"C","school":true},
+    {"smiles":"C1NOO1","groups":["amine"],"ring":true,"branched":false,"skeleton":"C","school":false,"issues":["small-ring","peroxide"]},
+    {"smiles":"Cn1oo1","groups":["amine"],"ring":true,"branched":false,"skeleton":"C","school":false,"issues":["small-ring","peroxide"]},
+    {"smiles":"NC1OO1","groups":["amine"],"ring":true,"branched":false,"skeleton":"C","school":false,"issues":["small-ring","peroxide"]},
+    {"smiles":"ON1CO1","groups":["amine"],"ring":true,"branched":false,"skeleton":"C","school":false,"issues":["small-ring"]},
+    {"smiles":"OC1NO1","groups":["alcohol","amine"],"ring":true,"branched":false,"skeleton":"C","school":false,"issues":["small-ring"]},
+    {"smiles":"C=NOO","groups":["other"],"ring":false,"branched":false,"skeleton":"C","school":false,"issues":["peroxide"]},
+    {"smiles":"N=COO","groups":["other"],"ring":false,"branched":false,"skeleton":"C","school":false,"issues":["peroxide"]},
+    {"smiles":"C1ONO1","groups":["other"],"ring":true,"branched":false,"skeleton":"C","school":false,"issues":["small-ring"]}
+  ]
+}
