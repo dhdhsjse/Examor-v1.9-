@@ -269,3 +269,18 @@ export const MoleculeIcon = () => (
     <path d="M5.2 10.9 7.8 6.6M10.2 6.6l2.6 4.3M6 12.5h6" />
   </svg>
 );
+
+export const GraphPaperIcon = () => (
+  <svg {...base}>
+    <path d="M3 3v12h12" />
+    <path d="M6.5 3v9M10 3v9M13.5 3v9M3 6.5h10M3 10h10" strokeWidth={0.8} opacity={0.6} />
+    <path d="M3 15 7 10l3 2 5-6" />
+  </svg>
+);
+
+export const CircuitDrawIcon = () => (
+  <svg {...base}>
+    <path d="M2.5 9h2.5M13 9h2.5M5 6.5h8v5H5z" />
+    <path d="M2.5 9V4.5h13V9" />
+  </svg>
+);

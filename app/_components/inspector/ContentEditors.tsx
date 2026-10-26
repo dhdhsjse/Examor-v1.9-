@@ -138,7 +138,7 @@ export function ImageEditor({ b, lang, onChange, onReplace }: { b: ImageBlock; l
         />
       </Field>
       {/* A figure is redrawn from its settings, a molecule or a drawing from its data: replacing it with a picture drops them. */}
-      <SmallButton onClick={onReplace}>{t(b.figure || b.molecule || b.drawing ? "Replace with an image…" : "Replace image…")}</SmallButton>
+      <SmallButton onClick={onReplace}>{t(b.figure || b.molecule || b.drawing || b.graphStudio || b.circuitStudio ? "Replace with an image…" : "Replace image…")}</SmallButton>
     </>
   );
 }

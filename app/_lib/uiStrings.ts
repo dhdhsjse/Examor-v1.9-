@@ -1,6 +1,8 @@
 // Translations of the app interface. The key is the English text (see uiLang.tsx);
 // "{name}" placeholders are kept as they are.
 import { STUDIO_AR, STUDIO_FR } from "@/app/_lib/chemistry/strings";
+import { CIRCUIT_AR, CIRCUIT_FR } from "@/app/_lib/circuit/strings";
+import { GRAPH_AR, GRAPH_FR } from "@/app/_lib/graph/strings";
 import { MOLECULE_AR, MOLECULE_FR } from "@/app/_molecule/strings";
 
 export const FR: Record<string, string> = {
@@ -1624,3 +1626,11 @@ Object.assign(AR, MOLECULE_AR);
 // Drawing Studio (app/_lib/chemistry/strings.ts)
 Object.assign(FR, STUDIO_FR);
 Object.assign(AR, STUDIO_AR);
+
+// Graph Studio (app/_lib/graph/strings.ts)
+Object.assign(FR, GRAPH_FR);
+Object.assign(AR, GRAPH_AR);
+
+// Circuit Studio (app/_lib/circuit/strings.ts)
+Object.assign(FR, CIRCUIT_FR);
+Object.assign(AR, CIRCUIT_AR);

@@ -1,3 +1,4 @@
+import { toolGraphStudio } from "@/app/_features/tools/tool-graph-studio";
 import type { Group } from "@/app/_features/core/types";
 import { toolMathFraction } from "@/app/_features/tools/tool-math-fraction";
 import { toolMathGeometry } from "@/app/_features/tools/tool-math-geometry";
@@ -10,5 +11,5 @@ export const mathGroup: Group = {
   when: (ctx) => ctx.shell.subject === "Math",
   label: (t) => t("{subject} tools", { subject: t("Math") }),
   className: "grid grid-cols-2 gap-1.5",
-  features: [toolMathGraph, toolMathGeometry, toolMathNumberLine, toolMathFraction],
+  features: [toolMathGraph, toolGraphStudio, toolMathGeometry, toolMathNumberLine, toolMathFraction],
 };

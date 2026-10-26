@@ -2,6 +2,8 @@ import type { Bar } from "@/app/_features/core/types";
 import { exportRendererOverlay } from "@/app/_features/overlays/overlay-export-renderer";
 import { historyOverlay } from "@/app/_features/overlays/overlay-history";
 import { moleculeOverlay } from "@/app/_features/overlays/overlay-molecule";
+import { circuitStudioOverlay } from "@/app/_features/overlays/overlay-circuit-studio";
+import { graphStudioOverlay } from "@/app/_features/overlays/overlay-graph-studio";
 import { moleculeLabOverlay } from "@/app/_features/overlays/overlay-molecule-lab";
 import { pickerOverlay } from "@/app/_features/overlays/overlay-picker";
 import { onboardingOverlay } from "@/app/_features/overlays/onboarding";
@@ -14,5 +16,5 @@ export const overlayBar: Bar = {
   order: 40,
   className: "contents",
   groups: [],
-  features: [onboardingOverlay, pickerOverlay, previewOverlay, historyOverlay, moleculeOverlay, moleculeLabOverlay, exportRendererOverlay, toastOverlay],
+  features: [onboardingOverlay, pickerOverlay, previewOverlay, historyOverlay, moleculeOverlay, moleculeLabOverlay, graphStudioOverlay, circuitStudioOverlay, exportRendererOverlay, toastOverlay],
 };

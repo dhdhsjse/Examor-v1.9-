@@ -103,6 +103,14 @@ export type Shell = {
   moleculeLab: { open: boolean; blockId: string | null };
   openMoleculeLab: (blockId?: string) => void;
   closeMoleculeLab: () => void;
+  // The Graph Studio (graph-studio/): `blockId` = the graph block being edited, null = a new graph.
+  graphStudio: { open: boolean; blockId: string | null };
+  openGraphStudio: (blockId?: string) => void;
+  closeGraphStudio: () => void;
+  // The Circuit Studio (circuit-studio/): `blockId` = the circuit block being edited, null = a new circuit.
+  circuitStudio: { open: boolean; blockId: string | null };
+  openCircuitStudio: (blockId?: string) => void;
+  closeCircuitStudio: () => void;
   restore: (version: Version) => void;
   exportJob: { doc: ExamDoc; mode: ViewMode; resolve: (stage: Konva.Stage) => void } | null;
   toast: string | null;

@@ -1,3 +1,5 @@
+import { toolCircuitStudio } from "@/app/_features/tools/tool-circuit-studio";
+import { toolGraphStudio } from "@/app/_features/tools/tool-graph-studio";
 import type { Group } from "@/app/_features/core/types";
 import { toolMolecule } from "@/app/_features/tools/tool-molecule";
 import { toolMoleculeLab } from "@/app/_features/tools/tool-molecule-lab";
@@ -12,5 +14,5 @@ export const sciencesGroup: Group = {
   when: (ctx) => ctx.shell.subject === "Sciences",
   label: (t) => t("{subject} tools", { subject: t("Sciences") }),
   className: "grid grid-cols-2 gap-1.5",
-  features: [toolSciencesCell, toolSciencesFoodChain, toolSciencesWaterCycle, toolSciencesClassification, toolMolecule, toolMoleculeLab],
+  features: [toolSciencesCell, toolSciencesFoodChain, toolSciencesWaterCycle, toolSciencesClassification, toolMolecule, toolMoleculeLab, toolGraphStudio, toolCircuitStudio],
 };

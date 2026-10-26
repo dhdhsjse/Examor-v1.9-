@@ -109,6 +109,8 @@ export default function Editor() {
   const [history, setHistory] = useState(false);
   const [molecule, setMolecule] = useState<Shell["molecule"]>({ open: false, blockId: null }); // Molecule Studio
   const [moleculeLab, setMoleculeLab] = useState<Shell["moleculeLab"]>({ open: false, blockId: null }); // the drawing Studio
+  const [graphStudio, setGraphStudio] = useState<Shell["graphStudio"]>({ open: false, blockId: null }); // the Graph Studio
+  const [circuitStudio, setCircuitStudio] = useState<Shell["circuitStudio"]>({ open: false, blockId: null }); // the Circuit Studio
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -263,7 +265,7 @@ export default function Editor() {
     if (!file || !block) return;
     const { src, ratio } = await readImageFile(file);
     // A picture that was drawn in a Studio is no longer that drawing: double-click must not reopen the old one.
-    exam.updateBlock(id, { src, ratio, drawing: undefined, molecule: undefined, layout: { height: block.layout.width / ratio } });
+    exam.updateBlock(id, { src, ratio, drawing: undefined, molecule: undefined, graphStudio: undefined, circuitStudio: undefined, layout: { height: block.layout.width / ratio } });
   };
 
   // Keep a copy of a block in "My blocks" (without its place on the page or its header/footer role).
@@ -342,6 +344,12 @@ export default function Editor() {
       case "molecule-lab":
         setMoleculeLab({ open: true, blockId: null });
         break;
+      case "graph-studio":
+        setGraphStudio({ open: true, blockId: null });
+        break;
+      case "circuit-studio":
+        setCircuitStudio({ open: true, blockId: null });
+        break;
       case "library":
         setTab("library");
         setLibrary((l) => ({ kind: "diagram", n: l.n + 1 }));
@@ -366,6 +374,10 @@ export default function Editor() {
     if (block?.type === "image" && block.molecule) return setMolecule({ open: true, blockId: id });
     // A drawing made by hand reopens in the drawing Studio, with all its atoms, bonds, texts and arrows.
     if (block?.type === "image" && block.drawing) return setMoleculeLab({ open: true, blockId: id });
+    // A graph paper reopens in the Graph Studio, with its limits, labels and grid.
+    if (block?.type === "image" && block.graphStudio) return setGraphStudio({ open: true, blockId: id });
+    // A circuit reopens in the Circuit Studio, with its components and wires.
+    if (block?.type === "image" && block.circuitStudio) return setCircuitStudio({ open: true, blockId: id });
     if (field) setEditing({ id, field });
     else if (block?.type === "equation") {
       toggleKeyboard(true);
@@ -554,7 +566,7 @@ export default function Editor() {
         setBarOpen(bar.id);
         return;
       }
-      if (typing || picker.open || preview || history || molecule.open || moleculeLab.open) return;
+      if (typing || picker.open || preview || history || molecule.open || moleculeLab.open || graphStudio.open || circuitStudio.open) return;
 
       if (mod && key === "z") {
         e.preventDefault();
@@ -676,6 +688,12 @@ export default function Editor() {
     moleculeLab,
     openMoleculeLab: (blockId) => setMoleculeLab({ open: true, blockId: blockId ?? null }),
     closeMoleculeLab: () => setMoleculeLab({ open: false, blockId: null }),
+    graphStudio,
+    openGraphStudio: (blockId) => setGraphStudio({ open: true, blockId: blockId ?? null }),
+    closeGraphStudio: () => setGraphStudio({ open: false, blockId: null }),
+    circuitStudio,
+    openCircuitStudio: (blockId) => setCircuitStudio({ open: true, blockId: blockId ?? null }),
+    closeCircuitStudio: () => setCircuitStudio({ open: false, blockId: null }),
     restore,
     exportJob,
     toast,

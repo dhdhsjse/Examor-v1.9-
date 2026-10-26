@@ -1,5 +1,7 @@
 import type { JSONContent } from "@tiptap/core";
 import type { MoleculeGraph } from "@/app/_lib/chemistry/types";
+import type { CircuitConfig } from "@/app/_lib/circuit/types";
+import type { GraphConfig } from "@/app/_lib/graph/types";
 import type { MoleculeBlockData } from "@/app/_molecule/model";
 
 // Language of the exam content. "ar" = Arabic, written right-to-left.
@@ -241,6 +243,8 @@ export interface ImageBlock extends BlockBase {
   figure?: FigureSpec; // a library figure: `src` is redrawn when its settings change
   molecule?: MoleculeBlockData; // a molecule from the Molecule Studio: `src` is its drawing, redrawn on edit
   drawing?: MoleculeGraph; // a drawing made by hand in the drawing Studio: `src` is its picture, redrawn on edit
+  graphStudio?: GraphConfig; // a graph paper from the Graph Studio: `src` is its picture, redrawn on edit
+  circuitStudio?: CircuitConfig; // a circuit from the Circuit Studio: `src` is its picture, redrawn on edit
 }
 
 export interface TableBlock extends BlockBase {
