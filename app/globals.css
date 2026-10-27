@@ -98,3 +98,24 @@ body {
 .rich-input[data-empty="true"]::before {
   color: var(--color-faint);
 }
+
+/* The math keyboard slides up when it opens. It moves with `translate`, so it does not fight the
+   `transform` the keyboard is dragged with. */
+@keyframes keyboard-rise {
+  from {
+    opacity: 0;
+    translate: 0 14px;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+.keyboard-rise {
+  animation: keyboard-rise 160ms ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .keyboard-rise {
+    animation: none;
+  }
+}

@@ -627,6 +627,7 @@ export default function Editor() {
     setCanvasTool,
     textEditor,
     updateBlock: (id, patch, field) => exam.updateBlock(id, patch, { key: `${id}:${field}` }),
+    notify,
     onLatex,
     deleteBlock: exam.deleteBlock,
     duplicateBlock: exam.duplicateBlock,

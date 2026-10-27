@@ -41,6 +41,7 @@ export type Shell = {
   // formats the selected words through it.
   textEditor: TextEditor | null;
   updateBlock: (id: string, patch: BlockPatch, field: string) => void;
+  notify: (message: string) => void; // a message for a moment, at the bottom of the screen
   onLatex: (block: Block, latex: string) => void;
   deleteBlock: (id: string) => void;
   duplicateBlock: (id: string) => void;

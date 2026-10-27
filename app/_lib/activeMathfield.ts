@@ -9,10 +9,21 @@ interface Active {
 }
 
 let active: Active | null = null;
+const listeners = new Set<() => void>();
 
 export function setActiveMathfield(a: Active | null) {
   active = a;
+  listeners.forEach((listen) => listen());
 }
+
+// For useSyncExternalStore: lets the keyboard show whether there is a field to type in.
+export const subscribeActiveMathfield = (listen: () => void) => {
+  listeners.add(listen);
+  return () => {
+    listeners.delete(listen);
+  };
+};
+export const hasActiveMathfield = () => active !== null;
 
 // Run a MathLive command in the field (insert, delete, move...) and save the result.
 export function mathCommand(command: string | [string, ...unknown[]]) {
