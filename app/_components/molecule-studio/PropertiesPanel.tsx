@@ -11,6 +11,7 @@ import { drawingIssues } from "@/app/_lib/chemistry/issues";
 import { MAX_PAIRS, lonePairCounts } from "@/app/_lib/chemistry/lonePairs";
 import { DIRECTED_BONDS } from "@/app/_lib/chemistry/bondGeometry";
 import type { AtomNode, BondEdge, CanvasAnnotation } from "@/app/_lib/chemistry/types";
+import ShapeProperties from "@/app/_components/shapes/ShapeProperties";
 import { useUi } from "@/app/_lib/uiLang";
 import { ALL_BOND_TYPES, useBondNames } from "./bondNames";
 import { BondGlyph, ChemLabel } from "./glyphs";
@@ -51,7 +52,20 @@ export default function PropertiesPanel({ studio, onOpenTable }: Props) {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-4">
-      {isEmpty(selection) ? <Overview studio={studio} /> : null}
+      {isEmpty(selection) && !studio.selectedShape ? <Overview studio={studio} /> : null}
+      {studio.selectedShape && (
+        <div className="-mx-4 -mt-4 border-b border-line">
+          <ShapeProperties
+            key={studio.selectedShape.id}
+            item={studio.selectedShape}
+            geometry
+            onChange={(patch) => studio.changeShape(studio.selectedShape!.id, patch, `shape:${studio.selectedShape!.id}:${Object.keys(patch).sort().join(",")}`)}
+            onOrder={(order) => studio.orderShape(studio.selectedShape!.id, order)}
+            onDuplicate={() => studio.duplicateShapeOf(studio.selectedShape!.id)}
+            onDelete={studio.deleteSelected}
+          />
+        </div>
+      )}
       {atoms.length > 0 && <AtomSection studio={studio} atoms={atoms} onOpenTable={onOpenTable} lang={lang} />}
       {bonds.length > 0 && <BondSection studio={studio} bonds={bonds} />}
       {notes.length === 1 && <NoteSection studio={studio} note={notes[0]} />}

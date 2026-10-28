@@ -12,6 +12,8 @@ import { pairClick } from "@/app/_lib/chemistry/lonePairs";
 import { countOf, selectInRect, union, type Rect as WorldRect } from "@/app/_lib/chemistry/selection";
 import { TOOL_HINTS } from "@/app/_lib/chemistry/strings";
 import type { AtomNode } from "@/app/_lib/chemistry/types";
+import ShapeDrawSurface from "@/app/_components/shapes/ShapeDrawSurface";
+import StudioShapes from "@/app/_components/shapes/StudioShapes";
 import { useT } from "@/app/_lib/uiLang";
 import { BUTTON_FACTOR, GRID, fitView, panBy, scrollRanges, snapToGrid, thumb, toWorld, viewMinFromThumb, wheelFactor, wheelScroll, zoomAt, type ScrollRanges, type Size, type View } from "@/app/_lib/chemistry/viewport";
 import AnnotationEditor from "./AnnotationEditor";
@@ -26,6 +28,7 @@ const MIN_VISIBLE_GAP = 7; // thin lines closer than this (on screen) are left o
 const PLACE_CLEARANCE = 10; // a new atom is not placed within this distance of another one
 const GROUP_REACH = 30; // a group is attached to the atom this near the click (a click on the atom itself is within 16)
 const GHOST_OPACITY = 0.4;
+const WORLD_EDGE = 100000; // the Shapes tool's sheet reaches this far from the origin each way
 const TARGET_RING = 18;
 
 interface Props {
@@ -435,11 +438,24 @@ export default function StudioCanvas({ studio, student = false }: Props) {
           <Layer listening={!student}>
             <AnnotationLayer annotations={graph.annotations} interaction={noteInteraction} />
             <MoleculeRenderer graph={graph} interaction={student ? undefined : interaction} student={student} />
+            {/* the shapes drawn over the molecule */}
+            <StudioShapes
+              shapes={graph.shapes ?? []}
+              selectedId={studio.selectedShape?.id ?? null}
+              interactive={!student && activeTool === "select"}
+              scale={view.scale}
+              onSelect={studio.selectShape}
+              onChange={studio.changeShape}
+              onGrab={studio.startGesture}
+              onRelease={studio.finishGesture}
+            />
             {ghostGraph && (
               <Group listening={false} opacity={GHOST_OPACITY}>
                 <MoleculeRenderer graph={ghostGraph} />
               </Group>
             )}
+            {/* with the Shapes tool: drag to draw the shape chosen in the gallery (the paper has no edge) */}
+            {!student && activeTool === "shape" && <ShapeDrawSurface x={-WORLD_EDGE} y={-WORLD_EDGE} width={2 * WORLD_EDGE} height={2 * WORLD_EDGE} shape={studio.shapeKind} onDraw={studio.drawShape} />}
             {band && (
               <Rect
                 x={Math.min(band.rect.x0, band.rect.x1)}

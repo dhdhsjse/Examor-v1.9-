@@ -3,7 +3,7 @@
 // Text can contain styled pieces (see richText.ts): each line is a list of pieces with their own font.
 
 import { fontStack } from "./fonts";
-import { parseRich } from "./richText";
+import { SCRIPT_SCALE, parseRich, type RunStyle, type TextEffect, type UnderlineStyle } from "./richText";
 
 export const FONT_FAMILY = fontStack(); // render Arabic + French
 
@@ -14,9 +14,15 @@ export interface TextFont {
   bold: boolean;
   italic: boolean;
   underline: boolean;
+  underlineStyle?: UnderlineStyle; // the words' own kind of underline, when it is not a single line (drawn by RichText, not by Konva)
+  effect?: TextEffect; // the words' own text effect (a shadow, an outline, a glow)
   strike?: boolean; // struck through (BlockFont.strike, or the words' own style)
   highlight?: string; // background color of the words
   color: string;
+  // A subscript or superscript: `size` is already the smaller size, `scriptBase` is the size of the text around it
+  // (what it is lowered or raised by when drawn).
+  script?: "sub" | "sup";
+  scriptBase?: number;
 }
 
 // A piece of one line, all in one font. `x` is from the start of the line (left to right).
@@ -60,14 +66,37 @@ const sameFont = (a: TextFont, b: TextFont) =>
   a.bold === b.bold &&
   a.italic === b.italic &&
   a.underline === b.underline &&
+  a.underlineStyle === b.underlineStyle &&
+  a.effect === b.effect &&
   !!a.strike === !!b.strike &&
   a.highlight === b.highlight &&
+  a.script === b.script &&
+  a.scriptBase === b.scriptBase &&
   a.color === b.color;
 
 interface Token {
   text: string;
   font: TextFont;
   kind: "word" | "space" | "nl";
+}
+
+// The font of a styled piece of text: what its style says, over the font of the text around it.
+export function runFont(st: RunStyle, base: TextFont): TextFont {
+  const size = st.size ?? base.size;
+  const script = st.sup ? "sup" : st.sub ? "sub" : undefined;
+  return {
+    family: st.font ? fontStack(st.font) : base.family,
+    size: script ? size * SCRIPT_SCALE : size,
+    bold: base.bold || !!st.b,
+    italic: base.italic || !!st.i,
+    underline: base.underline || !!st.u,
+    ...(st.ul ? { underlineStyle: st.ul } : {}),
+    ...(st.fx ? { effect: st.fx } : {}),
+    strike: !!base.strike || !!st.x,
+    highlight: st.hl,
+    color: st.color ?? base.color,
+    ...(script ? { script, scriptBase: size } : {}),
+  };
 }
 
 const cache = new Map<string, RichLine[]>();
@@ -82,17 +111,7 @@ export function wrapRich(src: string, width: number, base: TextFont, line: numbe
   const ratio = line / base.size;
   const tokens: Token[] = [];
   for (const run of parseRich(src)) {
-    const st = run.style;
-    const font: TextFont = {
-      family: st.font ? fontStack(st.font) : base.family,
-      size: st.size ?? base.size,
-      bold: base.bold || !!st.b,
-      italic: base.italic || !!st.i,
-      underline: base.underline || !!st.u,
-      strike: !!base.strike || !!st.x,
-      highlight: st.hl,
-      color: st.color ?? base.color,
-    };
+    const font = runFont(run.style, base);
     for (const part of run.text.split(/(\n| +)/)) {
       if (!part) continue;
       tokens.push({ text: part, font, kind: part === "\n" ? "nl" : part[0] === " " ? "space" : "word" });

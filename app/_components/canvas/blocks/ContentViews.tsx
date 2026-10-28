@@ -1,22 +1,43 @@
 "use client";
 
+import { Fragment } from "react";
 import { Group, Image as KImage, Line, Rect } from "react-konva";
-import { DEFAULT_ACCENT, layoutTable, layoutText, layoutTextbox } from "@/app/_lib/blockLayout";
-import { isRtl } from "@/app/_lib/i18n";
+import { DEFAULT_ACCENT, layoutTable, layoutText, layoutTextbox, type ListMarker, type ParagraphBox } from "@/app/_lib/blockLayout";
 import { useImage } from "@/app/_lib/images";
 import { svgUrl } from "@/app/_lib/library";
 import { plainText, serializeRich } from "@/app/_lib/richText";
 import type { EquationBlock, ExamMeta, ImageBlock, TableBlock, TextBlock, TextboxBlock } from "@/app/_lib/types";
 import { INK, RichText, tint } from "./shared";
 
+// The shading and the border lines behind a paragraph (Home → Paragraph).
+function ParagraphBackdrop({ box }: { box: ParagraphBox }) {
+  const { x, y, width: w, height: h } = box;
+  const sides = box.border ?? "";
+  const color = box.borderColor ?? INK;
+  return (
+    <>
+      {box.shading && <Rect x={x} y={y} width={w} height={h} fill={box.shading} listening={false} />}
+      {sides.includes("t") && <Line points={[x, y + 0.5, x + w, y + 0.5]} stroke={color} strokeWidth={1} listening={false} />}
+      {sides.includes("b") && <Line points={[x, y + h - 0.5, x + w, y + h - 0.5]} stroke={color} strokeWidth={1} listening={false} />}
+      {sides.includes("l") && <Line points={[x + 0.5, y, x + 0.5, y + h]} stroke={color} strokeWidth={1} listening={false} />}
+      {sides.includes("r") && <Line points={[x + w - 0.5, y, x + w - 0.5, y + h]} stroke={color} strokeWidth={1} listening={false} />}
+    </>
+  );
+}
+
+// The marker of a list item ("•", "1.", "أ-"), in the room kept before its text.
+function Marker({ m, dy = 0, rtl }: { m: ListMarker; dy?: number; rtl: boolean }) {
+  return <RichText lines={[m.line]} x={m.x} y={m.y + dy} width={m.width} rtl={rtl} align={rtl ? "right" : "left"} />;
+}
 
 export function TextView({ b, meta }: { b: TextBlock; meta: ExamMeta }) {
   const L = layoutText(b, meta);
-  const rtl = isRtl(meta.lang);
+  const rtl = L.rtl;
   const accent = b.accent ?? DEFAULT_ACCENT;
   const d = L.deco;
   return (
     <>
+      {L.box && <ParagraphBackdrop box={L.box} />}
       {d?.kind === "underline" && <Rect x={d.x} y={d.y} width={d.width} height={d.height} fill={accent} cornerRadius={2} listening={false} />}
       {d?.kind === "bar" && <Rect x={d.x} y={d.y} width={d.width} height={d.height} fill={accent} cornerRadius={2} listening={false} />}
       {d?.kind === "band" && <Rect x={d.x} y={d.y} width={d.width} height={d.height} fill={accent} cornerRadius={6} listening={false} />}
@@ -34,6 +55,9 @@ export function TextView({ b, meta }: { b: TextBlock; meta: ExamMeta }) {
         ) : (
           d.width > 0 && <Line points={[d.x, d.y, d.x + d.width, d.y]} stroke={accent} strokeWidth={1.5} listening={false} />
         ))}
+      {L.markers.map((m, k) => (
+        <Marker key={k} m={m} rtl={rtl} />
+      ))}
       <RichText lines={L.text.lines} x={L.x} y={L.text.y} width={L.width} rtl={rtl} align={L.align} />
     </>
   );
@@ -45,7 +69,6 @@ export function TextView({ b, meta }: { b: TextBlock; meta: ExamMeta }) {
 export function TextboxView({ b, meta, interactive }: { b: TextboxBlock; meta: ExamMeta; interactive: boolean }) {
   const hint = interactive && !plainText(b.text).trim() ? serializeRich([{ text: meta.lang === "ar" ? "اكتب هنا…" : "Tapez ici…", style: { color: "#9ca3af" } }]) : undefined;
   const L = layoutTextbox(b, meta, hint);
-  const rtl = isRtl(meta.lang);
   return (
     <>
       {b.background && <Rect width={b.layout.width} height={L.height} fill={b.background} listening={false} />}
@@ -55,7 +78,11 @@ export function TextboxView({ b, meta, interactive }: { b: TextboxBlock; meta: E
         interactive && <Rect width={b.layout.width} height={L.height} stroke="#cbd5e1" strokeWidth={1} dash={[4, 3]} listening={false} />
       )}
       {L.paragraphs.map((p, k) => (
-        <RichText key={k} lines={p.lines} x={p.x} y={L.y + p.y} width={p.width} rtl={rtl} align={p.align} />
+        <Fragment key={k}>
+          {p.box && <ParagraphBackdrop box={{ ...p.box, y: L.y + p.box.y }} />}
+          {p.marker && <Marker m={p.marker} dy={L.y} rtl={p.rtl} />}
+          <RichText lines={p.lines} x={p.x} y={L.y + p.y} width={p.width} rtl={p.rtl} align={p.align} />
+        </Fragment>
       ))}
     </>
   );

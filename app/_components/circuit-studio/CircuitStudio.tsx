@@ -2,6 +2,7 @@
 
 import { Redo2, Undo2, X } from "lucide-react";
 import { useEffect, useState } from "react";
+import { StudioKeyboard, StudioKeyboardButton } from "@/app/_components/math-keyboard/StudioKeyboard";
 import DiscardDialog from "@/app/_components/molecule-studio/DiscardDialog";
 import { DEFAULT_CIRCUIT_CONFIG, type CircuitConfig } from "@/app/_lib/circuit/types";
 import { useUi } from "@/app/_lib/uiLang";
@@ -26,7 +27,8 @@ interface Props {
 export default function CircuitStudio({ editing, onInsert, onUpdate, onClose }: Props) {
   const { t, rtl } = useUi();
   const studio = useCircuitStudio(editing ?? DEFAULT_CIRCUIT_CONFIG);
-  const { config, tool, draft, selectedComponent, selectedWire, undo, redo, canUndo, canRedo, dirty, empty } = studio;
+  const { config, tool, draft, selectedComponent, selectedWire, selectedShape, undo, redo, canUndo, canRedo, dirty, empty } = studio;
+  const anySelected = !!(selectedComponent || selectedWire || selectedShape);
   const [confirmClose, setConfirmClose] = useState(false);
 
   const requestClose = () => (dirty ? setConfirmClose(true) : onClose());
@@ -44,14 +46,14 @@ export default function CircuitStudio({ editing, onInsert, onUpdate, onClose }: 
         if (typing) return;
         if (draft) studio.finishWire();
         else if (tool !== "select") studio.setTool("select");
-        else if (selectedComponent || selectedWire) studio.clearSelection();
+        else if (anySelected) studio.clearSelection();
         else requestClose();
       } else if (typing) {
         return;
       } else if (e.key === "Enter" && draft) {
         e.preventDefault();
         studio.finishWire();
-      } else if ((e.key === "Delete" || e.key === "Backspace") && (selectedComponent || selectedWire)) {
+      } else if ((e.key === "Delete" || e.key === "Backspace") && anySelected) {
         e.preventDefault();
         studio.deleteSelected();
       } else if (key === "r" && !e.ctrlKey && !e.metaKey) {
@@ -64,12 +66,17 @@ export default function CircuitStudio({ editing, onInsert, onUpdate, onClose }: 
       } else if (selectedComponent && tool === "select" && e.key.startsWith("Arrow")) {
         e.preventDefault();
         studio.nudge(selectedComponent.id, e.key === "ArrowLeft" ? -1 : e.key === "ArrowRight" ? 1 : 0, e.key === "ArrowUp" ? -1 : e.key === "ArrowDown" ? 1 : 0);
+      } else if (selectedShape && tool === "select" && e.key.startsWith("Arrow")) {
+        // a shape moves by a pixel (ten with Shift)
+        e.preventDefault();
+        const step = e.shiftKey ? 10 : 1;
+        studio.nudgeShape(selectedShape.id, e.key === "ArrowLeft" ? -step : e.key === "ArrowRight" ? step : 0, e.key === "ArrowUp" ? -step : e.key === "ArrowDown" ? step : 0);
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [confirmClose, dirty, draft, tool, selectedComponent, selectedWire, studio.finishWire, studio.setTool, studio.clearSelection, studio.deleteSelected, studio.rotate, studio.nudge, undo, redo, onClose]);
+  }, [confirmClose, dirty, draft, tool, selectedComponent, selectedWire, selectedShape, studio.finishWire, studio.setTool, studio.clearSelection, studio.deleteSelected, studio.rotate, studio.nudge, studio.nudgeShape, undo, redo, onClose]);
 
   const iconButton = "grid size-8 place-items-center rounded-lg text-muted enabled:hover:bg-subtle enabled:hover:text-ink disabled:opacity-40";
 
@@ -86,6 +93,7 @@ export default function CircuitStudio({ editing, onInsert, onUpdate, onClose }: 
         <button onClick={redo} disabled={!canRedo} title={`${t("Redo")} (Ctrl+Y)`} aria-label={t("Redo")} data-testid="redo" className={iconButton}>
           <Redo2 size={16} />
         </button>
+        <StudioKeyboardButton />
 
         <button
           onClick={() => (editing ? onUpdate(config) : onInsert(config))}
@@ -116,6 +124,7 @@ export default function CircuitStudio({ editing, onInsert, onUpdate, onClose }: 
         </aside>
       </div>
 
+      <StudioKeyboard />
       {confirmClose && <DiscardDialog onKeep={() => setConfirmClose(false)} onDiscard={onClose} />}
     </div>
   );

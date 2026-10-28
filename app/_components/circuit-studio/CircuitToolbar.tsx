@@ -3,6 +3,7 @@
 import { MousePointer2, Pencil, RotateCw } from "lucide-react";
 import { drawComponent, COMPONENT_SPECS, COMPONENT_TYPES } from "@/app/_lib/circuit/symbols";
 import type { ComponentType } from "@/app/_lib/circuit/types";
+import { ShapesMenuButton } from "@/app/_components/shapes/ShapeGallery";
 import { useT } from "@/app/_lib/uiLang";
 import type { CircuitStudioState, CircuitTool } from "./useCircuitStudio";
 
@@ -26,6 +27,7 @@ export function ComponentGlyph({ type }: { type: ComponentType }) {
 
 const TOOL_HINTS: Record<CircuitTool, string> = {
   select: "Click a component or a wire to select it, drag it to move it",
+  shape: "Drag on the drawing to draw the shape (Shift: a square or a 45° line, Alt: from the centre), or click to put it at its usual size · Esc to stop",
   wire: "Click to start a wire, click again at each corner; click a terminal (or double-click) to end it. Shift: the other way round",
   battery: "Click the drawing to put it there · R turns it before you click · Esc to stop",
   resistor: "Click the drawing to put it there · R turns it before you click · Esc to stop",
@@ -44,8 +46,8 @@ const button = (on: boolean) => `flex flex-col items-center justify-center gap-0
 // The left panel of the Circuit Studio: the components to put on the drawing, and the tools (select, wire, rotate).
 export default function CircuitToolbar({ studio }: { studio: CircuitStudioState }) {
   const t = useT();
-  const { tool, setTool, rotate, selectedComponent } = studio;
-  const placing = tool !== "select" && tool !== "wire";
+  const { tool, setTool, rotate, selectedComponent, selectedShape } = studio;
+  const placing = tool !== "select" && tool !== "wire" && tool !== "shape";
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto p-4">
       <section className="flex flex-col gap-2" aria-label={t("Tools")} data-testid="circuit-tools">
@@ -59,7 +61,7 @@ export default function CircuitToolbar({ studio }: { studio: CircuitStudioState 
             <Pencil size={18} />
             {t("Wire")}
           </button>
-          <button onClick={() => rotate(90)} disabled={!placing && !selectedComponent} data-tool="rotate" title={`${t("Turn a quarter")} (R)`} className={`${button(false)} disabled:opacity-40`}>
+          <button onClick={() => rotate(90)} disabled={!placing && !selectedComponent && !selectedShape} data-tool="rotate" title={`${t("Turn a quarter")} (R)`} className={`${button(false)} disabled:opacity-40`}>
             <RotateCw size={18} />
             {t("Rotate")}
           </button>
@@ -67,6 +69,11 @@ export default function CircuitToolbar({ studio }: { studio: CircuitStudioState 
         <p className="text-xs text-muted" data-testid="circuit-tool-hint">
           {t(TOOL_HINTS[tool])}
         </p>
+      </section>
+
+      <section className="flex flex-col gap-2" aria-label={t("Shapes")} data-testid="circuit-shapes">
+        <h3 className="text-xs font-semibold uppercase tracking-wide text-faint">{t("Shapes")}</h3>
+        <ShapesMenuButton active={tool === "shape"} current={tool === "shape" ? studio.shapeKind : null} onPick={studio.pickShape} />
       </section>
 
       <section className="flex flex-col gap-2" aria-label={t("Components")} data-testid="circuit-components">

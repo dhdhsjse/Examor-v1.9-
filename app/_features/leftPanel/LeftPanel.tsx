@@ -34,7 +34,7 @@ export default function LeftPanel({ ctx }: { ctx: Ctx }) {
 
   // Escape goes one level back. Not the Escape that stops drawing a text box (the left panel stays on the
   // tool's section).
-  const drawing = ctx.shell.canvasTool === "textbox";
+  const drawing = ctx.shell.canvasTool === "textbox" || ctx.shell.canvasTool === "shape";
   useEffect(() => {
     if (view.kind === "list" || drawing) return;
     const onKey = (e: KeyboardEvent) => {

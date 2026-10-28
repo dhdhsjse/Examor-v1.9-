@@ -3,6 +3,7 @@
 // PERIODIC_TABLE, so the model covers the whole table.
 //
 // This is separate from the model of the molecule-generating Studio (app/_molecule/model.ts).
+import type { ShapeItem } from "@/app/_lib/shapes";
 
 export type AtomNode = {
   id: string;
@@ -82,6 +83,8 @@ export type MoleculeGraph = {
   bonds: BondEdge[];
   /** Required, so that an edit that rebuilds the graph cannot forget the texts and arrows (the compiler says so). */
   annotations: CanvasAnnotation[];
+  /** Shapes drawn over the molecule (Shapes in the toolbar); absent in drawings made before they existed */
+  shapes?: ShapeItem[];
   /** Absent in drawings made before the modes existed: see hydrogenModeOf (valence.ts). */
   hydrogens?: HydrogenMode;
   /** How the lone pairs are written: not at all (the default), as pairs of dots, or as bars. See lonePairs.ts. */
@@ -92,4 +95,4 @@ export type MoleculeGraph = {
 export type RingSpec = { sides: number; isAromatic: boolean };
 
 /** The tools of the drawing Studio. */
-export type StudioTool = "select" | "atom" | "erase" | "bond" | "ring" | "template" | "text" | "arrow" | "pair" | "electron";
+export type StudioTool = "select" | "shape" | "atom" | "erase" | "bond" | "ring" | "template" | "text" | "arrow" | "pair" | "electron";

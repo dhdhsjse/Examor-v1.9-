@@ -1,38 +1,57 @@
 "use client";
 
-import { useImperativeHandle, useLayoutEffect, useRef, type CSSProperties, type KeyboardEvent, type Ref } from "react";
+import { useImperativeHandle, useLayoutEffect, useRef, type ClipboardEvent, type CSSProperties, type KeyboardEvent, type Ref } from "react";
 import { fontStack } from "@/app/_lib/fonts";
+import { sizeKey, stepSize } from "@/app/_lib/fontSizes";
+import { clipFromParagraphs, paragraphsFromRich, readClip, richFromParagraphs } from "@/app/_lib/richClipboard";
+import type { DocParagraph } from "@/app/_lib/textboxDoc";
 import {
   applyStyle,
   decodeStyle,
   deleteRange,
   encodeStyle,
   insertText,
+  isRich,
+  mapChars,
   parseRich,
   plainText,
+  replaceRich,
   runCss,
   serializeRich,
+  sliceRich,
   styleAt,
   type Run,
   type RunStyle,
   type StylePatch,
 } from "@/app/_lib/richText";
+import { caseChars, cycleCase, wordAt, type CaseMode } from "@/app/_lib/textCase";
+
+// The styles that toggle on and off: bold, italic, underline, strikethrough, subscript, superscript.
+export type ToggleKey = "b" | "i" | "u" | "x" | "sub" | "sup";
+const TOGGLES: Record<string, ToggleKey> = { b: "b", i: "i", u: "u" };
 
 export interface RichHandle {
   focus: (at?: "end" | "all") => void;
   selection: () => { start: number; end: number };
+  // The style the selected words share (a cursor: the style of the words around it).
+  style: () => RunStyle;
   // Style the selection (nothing selected = the whole text). Returns the new value.
   apply: (patch: StylePatch | "clear") => void;
-  toggle: (key: "b" | "i" | "u") => void;
+  toggle: (key: ToggleKey) => void;
   insert: (text: string, at?: number) => void;
   setValue: (value: string, select?: { start: number; end: number }) => void;
   element: () => HTMLDivElement | null;
+  // Change the case of the selection (nothing selected: the word at the cursor).
+  changeCase: (mode: CaseMode | "cycle") => void;
+  // Replace the selection by pasted paragraphs: one line each (all in one for a text of one line), with their styles.
+  // `inherit`: text without styles (plain text from another program) looks like the words it lands in.
+  paste: (paragraphs: DocParagraph[], inherit?: boolean) => void;
 }
 
 interface Props {
   value: string;
   onChange: (value: string) => void;
-  onSelectionStyle?: (style: RunStyle) => void; // for the format bar
+  onSelectionStyle?: (style: RunStyle, range: { start: number; end: number }) => void; // for the format bar and the ribbon
   multiline?: boolean;
   placeholder?: string;
   dir?: "rtl" | "ltr" | "auto";
@@ -133,6 +152,7 @@ function setSel(el: HTMLDivElement, start: number, end: number) {
 // The value is the text with style markers (see richText.ts).
 export default function RichEditable({ value, onChange, onSelectionStyle, multiline, placeholder, dir = "auto", className, style, onKeyDown, onFocus, onBlur, ref }: Props) {
   const el = useRef<HTMLDivElement>(null);
+  const handleRef = useRef<RichHandle | null>(null); // what the handle does now (made again at every render, with the props of that render)
   const shown = useRef<string | null>(null); // the value the DOM shows
   const lastSel = useRef({ start: 0, end: 0 });
 
@@ -158,47 +178,88 @@ export default function RichEditable({ value, onChange, onSelectionStyle, multil
       lastSel.current = sel;
     }
     onChange(next);
-    if (sel) onSelectionStyle?.(styleAt(next, sel.start, sel.end));
+    if (sel) onSelectionStyle?.(styleAt(next, sel.start, sel.end), sel);
   };
 
   const currentSel = () => (el.current && getSel(el.current)) || lastSel.current;
 
-  useImperativeHandle(ref, () => ({
-    focus: (at) => {
-      const node = el.current;
-      if (!node) return;
-      node.focus();
-      const len = plainText(shown.current ?? value).length;
-      if (at === "all") setSel(node, 0, len);
-      else if (at === "end") setSel(node, len, len);
-      else setSel(node, lastSel.current.start, lastSel.current.end);
-    },
-    selection: currentSel,
-    apply: (patch) => {
-      const cur = shown.current ?? value;
-      const sel = currentSel();
-      const whole = sel.start === sel.end;
-      const range = whole ? { start: 0, end: plainText(cur).length } : sel;
-      commit(applyStyle(cur, range.start, range.end, patch), sel);
-    },
-    toggle: (key) => {
-      const cur = shown.current ?? value;
-      const sel = currentSel();
-      const range = sel.start === sel.end ? { start: 0, end: plainText(cur).length } : sel;
-      const on = !!styleAt(cur, range.start, range.end)[key];
-      commit(applyStyle(cur, range.start, range.end, { [key]: on ? null : true }), sel);
-    },
-    insert: (text, at) => {
-      const cur = shown.current ?? value;
-      const sel = currentSel();
-      const pos = at ?? sel.start;
-      commit(insertText(at === undefined ? deleteRange(cur, sel.start, sel.end) : cur, pos, text), { start: pos + text.length, end: pos + text.length });
-    },
-    setValue: (next, select) => commit(next, select),
-    element: () => el.current,
-  }));
+  // The handle given to the parent is one object for as long as the editor lives, so the panel that formats through it can tell
+  // which editor it is (richSession.ts); each call goes to the latest implementation.
+  useImperativeHandle(ref, () => new Proxy({} as RichHandle, { get: (_target, key) => handleRef.current?.[key as keyof RichHandle] }), []);
+  useLayoutEffect(() => {
+    handleRef.current = {
+      focus: (at) => {
+        const node = el.current;
+        if (!node) return;
+        node.focus();
+        const len = plainText(shown.current ?? value).length;
+        if (at === "all") setSel(node, 0, len);
+        else if (at === "end") setSel(node, len, len);
+        else setSel(node, lastSel.current.start, lastSel.current.end);
+      },
+      selection: currentSel,
+      style: () => {
+        const sel = currentSel();
+        return styleAt(shown.current ?? value, sel.start, sel.end);
+      },
+      apply: (patch) => {
+        const cur = shown.current ?? value;
+        const sel = currentSel();
+        const whole = sel.start === sel.end;
+        const range = whole ? { start: 0, end: plainText(cur).length } : sel;
+        commit(applyStyle(cur, range.start, range.end, patch), sel);
+      },
+      toggle: (key) => {
+        const cur = shown.current ?? value;
+        const sel = currentSel();
+        const range = sel.start === sel.end ? { start: 0, end: plainText(cur).length } : sel;
+        const on = !!styleAt(cur, range.start, range.end)[key];
+        commit(applyStyle(cur, range.start, range.end, { [key]: on ? null : true }), sel);
+      },
+      paste: (paragraphs, inherit) => {
+        const rich = richFromParagraphs(paragraphs, !!multiline);
+        const length = plainText(rich).length;
+        if (!length) return;
+        const cur = shown.current ?? value;
+        const sel = currentSel();
+        const end = sel.start + length;
+        commit(inherit && !isRich(rich) ? insertText(deleteRange(cur, sel.start, sel.end), sel.start, rich) : replaceRich(cur, sel.start, sel.end, rich), { start: end, end });
+      },
+      changeCase: (mode) => {
+        const cur = shown.current ?? value;
+        const plain = plainText(cur);
+        const sel = currentSel();
+        // A cursor changes the word it is in (a sentence case: the whole text).
+        const word = sel.start === sel.end ? (mode === "sentence" ? { start: 0, end: plain.length } : wordAt(plain, sel.start)) : sel;
+        if (!word || word.end <= word.start) return;
+        const picked = mode === "cycle" ? cycleCase(plain.slice(word.start, word.end)) : mode;
+        const next = mapChars(cur, word.start, word.end, (chars) => caseChars(chars, picked));
+        if (next === cur) return;
+        commit(next, sel.start === sel.end ? sel : { start: sel.start, end: sel.start + (plainText(next).length - plain.length) + (sel.end - sel.start) });
+      },
+      insert: (text, at) => {
+        const cur = shown.current ?? value;
+        const sel = currentSel();
+        const pos = at ?? sel.start;
+        commit(insertText(at === undefined ? deleteRange(cur, sel.start, sel.end) : cur, pos, text), { start: pos + text.length, end: pos + text.length });
+      },
+      setValue: (next, select) => commit(next, select),
+      element: () => el.current,
+    };
+  });
 
-  // Replace the selection with plain text (Enter, paste).
+  // Copy or cut the selected words with their styles (the app's own copy is read back exactly, other programs get HTML and text).
+  const copySelection = (e: ClipboardEvent<HTMLDivElement>, cut: boolean) => {
+    const sel = currentSel();
+    if (sel.start === sel.end) return;
+    e.preventDefault();
+    const clip = clipFromParagraphs(paragraphsFromRich(sliceRich(shown.current ?? value, sel.start, sel.end)));
+    e.clipboardData.setData("text/html", clip.html);
+    e.clipboardData.setData("text/plain", clip.text);
+    if (cut) commit(deleteRange(shown.current ?? value, sel.start, sel.end), { start: sel.start, end: sel.start });
+  };
+
+  // Replace the selection with plain text (Enter).
   const typeText = (text: string) => {
     const cur = shown.current ?? value;
     const sel = currentSel();
@@ -211,7 +272,7 @@ export default function RichEditable({ value, onChange, onSelectionStyle, multil
     const sel = node && getSel(node);
     if (!sel) return;
     lastSel.current = sel;
-    onSelectionStyle?.(styleAt(shown.current ?? value, sel.start, sel.end));
+    onSelectionStyle?.(styleAt(shown.current ?? value, sel.start, sel.end), sel);
   };
 
   return (
@@ -245,24 +306,41 @@ export default function RichEditable({ value, onChange, onSelectionStyle, multil
         onKeyDown?.(e);
         if (e.defaultPrevented) return;
         const mod = e.ctrlKey || e.metaKey;
-        if (mod && ["b", "i", "u"].includes(e.key.toLowerCase())) {
-          // Our own bold / italic / underline (not the browser's <b> tags).
+        const shortcut = mod && !e.altKey ? (TOGGLES[e.key.toLowerCase()] ?? (e.key === "," ? "sub" : e.key === "." ? "sup" : undefined)) : undefined;
+        if (shortcut) {
+          // Our own bold / italic / underline / subscript / superscript (not the browser's <b> tags).
           e.preventDefault();
           const cur = shown.current ?? value;
           const sel = currentSel();
           if (sel.start === sel.end) return;
-          const key = e.key.toLowerCase() as "b" | "i" | "u";
-          const on = !!styleAt(cur, sel.start, sel.end)[key];
-          commit(applyStyle(cur, sel.start, sel.end, { [key]: on ? null : true }), sel);
+          const on = !!styleAt(cur, sel.start, sel.end)[shortcut];
+          commit(applyStyle(cur, sel.start, sel.end, { [shortcut]: on ? null : true }), sel);
+        } else if (sizeKey(e)) {
+          // Ctrl+Shift+> / Ctrl+Shift+<: the next usual size (of the words around the cursor, or of the text)
+          e.preventDefault();
+          const cur = shown.current ?? value;
+          const sel = currentSel();
+          const base = typeof style?.fontSize === "number" ? style.fontSize : 14;
+          const size = styleAt(cur, sel.start, sel.end).size ?? base;
+          handleRef.current?.apply({ size: stepSize(size, sizeKey(e) === "up") });
+        } else if (e.key === "F3" && e.shiftKey) {
+          e.preventDefault(); // (Word's Shift+F3: the next case)
+          handleRef.current?.changeCase("cycle");
+        } else if (mod && e.code === "Space") {
+          e.preventDefault(); // (Word's Ctrl+Space: clear the formatting)
+          if (currentSel().start !== currentSel().end) handleRef.current?.apply("clear");
         } else if (e.key === "Enter") {
           e.preventDefault();
           if (multiline) typeText("\n");
         }
       }}
+      onCopy={(e) => copySelection(e, false)}
+      onCut={(e) => copySelection(e, true)}
       onPaste={(e) => {
         e.preventDefault();
-        const text = e.clipboardData.getData("text/plain").replace(/\r/g, "");
-        typeText(multiline ? text : text.replace(/\n+/g, " "));
+        const paragraphs = readClip({ html: e.clipboardData.getData("text/html"), text: e.clipboardData.getData("text/plain") });
+        // (plain text with nothing else on the clipboard is typed text: it looks like the words it lands in)
+        if (paragraphs) handleRef.current?.paste(paragraphs, !e.clipboardData.getData("text/html"));
       }}
       onDrop={(e) => e.preventDefault()}
       onKeyUp={trackSelection}

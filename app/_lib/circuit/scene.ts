@@ -1,5 +1,6 @@
 // The circuit as one thing to draw: every component with its symbol and texts, the wires and the dots where they are connected,
 // in pixels of the drawing area. The Konva canvas and the picture for the page both draw this scene, so they cannot differ.
+import { shapesBounds, type ShapeItem } from "@/app/_lib/shapes";
 import { junctionPoints, type P } from "./geometry";
 import { drawComponent, type DrawnComponent } from "./symbols";
 import type { CircuitConfig } from "./types";
@@ -13,6 +14,8 @@ export type CircuitScene = {
   wires: SceneWire[];
   /** Where wires are connected to each other: drawn as dots */
   junctions: P[];
+  /** The shapes drawn over the circuit */
+  shapes: ShapeItem[];
 };
 
 export const JUNCTION_RADIUS = 3.5;
@@ -25,6 +28,7 @@ export function buildCircuitScene(config: CircuitConfig): CircuitScene {
     components: config.components.map(drawComponent),
     wires: config.wires.map((w) => ({ id: w.id, points: w.points })),
     junctions: junctionPoints(config),
+    shapes: config.shapes ?? [],
   };
 }
 
@@ -50,6 +54,11 @@ export function contentBounds(scene: CircuitScene): { minX: number; minY: number
       xs.push(w.points[i]);
       ys.push(w.points[i + 1]);
     }
+  }
+  const shapes = shapesBounds(scene.shapes);
+  if (shapes) {
+    xs.push(shapes.minX, shapes.maxX);
+    ys.push(shapes.minY, shapes.maxY);
   }
   if (!xs.length) return null;
   return { minX: Math.min(...xs), minY: Math.min(...ys), maxX: Math.max(...xs), maxY: Math.max(...ys) };

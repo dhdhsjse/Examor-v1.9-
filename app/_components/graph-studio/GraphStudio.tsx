@@ -2,6 +2,7 @@
 
 import { Redo2, Undo2, X } from "lucide-react";
 import { useEffect, useState } from "react";
+import { StudioKeyboard, StudioKeyboardButton } from "@/app/_components/math-keyboard/StudioKeyboard";
 import DiscardDialog from "@/app/_components/molecule-studio/DiscardDialog";
 import { DEFAULT_GRAPH_CONFIG, type GraphConfig } from "@/app/_lib/graph/types";
 import { useUi } from "@/app/_lib/uiLang";
@@ -26,7 +27,7 @@ interface Props {
 export default function GraphStudio({ editing, onInsert, onUpdate, onClose }: Props) {
   const { t, rtl } = useUi();
   const studio = useGraphStudio(editing ?? DEFAULT_GRAPH_CONFIG);
-  const { undo, redo, canUndo, canRedo, dirty, selected, selectedAnnotation, tool, pickTool, selectFunction, selectAnnotation, removeFunction, removeAnnotation } = studio;
+  const { undo, redo, canUndo, canRedo, dirty, selected, selectedAnnotation, selectedShape, shapeTool, tool, pickTool, selectFunction, selectAnnotation, removeFunction, removeAnnotation } = studio;
   const { config, view, setView, masked } = studio;
   const student = view === "student"; // looking at what the students will see: nothing is edited
   const [confirmClose, setConfirmClose] = useState(false);
@@ -44,15 +45,24 @@ export default function GraphStudio({ editing, onInsert, onUpdate, onClose }: Pr
       const key = e.key.toLowerCase();
       // Esc: puts the tool down, then lets go of the selection, then closes. Delete takes what is selected off the paper.
       if (e.key === "Escape") {
-        if (tool && !typing) pickTool(null);
-        else if ((selected || selectedAnnotation) && !typing) {
+        if ((tool || shapeTool) && !typing) pickTool(null);
+        else if ((selected || selectedAnnotation || selectedShape) && !typing) {
           selectFunction(null);
           selectAnnotation(null);
         } else requestClose();
-      } else if ((e.key === "Delete" || e.key === "Backspace") && !typing && (selected || selectedAnnotation)) {
+      } else if ((e.key === "Delete" || e.key === "Backspace") && !typing && (selected || selectedAnnotation || selectedShape)) {
         e.preventDefault();
         if (selected) removeFunction(selected.id);
         else if (selectedAnnotation) removeAnnotation(selectedAnnotation.id);
+        else if (selectedShape) studio.removeShapeById(selectedShape.id);
+      } else if (selectedShape && !typing && !tool && e.key.startsWith("Arrow")) {
+        // a shape moves by a pixel (ten with Shift)
+        e.preventDefault();
+        const step = e.shiftKey ? 10 : 1;
+        studio.nudgeShape(selectedShape.id, e.key === "ArrowLeft" ? -step : e.key === "ArrowRight" ? step : 0, e.key === "ArrowUp" ? -step : e.key === "ArrowDown" ? step : 0);
+      } else if (selectedShape && !typing && key === "r" && !e.ctrlKey && !e.metaKey) {
+        e.preventDefault();
+        studio.turnShape(selectedShape.id, e.shiftKey ? -90 : 90);
       } else if ((e.ctrlKey || e.metaKey) && !typing && (key === "z" || key === "y")) {
         e.preventDefault();
         if (key === "y" || e.shiftKey) redo();
@@ -62,7 +72,7 @@ export default function GraphStudio({ editing, onInsert, onUpdate, onClose }: Pr
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [confirmClose, dirty, student, undo, redo, onClose, selected, selectedAnnotation, tool, pickTool, selectFunction, selectAnnotation, removeFunction, removeAnnotation]);
+  }, [confirmClose, dirty, student, undo, redo, onClose, selected, selectedAnnotation, selectedShape, shapeTool, tool, pickTool, selectFunction, selectAnnotation, removeFunction, removeAnnotation]);
 
   const iconButton = "grid size-8 place-items-center rounded-lg text-muted enabled:hover:bg-subtle enabled:hover:text-ink disabled:opacity-40";
 
@@ -79,6 +89,7 @@ export default function GraphStudio({ editing, onInsert, onUpdate, onClose }: Pr
         <button onClick={redo} disabled={!canRedo} title={`${t("Redo")} (Ctrl+Y)`} aria-label={t("Redo")} data-testid="redo" className={iconButton}>
           <Redo2 size={16} />
         </button>
+        <StudioKeyboardButton />
 
         <div className="mx-1 flex rounded-lg bg-subtle p-0.5" role="group" aria-label={t("View")} data-testid="view-toggle">
           {(["teacher", "student"] as const).map((v) => (
@@ -119,6 +130,7 @@ export default function GraphStudio({ editing, onInsert, onUpdate, onClose }: Pr
         </aside>
       </div>
 
+      <StudioKeyboard />
       {confirmClose && <DiscardDialog onKeep={() => setConfirmClose(false)} onDiscard={onClose} />}
     </div>
   );

@@ -1,7 +1,7 @@
 import { convertLatexToMarkup } from "mathlive/ssr";
 import { describe, expect, it } from "vitest";
 import { keyLabel, type KeyboardTab } from "../keyboard/keys";
-import { keyboardTabsFor } from "../keyboard/layouts";
+import { keyboardTabsFor, keyboardTabsOf, KEYBOARD_LAYOUTS, layoutFor } from "../keyboard/layouts";
 import { mathTabs } from "../keyboard/mathLayout";
 import { physicsTabs } from "../keyboard/physicsLayout";
 import { renderEquation } from "../math";
@@ -57,6 +57,17 @@ describe("keyboard layouts", () => {
     for (const subject of SUBJECTS) {
       expect(keyboardTabsFor(subject), subject).toBe(subject === "Physics" ? physicsTabs : mathTabs);
     }
+  });
+
+  // The teacher can pick Math or Physics by hand: either layout is available whatever the subject, and the subject only sets the start.
+  it("each layout can be picked by hand, whatever the subject", () => {
+    expect(keyboardTabsOf("math")).toBe(mathTabs);
+    expect(keyboardTabsOf("physics")).toBe(physicsTabs);
+    expect(KEYBOARD_LAYOUTS).toEqual(["math", "physics"]);
+  });
+
+  it("the subject picks the layout a keyboard starts with", () => {
+    for (const subject of SUBJECTS) expect(layoutFor(subject), subject).toBe(subject === "Physics" ? "physics" : "math");
   });
 
   it("the two keyboards really differ", () => {

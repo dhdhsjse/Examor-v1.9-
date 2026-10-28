@@ -16,14 +16,16 @@ const FUNCS: Record<string, Fn> = {
   arctan: Math.atan,
 };
 const CONSTS: Record<string, number> = { pi: Math.PI, e: Math.E };
-// Longest names first, so "exp" is not read as "e" + "x" + "p".
-const NAMES = [...Object.keys(FUNCS), ...Object.keys(CONSTS), "x"].sort((a, b) => b.length - a.length);
+// The letter the formula is written in: x for a function plot; the Graph Studio also accepts t (time), since most physics curves are.
+const DEFAULT_VARIABLES: readonly string[] = ["x"];
+// Longest names first, so "exp" is not read as "e" + "x" + "p" (and "tan" is not "t" + "an").
+const namesFor = (variables: readonly string[]) => [...Object.keys(FUNCS), ...Object.keys(CONSTS), ...variables].sort((a, b) => b.length - a.length);
 
 type Token = { t: "num"; v: number } | { t: "name"; v: string } | { t: "op"; v: string };
 
-function tokenize(src: string): Token[] {
+function tokenize(src: string, names: string[]): Token[] {
   const s = src
-    .replace(/^\s*([a-zA-Z]\s*\(\s*x\s*\)|y)\s*=/, "") // drop "f(x) =" or "y ="
+    .replace(/^\s*[a-zA-Z]\w*\s*(\(\s*[a-zA-Z]\s*\))?\s*=/, "") // drop "f(x) =", "u(t) =" or "y ="
     .replace(/(\d),(\d)/g, "$1.$2") // French decimal comma: 0,5
     .replace(/[−–]/g, "-")
     .replace(/×|·/g, "*")
@@ -41,11 +43,13 @@ function tokenize(src: string): Token[] {
     if (c === " ") {
       i++;
     } else if (/[\d.]/.test(c)) {
-      const m = /^\d*\.?\d+|^\d+\.?/.exec(s.slice(i))!;
+      // 12, 0.5, 5., .5 and scientific notation (1e-3, 2.5E4): "2e^x" is still 2·e^x, only digits after the e make an exponent
+      const m = /^(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?/.exec(s.slice(i));
+      if (!m) throw new Error(`Unexpected “${c}”`); // (a lone ".")
       out.push({ t: "num", v: Number(m[0]) });
       i += m[0].length;
     } else if (/[a-z]/.test(c)) {
-      const name = NAMES.find((n) => s.startsWith(n, i));
+      const name = names.find((n) => s.startsWith(n, i));
       if (!name) throw new Error(`Unknown name “${/^[a-z]+/.exec(s.slice(i))![0]}”`);
       out.push({ t: "name", v: name });
       i += name.length;
@@ -59,9 +63,10 @@ function tokenize(src: string): Token[] {
   return out;
 }
 
-// Recursive-descent parser. Each function returns a ready-to-run closure.
-export function compileFunction(src: string): Fn {
-  const tokens = tokenize(src);
+// Recursive-descent parser. Each function returns a ready-to-run closure. `variables` are the letters that stand for the
+// argument (x unless said otherwise).
+export function compileFunction(src: string, variables: readonly string[] = DEFAULT_VARIABLES): Fn {
+  const tokens = tokenize(src, namesFor(variables));
   if (!tokens.length) throw new Error("Type a formula, e.g. x^2 - 2");
   let pos = 0;
   const peek = () => tokens[pos];
@@ -130,7 +135,7 @@ export function compileFunction(src: string): Fn {
     pos++;
     if (tk.t === "num") return () => tk.v;
     if (tk.t === "name") {
-      if (tk.v === "x") return (x) => x;
+      if (variables.includes(tk.v)) return (x) => x;
       if (tk.v in CONSTS) return () => CONSTS[tk.v];
       const f = FUNCS[tk.v];
       const arg = primary(); // sin(x), sin x
@@ -155,9 +160,9 @@ export function compileFunction(src: string): Fn {
 }
 
 // Returns the function, or the error message if the formula can't be read.
-export function tryCompile(src: string): { fn: Fn | null; error: string | null } {
+export function tryCompile(src: string, variables?: readonly string[]): { fn: Fn | null; error: string | null } {
   try {
-    return { fn: compileFunction(src), error: null };
+    return { fn: compileFunction(src, variables), error: null };
   } catch (e) {
     return { fn: null, error: e instanceof Error ? e.message : String(e) };
   }

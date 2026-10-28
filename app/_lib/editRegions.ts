@@ -218,7 +218,7 @@ export function clickTargets(b: Block, n: number, meta: ExamMeta): ClickTarget[]
 export function fieldValue(b: Block, f: EditField): string {
   switch (f.kind) {
     case "text":
-      return "text" in b ? b.text : "";
+      return "text" in b ? (b.text ?? "") : "";
     case "option":
       return b.type === "mcq" ? (b.options[f.i] ?? "") : "";
     case "statement":

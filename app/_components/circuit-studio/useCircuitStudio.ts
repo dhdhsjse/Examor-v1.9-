@@ -4,15 +4,17 @@ import { useCallback, useState } from "react";
 import { GRID, routeNext, type P, type SnapTarget } from "@/app/_lib/circuit/geometry";
 import { addComponent, addWire, moveComponent, moveWire, newComponent, numberLabels, removeComponent, removeWire, resizeArea, rotateComponent, updateComponent } from "@/app/_lib/circuit/ops";
 import { DEFAULT_CIRCUIT_CONFIG, type CircuitComponent, type CircuitConfig, type ComponentType } from "@/app/_lib/circuit/types";
+import { addShape, duplicateShape, isLine, newShapeItem, removeShape, reorderShape, updateShape, type DrawnBox, type Order } from "@/app/_lib/shapes";
+import type { ShapePatch } from "@/app/_components/shapes/StudioShapes";
 import { canRedoStudio, canUndoStudio, editStudioHistory, isStudioDirty, redoStudioHistory, startStudioHistory, undoStudioHistory, type StudioHistory } from "@/app/_lib/studioHistory";
 
 /** The tool in hand: select and move, draw wires, or put a component of a kind. */
-export type CircuitTool = "select" | "wire" | ComponentType;
+export type CircuitTool = "select" | "wire" | "shape" | ComponentType;
 
 /** A wire being drawn: its corners so far, and the way the terminal it started on points. */
 export type WireDraft = { points: number[]; startDir?: P };
 
-type Selection = { kind: "component" | "wire"; id: string };
+type Selection = { kind: "component" | "wire" | "shape"; id: string };
 
 // The state of the Circuit Studio: the circuit, with its own undo and redo (the exam's own undo history gets one step when the
 // circuit is inserted or updated), what is selected, the tool in hand, the rotation a component about to be placed will have,
@@ -23,6 +25,7 @@ export function useCircuitStudio(initial: CircuitConfig = DEFAULT_CIRCUIT_CONFIG
   const [tool, setToolState] = useState<CircuitTool>("select");
   const [pendingRotation, setPendingRotation] = useState(0); // (the turn of the next component placed: R turns it before the click)
   const [draft, setDraft] = useState<WireDraft | null>(null);
+  const [shapeKind, setShapeKind] = useState("rect"); // (the shape the Shapes tool draws)
   const config = history.present;
 
   // Edits are made on the latest circuit (two quick ones must not undo each other); `key` names what changed, so that a drag or a
@@ -31,6 +34,7 @@ export function useCircuitStudio(initial: CircuitConfig = DEFAULT_CIRCUIT_CONFIG
 
   const selectedComponent = selection?.kind === "component" ? (config.components.find((c) => c.id === selection.id) ?? null) : null;
   const selectedWire = selection?.kind === "wire" ? (config.wires.find((w) => w.id === selection.id) ?? null) : null; // (what undo took away is no longer selected)
+  const selectedShape = selection?.kind === "shape" ? ((config.shapes ?? []).find((s) => s.id === selection.id) ?? null) : null;
 
   // ---- tools ----
 
@@ -43,6 +47,39 @@ export function useCircuitStudio(initial: CircuitConfig = DEFAULT_CIRCUIT_CONFIG
   const selectComponent = useCallback((id: string | null) => setSelection(id ? { kind: "component", id } : null), []);
   const selectWire = useCallback((id: string | null) => setSelection(id ? { kind: "wire", id } : null), []);
   const clearSelection = useCallback(() => setSelection(null), []);
+
+  // ---- shapes ----
+
+  // A shape chosen in the gallery: the next drag on the drawing draws it.
+  const pickShape = useCallback((shape: string) => {
+    setShapeKind(shape);
+    setToolState("shape");
+    setDraft(null);
+    setPendingRotation(0);
+    setSelection(null);
+  }, []);
+  const selectShape = useCallback((id: string) => setSelection({ kind: "shape", id }), []);
+  const drawShape = useCallback(
+    (box: DrawnBox) => {
+      const item = newShapeItem(shapeKind, box);
+      change((c) => ({ ...c, shapes: addShape(c.shapes, item) }), `add:${item.id}`);
+      setSelection({ kind: "shape", id: item.id });
+      setToolState("select"); // (like PowerPoint: one shape, then the Select tool is back)
+    },
+    [shapeKind, change],
+  );
+  const changeShape = useCallback((id: string, patch: ShapePatch, key: string) => change((c) => ({ ...c, shapes: updateShape(c.shapes, id, patch) }), key), [change]);
+  const orderShape = useCallback((id: string, order: Order) => change((c) => ({ ...c, shapes: reorderShape(c.shapes, id, order) }), `order:${id}:${Date.now()}`), [change]);
+  const duplicateShapeOf = useCallback(
+    (id: string) => {
+      const { copy } = duplicateShape(config.shapes, id);
+      if (!copy) return;
+      change((c) => ({ ...c, shapes: addShape(c.shapes, copy) }), `dup:${copy.id}`);
+      setSelection({ kind: "shape", id: copy.id });
+    },
+    [config.shapes, change],
+  );
+  const nudgeShape = useCallback((id: string, dx: number, dy: number) => change((c) => ({ ...c, shapes: (c.shapes ?? []).map((s) => (s.id === id ? { ...s, x: s.x + dx, y: s.y + dy } : s)) }), `shape-move:${id}`), [change]);
 
   // ---- components ----
 
@@ -65,10 +102,11 @@ export function useCircuitStudio(initial: CircuitConfig = DEFAULT_CIRCUIT_CONFIG
   // R: turns the component about to be placed, or else the selected one.
   const rotate = useCallback(
     (by = 90) => {
-      if (tool !== "select" && tool !== "wire") setPendingRotation((r) => (((r + by) % 360) + 360) % 360);
+      if (tool !== "select" && tool !== "wire" && tool !== "shape") setPendingRotation((r) => (((r + by) % 360) + 360) % 360);
       else if (selectedComponent) change((c) => rotateComponent(c, selectedComponent.id, by), `rotate:${selectedComponent.id}`);
+      else if (selectedShape && !isLine(selectedShape)) changeShape(selectedShape.id, { rotation: ((((selectedShape.rotation ?? 0) + by) % 360) + 360) % 360 || undefined }, `shape-turn:${selectedShape.id}:${Date.now()}`);
     },
-    [tool, selectedComponent, change],
+    [tool, selectedComponent, selectedShape, change, changeShape],
   );
 
   const updateComponentProps = useCallback(
@@ -117,6 +155,7 @@ export function useCircuitStudio(initial: CircuitConfig = DEFAULT_CIRCUIT_CONFIG
   const deleteSelected = useCallback(() => {
     if (!selection) return;
     if (selection.kind === "component") change((c) => removeComponent(c, selection.id), `remove:${selection.id}`);
+    else if (selection.kind === "shape") change((c) => ({ ...c, shapes: removeShape(c.shapes, selection.id) }), `remove:${selection.id}`);
     else change((c) => removeWire(c, selection.id), `remove:${selection.id}`);
     setSelection(null);
   }, [selection, change]);
@@ -132,6 +171,15 @@ export function useCircuitStudio(initial: CircuitConfig = DEFAULT_CIRCUIT_CONFIG
     config,
     selectedComponent,
     selectedWire,
+    selectedShape,
+    shapeKind,
+    pickShape,
+    selectShape,
+    drawShape,
+    changeShape,
+    orderShape,
+    duplicateShapeOf,
+    nudgeShape,
     selectComponent,
     selectWire,
     clearSelection,
@@ -156,7 +204,7 @@ export function useCircuitStudio(initial: CircuitConfig = DEFAULT_CIRCUIT_CONFIG
     canUndo: canUndoStudio(history),
     canRedo: canRedoStudio(history),
     dirty: isStudioDirty(history),
-    empty: config.components.length === 0 && config.wires.length === 0,
+    empty: config.components.length === 0 && config.wires.length === 0 && !config.shapes?.length,
   };
 }
 

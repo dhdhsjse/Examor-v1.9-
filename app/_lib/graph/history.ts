@@ -17,8 +17,12 @@ export type GraphHistory = {
 
 export const startHistory = (config: GraphConfig): GraphHistory => ({ past: [], present: config, future: [], start: config, last: null });
 
-// (the curves and annotations are compared by what they hold: an edit that sets a value to itself is not a step)
-const same = (a: GraphConfig, b: GraphConfig) => (Object.keys(a) as (keyof GraphConfig)[]).every((k) => (k === "functions" || k === "annotations" ? JSON.stringify(a[k]) === JSON.stringify(b[k]) : a[k] === b[k]));
+// (the curves and annotations are compared by what they hold: an edit that sets a value to itself is not a step. The keys of both
+// are compared: a setting the paper did not have yet - the optional ones - is a change the first time it is set.)
+const same = (a: GraphConfig, b: GraphConfig) => {
+  const keys = new Set([...Object.keys(a), ...Object.keys(b)]) as Set<keyof GraphConfig>;
+  return [...keys].every((k) => (k === "functions" || k === "annotations" ? JSON.stringify(a[k]) === JSON.stringify(b[k]) : a[k] === b[k]));
+};
 
 /** `next` is the new configuration; `key` names the field(s) changed ("" = never merged). The same configuration back is not a step. */
 export function edit(h: GraphHistory, next: GraphConfig, key: string, now: number): GraphHistory {

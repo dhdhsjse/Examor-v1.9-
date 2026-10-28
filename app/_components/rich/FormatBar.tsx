@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
-import { DEFAULT_FONT, FONT_CHOICES, TEXT_COLORS, fontStack, installedFonts } from "@/app/_lib/fonts";
+import { DEFAULT_FONT, FILL_COLORS, FONT_CHOICES, TEXT_COLORS, fontStack, installedFonts } from "@/app/_lib/fonts";
 import type { RunStyle, StylePatch } from "@/app/_lib/richText";
 import { useT } from "@/app/_lib/uiLang";
 
@@ -84,7 +84,7 @@ interface Props {
   baseSize: number;
   baseColor: string;
   onApply: (patch: StylePatch | "clear") => void;
-  onToggle: (key: "b" | "i" | "u") => void;
+  onToggle: (key: "b" | "i" | "u" | "x" | "sub" | "sup") => void;
 }
 
 const btn = (on = false) =>
@@ -94,6 +94,7 @@ const btn = (on = false) =>
 export default function FormatBar({ style, baseFont, baseSize, baseColor, onApply, onToggle }: Props) {
   const t = useT();
   const [colors, setColors] = useState(false);
+  const [highlights, setHighlights] = useState(false);
   const size = style.size ?? baseSize;
   const color = style.color ?? baseColor;
   const keep = (e: React.MouseEvent) => e.preventDefault(); // keep the text selection
@@ -126,6 +127,19 @@ export default function FormatBar({ style, baseFont, baseSize, baseColor, onAppl
       <button type="button" className={btn(style.u)} onMouseDown={keep} onClick={() => onToggle("u")} title={`${t("Underline")} (Ctrl+U)`}>
         <u>U</u>
       </button>
+      <button type="button" className={btn(style.x)} onMouseDown={keep} onClick={() => onToggle("x")} title={t("Strikethrough")}>
+        <s>S</s>
+      </button>
+      <button type="button" className={btn(style.sub)} onMouseDown={keep} onClick={() => onToggle("sub")} title={`${t("Subscript")} (Ctrl+,)`}>
+        <span className="text-[12px] leading-none">
+          x<sub className="text-[8px]">2</sub>
+        </span>
+      </button>
+      <button type="button" className={btn(style.sup)} onMouseDown={keep} onClick={() => onToggle("sup")} title={`${t("Superscript")} (Ctrl+.)`}>
+        <span className="text-[12px] leading-none">
+          x<sup className="text-[8px]">2</sup>
+        </span>
+      </button>
       <Sep />
       <div className="relative">
         <button type="button" className={btn(colors)} onMouseDown={keep} onClick={() => setColors(!colors)} title={t("Text color")}>
@@ -142,6 +156,27 @@ export default function FormatBar({ style, baseFont, baseSize, baseColor, onAppl
               onChange={(c) => {
                 onApply({ color: c ?? null });
                 setColors(false);
+              }}
+            />
+          </div>
+        )}
+      </div>
+      <div className="relative">
+        <button type="button" className={btn(highlights)} onMouseDown={keep} onClick={() => setHighlights(!highlights)} title={t("Highlight color")}>
+          <span className="flex flex-col items-center leading-none">
+            <span className="text-[13px] font-semibold">ab</span>
+            <span className="mt-0.5 h-1 w-4 rounded-full ring-1 ring-black/10" style={{ background: style.hl ?? "#fef08a" }} />
+          </span>
+        </button>
+        {highlights && (
+          <div className="absolute top-full right-0 z-10 mt-1.5 w-[188px] rounded-lg border border-line bg-white p-2 shadow-lg">
+            <ColorGrid
+              value={style.hl}
+              autoLabel={t("None")}
+              colors={FILL_COLORS}
+              onChange={(c) => {
+                onApply({ hl: c ?? null });
+                setHighlights(false);
               }}
             />
           </div>

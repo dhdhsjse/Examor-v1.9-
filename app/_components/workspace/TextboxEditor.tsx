@@ -2,8 +2,9 @@
 
 import type { Editor, JSONContent } from "@tiptap/core";
 import { EditorContent, useEditor, useEditorState } from "@tiptap/react";
-import { useEffect, useLayoutEffect, useRef, type RefObject } from "react";
-import { textboxPad, textboxSpec } from "@/app/_lib/blockLayout";
+import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from "react";
+import { blockRtl, textboxPad, textboxSpec } from "@/app/_lib/blockLayout";
+import { useShowMarks } from "@/app/_lib/formattingMarks";
 import { isRtl } from "@/app/_lib/i18n";
 import type { StylePatch } from "@/app/_lib/richText";
 import { textboxDoc } from "@/app/_lib/textboxDoc";
@@ -28,7 +29,7 @@ interface Props {
 }
 
 const JUSTIFY = { top: "flex-start", middle: "center", bottom: "flex-end" } as const;
-const BAR_MARK = { b: "bold", i: "italic", u: "underline" } as const;
+const BAR_MARK = { b: "bold", i: "italic", u: "underline", x: "strike" } as const;
 
 // The text box being typed in: a Tiptap editor exactly over the box on the page (inside the zoomed layer,
 // so sizes are page pixels), with the box's inner margin, place of the text, fill, border and font. Words
@@ -38,22 +39,26 @@ const BAR_MARK = { b: "bold", i: "italic", u: "underline" } as const;
 // closes it.
 export default function TextboxEditor({ block, meta, zoom, box, selectAll, keepOpen, onChange, onDropBoxStyle, onDone, onReady }: Props) {
   const root = useRef<HTMLDivElement>(null);
+  const rtl = blockRtl(block, meta);
+  const showMarks = useShowMarks();
+  const s = textboxSpec(block, meta);
   const latest = useRef({ onChange, onDone, onReady });
   useEffect(() => {
     latest.current = { onChange, onDone, onReady };
   });
-  const rtl = isRtl(meta.lang);
-  const s = textboxSpec(block, meta);
 
+  // The extensions are made once for this editing session (new ones on every render would be new options every time).
+  // The direction and the size are those of the box when typing starts: they do not change while it is open.
+  const [extensions] = useState(() => cmd.textboxExtensions({ rtl, size: s.font.size }));
   const editor = useEditor({
-    extensions: cmd.textboxExtensions(),
+    extensions,
     content: textboxDoc(block),
     // Ready on the first render, so the first keys typed right after drawing the box are not lost. (Only
     // ever mounted in the browser, when typing starts: no server render to match.)
     immediatelyRender: true,
     onUpdate: ({ editor: e }) => latest.current.onChange(e.getJSON()),
     editorProps: {
-      attributes: { dir: rtl ? "rtl" : "auto", "aria-label": "Text box", class: "outline-none" },
+      attributes: { dir: block.dir ?? (isRtl(meta.lang) ? "rtl" : "auto"), "aria-label": "Text box", class: "outline-none" },
       handleKeyDown: (_view, e) => {
         if (e.key !== "Escape") return false;
         e.preventDefault();
@@ -111,8 +116,13 @@ export default function TextboxEditor({ block, meta, zoom, box, selectAll, keepO
     if ("font" in p) cmd.setFamily(editor, p.font ?? undefined);
     if ("size" in p) cmd.setSize(editor, p.size ?? undefined);
     if ("color" in p) cmd.setColor(editor, p.color ?? undefined);
+    if ("hl" in p) cmd.setHighlight(editor, p.hl ?? undefined);
   };
-  const toggle = (k: keyof typeof BAR_MARK) => editor && cmd.toggleStyle(editor, BAR_MARK[k], boxHas[BAR_MARK[k]], () => onDropBoxStyle(BAR_MARK[k]));
+  const toggle = (k: keyof typeof BAR_MARK | "sub" | "sup") => {
+    if (!editor) return;
+    if (k === "sub" || k === "sup") return void cmd.toggleScript(editor, k);
+    cmd.toggleStyle(editor, BAR_MARK[k], boxHas[BAR_MARK[k]], () => onDropBoxStyle(BAR_MARK[k]));
+  };
 
   const decoration = [s.font.underline && "underline", s.font.strike && "line-through"].filter(Boolean).join(" ");
   return (
@@ -121,7 +131,18 @@ export default function TextboxEditor({ block, meta, zoom, box, selectAll, keepO
       <div className="absolute z-30 h-0" style={{ [rtl ? "right" : "left"]: 0, top: -8 / zoom }}>
         <div className={`absolute bottom-0 ${rtl ? "right-0 origin-bottom-right" : "left-0 origin-bottom-left"}`} style={{ transform: `scale(${1 / zoom})` }}>
           <FormatBar
-            style={{ font: sel?.family, size: sel?.size, color: sel?.color, b: boxHas.bold || sel?.marks.bold, i: boxHas.italic || sel?.marks.italic, u: boxHas.underline || sel?.marks.underline }}
+            style={{
+              font: sel?.family,
+              size: sel?.size,
+              color: sel?.color,
+              hl: sel?.highlight,
+              b: boxHas.bold || sel?.marks.bold,
+              i: boxHas.italic || sel?.marks.italic,
+              u: boxHas.underline || sel?.marks.underline,
+              x: boxHas.strike || sel?.marks.strike,
+              sub: sel?.script === "sub",
+              sup: sel?.script === "sup",
+            }}
             baseFont={block.font?.family ?? meta.fontFamily}
             baseSize={s.font.size}
             baseColor={s.font.color}
@@ -139,7 +160,7 @@ export default function TextboxEditor({ block, meta, zoom, box, selectAll, keepO
           e.preventDefault();
           editor?.commands.focus("end");
         }}
-        className="flex cursor-text flex-col rounded-[2px] outline-2 outline-offset-1 outline-indigo-500 [&_.ProseMirror]:outline-none [&_.ProseMirror]:[overflow-wrap:break-word] [&_mark]:[color:inherit]"
+        className={`textbox-editor ${showMarks ? "show-marks" : ""} flex cursor-text flex-col rounded-[2px] outline-2 outline-offset-1 outline-indigo-500 [&_.ProseMirror]:outline-none [&_.ProseMirror]:[overflow-wrap:break-word] [&_mark]:[color:inherit]`}
         style={{
           minHeight: box.height,
           padding: textboxPad(block),
@@ -153,7 +174,8 @@ export default function TextboxEditor({ block, meta, zoom, box, selectAll, keepO
           fontWeight: s.font.bold ? 700 : 400,
           fontStyle: s.font.italic ? "italic" : undefined,
           textDecoration: decoration || undefined,
-          textAlign: block.align ?? (rtl ? "right" : "left"),
+          // (each paragraph is at the start of its own direction unless the box is aligned)
+          textAlign: block.align ?? "start",
         }}
       >
         <EditorContent editor={editor} />

@@ -2,6 +2,7 @@ import { CONTENT_WIDTH, PAGE_MARGIN } from "./a4";
 import { pageSize } from "./pageFormats";
 import { blockHeight } from "./blockLayout";
 import { newId } from "./id";
+import { defaultSize } from "./shapes";
 import { EX_PX } from "./math";
 import { plainText } from "./richText";
 import { fixOrder, mixedOrder, seededRandom } from "./shuffle";
@@ -45,6 +46,7 @@ export const BLOCK_TYPE_NAMES: Record<BlockType, string> = {
   image: "Image",
   header: "Exam header",
   textbox: "Text box",
+  shape: "Shape",
 };
 
 // Questions start empty, so the teacher types right away instead of deleting sample text first.
@@ -169,6 +171,12 @@ export function createBlock(type: BlockType, lang: Lang, pageId: string, preset:
     layout.width = width ?? 300;
     layout.height = height ?? 100;
   }
+  // A shape starts at its usual size (a line is flat: its height is 0).
+  if (type === "shape") {
+    const [w, h] = defaultSize((data as { shape?: string }).shape ?? "rect");
+    layout.width = width ?? w;
+    layout.height = height ?? h;
+  }
   // Graphs have a fixed size (resized with the corner handles).
   if (type === "graph" && width === undefined) {
     layout.width = 320;
@@ -212,6 +220,8 @@ export function createBlock(type: BlockType, lang: Lang, pageId: string, preset:
         return { type, style: "classic" as HeaderStyle, fields: defaultHeaderFields(lang) };
       case "textbox":
         return { type, text: "" };
+      case "shape":
+        return { type, shape: "rect" };
     }
   })();
 
@@ -249,7 +259,7 @@ export function defaultHeaderFields(lang: Lang) {
 
 // A short plain name for a block (library cards, saved blocks).
 export function blockLabel(b: Block): string {
-  const text = b.type === "header" ? b.fields.title : "text" in b ? b.text : "";
+  const text = b.type === "header" ? b.fields.title : "text" in b ? (b.text ?? "") : "";
   const plain = plainText(text).replace(/\s+/g, " ").trim();
   return plain.length > 60 ? `${plain.slice(0, 57)}…` : plain;
 }

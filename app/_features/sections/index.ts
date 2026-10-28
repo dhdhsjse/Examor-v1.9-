@@ -1,4 +1,5 @@
 import type { Feature, Section } from "@/app/_features/core/types";
+import { inspectorShape } from "@/app/_features/inspectors/inspector-shape";
 import { inspectorTextbox } from "@/app/_features/inspectors/inspector-textbox";
 import type { BlockType } from "@/app/_lib/types";
 import { designSection } from "./design";
@@ -11,7 +12,7 @@ export const sections: Section[] = [homeSection, insertSection, designSection, l
 
 // Inspectors with no row in the left panel: each opens by itself in the right panel when a block of a
 // type it `edits` is selected (like Word's tab for a selected shape), and shows only while one is.
-export const blockInspectors: Feature[] = [inspectorTextbox];
+export const blockInspectors: Feature[] = [inspectorTextbox, inspectorShape];
 
 // Every feature of every section (for search, libraries and the right-panel inspector).
 export const sectionFeatures = (): Feature[] => sections.flatMap((s) => s.options.flatMap((o) => o.features));

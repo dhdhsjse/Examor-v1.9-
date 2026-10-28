@@ -1,14 +1,17 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
+import type { ShapePatch } from "@/app/_components/shapes/StudioShapes";
+import { addShape, duplicateShape, isLine, newShapeItem, removeShape, reorderShape, updateShape, type DrawnBox, type Order } from "@/app/_lib/shapes";
 import { detachCurve, handlesOf, moveHandle, newAnnotation, type Handle, type PlacePoint } from "@/app/_lib/graph/annotations";
 import { configIssues, fatalIssue, type GraphIssue } from "@/app/_lib/graph/grid";
 import { canRedo, canUndo, edit, isDirty, redo, startHistory, undo, type GraphHistory } from "@/app/_lib/graph/history";
 import { newDataSeries, newFunction } from "@/app/_lib/graph/mathUtils";
-import { DEFAULT_GRAPH_CONFIG, normalizeGraphConfig, type AnnotationType, type DataPoint, type FunctionType, type GraphAnnotation, type GraphConfig, type GraphFunction } from "@/app/_lib/graph/types";
+import { instantiateTemplate, presetChanges, type GraphPreset, type GraphTemplate } from "@/app/_lib/graph/presets";
+import { DEFAULT_GRAPH_CONFIG, axisSteps, normalizeGraphConfig, type AnnotationType, type DataPoint, type FunctionType, type GraphAnnotation, type GraphConfig, type GraphFunction } from "@/app/_lib/graph/types";
 
-/** What can change in a curve: its colour, its thickness, whether it is masked, some of its parameters (the others stay), and for a series of measured points how it is drawn. */
-export type FunctionPatch = Partial<Pick<GraphFunction, "color" | "strokeWidth" | "hidden" | "showPoints" | "lineStyle">> & { params?: Record<string, number> };
+/** What can change in a curve: its colour, its thickness, its line (solid, dashed, dotted), the range it is drawn on, the text of a formula, whether it is masked, some of its parameters (the others stay), and for a series of measured points how it is drawn. */
+export type FunctionPatch = Partial<Pick<GraphFunction, "color" | "strokeWidth" | "hidden" | "showPoints" | "lineStyle" | "expression" | "from" | "to" | "dash">> & { params?: Record<string, number> };
 
 /** The tool in hand: an annotation, or the one that adds measured points to the selected series. */
 export type GraphTool = AnnotationType | "points";
@@ -23,8 +26,9 @@ export type GraphView = "teacher" | "student";
 // say it; the paper on the screen is always a drawable one.
 export function useGraphStudio(initial: GraphConfig = DEFAULT_GRAPH_CONFIG) {
   const [history, setHistory] = useState<GraphHistory>(() => startHistory(normalizeGraphConfig(initial)));
-  const [selection, setSelection] = useState<{ kind: "curve" | "annotation"; id: string } | null>(null);
+  const [selection, setSelection] = useState<{ kind: "curve" | "annotation" | "shape"; id: string } | null>(null);
   const [tool, setTool] = useState<GraphTool | null>(null); // the tool in hand: the next click on the paper places an annotation, or a point (and stays in hand)
+  const [shapeTool, setShapeTool] = useState<string | null>(null); // the shape the next drag on the paper draws (from the Shapes gallery)
   const [view, setViewState] = useState<GraphView>("teacher");
   const [snap, setSnap] = useState(true); // clicks and drags land on the fine grid
   const config = history.present;
@@ -50,8 +54,11 @@ export function useGraphStudio(initial: GraphConfig = DEFAULT_GRAPH_CONFIG) {
   const selectedAnnotation = selection?.kind === "annotation" ? (config.annotations.find((a) => a.id === selection.id) ?? null) : null; // (what undo took away is no longer selected)
   const selectFunction = useCallback((id: string | null) => setSelection(id ? { kind: "curve", id } : null), []);
   const selectAnnotation = useCallback((id: string | null) => setSelection(id ? { kind: "annotation", id } : null), []);
+  const selectedShape = selection?.kind === "shape" ? ((config.shapes ?? []).find((s) => s.id === selection.id) ?? null) : null;
+  const selectShape = useCallback((id: string | null) => setSelection(id ? { kind: "shape", id } : null), []);
   // (a series stays selected while its points are being put: they go to it)
   const pickTool = useCallback((next: GraphTool | null) => {
+    setShapeTool(null);
     setTool((t) => (t === next ? null : next));
     if (next !== "points") setSelection(null);
   }, []);
@@ -61,6 +68,7 @@ export function useGraphStudio(initial: GraphConfig = DEFAULT_GRAPH_CONFIG) {
     if (next === "student") {
       setSelection(null);
       setTool(null);
+      setShapeTool(null);
     }
   }, []);
 
@@ -165,11 +173,11 @@ export function useGraphStudio(initial: GraphConfig = DEFAULT_GRAPH_CONFIG) {
     [change],
   );
 
-  // Dragging a handle of the selected annotation to graph (x, y).
+  // Dragging a handle of the selected annotation to graph (x, y): it lands on the fine grid of each axis (a sheet has a scale for each).
   const dragHandle = useCallback(
     (id: string, role: Handle["role"], x: number, y: number) => {
       const a = config.annotations.find((n) => n.id === id);
-      const patch = a && moveHandle(a, role, x, y, snap && config.minorGridStep > 0 ? config.minorGridStep : null);
+      const patch = a && moveHandle(a, role, x, y, snap ? { x: axisSteps(config, "x").minor, y: axisSteps(config, "y").minor } : null);
       if (patch) updateAnnotation(id, patch);
     },
     [config, snap, updateAnnotation],
@@ -181,6 +189,75 @@ export function useGraphStudio(initial: GraphConfig = DEFAULT_GRAPH_CONFIG) {
       setSelection((s) => (s?.id === id ? null : s));
     },
     [change],
+  );
+
+  // ---- shapes ----
+
+  // A shape chosen in the gallery: the next drag on the paper draws it.
+  const pickShape = useCallback((shape: string) => {
+    setShapeTool(shape);
+    setTool(null);
+    setSelection(null);
+  }, []);
+  const drawShape = useCallback(
+    (box: DrawnBox) => {
+      if (!shapeTool) return;
+      const item = newShapeItem(shapeTool, box);
+      change((c) => ({ ...c, shapes: addShape(c.shapes, item) }), `add:${item.id}`);
+      setSelection({ kind: "shape", id: item.id });
+      setShapeTool(null); // (like PowerPoint: one shape, then the Select tool is back)
+    },
+    [shapeTool, change],
+  );
+  const changeShape = useCallback((id: string, patch: ShapePatch, key: string) => change((c) => ({ ...c, shapes: updateShape(c.shapes, id, patch) }), key), [change]);
+  const orderShape = useCallback((id: string, order: Order) => change((c) => ({ ...c, shapes: reorderShape(c.shapes, id, order) }), `order:${id}:${Date.now()}`), [change]);
+  const duplicateShapeOf = useCallback(
+    (id: string) => {
+      const { copy } = duplicateShape(config.shapes, id);
+      if (!copy) return;
+      change((c) => ({ ...c, shapes: addShape(c.shapes, copy) }), `dup:${copy.id}`);
+      setSelection({ kind: "shape", id: copy.id });
+    },
+    [config.shapes, change],
+  );
+  const removeShapeById = useCallback(
+    (id: string) => {
+      change((c) => ({ ...c, shapes: removeShape(c.shapes, id) }), `remove:${id}`);
+      setSelection((s) => (s?.id === id ? null : s));
+    },
+    [change],
+  );
+  const nudgeShape = useCallback(
+    (id: string, dx: number, dy: number) => change((c) => ({ ...c, shapes: (c.shapes ?? []).map((s) => (s.id === id ? { ...s, x: s.x + dx, y: s.y + dy } : s)) }), `shape-move:${id}`),
+    [change],
+  );
+  const turnShape = useCallback(
+    (id: string, by: number) => {
+      const s = (config.shapes ?? []).find((k) => k.id === id);
+      if (s && !isLine(s)) changeShape(id, { rotation: ((((s.rotation ?? 0) + by) % 360) + 360) % 360 || undefined }, `shape-turn:${id}:${Date.now()}`);
+    },
+    [config.shapes, changeShape],
+  );
+
+  // ---- starting sheets ----
+
+  // A preset sets the limits, the titles and the steps of both axes (the curves stay); a template puts a whole sheet in place of the
+  // paper: its scales, curves and annotations. Each is one step of the Studio's undo.
+  const applyPreset = useCallback(
+    (preset: GraphPreset) => {
+      updateConfig(presetChanges(preset));
+    },
+    [updateConfig],
+  );
+
+  const applyTemplate = useCallback(
+    (template: GraphTemplate, maxWidth?: number) => {
+      const next = instantiateTemplate(template, config, maxWidth);
+      change(() => next, `template:${template.id}`);
+      setSelection(null);
+      setTool(null);
+    },
+    [config, change],
   );
 
   const undoStep = useCallback(() => setHistory(undo), []);
@@ -195,6 +272,17 @@ export function useGraphStudio(initial: GraphConfig = DEFAULT_GRAPH_CONFIG) {
     issues,
     selected: selectedFunction,
     selectedAnnotation,
+    selectedShape,
+    selectShape,
+    shapeTool,
+    pickShape,
+    drawShape,
+    changeShape,
+    orderShape,
+    duplicateShapeOf,
+    removeShapeById,
+    nudgeShape,
+    turnShape,
     handles,
     selectFunction,
     selectAnnotation,
@@ -210,6 +298,8 @@ export function useGraphStudio(initial: GraphConfig = DEFAULT_GRAPH_CONFIG) {
     removeDataPoint,
     snap,
     setSnap,
+    applyPreset,
+    applyTemplate,
     addFunction,
     updateFunction,
     removeFunction,

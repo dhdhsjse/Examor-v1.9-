@@ -1,6 +1,7 @@
 // A drawing as a picture for the exam page: an SVG string, drawn like the Studio's canvas (same bonds, same
 // trimming at the atom symbols). Black and white by default, because exams are printed that way.
 // Pure functions (no React, no DOM), unit-tested.
+import { shapesSvg } from "../shapes";
 import { chemSegments } from "./chemText";
 import { bondDrawing, type BondPart } from "./bondGeometry";
 import { electronPosition } from "./electrons";
@@ -175,6 +176,7 @@ export function renderDrawingSvg(graph: MoleculeGraph, options: SvgOptions = {})
     pairsSvg(graph, !!options.student),
     electronsSvg(graph, !!options.student),
     graph.annotations.map(noteSvg).join(""),
+    shapesSvg(graph.shapes),
   ].join("");
 
   // The first width="…" of the string is the picture's size (library.svgSize reads it that way).
