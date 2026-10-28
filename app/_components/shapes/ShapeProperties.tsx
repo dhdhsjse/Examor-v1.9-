@@ -5,6 +5,7 @@ import { useId, useState, type ReactNode } from "react";
 import { FILL_COLORS, TEXT_COLORS } from "@/app/_lib/fonts";
 import { DEFAULT_FONT_SIZE, DEFAULT_STROKE, DEFAULT_TEXT_COLOR, MIN_SHAPE_SIZE, isLine, resolveStyle, shapeDef, type DashKind, type Order, type ShapeStyle, type ShapeTextAlign, type ShapeVAlign } from "@/app/_lib/shapes";
 import { useT } from "@/app/_lib/uiLang";
+import { FontSelect } from "@/app/_components/rich/FormatBar";
 import { ShapesMenuButton, ShapeThumb } from "./ShapeGallery";
 
 const input = "w-full rounded-lg border border-line bg-subtle px-2.5 py-1.5 text-sm text-ink outline-none focus:border-accent";
@@ -190,6 +191,12 @@ export default function ShapeProperties({ item, onChange, geometry, size, onOrde
             data-testid="shape-text"
             className={`${input} resize-y`}
           />
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-muted" htmlFor="shape-font">
+              {t("Font")}
+            </label>
+            <FontSelect value={item.fontFamily} onChange={(fontFamily) => onChange({ fontFamily })} defaultLabel={t("Default font")} className={`${input} !py-1.5`} />
+          </div>
           <div className="flex items-end gap-2.5">
             <NumberInput label={t("Font size")} value={item.fontSize ?? DEFAULT_FONT_SIZE} min={6} max={120} onCommit={(fontSize) => onChange({ fontSize })} testId="shape-font-size" />
             <ColorSwatch label={t("Text color")} value={item.textColor ?? DEFAULT_TEXT_COLOR} onChange={(textColor) => onChange({ textColor })} />

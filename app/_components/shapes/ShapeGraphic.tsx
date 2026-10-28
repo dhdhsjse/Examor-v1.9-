@@ -1,7 +1,7 @@
 "use client";
 
 import { Group, Path, Text } from "react-konva";
-import { LINE_HEIGHT, SHAPE_FONT, dashArray, layoutShapeText, paintFill, resolveStyle, shapeParts, type ShapeStyle } from "@/app/_lib/shapes";
+import { LINE_HEIGHT, dashArray, layoutShapeText, paintFill, resolveStyle, shapeParts, type ShapeStyle } from "@/app/_lib/shapes";
 
 // One shape on a Konva canvas, in the coordinates of its own box (0,0 = its top-left corner): its parts, flipped if it is, then its text.
 // The place and the turn belong to whoever holds it (a Group). The parts and the text lines come from _lib/shapes, the same ones
@@ -30,7 +30,7 @@ export function ShapeGraphic({ style, w, h, opacity = 1 }: { style: ShapeStyle; 
       </Group>
       {text?.lines.map((l, i) =>
         l.text ? (
-          <Text key={i} text={l.text} x={l.x} y={l.y} fontSize={text.size} lineHeight={LINE_HEIGHT} fontFamily={SHAPE_FONT} fontStyle={fontStyle} fill={text.color} wrap="none" listening={false} />
+          <Text key={i} text={l.text} x={l.x} y={l.y} fontSize={text.size} lineHeight={LINE_HEIGHT} fontFamily={text.family} fontStyle={fontStyle} fill={text.color} wrap="none" listening={false} />
         ) : null,
       )}
     </Group>

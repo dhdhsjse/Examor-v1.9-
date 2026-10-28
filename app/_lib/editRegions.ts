@@ -174,18 +174,16 @@ export function editRegions(b: Block, n: number, meta: ExamMeta, mode: ViewMode 
     }
     case "table": {
       const L = layoutTable(b, meta);
-      return L.rows.flatMap((row, r) =>
-        row.cells.map((_, c) => ({
-          field: { kind: "cell", r, c } as EditField,
-          x: L.colX[c] + 6,
-          y: row.y + 4,
-          width: L.colW[c] - 12,
-          height: row.height - 8,
-          spec: row.bold ? { ...L.F.body, font: { ...L.F.body.font, bold: true } } : L.F.body,
-          multiline: false,
-          align: row.bold ? ("center" as const) : undefined,
-        })),
-      );
+      return L.cellBoxes.map((cell) => ({
+        field: { kind: "cell", r: cell.r, c: cell.c } as EditField,
+        x: cell.x + 6,
+        y: cell.y + 4,
+        width: cell.w - 12,
+        height: cell.h - 8,
+        spec: cell.spec,
+        multiline: false,
+        align: cell.align,
+      }));
     }
     default:
       return [];

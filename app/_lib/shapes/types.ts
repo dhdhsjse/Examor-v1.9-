@@ -30,6 +30,8 @@ export type ShapeStyle = {
   /** The text written in the shape */
   text?: string;
   textColor?: string;
+  /** A font of the app's list (missing = Arial, as before) */
+  fontFamily?: string;
   fontSize?: number;
   bold?: boolean;
   italic?: boolean;

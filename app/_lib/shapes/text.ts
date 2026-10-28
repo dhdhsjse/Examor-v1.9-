@@ -1,6 +1,7 @@
 // The text written in a shape: broken into lines that fit the room the shape leaves for it, and placed (left, centre or right; top,
 // middle or bottom). The Konva canvases and the SVG pictures both draw these lines, so the picture on the page breaks the text
 // exactly where the Studio did.
+import { fontStack } from "@/app/_lib/fonts";
 import { measureText } from "@/app/_lib/measure";
 import { DEFAULT_FONT_SIZE, DEFAULT_TEXT_COLOR, SHAPE_FONT, textRect } from "./geometry";
 import type { ShapeStyle, ShapeTextAlign } from "./types";
@@ -15,14 +16,16 @@ export type ShapeTextLayout = {
   color: string;
   bold: boolean;
   italic: boolean;
+  /** The CSS font stack the lines are drawn in (and were measured in) */
+  family: string;
   align: ShapeTextAlign;
   /** The line height, px */
   lineHeight: number;
 };
 
-export type Measure = (text: string, size: number, bold: boolean, italic: boolean) => number;
+export type Measure = (text: string, size: number, bold: boolean, italic: boolean, family: string) => number;
 
-const defaultMeasure: Measure = (text, size, bold, italic) => measureText(text, { family: SHAPE_FONT, size, bold, italic });
+const defaultMeasure: Measure = (text, size, bold, italic, family) => measureText(text, { family, size, bold, italic });
 
 // Words go on a line while they fit; a word wider than the line is cut where it must be.
 export function wrapLine(text: string, maxWidth: number, width: (s: string) => number): string[] {
@@ -68,7 +71,8 @@ export function layoutShapeText(style: ShapeStyle, w: number, h: number, measure
   const align = style.textAlign ?? "center";
   const valign = style.textVAlign ?? "middle";
   const box = textRect(style, w, h);
-  const width = (s: string) => measure(s, size, bold, italic);
+  const family = style.fontFamily ? fontStack(style.fontFamily) : SHAPE_FONT;
+  const width = (s: string) => measure(s, size, bold, italic, family);
   const texts = raw.split(/\r?\n/).flatMap((p) => wrapLine(p, box.w, width));
   const lineHeight = size * LINE_HEIGHT;
   const total = texts.length * lineHeight;
@@ -78,5 +82,5 @@ export function layoutShapeText(style: ShapeStyle, w: number, h: number, measure
     const x = align === "left" ? box.x : align === "right" ? box.x + box.w - lw : box.x + (box.w - lw) / 2;
     return { text, x, y: top + i * lineHeight, width: lw };
   });
-  return { lines, size, color: style.textColor ?? DEFAULT_TEXT_COLOR, bold, italic, align, lineHeight };
+  return { lines, size, color: style.textColor ?? DEFAULT_TEXT_COLOR, bold, italic, family, align, lineHeight };
 }

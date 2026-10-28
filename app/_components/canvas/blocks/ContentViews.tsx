@@ -1,7 +1,8 @@
 "use client";
 
 import { Fragment } from "react";
-import { Group, Image as KImage, Line, Rect } from "react-konva";
+import { Group, Image as KImage, Line, Rect, Shape } from "react-konva";
+import StudioShapes from "@/app/_components/shapes/StudioShapes";
 import { DEFAULT_ACCENT, layoutTable, layoutText, layoutTextbox, type ListMarker, type ParagraphBox } from "@/app/_lib/blockLayout";
 import { useImage } from "@/app/_lib/images";
 import { svgUrl } from "@/app/_lib/library";
@@ -88,11 +89,38 @@ export function TextboxView({ b, meta, interactive }: { b: TextboxBlock; meta: E
   );
 }
 
-export function TableView({ b, meta }: { b: TableBlock; meta: ExamMeta }) {
+function TableBody({ b, meta }: { b: TableBlock; meta: ExamMeta }) {
   // In Arabic the first column is on the right.
   const L = layoutTable(b, meta);
   const rtl = L.F.rtl;
   const w = b.layout.width;
+
+  // A table with merged cells, cell looks, borders, banding or formulas: fills, then the text, then every line in one stroke.
+  if (L.ext) {
+    const lines = L.lines;
+    return (
+      <Group listening={false}>
+        {L.cellBoxes.map((cell) => cell.fill && <Rect key={`f${cell.r}-${cell.c}`} x={cell.x} y={cell.y} width={cell.w} height={cell.h} fill={cell.fill} />)}
+        {L.cellBoxes.map((cell) => (
+          <RichText key={`t${cell.r}-${cell.c}`} lines={cell.text.lines} x={cell.x + 6} y={cell.textY} width={cell.w - 12} rtl={rtl} align={cell.align} />
+        ))}
+        {lines.length > 0 && (
+          <Shape
+            stroke={b.borderColor ?? INK}
+            strokeWidth={1}
+            sceneFunc={(ctx, shape) => {
+              ctx.beginPath();
+              for (const [x1, y1, x2, y2] of lines) {
+                ctx.moveTo(x1, y1);
+                ctx.lineTo(x2, y2);
+              }
+              ctx.strokeShape(shape);
+            }}
+          />
+        )}
+      </Group>
+    );
+  }
 
   return (
     <Group listening={false}>
@@ -116,6 +144,20 @@ export function TableView({ b, meta }: { b: TableBlock; meta: ExamMeta }) {
       {/* A line on the left edge of every column, except at the table's own edge */}
       {L.colX.map((x, c) => x > 0.5 && <Line key={c} points={[x, 0, x, L.height]} stroke={INK} strokeWidth={1} />)}
       <Rect width={w} height={L.height} stroke={INK} strokeWidth={1.2} />
+    </Group>
+  );
+}
+
+// The shapes drawn over a table (the block is what is selected on the page, not them).
+const noop = () => {};
+const TableShapes = ({ b }: { b: TableBlock }) => (b.shapes?.length ? <StudioShapes shapes={b.shapes} selectedId={null} interactive={false} scale={1} onSelect={noop} onChange={noop} /> : null);
+
+// A table: its cells and lines, then the shapes drawn over it.
+export function TableView({ b, meta }: { b: TableBlock; meta: ExamMeta }) {
+  return (
+    <Group listening={false}>
+      <TableBody b={b} meta={meta} />
+      <TableShapes b={b} />
     </Group>
   );
 }

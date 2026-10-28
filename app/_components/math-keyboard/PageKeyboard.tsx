@@ -15,7 +15,7 @@ export default function PageKeyboard({ ctx }: { ctx: Ctx }) {
   // The exam's subject picks Math or Physics keys until the teacher picks by hand; the studios, which do not know the exam, read it here.
   useEffect(() => setKeyboardSubject(shell.subject), [shell.subject]);
 
-  const studioOpen = shell.graphStudio.open || shell.circuitStudio.open || shell.molecule.open || shell.moleculeLab.open;
+  const studioOpen = shell.graphStudio.open || shell.circuitStudio.open || shell.tableStudio.open || shell.molecule.open || shell.moleculeLab.open;
   return (
     <div className="pointer-events-none absolute inset-0 z-40">
       <KeyboardLauncher ctx={ctx} />

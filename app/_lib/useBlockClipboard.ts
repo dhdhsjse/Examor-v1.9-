@@ -60,7 +60,7 @@ export function useBlockClipboard({ selected, active, deleteBlock, pasteBlock, a
   // The events of the page: not while typing (the editor or the field has its own), not with words selected somewhere (the browser copies them).
   useEffect(() => {
     // (the editors change the page while they handle an event, so this is looked at first, in the capture phase, and with the focused element too)
-    const isTyping = (el: Element | null) => !!el && ((el as HTMLElement).isContentEditable || ["INPUT", "TEXTAREA", "SELECT", "MATH-FIELD"].includes(el.tagName));
+    const isTyping = (el: Element | null) => !!el && ((el as HTMLElement).isContentEditable || !!el.closest("[data-table-grid]") || ["INPUT", "TEXTAREA", "SELECT", "MATH-FIELD"].includes(el.tagName));
     const free = (e: Event) => active && !isTyping(e.target as Element | null) && !isTyping(document.activeElement) && !window.getSelection()?.toString();
     const onCopy = (cut: boolean) => (e: ClipboardEvent) => {
       if (!free(e) || !selected) return;

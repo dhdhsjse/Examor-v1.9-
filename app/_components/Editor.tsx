@@ -114,6 +114,7 @@ export default function Editor() {
   const [moleculeLab, setMoleculeLab] = useState<Shell["moleculeLab"]>({ open: false, blockId: null }); // the drawing Studio
   const [graphStudio, setGraphStudio] = useState<Shell["graphStudio"]>({ open: false, blockId: null }); // the Graph Studio
   const [circuitStudio, setCircuitStudio] = useState<Shell["circuitStudio"]>({ open: false, blockId: null }); // the Circuit Studio
+  const [tableStudio, setTableStudio] = useState<Shell["tableStudio"]>({ open: false, blockId: null }); // the Table Studio
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -361,6 +362,9 @@ export default function Editor() {
       case "circuit-studio":
         setCircuitStudio({ open: true, blockId: null });
         break;
+      case "table-studio":
+        setTableStudio({ open: true, blockId: null });
+        break;
       case "library":
         setTab("library");
         setLibrary((l) => ({ kind: "diagram", n: l.n + 1 }));
@@ -568,9 +572,16 @@ export default function Editor() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement;
-      const typing = t.isContentEditable || ["INPUT", "TEXTAREA", "SELECT", "MATH-FIELD"].includes(t.tagName);
+      const inGrid = !!t.closest?.("[data-table-grid]"); // (the cells of a table in the right panel: its keys are its own, except undo and redo)
+      const typing = t.isContentEditable || inGrid || ["INPUT", "TEXTAREA", "SELECT", "MATH-FIELD"].includes(t.tagName);
       const mod = e.ctrlKey || e.metaKey;
       const key = e.key.toLowerCase();
+      if (inGrid && mod && (key === "z" || key === "y") && !picker.open && !preview && !history && !tableStudio.open) {
+        e.preventDefault();
+        if (key === "y" || e.shiftKey) exam.redo();
+        else exam.undo();
+        return;
+      }
 
       if (mod && key === "s") {
         e.preventDefault();
@@ -596,7 +607,7 @@ export default function Editor() {
         setBarOpen(bar.id);
         return;
       }
-      if (typing || picker.open || preview || history || molecule.open || moleculeLab.open || graphStudio.open || circuitStudio.open) return;
+      if (typing || picker.open || preview || history || molecule.open || moleculeLab.open || graphStudio.open || circuitStudio.open || tableStudio.open) return;
 
       if (mod && key === "z") {
         e.preventDefault();
@@ -640,7 +651,7 @@ export default function Editor() {
   // Copy, cut and paste of whole blocks (when no text is being typed in).
   const clipboard = useBlockClipboard({
     selected,
-    active: !(picker.open || preview || history || molecule.open || moleculeLab.open || graphStudio.open || circuitStudio.open),
+    active: !(picker.open || preview || history || molecule.open || moleculeLab.open || graphStudio.open || circuitStudio.open || tableStudio.open),
     deleteBlock: exam.deleteBlock,
     pasteBlock: exam.pasteBlock,
     addText: (text) => exam.addBlock("text", { text, style: "body" }),
@@ -743,6 +754,9 @@ export default function Editor() {
     graphStudio,
     openGraphStudio: (blockId) => setGraphStudio({ open: true, blockId: blockId ?? null }),
     closeGraphStudio: () => setGraphStudio({ open: false, blockId: null }),
+    tableStudio,
+    openTableStudio: (blockId, shape) => setTableStudio({ open: true, blockId: blockId ?? null, shape }),
+    closeTableStudio: () => setTableStudio({ open: false, blockId: null }),
     circuitStudio,
     openCircuitStudio: (blockId) => setCircuitStudio({ open: true, blockId: blockId ?? null }),
     closeCircuitStudio: () => setCircuitStudio({ open: false, blockId: null }),

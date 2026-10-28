@@ -401,3 +401,31 @@ describe("the interface strings", () => {
     for (const key of ["Outline", "Bold", "Cross", "Line", "Arrow", "Rectangle", "Cube", "Cylinder"]) expect(SHAPES_FR[key], key).toBeUndefined();
   });
 });
+
+describe("the font of the text in a shape", () => {
+  it("is Arial unless the shape has one", () => {
+    const seen: string[] = [];
+    const layout = layoutShapeText({ shape: "rect", text: "hello" }, 100, 60, (t, _s, _b, _i, family) => {
+      seen.push(family);
+      return t.length * 8;
+    })!;
+    expect(layout.family).toBe("Arial, Helvetica, sans-serif");
+    expect(new Set(seen)).toEqual(new Set(["Arial, Helvetica, sans-serif"]));
+  });
+
+  it("measures the lines in that font and draws them in it", () => {
+    const seen = new Set<string>();
+    const layout = layoutShapeText({ shape: "rect", text: "hello", fontFamily: "Georgia" }, 100, 60, (t, _s, _b, _i, family) => {
+      seen.add(family);
+      return t.length * 8;
+    })!;
+    expect(layout.family).toMatch(/^Georgia,/);
+    expect([...seen]).toEqual([layout.family]);
+  });
+
+  it("goes into the picture, on the text only", () => {
+    const svg = shapeSvg({ id: "f", shape: "rect", x: 0, y: 0, w: 200, h: 80, text: "hi", fontFamily: "Georgia" });
+    expect(svg).toMatch(/<text [^>]*font-family="Georgia,/);
+    expect(shapeSvg({ id: "g", shape: "rect", x: 0, y: 0, w: 200, h: 80, text: "hi" })).toMatch(/<text [^>]*font-family="Arial, Helvetica, sans-serif"/);
+  });
+});

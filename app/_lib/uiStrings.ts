@@ -5,6 +5,7 @@ import { CIRCUIT_AR, CIRCUIT_FR } from "@/app/_lib/circuit/strings";
 import { GRAPH_AR, GRAPH_FR } from "@/app/_lib/graph/strings";
 import { RIBBON_AR, RIBBON_FR } from "@/app/_lib/ribbon/strings";
 import { SHAPES_AR, SHAPES_FR } from "@/app/_lib/shapes/strings";
+import { TABLE_AR, TABLE_FR } from "@/app/_lib/table/strings";
 import { MOLECULE_AR, MOLECULE_FR } from "@/app/_molecule/strings";
 
 export const FR: Record<string, string> = {
@@ -1678,3 +1679,7 @@ Object.assign(AR, RIBBON_AR);
 // Shapes (Insert → Shapes and the Shapes tool of every Studio).
 Object.assign(FR, SHAPES_FR);
 Object.assign(AR, SHAPES_AR);
+
+// The Table Studio and the table editor of the right panel.
+Object.assign(FR, TABLE_FR);
+Object.assign(AR, TABLE_AR);

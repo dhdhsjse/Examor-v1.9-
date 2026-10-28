@@ -23,7 +23,7 @@ export function shapeSvg(item: ShapeItem): string {
   const words = text
     ? text.lines
         .filter((l) => l.text)
-        .map((l) => `<text x="${num(l.x)}" y="${num(l.y + text.lineHeight / 2)}" dy="0.35em" font-size="${num(text.size)}"${text.bold ? ' font-weight="bold"' : ""}${text.italic ? ' font-style="italic"' : ""} fill="${esc(text.color)}" stroke="none">${esc(l.text)}</text>`)
+        .map((l) => `<text x="${num(l.x)}" y="${num(l.y + text.lineHeight / 2)}" dy="0.35em" font-family="${esc(text.family)}" font-size="${num(text.size)}"${text.bold ? ' font-weight="bold"' : ""}${text.italic ? ' font-style="italic"' : ""} fill="${esc(text.color)}" stroke="none">${esc(l.text)}</text>`)
         .join("")
     : "";
   const place = `translate(${num(item.x + item.w / 2)} ${num(item.y + item.h / 2)})${item.rotation ? ` rotate(${num(item.rotation)})` : ""} translate(${num(-item.w / 2)} ${num(-item.h / 2)})`;

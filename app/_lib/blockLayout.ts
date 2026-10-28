@@ -6,6 +6,9 @@ import { parseRich, plainText, replaceBlanks, serializeRich, splitParagraphs, ty
 import { docParagraphs, textboxDoc, type DocParagraph } from "./textboxDoc";
 import { INDENT_PX, MAX_INDENT } from "./tiptap-indent";
 import { fixOrder, shuffled } from "./shuffle";
+import { shapesBounds } from "./shapes/geometry";
+import { shownText, tableSheet } from "./table/display";
+import { TABLE_HEADER_FILL, cellLook, hEdgeShown, isCovered, isPlainTable, mergeAt, tableMirrored, vEdgeShown, type CellLook } from "./table/model";
 import type {
   BlankBlock,
   Block,
@@ -645,29 +648,152 @@ export function tableColumnWidths(b: TableBlock): number[] {
   return Array.from({ length: cols }, (_, c) => (shares && sum > 0 ? (shares[c] / sum) * w : w / cols));
 }
 
+// One cell of a laid-out table (a merged cell is one box): where it is, its text, how it is drawn. `fill` and `align` are only
+// set where the table asks for them.
+export interface TableCellBox {
+  r: number;
+  c: number;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  text: TextBox;
+  /** Top of the text, in block coordinates */
+  textY: number;
+  spec: Spec;
+  align?: "left" | "center" | "right";
+  fill?: string;
+}
+
+export interface TableLayout {
+  F: Fonts;
+  colX: number[];
+  colW: number[];
+  rows: { y: number; height: number; cells: TextBox[]; bold: boolean }[];
+  height: number;
+  /** Every cell (a merged one once), for drawing and for typing in */
+  cellBoxes: TableCellBox[];
+  /** Whether the table has any of the extras (merges, looks, borders, formulas): a plain one is drawn the way tables always were */
+  ext: boolean;
+  /** The first column is on the right (an Arabic exam, or a table flipped in a French one): the text keeps the exam's direction */
+  mirror: boolean;
+  /** With extras: the lines to draw, as [x1, y1, x2, y2] */
+  lines: [number, number, number, number][];
+}
+
 // In Arabic the first column is on the right.
-export function layoutTable(b: TableBlock, meta: ExamMeta) {
+export function layoutTable(b: TableBlock, meta: ExamMeta): TableLayout {
   const F = blockFonts(b, meta);
-  const rtl = F.rtl;
+  const mirror = tableMirrored(b, F.rtl);
   const w = b.layout.width;
   const colW = tableColumnWidths(b);
   let acc = 0;
   const colX = colW.map((cw) => {
-    const x = rtl ? w - acc - cw : acc;
+    const x = mirror ? w - acc - cw : acc;
     acc += cw;
     return x;
   });
+  if (!isPlainTable(b)) return layoutTableExt(b, F, mirror, colW, colX);
   const boldBody: Spec = { ...F.body, font: { ...F.body.font, bold: true } };
   let y = 0;
+  const cellBoxes: TableCellBox[] = [];
   const rows = b.cells.map((row, r) => {
     const bold = b.header && r === 0;
-    const cells = row.map((c, k) => box(c, (colW[k] ?? colW[0]) - 12, bold ? boldBody : F.body, 0));
+    const spec = bold ? boldBody : F.body;
+    const cells = row.map((c, k) => box(c, (colW[k] ?? colW[0]) - 12, spec, 0));
     const h = Math.max(TABLE_MIN_ROW, b.rowHeights?.[r] ?? 0, ...cells.map((c) => c.height + 8));
     const out = { y, height: h, cells, bold };
+    cells.forEach((text, c) => cellBoxes.push({ r, c, x: colX[c], y, w: colW[c], h, text, textY: y + (h - text.height) / 2, spec, align: bold ? "center" : undefined }));
     y += h;
     return out;
   });
-  return { F, colX, colW, rows, height: y };
+  return { F, colX, colW, rows, height: y, cellBoxes, ext: false, mirror, lines: [] };
+}
+
+export { TABLE_HEADER_FILL };
+
+// A table with merged cells, cell looks, borders, banding or formulas.
+function layoutTableExt(b: TableBlock, F: Fonts, mirror: boolean, colW: number[], colX: number[]): TableLayout {
+  const w = b.layout.width;
+  const rowsN = b.cells.length;
+  const colsN = colW.length;
+  const sheet = tableSheet(b);
+  const body = F.body.font;
+
+  // the text of every cell that is not under a merged cell
+  type Item = { r: number; c: number; rs: number; cs: number; x: number; w: number; spec: Spec; text: TextBox; look: CellLook };
+  const items: Item[] = [];
+  const logical: TextBox[][] = b.cells.map((row) => row.map(() => ({ lines: [], y: 0, height: 0 })));
+  for (let r = 0; r < rowsN; r++)
+    for (let c = 0; c < colsN; c++) {
+      if (isCovered(b, r, c)) continue;
+      const m = mergeAt(b, r, c);
+      const rs = m?.rs ?? 1;
+      const cs = Math.min(m?.cs ?? 1, colsN - c);
+      const span = Array.from({ length: cs }, (_, k) => c + k);
+      const width = span.reduce((s, k) => s + colW[k], 0);
+      const x = Math.min(...span.map((k) => colX[k]));
+      const look = cellLook(b, r, c);
+      const size = look.size ?? body.size;
+      const font = { ...body, family: look.family ? fontStack(look.family) : body.family, size, bold: look.bold ?? body.bold, italic: look.italic ?? body.italic, color: look.color ?? body.color };
+      const spec: Spec = { font, line: size === body.size ? F.body.line : Math.round(size * (20 / 14)) };
+      const text = box(shownText(b, sheet, r, c, F.lang), width - 12, spec, 0);
+      logical[r][c] = text;
+      items.push({ r, c, rs, cs, x, w: width, spec, text, look });
+    }
+
+  // heights: a row fits its single-row cells; a merged cell over several rows asks the last of them for what it lacks
+  const heights = Array.from({ length: rowsN }, (_, r) => Math.max(TABLE_MIN_ROW, b.rowHeights?.[r] ?? 0));
+  for (const it of items) if (it.rs === 1) heights[it.r] = Math.max(heights[it.r], it.text.height + 8);
+  for (const it of items) {
+    if (it.rs <= 1) continue;
+    const have = heights.slice(it.r, it.r + it.rs).reduce((s, v) => s + v, 0);
+    const need = it.text.height + 8;
+    if (need > have) heights[Math.min(it.r + it.rs, rowsN) - 1] += need - have;
+  }
+  let y = 0;
+  const ys = heights.map((h) => {
+    const top = y;
+    y += h;
+    return top;
+  });
+  const height = y;
+  const rows = heights.map((h, r) => ({ y: ys[r], height: h, cells: logical[r], bold: b.header && r === 0 }));
+
+  const cellBoxes: TableCellBox[] = items.map((it) => {
+    const top = ys[it.r];
+    const h = heights.slice(it.r, it.r + it.rs).reduce((s, v) => s + v, 0);
+    const valign = it.look.valign;
+    const textY = valign === "top" ? top + 4 : valign === "bottom" ? top + h - it.text.height - 4 : top + (h - it.text.height) / 2;
+    return { r: it.r, c: it.c, x: it.x, y: top, w: it.w, h, text: it.text, textY, spec: it.spec, align: it.look.align, fill: it.look.fill };
+  });
+
+  // the lines: every edge of the grid that is drawn, except inside a merged cell
+  const lines: TableLayout["lines"] = [];
+  for (let i = 0; i <= rowsN; i++)
+    for (let c = 0; c < colsN; c++) {
+      if (!hEdgeShown(b, rowsN, i, c)) continue;
+      const above = i > 0 ? mergeAt(b, i - 1, c) : undefined;
+      if (i > 0 && i < rowsN && above && above === mergeAt(b, i, c)) continue;
+      const yy = i === rowsN ? height : ys[i];
+      lines.push([colX[c], yy, colX[c] + colW[c], yy]);
+    }
+  for (let j = 0; j <= colsN; j++)
+    for (let r = 0; r < rowsN; r++) {
+      if (!vEdgeShown(b, colsN, j, r)) continue;
+      const before = j > 0 ? mergeAt(b, r, j - 1) : undefined;
+      if (j > 0 && j < colsN && before && before === mergeAt(b, r, j)) continue;
+      const x = mirror ? (j === 0 ? w : colX[j - 1]) : j === colsN ? w : colX[j];
+      lines.push([x, ys[r], x, ys[r] + heights[r]]);
+    }
+  return { F, colX, colW, rows, height, cellBoxes, ext: true, mirror, lines };
+}
+
+// A table is as high as its rows, or lower if a shape drawn over it goes below them.
+export function tableHeight(b: TableBlock, meta: ExamMeta): number {
+  const rows = layoutTable(b, meta).height;
+  const shapes = shapesBounds(b.shapes);
+  return shapes ? Math.max(rows, Math.ceil(shapes.maxY)) : rows;
 }
 
 // Height of any block (used for stacking, snapping and thumbnails).
@@ -692,7 +818,7 @@ export function blockHeight(b: Block, n: number, meta: ExamMeta): number {
     case "textbox":
       return layoutTextbox(b, meta).height;
     case "table":
-      return layoutTable(b, meta).height;
+      return tableHeight(b, meta);
     case "header":
       return HEADER_HEIGHT[b.style] ?? HEADER_HEIGHT.classic;
     case "equation":

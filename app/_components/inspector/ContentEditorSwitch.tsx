@@ -1,7 +1,8 @@
 "use client";
 
 import type { Block, Lang } from "@/app/_lib/types";
-import { HeaderEditor, ImageEditor, TableEditor, TextboxEditor, TextEditor } from "./ContentEditors";
+import TablePanel from "@/app/_components/table/TablePanel";
+import { HeaderEditor, ImageEditor, TextboxEditor, TextEditor } from "./ContentEditors";
 import EquationEditor from "./EquationEditor";
 import { GraphEditor } from "./GraphEditor";
 import { ClassifyEditor, MatchEditor, OrderEditor } from "./MoreQuestionEditors";
@@ -15,12 +16,14 @@ interface Props {
   onChange: OnChange;
   onLatex: (latex: string) => void;
   onReplaceImage: () => void;
+  examFont?: string;
+  onOpenTableStudio: (shape?: string) => void;
   keyboardOpen: boolean;
   onToggleKeyboard: () => void;
 }
 
 // Picks the right editor for the selected block type.
-export function ContentEditorSwitch({ block, number, lang, totalPoints, onChange, onLatex, onReplaceImage, keyboardOpen, onToggleKeyboard }: Props) {
+export function ContentEditorSwitch({ block, number, lang, totalPoints, onChange, onLatex, onReplaceImage, examFont, onOpenTableStudio, keyboardOpen, onToggleKeyboard }: Props) {
   switch (block.type) {
     case "mcq":
       return <McqEditor b={block} onChange={onChange} />;
@@ -41,7 +44,7 @@ export function ContentEditorSwitch({ block, number, lang, totalPoints, onChange
     case "textbox":
       return <TextboxEditor b={block} onChange={onChange} />;
     case "table":
-      return <TableEditor b={block} lang={lang} onChange={onChange} />;
+      return <TablePanel b={block} lang={lang} onChange={onChange} examFont={examFont} onOpenStudio={onOpenTableStudio} />;
     case "equation":
       return <EquationEditor b={block} onLatex={onLatex} keyboardOpen={keyboardOpen} onToggleKeyboard={onToggleKeyboard} />;
     case "image":

@@ -1,10 +1,9 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { isRtl } from "@/app/_lib/i18n";
 import { DEFAULT_ACCENT } from "@/app/_lib/blockLayout";
 import { docFromRich } from "@/app/_lib/textboxDoc";
-import type { HeaderBlock, HeaderFields, HeaderStyle, HeadingDecor, ImageBlock, Lang, TableBlock, TextBlock, TextboxBlock } from "@/app/_lib/types";
+import type { HeaderBlock, HeaderFields, HeaderStyle, HeadingDecor, ImageBlock, Lang, TextBlock, TextboxBlock } from "@/app/_lib/types";
 import { useT } from "@/app/_lib/uiLang";
 import { HEADER_STYLE_OPTIONS, HeaderSketch } from "../HeaderSketch";
 import { ColorGrid } from "../rich/FormatBar";
@@ -66,57 +65,6 @@ export function TextEditor({ b, onChange }: { b: TextBlock; onChange: OnChange }
       )}
       <Field label={t("Text")} hint={t("Tip: click the text on the page and type there.")}>
         <RichInput value={b.text} onChange={(text) => onChange({ text }, "text")} rows={5} multiline={b.style === "body"} />
-      </Field>
-    </>
-  );
-}
-
-export function TableEditor({ b, lang, onChange }: { b: TableBlock; lang: Lang; onChange: OnChange }) {
-  const t = useT();
-  const rows = b.cells.length;
-  const cols = b.cells[0]?.length ?? 1;
-  const setCell = (r: number, c: number, v: string) =>
-    onChange({ cells: b.cells.map((row, i) => (i === r ? row.map((x, k) => (k === c ? v : x)) : row)) }, `cell${r}-${c}`);
-  // New size: keep the custom widths/heights that still apply.
-  const resize = (nr: number, nc: number) => {
-    const cells = Array.from({ length: nr }, (_, r) => Array.from({ length: nc }, (_, c) => b.cells[r]?.[c] ?? ""));
-    const colWidths = nc === cols ? b.colWidths : undefined;
-    const rowHeights = b.rowHeights ? Array.from({ length: nr }, (_, r) => b.rowHeights?.[r] ?? 0) : undefined;
-    onChange({ cells, colWidths, rowHeights }, "size");
-  };
-  const custom = !!b.colWidths || !!b.rowHeights?.some((h) => h > 0);
-
-  return (
-    <>
-      <div className="flex gap-4">
-        <Field label={t("Rows")}>
-          <NumberInput value={rows} min={1} max={20} onChange={(n) => resize(n, cols)} />
-        </Field>
-        <Field label={t("Columns")}>
-          <NumberInput value={cols} min={1} max={8} onChange={(n) => resize(rows, n)} />
-        </Field>
-      </div>
-      <label className="flex items-center gap-2 text-xs text-ink">
-        <input type="checkbox" checked={b.header} onChange={(e) => onChange({ header: e.target.checked }, "header")} className="accent-indigo-600" />
-        {t("First row is a header (bold)")}
-      </label>
-      <p className="rounded-md bg-indigo-50/70 px-2.5 py-2 text-[11px] leading-snug text-indigo-900">
-        {t("Drag the lines of the table on the page to change the width of the columns and the height of the rows.")}
-      </p>
-      {custom && <SmallButton onClick={() => onChange({ colWidths: undefined, rowHeights: undefined }, "sizes")}>{t("Equal columns, automatic rows")}</SmallButton>}
-      <Field label={t("Cells")} hint={isRtl(lang) ? t("Arabic exam: the first column is on the right, like on the paper.") : undefined}>
-        <div className="overflow-x-auto">
-          {/* Same direction as the paper, so each box sits where its cell is printed */}
-          <div className="grid gap-1" dir={isRtl(lang) ? "rtl" : "ltr"} style={{ gridTemplateColumns: `repeat(${cols}, minmax(64px, 1fr))` }}>
-            {b.cells.map((row, r) =>
-              row.map((cell, c) => (
-                <div key={`${r}-${c}`} className={`min-w-0 text-xs [&_.rich-edit]:px-1.5 [&_.rich-edit]:py-1 [&_.rich-edit]:text-xs ${b.header && r === 0 ? "font-semibold" : ""}`}>
-                  <RichInput value={cell} onChange={(v) => setCell(r, c, v)} />
-                </div>
-              )),
-            )}
-          </div>
-        </div>
       </Field>
     </>
   );

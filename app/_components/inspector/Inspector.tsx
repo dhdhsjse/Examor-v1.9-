@@ -27,6 +27,7 @@ interface Props {
   onDuplicate: (id: string) => void;
   onSaveToLibrary: (block: Block) => void;
   onReplaceImage: (id: string) => void;
+  onOpenTableStudio: (shape?: string) => void; // a table: back to the Table Studio on it
   onMeta: (patch: Partial<ExamMeta>, key?: string) => void;
   onChangeTemplate: () => void;
   keyboardOpen: boolean;
@@ -67,6 +68,8 @@ export default function Inspector(props: Props) {
         onChange={(patch, field) => props.onChange(block.id, patch, field)}
         onLatex={(latex) => props.onLatex(block, latex)}
         onReplaceImage={() => props.onReplaceImage(block.id)}
+        examFont={props.meta.fontFamily}
+        onOpenTableStudio={props.onOpenTableStudio}
       />
       {hasFontControls(block) && <BlockFontControls b={block} meta={props.meta} onChange={(patch, field) => props.onChange(block.id, patch, field)} />}
     </div>

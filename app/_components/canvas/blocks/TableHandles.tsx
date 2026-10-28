@@ -4,7 +4,6 @@ import type Konva from "konva";
 import { useState } from "react";
 import { Rect } from "react-konva";
 import { TABLE_MIN_COL, TABLE_MIN_ROW, layoutTable } from "@/app/_lib/blockLayout";
-import { isRtl } from "@/app/_lib/i18n";
 import type { ExamMeta, TableBlock } from "@/app/_lib/types";
 import type { BlockPatch } from "@/app/_lib/useExam";
 
@@ -17,8 +16,8 @@ const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(v,
 // Invisible strips over the inner lines of the selected table: drag them to change
 // column widths (left/right) or row heights (up/down, including the bottom edge).
 export function TableHandles({ b, meta, zoom, onPatch }: { b: TableBlock; meta: ExamMeta; zoom: number; onPatch: (patch: BlockPatch) => void }) {
-  const rtl = isRtl(meta.lang);
   const L = layoutTable(b, meta);
+  const rtl = L.mirror; // (the first column is on the right)
   const grip = GRIP / Math.max(0.5, zoom);
 
   // The line between columns k-1 and k. In Arabic column k is on the LEFT of column k-1.

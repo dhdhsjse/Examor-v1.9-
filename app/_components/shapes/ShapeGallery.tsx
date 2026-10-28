@@ -91,14 +91,31 @@ export function ShapeGallery({ onPick, current }: { onPick: (shape: string) => v
   );
 }
 
-/** A button that opens the gallery under it (the Studios' toolbars). */
-export function ShapesMenuButton({ onPick, active, current, testId = "shapes-menu" }: { onPick: (shape: string) => void; active?: boolean; current?: string | null; testId?: string }) {
+/** A button that opens the gallery under it (the Studios' toolbars). `icon`: a small square button for a ribbon, not a wide one. */
+export function ShapesMenuButton({ onPick, active, current, testId = "shapes-menu", variant = "wide" }: { onPick: (shape: string) => void; active?: boolean; current?: string | null; testId?: string; variant?: "wide" | "icon" }) {
   const t = useT();
   const [open, setOpen] = useState(false);
   const anchor = useRef<HTMLDivElement>(null);
   const close = useCallback(() => setOpen(false), []);
   return (
-    <div ref={anchor} className="relative">
+    <div ref={anchor} className={variant === "icon" ? "relative inline-flex" : "relative"}>
+      {variant === "icon" ? (
+        <button
+          type="button"
+          aria-haspopup="dialog"
+          aria-expanded={open}
+          aria-pressed={active}
+          aria-label={t("Shapes")}
+          data-testid={testId}
+          title={t("Shapes")}
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => setOpen((o) => !o)}
+          className={`inline-flex h-7 flex-none items-center gap-0.5 rounded-md border px-1.5 transition-colors ${active || open ? "border-indigo-300 bg-indigo-50 text-accent" : "border-transparent text-ink hover:bg-subtle"}`}
+        >
+          <Shapes size={15} />
+          <ChevronDown size={11} className="text-muted" />
+        </button>
+      ) : (
       <button
         type="button"
         aria-haspopup="dialog"
@@ -113,6 +130,7 @@ export function ShapesMenuButton({ onPick, active, current, testId = "shapes-men
         <span className="flex-1 text-start">{t("Shapes")}</span>
         <ChevronDown size={14} className="text-muted" />
       </button>
+      )}
       {open && (
         <Popover anchor={anchor} onClose={close} width={300}>
           <div className="p-1.5">

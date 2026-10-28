@@ -4,6 +4,7 @@ import type { CircuitConfig } from "@/app/_lib/circuit/types";
 import type { GraphConfig } from "@/app/_lib/graph/types";
 import type { ListKind } from "@/app/_lib/lists";
 import type { ShapeStyle } from "@/app/_lib/shapes/types";
+import type { TableExtras } from "@/app/_lib/table/model";
 import type { MoleculeBlockData } from "@/app/_molecule/model";
 
 // Language of the exam content. "ar" = Arabic, written right-to-left.
@@ -259,7 +260,10 @@ export interface ImageBlock extends BlockBase {
   circuitStudio?: CircuitConfig; // a circuit from the Circuit Studio: `src` is its picture, redrawn on edit
 }
 
-export interface TableBlock extends BlockBase {
+// A table (Insert → Table, or the Table Studio). `cells` is the text of each cell, as typed (a formula as a formula); everything else about
+// the look and the calculation is optional (TableExtras: merged cells, cell looks, borders, banding, formulas), so a table made before
+// they existed is drawn as it was.
+export interface TableBlock extends BlockBase, TableExtras {
   type: "table";
   cells: string[][];
   header: boolean; // first row in bold

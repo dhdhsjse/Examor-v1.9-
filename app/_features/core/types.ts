@@ -121,6 +121,11 @@ export type Shell = {
   graphStudio: { open: boolean; blockId: string | null };
   openGraphStudio: (blockId?: string) => void;
   closeGraphStudio: () => void;
+  // The Table Studio (table-studio/): a spreadsheet that puts a table block on the page. `blockId` = the table block being edited, null = a
+  // new table; `shape` = the Studio opens on the shapes with this one ready to draw.
+  tableStudio: { open: boolean; blockId: string | null; shape?: string };
+  openTableStudio: (blockId?: string, shape?: string) => void;
+  closeTableStudio: () => void;
   // The Circuit Studio (circuit-studio/): `blockId` = the circuit block being edited, null = a new circuit.
   circuitStudio: { open: boolean; blockId: string | null };
   openCircuitStudio: (blockId?: string) => void;
