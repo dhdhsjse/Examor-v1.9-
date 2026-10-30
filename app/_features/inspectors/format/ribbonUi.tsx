@@ -20,16 +20,36 @@ const keepFocusExceptFields = (e: MouseEvent) => {
 const toneCls = (on: boolean) => (on ? "border-indigo-300 bg-indigo-50 text-accent" : "border-transparent text-ink hover:bg-subtle");
 const BASE = "grid h-7 flex-none place-items-center border transition-colors disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:bg-transparent";
 
-// A titled part of the panel, like a group of the Word ribbon.
-export function RibbonGroup({ title, children, aside }: { title: string; children: ReactNode; aside?: ReactNode }) {
+// A titled part of the panel, like a group of the Word ribbon: flat, with a thin line between it and the next one.
+// `collapsible`: its title folds it (closed at first), for the tools used less often.
+export function RibbonGroup({ title, children, aside, collapsible }: { title: string; children: ReactNode; aside?: ReactNode; collapsible?: boolean }) {
+  const [open, setOpen] = useState(!collapsible);
+  const heading = <h3 className="text-[12px] font-semibold text-ink">{title}</h3>;
   return (
-    <section className="flex flex-col gap-1.5 rounded-lg border border-line p-2.5">
-      <div className="flex items-center justify-between gap-2">
-        <h3 className="text-[11px] font-semibold tracking-wide text-muted uppercase">{title}</h3>
+    <section className="flex flex-col gap-2 border-b border-line py-3 first:pt-0 last:border-b-0 last:pb-0">
+      <div className="flex min-h-5 items-center justify-between gap-2">
+        {collapsible ? (
+          <button type="button" aria-expanded={open} onMouseDown={keepFocus} onClick={() => setOpen((o) => !o)} className="flex flex-1 items-center gap-1 text-start text-muted hover:text-ink">
+            {heading}
+            <ChevronDown size={13} className={`ms-auto transition-transform ${open ? "" : "-rotate-90 rtl:rotate-90"}`} />
+          </button>
+        ) : (
+          heading
+        )}
         {aside}
       </div>
-      {children}
+      {open && children}
     </section>
+  );
+}
+
+// A line of the "More options" group: a small name, then its buttons.
+export function RibbonLine({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="flex items-center gap-2">
+      <span className="w-[4.5rem] flex-none truncate text-[11px] text-muted">{label}</span>
+      <div className="flex min-w-0 flex-1 flex-wrap items-center gap-0.5">{children}</div>
+    </div>
   );
 }
 
@@ -69,6 +89,35 @@ export function RibbonButton({ title, shortcut, icon, label, pressed, disabled, 
       {icon}
       {label && <span>{label}</span>}
     </button>
+  );
+}
+
+// A few buttons in one grey pill, the one that is on raised in white (left / center / right…).
+export function Segmented<V extends string>({ label, value, options, disabled, onChange }: {
+  label: string;
+  value: V | undefined;
+  options: readonly { value: V; title: string; icon: ReactNode }[];
+  disabled?: boolean;
+  onChange: (v: V) => void;
+}) {
+  return (
+    <div role="group" aria-label={label} className={`flex flex-none rounded-lg bg-subtle p-0.5 ${disabled ? "opacity-40" : ""}`}>
+      {options.map((o) => (
+        <button
+          key={o.value}
+          type="button"
+          title={o.title}
+          aria-label={o.title}
+          aria-pressed={value === o.value}
+          disabled={disabled}
+          onMouseDown={keepFocus}
+          onClick={() => onChange(o.value)}
+          className={`grid h-6 w-7 place-items-center rounded-md transition-colors disabled:cursor-not-allowed ${value === o.value ? "bg-white text-ink shadow-sm ring-1 ring-line" : "text-muted hover:text-ink"}`}
+        >
+          {o.icon}
+        </button>
+      ))}
+    </div>
   );
 }
 
@@ -311,4 +360,4 @@ export function ColorMenu({ title, icon, value, initial, autoLabel, colors, disa
 }
 
 // A text field or a list, as high as the buttons.
-export const fieldCls = "h-7 w-full min-w-0 rounded-md border border-line bg-white px-1.5 text-[12.5px] text-ink outline-none focus:border-indigo-400";
+export const fieldCls = "h-7 w-full min-w-0 rounded-md border border-transparent bg-subtle px-1.5 text-[12px] text-ink outline-none hover:border-line focus:border-indigo-400 focus:bg-white";

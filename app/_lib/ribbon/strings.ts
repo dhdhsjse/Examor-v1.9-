@@ -100,6 +100,8 @@ export const RIBBON_FR: Record<string, string> = {
   "Format painter": "Reproduire la mise en forme",
   "click, then select words; double-click to keep painting (Esc stops)": "cliquez, puis sélectionnez des mots ; double-clic pour continuer (Échap arrête)",
   "The browser did not allow the paste: press Ctrl+V": "Le navigateur n'a pas autorisé le collage : appuyez sur Ctrl+V",
+  "More options": "Plus d'options",
+  "Text position": "Position du texte",
 };
 
 export const RIBBON_AR: Record<string, string> = {
@@ -199,4 +201,6 @@ export const RIBBON_AR: Record<string, string> = {
   "Format painter": "نسخ التنسيق",
   "click, then select words; double-click to keep painting (Esc stops)": "انقر ثم حدد الكلمات؛ انقر مرتين للمتابعة (Esc للإيقاف)",
   "The browser did not allow the paste: press Ctrl+V": "لم يسمح المتصفح باللصق: اضغط Ctrl+V",
+  "More options": "خيارات أخرى",
+  "Text position": "موضع النص",
 };

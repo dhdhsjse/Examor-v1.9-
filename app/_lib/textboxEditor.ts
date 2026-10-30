@@ -22,10 +22,11 @@ import { docFromParagraphs, docParagraphs, type DocParagraph } from "./textboxDo
 import { IndentExtension, MAX_INDENT } from "./tiptap-indent";
 import { ListMarkersExtension, ParagraphFormatExtension, type ListOptions } from "./tiptap-paragraph";
 import { StyledUnderline, TextEffect } from "./tiptap-effects";
+import { InlineMath } from "./tiptap-math";
 import { Subscript, Superscript } from "./tiptap-script";
 import type { ParagraphAlign } from "./types";
 
-// Only what the canvas can draw (textboxDoc.ts): paragraphs, line breaks, bold / italic / underline /
+// Only what the canvas can draw (textboxDoc.ts): paragraphs, line breaks, formulas (tiptap-math.ts), bold / italic / underline /
 // strikethrough, subscript / superscript, font, size, color, highlight, paragraph alignment, indent, lists,
 // direction, spacing, shading and borders, and undo. Pasted headings, lists…
 // arrive as plain paragraphs (a pasted list keeps its markers, see richClipboard.listsToParagraphs).
@@ -56,6 +57,7 @@ export const textboxExtensions = (list: ListOptions = { rtl: false, size: 14 }) 
   TextEffect,
   Subscript,
   Superscript,
+  InlineMath,
   TextAlign.configure({ types: ["paragraph"], alignments: ["left", "center", "right", "justify"] }),
   IndentExtension,
   ParagraphFormatExtension,

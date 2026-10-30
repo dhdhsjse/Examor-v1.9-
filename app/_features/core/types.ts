@@ -14,6 +14,7 @@ import type { Template } from '@/app/_lib/templates';
 import type { Version } from '@/app/_lib/versions';
 import type { Tone } from '@/app/_components/ToolTile';
 import type { CanvasTool } from '@/app/_components/workspace/ToolRail';
+import type { OpenedTarget } from '@/app/_components/math-keyboard/FloatingKeyboard';
 
 export type RightTab = 'properties' | 'library';
 
@@ -98,6 +99,9 @@ export type Shell = {
   replaceImage: (id: string) => void;
   mathKeyboard: boolean;
   toggleMathKeyboard: (open?: boolean) => void;
+  // A math keyboard key pressed with no text open: opens the selected block's text, or its equation field (Properties panel shown), or
+  // adds a new equation when nothing that takes text is selected. Says what was opened (see FloatingKeyboard).
+  openForTyping: () => OpenedTarget;
   // overlays
   picker: { open: boolean; mustPick: boolean };
   openPicker: () => void;

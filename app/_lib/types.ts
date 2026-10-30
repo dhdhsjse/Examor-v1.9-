@@ -328,6 +328,9 @@ export interface HeaderBlock extends BlockBase {
   fields: HeaderFields;
   accent?: string; // main color of the colored styles (missing = each style's own color)
   aligns?: Partial<Record<string, TextAlign>>; // alignment chosen for a text of the header, by field key
+  // A page header spans the paper: its texts and boxes stay this far from each edge (the page margins);
+  // only its bands and rules run to the edges. Missing = everything inside the block's width.
+  inset?: { left: number; right: number };
 }
 
 export type TextAlign = "left" | "center" | "right";
@@ -346,7 +349,13 @@ export interface TextboxBlock extends BlockBase {
   background?: string; // fill color of the box, printed (missing = none)
   border?: string; // color of a line around the box, printed (missing = none)
   padding?: number; // room between the box's edge and its text, px (missing = TEXTBOX_PAD)
+  // How the box follows its text (Figma's "Resizing"): "auto-width" = as wide and as tall as the text, on one line per paragraph;
+  // "auto-height" = the width it was given, as tall as the text (no empty room under it); missing = "fixed": the size it was given,
+  // taller only when the text needs it.
+  sizing?: TextboxSizing;
 }
+
+export type TextboxSizing = "auto-width" | "auto-height" | "fixed";
 
 // A shape (Insert → Shapes): a line, an arrow, a box, a callout… drawn on the page in the block's box, with its own fill, outline and
 // text (ShapeStyle). A line runs from one corner of the box to the opposite one, so its height can be 0.

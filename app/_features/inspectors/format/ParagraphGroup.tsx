@@ -1,16 +1,17 @@
 "use client";
 
-import { AlignCenter, AlignJustify, AlignLeft, AlignRight, ArrowDownAZ, ArrowDownZA, IndentDecrease, IndentIncrease, List, ListChevronsUpDown, ListOrdered, ListTree, PaintBucket, Pilcrow, PilcrowLeft, PilcrowRight } from "lucide-react";
+import { AlignCenter, AlignJustify, AlignLeft, AlignRight, ArrowDownAZ, ArrowDownToLine, ArrowDownZA, ArrowUpToLine, FoldVertical, IndentDecrease, IndentIncrease, List, ListChevronsUpDown, ListOrdered, ListTree, PaintBucket, Pilcrow, PilcrowLeft, PilcrowRight } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import type { Ctx } from "@/app/_features/core/types";
 import { FILL_COLORS, TEXT_COLORS } from "@/app/_lib/fonts";
 import { formattingMarks, useShowMarks } from "@/app/_lib/formattingMarks";
 import { BULLET_KINDS, NUMBER_KINDS, isBulletKind, markerText, type ListKind } from "@/app/_lib/lists";
 import { LINE_STEPS, MAX_LINE, MAX_SPACE, MIN_LINE } from "@/app/_lib/paragraphFormat";
+import type { Block } from "@/app/_lib/types";
 import type { T } from "@/app/_lib/uiLang";
 import { ColorGrid } from "@/app/_components/rich/FormatBar";
 import type { ParagraphTarget } from "./formatTarget";
-import { ColorMenu, Divider, Menu, MenuButton, MenuHeading, MenuItem, MenuSeparator, RibbonButton, RibbonGroup, RibbonRow } from "./ribbonUi";
+import { ColorMenu, Divider, Menu, MenuButton, MenuHeading, MenuItem, MenuSeparator, RibbonButton, RibbonGroup, RibbonRow, Segmented, keepFocus } from "./ribbonUi";
 
 const BULLET_NAMES: Record<string, string> = { bullet: "Bullet", circle: "Circle", square: "Square", arrow: "Arrow", check: "Check mark", dash: "Dash" };
 
@@ -149,6 +150,49 @@ function SpacingMenu({ t, para }: { t: T; para: ParagraphTarget }) {
   );
 }
 
+// − value +, like the inner margin of a text box; its buttons keep the focus in the text being typed.
+function StepField({ label, value, title, onDown, onUp }: { label: string; value: string; title?: string; onDown?: () => void; onUp?: () => void }) {
+  const btn = "grid size-7 place-items-center rounded-md text-xs font-semibold text-ink hover:bg-white disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:bg-transparent";
+  return (
+    <div className="flex items-center justify-between gap-2">
+      <span className="text-[11px] text-muted">{label}</span>
+      <div className="flex items-center rounded-md bg-subtle ring-1 ring-line" title={title}>
+        <button type="button" aria-label={`${label} −`} disabled={!onDown} onMouseDown={keepFocus} onClick={onDown} className={btn}>
+          −
+        </button>
+        <span className="w-9 text-center text-xs font-semibold tabular-nums">{value}</span>
+        <button type="button" aria-label={`${label} +`} disabled={!onUp} onMouseDown={keepFocus} onClick={onUp} className={btn}>
+          +
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// Line spacing (through the usual steps: 1, 1.15, 1.5…) and the space after each paragraph, for the text box's settings.
+export function SpacingFields({ t, para }: { t: T; para: ParagraphTarget }) {
+  if (!para.can.line) return null;
+  const cur = para.lineHeight;
+  const up = LINE_STEPS.find((v) => v > cur + 0.005);
+  const down = [...LINE_STEPS].reverse().find((v) => v < cur - 0.005);
+  const setLine = (v: number) => para.setLineHeight(v === 1 ? null : v);
+  const after = para.spaceAfter;
+  return (
+    <>
+      <StepField label={t("Line spacing")} value={fmt(cur)} onDown={down === undefined ? undefined : () => setLine(down)} onUp={up === undefined ? undefined : () => setLine(up)} />
+      {para.can.space && (
+        <StepField
+          label={t("Paragraph spacing")}
+          value={String(after)}
+          title={t("Space after each paragraph (px)")}
+          onDown={after > 0 ? () => para.setSpace({ after: Math.max(0, after - 2) }) : undefined}
+          onUp={after < MAX_SPACE ? () => para.setSpace({ after: Math.min(MAX_SPACE, after + 2) }) : undefined}
+        />
+      )}
+    </>
+  );
+}
+
 // Lines around the paragraph, on the sides the teacher picks, in a color.
 function BordersMenu({ t, para }: { t: T; para: ParagraphTarget }) {
   const sides = para.border ?? "";
@@ -201,78 +245,114 @@ const ALIGNS = [
   { value: "left", label: "Align left", Icon: AlignLeft },
   { value: "center", label: "Center", Icon: AlignCenter },
   { value: "right", label: "Align right", Icon: AlignRight },
-  { value: "justify", label: "Justify", Icon: AlignJustify },
+] as const;
+
+// Where the text sits in a text box, from its top to its bottom.
+const VALIGNS = [
+  { value: "top", label: "Top", Icon: ArrowUpToLine },
+  { value: "middle", label: "Middle", Icon: FoldVertical },
+  { value: "bottom", label: "Bottom", Icon: ArrowDownToLine },
 ] as const;
 
 // What a block that is not a text cannot do says why.
 const only = (t: T, title: string, ok: boolean) => (ok ? title : `${title} — ${t("For texts and text boxes")}`);
 
-// Lists, indent, order, alignment, direction, spacing, shading and borders: the "Paragraph" group of the Word ribbon.
-export default function ParagraphGroup({ ctx, para }: { ctx: Ctx; para: ParagraphTarget }) {
+// Alignment (across, and down a text box), direction, indent, lists and borders: what is used every time (the rest is in
+// ParagraphExtras). `ownSpacing`: the spacing is set in the box's settings (SpacingFields), not with the menu here.
+export default function ParagraphGroup({ ctx, b, para, ownSpacing }: { ctx: Ctx; b: Block; para: ParagraphTarget; ownSpacing?: boolean }) {
+  const { t } = ctx;
+  const { can } = para;
+  const align = para.align === "justify" ? undefined : para.align;
+  return (
+    <RibbonGroup title={t("Paragraph")}>
+      <div className="flex flex-col gap-1.5">
+        <span className="text-[11px] text-muted">{t("Alignment")}</span>
+        <div className="flex items-center gap-2">
+          <Segmented
+            label={t("Alignment")}
+            value={align}
+            disabled={!can.align}
+            options={ALIGNS.map(({ value, label, Icon }) => ({ value, title: only(t, t(label), can.align), icon: <Icon size={14} /> }))}
+            onChange={(v) => para.setAlign(para.align === v ? undefined : v)}
+          />
+          {b.type === "textbox" && (
+            <Segmented
+              label={t("Text position")}
+              value={b.valign ?? "top"}
+              options={VALIGNS.map(({ value, label, Icon }) => ({ value, title: t(label), icon: <Icon size={14} /> }))}
+              onChange={(valign) => ctx.shell.updateBlock(b.id, { valign }, "valign")}
+            />
+          )}
+        </div>
+      </div>
+
+      <RibbonRow>
+        <RibbonButton title={only(t, t("Left-to-right"), can.dir)} icon={<PilcrowRight size={16} />} pressed={para.dirShown === "ltr"} disabled={!can.dir} onClick={() => para.setDirection(para.dir === "ltr" ? null : "ltr")} />
+        <RibbonButton title={only(t, t("Right-to-left"), can.dir)} icon={<PilcrowLeft size={16} />} pressed={para.dirShown === "rtl"} disabled={!can.dir} onClick={() => para.setDirection(para.dir === "rtl" ? null : "rtl")} />
+        <Divider />
+        <RibbonButton title={t("Decrease indent")} shortcut="Ctrl+Shift+M" icon={<IndentDecrease size={16} className="rtl:-scale-x-100" />} disabled={!can.indent || !para.indent.out} onClick={() => para.shiftIndent(-1)} />
+        <RibbonButton title={t("Increase indent")} shortcut="Ctrl+M" icon={<IndentIncrease size={16} className="rtl:-scale-x-100" />} disabled={!can.indent || !para.indent.in} onClick={() => para.shiftIndent(1)} />
+        {!ownSpacing && (
+          <>
+            <Divider />
+            <SpacingMenu t={t} para={para} />
+          </>
+        )}
+      </RibbonRow>
+
+      <RibbonRow>
+        <ListMenu t={t} para={para} kinds={BULLET_KINDS} icon={<List size={16} />} title={only(t, t("Bullets"), can.list)} />
+        <ListMenu t={t} para={para} kinds={NUMBER_KINDS} icon={<ListOrdered size={16} />} title={only(t, t("Numbering"), can.list)} />
+        <Divider />
+        <BordersMenu t={t} para={para} />
+      </RibbonRow>
+    </RibbonGroup>
+  );
+}
+
+// The paragraph tools used less often: justify, multilevel list, sort, shading, formatting marks.
+export function ParagraphExtras({ ctx, para }: { ctx: Ctx; para: ParagraphTarget }) {
   const { t } = ctx;
   const { can } = para;
   const showMarks = useShowMarks();
   return (
-    <RibbonGroup title={t("Paragraph")}>
-      <RibbonRow>
-        <ListMenu t={t} para={para} kinds={BULLET_KINDS} icon={<List size={16} />} title={only(t, t("Bullets"), can.list)} />
-        <ListMenu t={t} para={para} kinds={NUMBER_KINDS} icon={<ListOrdered size={16} />} title={only(t, t("Numbering"), can.list)} />
-        <RibbonButton title={only(t, t("Multilevel list"), can.list)} icon={<ListTree size={16} />} pressed={para.list === "multi"} disabled={!can.list} onClick={() => para.setList(para.list === "multi" ? null : "multi")} />
-        <Divider />
-        <RibbonButton title={t("Decrease indent")} shortcut="Ctrl+Shift+M" icon={<IndentDecrease size={16} className="rtl:-scale-x-100" />} disabled={!can.indent || !para.indent.out} onClick={() => para.shiftIndent(-1)} />
-        <RibbonButton title={t("Increase indent")} shortcut="Ctrl+M" icon={<IndentIncrease size={16} className="rtl:-scale-x-100" />} disabled={!can.indent || !para.indent.in} onClick={() => para.shiftIndent(1)} />
-        <Divider />
-        <MenuButton title={only(t, t("Sort"), can.sort)} icon={<ArrowDownAZ size={16} />} disabled={!can.sort}>
-          {(close) => (
-            <Menu label={t("Sort")}>
-              <MenuItem
-                label={t("Sort A to Z")}
-                icon={<ArrowDownAZ size={15} />}
-                onSelect={() => {
-                  para.sort("asc");
-                  close();
-                }}
-              />
-              <MenuItem
-                label={t("Sort Z to A")}
-                icon={<ArrowDownZA size={15} />}
-                onSelect={() => {
-                  para.sort("desc");
-                  close();
-                }}
-              />
-            </Menu>
-          )}
-        </MenuButton>
-      </RibbonRow>
-
-      <RibbonRow>
-        {ALIGNS.map(({ value, label, Icon }) => (
-          <RibbonButton key={value} title={only(t, t(label), can.align)} icon={<Icon size={15} />} pressed={para.align === value} disabled={!can.align} onClick={() => para.setAlign(para.align === value ? undefined : value)} />
-        ))}
-        <Divider />
-        <RibbonButton title={only(t, t("Left-to-right"), can.dir)} icon={<PilcrowRight size={16} />} pressed={para.dirShown === "ltr"} disabled={!can.dir} onClick={() => para.setDirection(para.dir === "ltr" ? null : "ltr")} />
-        <RibbonButton title={only(t, t("Right-to-left"), can.dir)} icon={<PilcrowLeft size={16} />} pressed={para.dirShown === "rtl"} disabled={!can.dir} onClick={() => para.setDirection(para.dir === "rtl" ? null : "rtl")} />
-        <Divider />
-        <SpacingMenu t={t} para={para} />
-      </RibbonRow>
-
-      <RibbonRow>
-        <ColorMenu
-          title={only(t, t("Shading"), can.shading)}
-          icon={<PaintBucket size={15} />}
-          value={para.shading}
-          initial="#fef08a"
-          autoLabel={t("No color")}
-          colors={FILL_COLORS}
-          disabled={!can.shading}
-          toggle
-          onChange={(c) => para.setShading(c ?? null)}
-        />
-        <BordersMenu t={t} para={para} />
-        <Divider />
-        <RibbonButton title={t("Show formatting marks")} icon={<Pilcrow size={16} />} pressed={showMarks} onClick={formattingMarks.toggle} />
-      </RibbonRow>
-    </RibbonGroup>
+    <>
+      <RibbonButton title={only(t, t("Justify"), can.align)} icon={<AlignJustify size={15} />} pressed={para.align === "justify"} disabled={!can.align} onClick={() => para.setAlign(para.align === "justify" ? undefined : "justify")} />
+      <RibbonButton title={only(t, t("Multilevel list"), can.list)} icon={<ListTree size={16} />} pressed={para.list === "multi"} disabled={!can.list} onClick={() => para.setList(para.list === "multi" ? null : "multi")} />
+      <MenuButton title={only(t, t("Sort"), can.sort)} icon={<ArrowDownAZ size={16} />} disabled={!can.sort}>
+        {(close) => (
+          <Menu label={t("Sort")}>
+            <MenuItem
+              label={t("Sort A to Z")}
+              icon={<ArrowDownAZ size={15} />}
+              onSelect={() => {
+                para.sort("asc");
+                close();
+              }}
+            />
+            <MenuItem
+              label={t("Sort Z to A")}
+              icon={<ArrowDownZA size={15} />}
+              onSelect={() => {
+                para.sort("desc");
+                close();
+              }}
+            />
+          </Menu>
+        )}
+      </MenuButton>
+      <ColorMenu
+        title={only(t, t("Shading"), can.shading)}
+        icon={<PaintBucket size={15} />}
+        value={para.shading}
+        initial="#fef08a"
+        autoLabel={t("No color")}
+        colors={FILL_COLORS}
+        disabled={!can.shading}
+        toggle
+        onChange={(c) => para.setShading(c ?? null)}
+      />
+      <RibbonButton title={t("Show formatting marks")} icon={<Pilcrow size={16} />} pressed={showMarks} onClick={formattingMarks.toggle} />
+    </>
   );
 }

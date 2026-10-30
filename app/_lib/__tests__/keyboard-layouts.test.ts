@@ -36,6 +36,15 @@ describe("keyboard layouts", () => {
     }
   });
 
+  // One key, one place: the same key in two tabs is clutter (π lives in Basics, θ in Greek letters, sin in Trigonometry…).
+  it.each(layouts)("%s: no key is in two tabs", (_name, tabs) => {
+    const home = new Map<string, string>();
+    for (const { tab, key } of allKeys(tabs)) {
+      expect(home.get(key.latex), `"${key.title}" (${key.latex}) is in ${home.get(key.latex)} and ${tab}`).toBeUndefined();
+      home.set(key.latex, tab);
+    }
+  });
+
   it("the math keyboard has the Basics and Trigonometry tabs", () => {
     const ids = mathTabs.map((tab) => tab.id);
     expect(ids).toContain("basic");
@@ -79,6 +88,14 @@ describe("keyboard layouts", () => {
     for (const { tab, key } of allKeys(tabs)) {
       const markup = convertLatexToMarkup(key.latex.replace(/#@|#0/g, "x"));
       expect(markup.includes("ML__error"), `${tab}: "${key.title}" (${key.latex}) is not valid in MathLive`).toBe(false);
+    }
+  });
+
+  // A key like "squared" pressed in an empty equation leaves MathLive's \placeholder{} in it: the page still draws it.
+  it("an equation with a box not filled in is drawn without an unknown command", async () => {
+    for (const latex of ["\\placeholder{}^{2}", "\\frac{\\placeholder{}}{\\placeholder[b]{3}}"]) {
+      const { svg } = await renderEquation(latex);
+      expect(/fill="red"|stroke="red"/.test(svg), latex).toBe(false);
     }
   });
 

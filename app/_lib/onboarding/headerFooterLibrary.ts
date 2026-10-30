@@ -4,7 +4,8 @@
 import { blockHeight } from "../blockLayout";
 import { createBlock, defaultHeaderFields } from "../blocks";
 import { decodeStyle, isRich, parseRich, plainText, serializeRich } from "../richText";
-import type { Block, BlockFont, ExamMeta, HeaderFields, HeaderStyle, Lang, TextAlign, TextStyle } from "../types";
+import { mmToPx } from "../a4";
+import type { Block, BlockFont, ExamMeta, HeaderFields, HeaderStyle, Lang, PageMargins, TextAlign, TextStyle } from "../types";
 import type { HeaderFooterBuildCtx, HeaderFooterField, HeaderFooterTemplate } from "../onboardingTypes";
 
 // Default exam settings: heights only need the language here.
@@ -12,6 +13,11 @@ const metaOf = (c: HeaderFooterBuildCtx): ExamMeta => ({ title: c.examTitle, lan
 
 const GAP = 10;
 const contentWidth = (c: HeaderFooterBuildCtx) => c.pageSize.width - c.margins.left - c.margins.right;
+
+// How far the texts of a page header stay from the edges of the paper: the page margins, so they line
+// up with the questions, and never closer than 8 mm, where printers leave the paper blank.
+const MIN_HEADER_INSET = mmToPx(8);
+export const headerInset = (m: PageMargins) => ({ left: Math.max(m.left, MIN_HEADER_INSET), right: Math.max(m.right, MIN_HEADER_INSET) });
 
 // Tag a block so the wizard can find and replace it later. `field`: the text of the settings it shows,
 // so typing it on the page changes the settings (pageChrome.ts).
@@ -77,18 +83,20 @@ function headerFields(c: HeaderFooterBuildCtx, defaults?: (lang: Lang) => Partia
   };
 }
 
-// The exam header block, at height `y` of the printable area. `data["align.<field>"]`: the alignment
-// chosen for one of its texts.
+// The exam header block, at height `y` of the printable area, from one edge of the paper to the other:
+// its bands and rules reach the edges, its texts stay at the margins (`inset`).
+// `data["align.<field>"]`: the alignment chosen for one of its texts.
 function examHeader(c: HeaderFooterBuildCtx, style: HeaderStyle, y: number, defaults?: (lang: Lang) => Partial<HeaderFields>): Block {
   const accent = c.data.accent?.trim();
   const family = c.data.fontFamily?.trim();
   const aligns = Object.fromEntries(Object.entries(c.data).flatMap(([k, v]) => (k.startsWith("align.") && v ? [[k.slice(6), v as TextAlign]] : [])));
-  const b = createBlock("header", c.lang, c.pageId, { style, fields: headerFields(c, defaults), width: contentWidth(c), ...(accent ? { accent } : {}) });
+  const b = createBlock("header", c.lang, c.pageId, { style, fields: headerFields(c, defaults), width: c.pageSize.width, ...(accent ? { accent } : {}) });
   return {
     ...b,
     ...(family ? { font: { family } } : {}),
     ...(Object.keys(aligns).length ? { aligns } : {}),
-    layout: { ...b.layout, x: c.margins.left, y },
+    inset: headerInset(c.margins),
+    layout: { ...b.layout, x: 0, y },
   } as Block;
 }
 

@@ -13,6 +13,7 @@ import type {
   BlankBlock,
   Block,
   ClassifyBlock,
+  ExamDoc,
   ExamMeta,
   HeaderStyle,
   HeadingDecor,
@@ -28,6 +29,7 @@ import type {
   TableBlock,
   TextBlock,
   TextboxBlock,
+  TextboxSizing,
   TextStyle,
   TrueFalseBlock,
 } from "./types";
@@ -408,7 +410,9 @@ export function textboxSpec(b: TextboxBlock, meta: ExamMeta): Spec {
 }
 
 // Room between a text box's edge and its text (kept small enough to leave the text some width).
-export const textboxPad = (b: TextboxBlock) => Math.max(0, Math.min(b.padding ?? TEXTBOX_PAD, TEXTBOX_MAX_PAD, (b.layout.width - 20) / 2));
+// (A narrow box keeps some room for its text; an auto-width box grows around its margin instead.)
+export const textboxPad = (b: TextboxBlock) =>
+  Math.max(0, Math.min(b.padding ?? TEXTBOX_PAD, TEXTBOX_MAX_PAD, b.sizing === "auto-width" ? Infinity : (b.layout.width - 20) / 2));
 
 // The writing direction of a text or text box: its own, else the exam's.
 export const blockRtl = (b: { dir?: "ltr" | "rtl" }, meta: ExamMeta) => (b.dir ? b.dir === "rtl" : isRtl(meta.lang));
@@ -463,12 +467,55 @@ const BOX_PAD = 3; // how far a shading or a border goes beyond the text (px)
 
 // A text box: its paragraphs (textboxDoc.ts) wrapped inside the box, each with its own alignment, direction,
 // spacing, list marker and shading (else the box's), the text placed at the top / middle / bottom. The box is
-// as tall as it was made, or taller when the text needs it. `hint`: drawn instead while the box is empty (one
-// styled paragraph).
+// as tall as it was made, or taller when the text needs it; with an automatic size (`sizing`) it is just as tall as its text, and
+// as wide as its longest line for "auto-width". `hint`: drawn instead while the box is empty (one styled paragraph).
 export function layoutTextbox(b: TextboxBlock, meta: ExamMeta, hint?: string) {
+  if (b.sizing !== "auto-width") return layoutTextboxIn(b, meta, Math.max(20, b.layout.width - textboxPad(b) * 2), hint);
+  // As wide as the longest line: laid out with no limit first, then in that width (so the alignments and the right-to-left lines fit it).
+  const natural = layoutTextboxIn(b, meta, NO_WRAP, hint).natural;
+  return layoutTextboxIn(b, meta, Math.max(MIN_AUTO_WIDTH, Math.ceil(natural) + 1), hint);
+}
+
+const NO_WRAP = 100_000;
+const MIN_AUTO_WIDTH = 8; // an empty auto-width box keeps room for the cursor
+
+/** The size a text box takes from its text (`sizing`), where it differs from the one stored in its layout; null when it has none. */
+export function textboxFit(b: TextboxBlock, meta: ExamMeta): { width?: number; height?: number } | null {
+  if (!b.sizing || b.sizing === "fixed") return null;
+  const L = layoutTextbox(b, meta);
+  const width = Math.round(L.width + L.x * 2);
+  const height = Math.round(L.height);
+  const fit: { width?: number; height?: number } = {};
+  if (b.sizing === "auto-width" && width !== b.layout.width) fit.width = width;
+  if (height !== b.layout.height) fit.height = height;
+  return fit.width === undefined && fit.height === undefined ? null : fit;
+}
+
+/** The document with every auto-sized text box at the size of its text (the same document when none has to change). */
+export function fitTextboxes(d: ExamDoc): ExamDoc {
+  let changed = false;
+  const blocks = d.blocks.map((b) => {
+    if (b.type !== "textbox") return b;
+    const fit = textboxFit(b, d.meta);
+    if (!fit) return b;
+    changed = true;
+    return { ...b, layout: { ...b.layout, ...fit } };
+  });
+  return changed ? { ...d, blocks } : d;
+}
+
+// What a drag of the box's edge does to its automatic size, as in Figma: a new height makes it "fixed", a new width makes an
+// "auto-width" box "auto-height" (the text wraps in the width given).
+export function sizingAfterResize(b: TextboxBlock, meta: ExamMeta, size: { width?: number; height?: number }): TextboxSizing | undefined {
+  if (!b.sizing || b.sizing === "fixed") return b.sizing;
+  if (size.height !== undefined && Math.abs(size.height - layoutTextbox(b, meta).height) > 1) return "fixed";
+  if (b.sizing === "auto-width" && size.width !== undefined && Math.abs(size.width - b.layout.width) > 1) return "auto-height";
+  return b.sizing;
+}
+
+function layoutTextboxIn(b: TextboxBlock, meta: ExamMeta, width: number, hint?: string) {
   const s = textboxSpec(b, meta);
   const pad = textboxPad(b);
-  const width = Math.max(20, b.layout.width - pad * 2);
   const boxRtl = blockRtl(b, meta);
   const empty: DocParagraph = { runs: [], indent: 0, spaceBefore: 0, spaceAfter: 0 };
   const source: DocParagraph[] = hint ? [{ ...empty, runs: parseRich(hint) }] : docParagraphs(textboxDoc(b));
@@ -476,6 +523,7 @@ export function layoutTextbox(b: TextboxBlock, meta: ExamMeta, hint?: string) {
   const rtls = items.map((p) => (p.dir ? p.dir === "rtl" : boxRtl));
   const markers = listMarkers(items.map((p, i) => ({ list: p.list, level: p.indent, arabic: rtls[i] })));
   let top = 0;
+  let natural = 0; // the width the longest line takes, with its indent and list marker
   const paragraphs: TextboxParagraph[] = items.map((p, i) => {
     const rtl = rtls[i];
     // Indented from the start side, keeping some room for the text.
@@ -489,6 +537,7 @@ export function layoutTextbox(b: TextboxBlock, meta: ExamMeta, hint?: string) {
     const line = p.lineHeight ? Math.round(s.font.size * (20 / 14) * p.lineHeight) : s.line;
     const textWidth = width - indent - gap;
     const lines = wrapRich(serializeRich(p.runs) || " ", textWidth, s.font, line);
+    natural = Math.max(natural, indent + gap + Math.max(0, ...lines.map((l) => l.width)));
     const out: TextboxParagraph = { lines, x: pad + (rtl ? 0 : indent + gap), y: top, width: textWidth, align: p.align ?? b.align, rtl };
     if (markerText) {
       const placed = markerLine(markerText, p.runs, s.font, lines[0]);
@@ -509,11 +558,12 @@ export function layoutTextbox(b: TextboxBlock, meta: ExamMeta, hint?: string) {
     return out;
   });
   const content = Math.max(top, s.line);
-  const height = Math.max(b.layout.height, content + pad * 2);
+  // An automatic size has no room under the text; a fixed one keeps the height it was given.
+  const height = b.sizing === "auto-width" || b.sizing === "auto-height" ? content + pad * 2 : Math.max(b.layout.height, content + pad * 2);
   const free = height - content - pad * 2;
   const y = pad + (b.valign === "middle" ? free / 2 : b.valign === "bottom" ? free : 0);
   const align: ParagraphAlign | undefined = b.align;
-  return { spec: s, paragraphs, x: pad, y, width, content, height, align };
+  return { spec: s, paragraphs, x: pad, y, width, content, height, align, natural };
 }
 
 export interface Decoration {

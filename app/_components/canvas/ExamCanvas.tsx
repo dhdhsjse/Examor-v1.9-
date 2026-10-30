@@ -1,7 +1,7 @@
 "use client";
 
 import type Konva from "konva";
-import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
+import { useEffect, useImperativeHandle, useMemo, useRef, useState, type RefObject } from "react";
 import { Layer, Line, Rect, Stage, Transformer } from "react-konva";
 import { DEFAULT_MARGINS, MAX_MARGIN_MM, MIN_MARGIN_MM, mmToPx, pxToMm } from "@/app/_lib/a4";
 import { questionNumbers, totalPoints as sumPoints } from "@/app/_lib/blocks";
@@ -63,7 +63,14 @@ interface Props {
   // the block is while it is resized (stage = page stack coordinates; null = done).
   onHandleDown?: () => void;
   onResizing?: (id: string, r: ResizeResult | null) => void;
+  // A block moved from outside the stage (the text box being typed in, dragged by its edge): it is not drawn here
+  // meanwhile (`hiddenId`), and `mover` snaps it and drops it like a block dragged on the canvas.
+  hiddenId?: string | null;
+  mover?: RefObject<BlockMover | null>;
 }
+
+// Moving a block from outside (page stack pixels): `move` gives where it goes (snapped, inside its page), `end` drops it there.
+export type BlockMover = { move: (id: string, x: number, y: number) => { x: number; y: number }; end: (id: string, x: number, y: number) => void };
 
 const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(v, max));
 
@@ -153,6 +160,18 @@ export default function ExamCanvas(props: Props) {
     props.onDragging?.(false);
     props.onMove?.(b.id, pages[i].id, x - boxes[i].left, y - boxes[i].top);
   };
+
+  // The same drag, for a block moved from outside the stage.
+  useImperativeHandle(props.mover, () => ({
+    move: (id, x, y) => {
+      const b = blocks.find((o) => o.id === id);
+      return b ? handleDragMove(b, x, y) : { x, y };
+    },
+    end: (id, x, y) => {
+      const b = blocks.find((o) => o.id === id);
+      if (b) handleDragEnd(b, x, y);
+    },
+  }));
 
   // Resize end: keep the block inside its page; images/equations keep their shape.
   const handleResize = (b: Block, r: ResizeResult) => {
@@ -278,7 +297,7 @@ export default function ExamCanvas(props: Props) {
           />
         ))}
 
-        {blocks.map((b) => (
+        {blocks.filter((b) => b.id !== props.hiddenId).map((b) => (
           <BlockNode
             key={b.id}
             block={b}

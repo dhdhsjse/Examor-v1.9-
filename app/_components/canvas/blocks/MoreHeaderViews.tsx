@@ -18,6 +18,9 @@ export interface HeaderCtx {
   outOf: number;
   accent: string | undefined; // the teacher's color (each style has its own otherwise)
   at: (x: number, w: number) => number; // x of a box placed `x` from the start side
+  x0: number; // left edge of the paper (≤ 0): bands and rules run from x0 to x1
+  x1: number; // right edge of the paper (≥ W)
+  y0: number; // top edge of the paper (≤ 0): colored bands start there
 }
 
 const DOTS = "....................................";
@@ -28,7 +31,7 @@ const ltr = (s: string) => `⁦${s}⁩`;
 export const MORE_HEADER_STYLES: HeaderStyle[] = ["official", "split", "compact", "evaluation", "playful", "cards", "algerian"];
 
 export function MoreHeaderView({ style, c }: { style: HeaderStyle; c: HeaderCtx }) {
-  const { W, H, rtl, family, t, f, title, sub, outOf, at } = c;
+  const { W, H, rtl, family, t, f, title, sub, outOf, at, x0, x1, y0 } = c;
   const start = rtl ? "right" : "left";
   const end = rtl ? "left" : "right";
   const L = (p: { text: string; x: number; y: number; width: number; size: number; bold?: boolean; color?: string; align?: "left" | "right" | "center"; dir?: boolean }) => (
@@ -48,7 +51,8 @@ export function MoreHeaderView({ style, c }: { style: HeaderStyle; c: HeaderCtx 
         <>
           {L({ text: f.republic ?? "", x: 0, y: 0, width: W, size: 13, bold: true, align: "center" })}
           {L({ text: f.authority ?? "", x: 0, y: 22, width: W, size: 12, bold: true, align: "center" })}
-          <Rect x={0} y={row} width={W} height={rowH} stroke={INK} strokeWidth={1.2} listening={false} />
+          <Line points={[x0, row, x1, row]} stroke={INK} strokeWidth={1.2} listening={false} />
+          <Line points={[x0, row + rowH, x1, row + rowH]} stroke={INK} strokeWidth={1.2} listening={false} />
           <Line points={[half, row, half, row + rowH]} stroke={INK} strokeWidth={1} listening={false} />
           {L({ text: f.directorate ?? "", x: at(8, half - 16), y: row + 9, width: half - 16, size: 12, align: start })}
           {L({ text: f.school, x: at(8, half - 16), y: row + 30, width: half - 16, size: 12, align: start })}
@@ -59,7 +63,7 @@ export function MoreHeaderView({ style, c }: { style: HeaderStyle; c: HeaderCtx 
           {L({ text: `${t.subject} : ${f.subject}`, x: at(0, W * 0.4), y: last, width: W * 0.4, size: 12, bold: true, align: start })}
           {L({ text: `${t.duration} : ${f.duration}`, x: at(W * 0.4, W * 0.3), y: last, width: W * 0.3, size: 12, align: "center" })}
           {L({ text: `${t.score} : ${ltr(`...... / ${outOf}`)}`, x: at(W * 0.7, W * 0.3), y: last, width: W * 0.3, size: 12, bold: true, align: end })}
-          <Line points={[0, last + 24, W, last + 24]} stroke={INK} strokeWidth={1} listening={false} />
+          <Line points={[x0, last + 24, x1, last + 24]} stroke={INK} strokeWidth={1} listening={false} />
         </>
       );
     }
@@ -123,7 +127,7 @@ export function MoreHeaderView({ style, c }: { style: HeaderStyle; c: HeaderCtx 
           {L({ text: `${t.score} : ${ltr(`..... / ${outOf}`)}`, x: at(W - boxW, boxW), y: 7, width: boxW, size: 13, bold: true, align: "center" })}
           {L({ text: [f.school, f.subject, f.level, f.duration, f.year].filter(Boolean).join("  ·  "), x: at(0, W - boxW - 12), y: 30, width: W - boxW - 12, size: 11, color: MUTED, align: start })}
           {L({ text: `${t.name} : ${DOTS}${DOTS}      ${t.class} : ${DOTS_S}`, x: 0, y: 52, width: W, size: 12, align: start })}
-          <Line points={[0, H - 2, W, H - 2]} stroke={accent} strokeWidth={1.6} listening={false} />
+          <Line points={[x0, H - 2, x1, H - 2]} stroke={accent} strokeWidth={1.6} listening={false} />
         </>
       );
     }
@@ -170,7 +174,8 @@ export function MoreHeaderView({ style, c }: { style: HeaderStyle; c: HeaderCtx 
       const bx = rtl ? 52 : W - 52; // center of the badge
       return (
         <>
-          <Rect width={W} height={band} fill={tint(accent, "1f")} stroke={accent} strokeWidth={2} cornerRadius={18} listening={false} />
+          <Rect x={x0} y={y0} width={x1 - x0} height={band - y0} fill={tint(accent, "1f")} listening={false} />
+          <Line points={[x0, band - 1, x1, band - 1]} stroke={accent} strokeWidth={2} listening={false} />
           <Star x={at(26, 0)} y={24} numPoints={5} innerRadius={6} outerRadius={13} fill={accent} listening={false} />
           <Star x={at(54, 0)} y={60} numPoints={5} innerRadius={4} outerRadius={8} fill={tint(accent, "99")} listening={false} />
           {L({ text: title, x: 90, y: 16, width: W - 200, size: 22, bold: true, align: "center" })}

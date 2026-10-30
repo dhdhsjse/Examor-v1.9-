@@ -42,6 +42,7 @@ export default function EquationEditor({ b, onLatex, keyboardOpen, onToggleKeybo
       mf = field;
       field.value = startLatex.current;
       field.mathVirtualKeyboardPolicy = "manual"; // never show MathLive's own keyboard
+      field.mathModeSpace = "\\:"; // the space bar puts a space in the equation (MathLive ignores it otherwise)
       field.addEventListener("input", () => onLatexRef.current(field.value));
       hostRef.current.appendChild(field);
       mfRef.current = field;

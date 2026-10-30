@@ -5,7 +5,20 @@
 import type { JSONContent } from "@tiptap/core";
 import { paragraphAttrs, paragraphFormat, type ParagraphFormat } from "./paragraphFormat";
 import { isTextEffect, isUnderlineStyle, parseRich, patchStyle, serializeRich, type Run, type RunStyle, type StylePatch } from "./richText";
+import { MATH_CHAR, keepDrawing, newInlineMath, type InlineMath } from "./inlineMath";
 import { MAX_INDENT } from "./tiptap-indent";
+
+/** The name of a formula node in the text box's document (tiptap-math.ts), and its attributes ↔ the formula. */
+export const INLINE_MATH = "inlineMath";
+export const mathAttrs = (m: InlineMath) => ({ latex: m.latex, w: m.w, h: m.h, d: m.d, ...(m.svg ? { svg: m.svg } : {}) });
+export function mathOfAttrs(attrs: Record<string, unknown> | undefined): InlineMath {
+  const latex = typeof attrs?.latex === "string" ? attrs.latex : "";
+  const guess = newInlineMath(latex);
+  const num = (v: unknown, fallback: number) => (typeof v === "number" && Number.isFinite(v) && v > 0 ? v : fallback);
+  const svg = typeof attrs?.svg === "string" && attrs.svg ? { svg: attrs.svg } : {};
+  if (svg.svg) keepDrawing(latex, svg.svg); // (the canvas finds it by the LaTeX: the styled string it wraps does not carry it)
+  return { latex, w: num(attrs?.w, guess.w), h: num(attrs?.h, guess.h), d: typeof attrs?.d === "number" && attrs.d >= 0 ? attrs.d : guess.d, ...svg };
+}
 
 type Mark = NonNullable<JSONContent["marks"]>[number];
 
@@ -61,7 +74,13 @@ function marksOf(st: RunStyle): Mark[] {
   return marks;
 }
 
-const runsOf = (p: JSONContent): Run[] => (p.content ?? []).map((n) => ({ text: n.type === "hardBreak" ? "\n" : (n.text ?? ""), style: styleOf(n.marks) }));
+// A formula node (tiptap-math.ts) is one MATH_CHAR whose style carries the formula.
+function runOf(n: JSONContent): Run {
+  if (n.type === "hardBreak") return { text: "\n", style: styleOf(n.marks) };
+  if (n.type === INLINE_MATH) return { text: MATH_CHAR, style: { ...styleOf(n.marks), math: mathOfAttrs(n.attrs) } };
+  return { text: n.text ?? "", style: styleOf(n.marks) };
+}
+const runsOf = (p: JSONContent): Run[] => (p.content ?? []).map(runOf);
 
 // The paragraphs of a document (a line break inside one is "\n" in its runs).
 export function docParagraphs(doc: JSONContent): DocParagraph[] {
@@ -72,9 +91,17 @@ export function docParagraphs(doc: JSONContent): DocParagraph[] {
 function paragraphNode(runs: Run[], format?: Partial<ParagraphFormat>): JSONContent {
   const content: JSONContent[] = [];
   for (const r of runs) {
+    const marks = marksOf(r.style);
+    const withMarks = marks.length ? { marks } : {};
+    // Each character of a formula's run is that formula.
+    const math = r.style.math;
+    if (math) {
+      for (const ch of r.text) if (ch === MATH_CHAR) content.push({ type: INLINE_MATH, attrs: mathAttrs(math), ...withMarks });
+      continue;
+    }
     r.text.split("\n").forEach((part, i) => {
       if (i > 0) content.push({ type: "hardBreak" });
-      if (part) content.push({ type: "text", text: part, ...(marksOf(r.style).length ? { marks: marksOf(r.style) } : {}) });
+      if (part) content.push({ type: "text", text: part, ...withMarks });
     });
   }
   return { type: "paragraph", ...(format ? { attrs: paragraphAttrs(format) } : {}), ...(content.length ? { content } : {}) };

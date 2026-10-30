@@ -3,11 +3,9 @@
 import { MousePointerClick } from "lucide-react";
 import { hasFontControls } from "@/app/_components/inspector/FontControls";
 import type { Ctx } from "@/app/_features/core/types";
-import { VerticalAlign } from "@/app/_features/inspectors/format/FormatControls";
 import { blockClip } from "@/app/_features/inspectors/format/clipboardTargets";
 import ClipboardGroup from "@/app/_features/inspectors/format/ClipboardGroup";
 import { useFormatTarget } from "@/app/_features/inspectors/format/formatTarget";
-import { RibbonGroup } from "@/app/_features/inspectors/format/ribbonUi";
 import TextRibbon from "@/app/_features/inspectors/format/TextRibbon";
 
 const HEADER_FOOTER = "inspector.layout.header-footer";
@@ -44,13 +42,5 @@ export default function FormattingInspector({ ctx }: { ctx: Ctx }) {
     );
   }
 
-  return (
-    <TextRibbon ctx={ctx} b={b} target={target}>
-      {b.type === "textbox" && (
-        <RibbonGroup title={t("Text box")}>
-          <VerticalAlign ctx={ctx} b={b} />
-        </RibbonGroup>
-      )}
-    </TextRibbon>
-  );
+  return <TextRibbon ctx={ctx} b={b} target={target} />;
 }

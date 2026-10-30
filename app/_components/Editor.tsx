@@ -23,8 +23,10 @@ import { editRegions, fieldKey, fieldPatch, fieldValue, type EditField } from "@
 import { figureDef } from "@/app/_lib/figures";
 import { newId } from "@/app/_lib/id";
 import { preloadImages, readImageFile } from "@/app/_lib/images";
+import { sizingAfterResize } from "@/app/_lib/blockLayout";
+import { drawInlineMath, inlineMathUrl } from "@/app/_lib/inlineMath";
 import { plainText } from "@/app/_lib/richText";
-import { richFromDoc } from "@/app/_lib/textboxDoc";
+import { docParagraphs, richFromDoc, textboxDoc } from "@/app/_lib/textboxDoc";
 import type { StyleMark } from "@/app/_lib/textboxEditor";
 import { BUILTIN_ASSETS, svgUrl, type Asset, type AssetKind } from "@/app/_lib/library";
 import { imagesToPdf, stagePageImages } from "@/app/_lib/pdf";
@@ -44,6 +46,7 @@ import { blockInspectorFor, findSectionFeature } from "@/app/_features/sections"
 import { defaultSize, shapeDef } from "@/app/_lib/shapes";
 import type { DrawnBox } from "./canvas/ExamCanvas";
 import type { CanvasTool } from "./workspace/ToolRail";
+import type { OpenedTarget } from "./math-keyboard/FloatingKeyboard";
 import Workspace, { type Editing } from "./workspace/Workspace";
 
 const fileName = (title: string) => title.replace(/[\\/:*?"<>|]+/g, "").trim() || "exam";
@@ -400,6 +403,29 @@ export default function Editor() {
     }
   };
 
+  // A math keyboard key pressed with no text open. Its text form goes in the selected block's first text (opened for typing), its LaTeX
+  // in the selected equation (the Properties panel is shown for its field), or in a new equation when nothing that takes text is selected.
+  const openForTyping = (): OpenedTarget => {
+    const block = selectedId ? doc.blocks.find((b) => b.id === selectedId) : undefined;
+    const showEquationField = () => {
+      setBarOpen("bar.right-panel", true);
+      setTab("properties");
+      setActiveInspectorId(null);
+    };
+    if (block?.type === "equation") {
+      showEquationField();
+      return "equation";
+    }
+    const first = block && editRegions(block, numbers.get(block.id) ?? 1, doc.meta, mode)[0];
+    if (block && first) {
+      setEditing({ id: block.id, field: first.field });
+      return "field";
+    }
+    runTool({ kind: "block", type: "equation" });
+    showEquationField();
+    return "new-equation";
+  };
+
   const editChange = (value: string) => {
     const block = editing && doc.blocks.find((b) => b.id === editing.id);
     if (!editing || !block) return;
@@ -537,7 +563,13 @@ export default function Editor() {
   // Draw a clean copy off-screen (fonts and pictures loaded first) and return its pages as images.
   const renderPages = async (m: ViewMode, pixelRatio: number, quality: number) => {
     const srcs = doc.blocks.flatMap((b) => (b.type === "image" ? [b.src] : b.type === "equation" && b.svg ? [svgUrl(b.svg)] : []));
-    await Promise.all([preloadImages(srcs), document.fonts.ready]);
+    // The formulas inside the text boxes: their drawings (made by MathJax first for those that keep none), so they are in the pages.
+    const formulas = await Promise.all(
+      doc.blocks
+        .flatMap((b) => (b.type === "textbox" ? docParagraphs(textboxDoc(b)).flatMap((p) => p.runs.flatMap((r) => (r.style.math ? [r.style.math] : []))) : []))
+        .map((m) => inlineMathUrl(m) ?? drawInlineMath(m.latex).then((d) => d.url, () => "")),
+    );
+    await Promise.all([preloadImages([...srcs, ...formulas]), document.fonts.ready]);
     const stage = await new Promise<Konva.Stage>((resolve) => setExportJob({ doc, mode: m, resolve }));
     try {
       return stagePageImages(stage, doc.pages, pixelRatio, quality);
@@ -729,6 +761,7 @@ export default function Editor() {
     replaceImage: (id) => void replaceImage(id),
     mathKeyboard: mathKb,
     toggleMathKeyboard: (open) => toggleKeyboard(open ?? !mathKb),
+    openForTyping,
     picker,
     openPicker: () => setPicker({ open: true, mustPick: false }),
     closePicker: () => setPicker({ open: false, mustPick: false }),
@@ -816,6 +849,8 @@ export default function Editor() {
         onChromeScope={exam.chromeScope}
         onChromeSettings={() => openInspector(HEADER_FOOTER_INSPECTOR)}
               onToolChange={setCanvasTool}
+              mathKeyboard={mathKb}
+              onToggleMathKeyboard={() => toggleKeyboard()}
               onDrawBox={drawOnPage}
               drawShape={tool === "shape" && shapeToDraw ? (shapeDef(shapeToDraw).line ? "line" : "box") : undefined}
               onPatch={(id, patch, field) => exam.updateBlock(id, patch, { key: `${id}:${field}` })}
@@ -830,7 +865,12 @@ export default function Editor() {
               onCreateText={createText}
               onSelect={select}
               onMove={exam.moveBlock}
-              onResize={(id, layout) => exam.updateBlock(id, { layout })}
+              onResize={(id, layout) => {
+                // Dragging an edge of an auto-sized text box gives it that size, as in Figma (blockLayout.sizingAfterResize).
+                const b = doc.blocks.find((x) => x.id === id);
+                const sizing = b?.type === "textbox" ? sizingAfterResize(b, doc.meta, layout) : undefined;
+                exam.updateBlock(id, { layout, ...(b?.type === "textbox" && sizing !== b.sizing ? { sizing } : {}) });
+              }}
               onAddPage={() => exam.addPage()}
               onDeletePage={exam.deletePage}
               onActivePageChange={exam.setActivePage}

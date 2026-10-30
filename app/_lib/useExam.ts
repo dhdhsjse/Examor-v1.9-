@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { DEFAULT_MARGINS, PAGE_MARGIN } from "./a4";
-import { blockHeight } from "./blockLayout";
+import { blockHeight, fitTextboxes } from "./blockLayout";
 import { blockHeights, createBlock, nextFreeY, pageBottom, pushDownOverlaps, type BlockPreset } from "./blocks";
 import { newId } from "./id";
 import { renderEquation, type RenderedEquation } from "./math";
@@ -17,6 +17,7 @@ import {
   editChromeData,
   pageChromeBlocks,
   setChrome as setPageChrome,
+  stretchHeaders,
   syncChrome,
   type ChromeKind,
 } from "./pageChrome";
@@ -92,7 +93,8 @@ export function useExam(initial: ExamDoc, t?: T) {
     const merge = opts.silent || (opts.key !== undefined && last?.key === opts.key && now - last.time < 1000);
     if (!opts.silent) lastEdit.current = opts.key ? { key: opts.key, time: now } : null;
     setHist((h) => {
-      const next = update(h.present);
+      // (text boxes with an automatic size follow their text in the same step: typing, a font, a margin…)
+      const next = fitTextboxes(update(h.present));
       if (next === h.present) return h;
       if (merge) return { ...h, present: next };
       return { past: [...h.past.slice(-99), h.present], present: next, future: [] };
@@ -357,7 +359,7 @@ export function useExam(initial: ExamDoc, t?: T) {
           const o = p.margins ?? DEFAULT_MARGINS;
           return o.top === m.top && o.right === m.right && o.bottom === m.bottom && o.left === m.left;
         };
-        return d.pages.every(same) ? d : { ...d, pages: d.pages.map((p) => ({ ...p, margins: { ...m } })) };
+        return d.pages.every(same) ? d : stretchHeaders({ ...d, pages: d.pages.map((p) => ({ ...p, margins: { ...m } })) });
       }),
     [commit],
   );

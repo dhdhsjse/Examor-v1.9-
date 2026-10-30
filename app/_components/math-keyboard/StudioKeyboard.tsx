@@ -19,7 +19,7 @@ export function StudioKeyboard() {
       setStudioKeyboard(false);
     };
   }, []);
-  return studio ? <FloatingKeyboard target="field" onClose={() => setStudioKeyboard(false)} /> : null;
+  return studio ? <FloatingKeyboard where="studio"onClose={() => setStudioKeyboard(false)} /> : null;
 }
 
 // The keyboard button for the header of a studio, where the top bar of the page is out of reach. Same icon as the top bar's.

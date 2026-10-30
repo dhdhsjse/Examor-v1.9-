@@ -13,7 +13,8 @@ import type { BlockPatch, DropPoint, RevealRequest } from "@/app/_lib/useExam";
 import { useZoom } from "@/app/_lib/useZoom";
 import { chromeConfig, withChromeConfig } from "@/app/_lib/pageChrome";
 import type { ResizeResult } from "../canvas/BlockNode";
-import ExamCanvas, { type DrawnBox, type MarginEditView } from "../canvas/ExamCanvas";
+import ExamCanvas, { type BlockMover, type DrawnBox, type MarginEditView } from "../canvas/ExamCanvas";
+import { DOCKED_HEIGHT_VAR } from "../math-keyboard/FloatingKeyboard";
 import AnswerBar from "./AnswerBar";
 import ChromeBar from "./ChromeBar";
 import DeletePageDialog from "./DeletePageDialog";
@@ -49,6 +50,8 @@ interface Props {
   onChromeScope: (blockId: string, to: "all" | "page") => void;
   onChromeSettings: () => void;
   onToolChange: (tool: CanvasTool) => void;
+  mathKeyboard: boolean; // the math keyboard is on (its button is in the tool bar)
+  onToggleMathKeyboard: () => void;
   onSelect: (id: string | null) => void;
   onMove: (id: string, pageId: string, x: number, y: number) => void;
   onResize: (id: string, layout: Partial<BlockLayout>) => void;
@@ -107,6 +110,9 @@ export default function Workspace(props: Props) {
   // A resize handle is held (the text box editor stays open), and where the edited box is while resized.
   const handleHeld = useRef(false);
   const [liveBox, setLiveBox] = useState<(ResizeResult & { id: string }) | null>(null);
+  // The edited text box dragged by its edge: hidden on the canvas meanwhile, snapped and dropped by it (mover).
+  const [movingId, setMovingId] = useState<string | null>(null);
+  const mover = useRef<BlockMover | null>(null);
 
   // ---- Zoom that keeps the same spot of the page under the screen center (or the mouse) ----
 
@@ -356,6 +362,8 @@ export default function Workspace(props: Props) {
                       window.addEventListener("mouseup", () => setTimeout(() => (handleHeld.current = false)), { once: true });
                     }}
                     onResizing={(id, r) => setLiveBox(r && editing?.id === id ? { ...r, id } : null)}
+                    hiddenId={movingId}
+                    mover={mover}
                   />
                 </div>
 
@@ -376,6 +384,12 @@ export default function Workspace(props: Props) {
                     onChange={props.onRichChange}
                     onDropBoxStyle={props.onDropBoxStyle}
                     onReady={props.onTextEditor}
+                    onMoveStart={() => setMovingId(editBlock.id)}
+                    onMoving={(x, y) => mover.current?.move(editBlock.id, x, y) ?? { x, y }}
+                    onMoveEnd={(x, y) => {
+                      setMovingId(null);
+                      mover.current?.end(editBlock.id, x, y);
+                    }}
                     onDone={() => props.onEditDone(editBlock.id)}
                   />
                 )}
@@ -502,9 +516,14 @@ export default function Workspace(props: Props) {
           </div>
         )}
 
-        {/* Select / Text tools + zoom (bottom-right, away from the "Page 1 of 2" labels) */}
-        <div className="pointer-events-none absolute right-4 bottom-4 flex items-center gap-2" dir="ltr">
-          <ToolRail tool={props.tool} onChange={props.onToolChange} />
+        {/* Select / Text tools, the math keyboard + zoom (bottom-right, away from the "Page 1 of 2" labels). Sits on the math keyboard
+            while it is docked at the bottom of the screen (FloatingKeyboard sets the variable). */}
+        <div
+          className="pointer-events-none absolute right-4 flex items-center gap-2"
+          style={{ bottom: `calc(var(${DOCKED_HEIGHT_VAR}, 0px) + 1rem)` }}
+          dir="ltr"
+        >
+          <ToolRail tool={props.tool} onChange={props.onToolChange} keyboardOpen={props.mathKeyboard} onToggleKeyboard={props.onToggleMathKeyboard} />
           <ZoomBar
             zoom={zoom}
             fitMode={fitMode}

@@ -1,5 +1,6 @@
 "use client";
 
+import { Keyboard } from "lucide-react";
 import { useT } from "@/app/_lib/uiLang";
 
 // "select" = click to select and drag blocks. "text" = like the T tool in Photoshop:
@@ -42,24 +43,40 @@ const TOOLS: { id: CanvasTool; label: string; key: string; icon: React.ReactNode
   },
 ];
 
-// Small floating toolbar next to the zoom bar (bottom-right), away from the page labels.
-export default function ToolRail({ tool, onChange }: { tool: CanvasTool; onChange: (tool: CanvasTool) => void }) {
+const toolBtn = (on: boolean) =>
+  `grid size-7 place-items-center rounded-md transition-colors ${on ? "bg-indigo-600 text-white shadow-sm" : "text-muted hover:bg-black/5 hover:text-ink"}`;
+
+// Small floating toolbar next to the zoom bar (bottom-right), away from the page labels. After a line, the math keyboard: it is not a
+// tool (the tool stays as it is), it shows / hides the keyboard that types in the text being written.
+export default function ToolRail({ tool, onChange, keyboardOpen, onToggleKeyboard }: {
+  tool: CanvasTool;
+  onChange: (tool: CanvasTool) => void;
+  keyboardOpen: boolean;
+  onToggleKeyboard: () => void;
+}) {
   const t = useT();
+  const keyboardText = keyboardOpen ? t("Hide math keyboard") : t("Show math keyboard");
   return (
-    <div className="pointer-events-auto flex gap-0.5 rounded-lg border border-white/70 bg-white/80 p-1 shadow-[0_6px_20px_-6px_rgba(16,24,40,0.25)] backdrop-blur-md">
+    <div className="pointer-events-auto flex items-center gap-0.5 rounded-lg border border-white/70 bg-white/80 p-1 shadow-[0_6px_20px_-6px_rgba(16,24,40,0.25)] backdrop-blur-md">
       {TOOLS.map((tl) => (
-        <button
-          key={tl.id}
-          onClick={() => onChange(tl.id)}
-          aria-pressed={tool === tl.id}
-          title={`${t(tl.label)} (${tl.key})`}
-          className={`grid size-7 place-items-center rounded-md transition-colors ${
-            tool === tl.id ? "bg-indigo-600 text-white shadow-sm" : "text-muted hover:bg-black/5 hover:text-ink"
-          }`}
-        >
+        <button key={tl.id} onClick={() => onChange(tl.id)} aria-pressed={tool === tl.id} title={`${t(tl.label)} (${tl.key})`} className={toolBtn(tool === tl.id)}>
           {tl.icon}
         </button>
       ))}
+      <span aria-hidden className="mx-1 h-5 w-px bg-line" />
+      <button
+        onClick={onToggleKeyboard}
+        // Keeps the focus (and the cursor) in the text being typed in, and that text open (data-text-format).
+        onMouseDown={(e) => e.preventDefault()}
+        data-text-format=""
+        aria-pressed={keyboardOpen}
+        title={keyboardText}
+        aria-label={keyboardText}
+        data-testid="keyboard-toggle"
+        className={toolBtn(keyboardOpen)}
+      >
+        <Keyboard size={16} strokeWidth={1.75} aria-hidden />
+      </button>
     </div>
   );
 }

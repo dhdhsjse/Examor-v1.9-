@@ -4,10 +4,11 @@
 // Studio's labels already read ("u_{C}", "10^{-4}"). A key with no text form (a matrix, a limit in a formula…) gives null: the
 // keyboard greys it out in that field. Pure functions (no React, no DOM).
 //
-// Two flavours, since two kinds of field exist: "label" (free text, scripts as markup) and "formula" (the Graph Studio's
-// y = f(x) field, read by graphMath.ts: "x^2", "√(x)", "π", no subscripts).
+// Three flavours, since three kinds of field exist: "label" (free text, scripts as markup), "formula" (the Graph Studio's
+// y = f(x) field, read by graphMath.ts: "x^2", "√(x)", "π", no subscripts) and "text" (a text written on the page, which reads no
+// markup: scripts as the Unicode small digits and letters, "x²", "uₙ", or "^(…)" when a character has none).
 
-export type PlainFlavor = "label" | "formula";
+export type PlainFlavor = "label" | "formula" | "text";
 
 export interface PlainInsert {
   text: string;
@@ -40,6 +41,16 @@ const NAMES = new Set(["sin", "cos", "tan", "cot", "arcsin", "arccos", "arctan",
 const ACCENTS: Record<string, string> = { vec: "⃗", overrightarrow: "⃗", dot: "̇", ddot: "̈", overline: "̄", widehat: "̂" };
 
 const BLACKBOARD: Record<string, string> = { R: "ℝ", N: "ℕ", Z: "ℤ", Q: "ℚ", C: "ℂ" };
+
+// The small characters a "text" field writes a script with (every character of the script must have one).
+const zip = (from: string, to: string) => new Map([...from].map((c, i) => [c, [...to][i]]));
+const SUPERSCRIPT = zip("0123456789+-−=()nix*", "⁰¹²³⁴⁵⁶⁷⁸⁹⁺⁻⁻⁼⁽⁾ⁿⁱˣ*");
+const SUBSCRIPT = zip("0123456789+-−=()aeoxhklmnpstij", "₀₁₂₃₄₅₆₇₈₉₊₋₋₌₍₎ₐₑₒₓₕₖₗₘₙₚₛₜᵢⱼ");
+function small(inner: string, kind: "sup" | "sub"): string | null {
+  const table = kind === "sup" ? SUPERSCRIPT : SUBSCRIPT;
+  const chars = [...inner];
+  return chars.length && chars.every((c) => table.has(c)) ? chars.map((c) => table.get(c)).join("") : null;
+}
 
 class Unsupported extends Error {}
 const no = (): never => {
@@ -144,8 +155,9 @@ class Reader {
 
   private script(kind: "sup" | "sub"): string {
     const inner = this.arg();
+    if (inner === "°" && kind === "sup") return "°"; // 90^{\circ} is just 90°
+    if (this.flavor === "text") return small(inner, kind) ?? `${kind === "sup" ? "^" : "_"}(${inner})`;
     if (kind === "sub") return this.flavor === "formula" ? no() : `_{${inner}}`;
-    if (inner === "°") return "°"; // 90^{\circ} is just 90°
     if (this.flavor === "label") return `^{${inner}}`;
     return FORMULA_ATOM.test(inner) ? `^${inner}` : `^(${inner})`;
   }

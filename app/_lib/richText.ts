@@ -1,3 +1,5 @@
+import { decodeMath, encodeMath, type InlineMath } from "./inlineMath";
+
 // Styled text inside the plain string fields of a block.
 // A styled piece is written ⁅c=#dc2626;f=Georgia;s=18;b;i;u;x;sub;h=#fef08a⁆text⁅/⁆ (rare brackets, so they
 // never clash with what teachers type). Text without markers is plain, so older exams still work.
@@ -25,6 +27,7 @@ export interface RunStyle {
   hl?: string; // highlight (background color of the words)
   sub?: boolean; // subscript (H₂O): smaller, lowered
   sup?: boolean; // superscript (m/s²): smaller, raised. Never together with sub.
+  math?: InlineMath; // a formula: each character of the run (MATH_CHAR) is this formula, drawn by MathJax (inlineMath.ts)
 }
 
 export interface Run {
@@ -57,6 +60,10 @@ function parseStyle(src: string): RunStyle {
     else if (k === "sub") st.sub = true;
     else if (k === "sup") st.sup = true;
     else if (k === "h" && v) st.hl = v;
+    else if (k === "m" && v) {
+      const math = decodeMath(v);
+      if (math) st.math = math;
+    }
   }
   if (st.sub && st.sup) delete st.sup; // (never both: the first wins)
   return st;
@@ -75,6 +82,7 @@ function styleString(st: RunStyle): string {
   else if (st.sup) out.push("sup");
   if (st.hl) out.push(`h=${st.hl}`);
   if (st.fx) out.push(`fx=${st.fx}`);
+  if (st.math) out.push(`m=${encodeMath(st.math)}`);
   return out.join(";");
 }
 
@@ -174,11 +182,12 @@ export function styleAt(s: string, start: number, end: number): RunStyle {
   return common;
 }
 
-// Insert plain text (taking the style of the character before it).
+// Insert plain text (taking the style of the character before it; never its formula: typed letters are not a formula).
 export function insertText(s: string, offset: number, text: string): string {
   const chars = toChars(s);
   const i = charIndex(chars, offset);
-  const style = chars[i - 1]?.style ?? chars[i]?.style ?? {};
+  const style = { ...(chars[i - 1]?.style ?? chars[i]?.style ?? {}) };
+  delete style.math;
   chars.splice(i, 0, ...[...text].map((ch) => ({ ch, style })));
   return fromChars(chars);
 }

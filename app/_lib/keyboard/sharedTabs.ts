@@ -47,7 +47,6 @@ export const greekTab: KeyboardTab = {
     k("\\lambda", "lambda"),
     k("\\mu", "mu"),
     k("\\nu", "nu"),
-    k("\\pi", "pi"),
     k("\\rho", "rho"),
     k("\\sigma", "sigma"),
     k("\\tau", "tau"),

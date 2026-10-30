@@ -90,10 +90,22 @@ describe("plainFromLatex: structures", () => {
     expect(formula("\\sin\\left(#0\\right)", "2*pi*t/12")?.text).toBe("sin(2*pi*t/12)");
     expect(formula("\\cdot")?.text).toBe("·");
   });
+
+  // A text on the page reads no markup: scripts are the small Unicode characters, or "^(…)" when one has none.
+  it("writes scripts as small characters in a text of the page", () => {
+    const text = (latex: string, selection = "") => plainFromLatex(latex, "text", selection);
+    expect(text("#@^{2}")?.text).toBe("²");
+    expect(text("u_{n+1}")?.text).toBe("uₙ₊₁");
+    expect(text("10^{-4}")?.text).toBe("10⁻⁴");
+    expect(text("90^{\\circ}")?.text).toBe("90°");
+    expect(text("#@^{#?}")).toEqual({ text: "^()", caret: 2 });
+    expect(text("e^{#?}")).toEqual({ text: "e^()", caret: 3 });
+    expect(text("\\frac{#0}{#?}", "a")).toEqual({ text: "a/()", caret: 3 });
+  });
 });
 
 describe("plainFromLatex: the keys of the keyboard", () => {
-  const flavors: PlainFlavor[] = ["label", "formula"];
+  const flavors: PlainFlavor[] = ["label", "formula", "text"];
   const keys = KEYBOARD_LAYOUTS.flatMap((layout) => keyboardTabsOf(layout).flatMap((tab) => tab.buttons.map((key) => ({ layout, tab: tab.id, key }))));
 
   it.each(flavors)("%s: no key throws, and the text of a key is never empty", (flavor) => {

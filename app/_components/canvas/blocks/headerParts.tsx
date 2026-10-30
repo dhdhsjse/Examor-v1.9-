@@ -65,7 +65,10 @@ export function headerParts(b: HeaderBlock, meta: ExamMeta, mode: ViewMode, tota
   const els: ReactElement[] = [];
   flatten(HeaderView({ b, meta, mode, totalPoints }), els);
   const title = mode === "key" ? `${b.fields.title} — ${words(meta.lang).key}` : b.fields.title;
-  return els.map((el) => {
+  // HeaderView draws between the insets: move everything there (a Line's points move with its x).
+  const dx = b.inset?.left ?? 0;
+  const moved = dx ? els.map((el) => cloneElement(el as ReactElement<{ x?: number }>, { x: ((el.props as { x?: number }).x ?? 0) + dx })) : els;
+  return moved.map((el) => {
     if (el.type !== OneLine) return { el, field: null };
     const field = fieldOf((el.props as OneLineProps).text, b.fields, title);
     const align = field && b.aligns?.[field.keys[0]];
