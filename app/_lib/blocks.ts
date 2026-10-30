@@ -77,6 +77,24 @@ const DEFAULTS = {
   },
 };
 
+// Title of the n-th exercise of the exam ("Exercice 2 :"), in the exam's language.
+const AR_ORDINALS = ["الأول", "الثاني", "الثالث", "الرابع", "الخامس", "السادس", "السابع", "الثامن", "التاسع", "العاشر"];
+export function taskTitle(n: number, lang: Lang): string {
+  return lang === "ar" ? `التمرين ${AR_ORDINALS[n - 1] ?? n} :` : `Exercice ${n} :`;
+}
+
+// Title for a new exercise: numbered after the exercise titles already in the exam (title blocks, and title
+// lines typed in text boxes).
+export function nextTaskTitle(blocks: Block[], lang: Lang): string {
+  const isTask = lang === "ar" ? /^\s*التمرين/ : /^\s*exercice\b/i;
+  let count = 0;
+  for (const b of blocks) {
+    if (b.type === "text" && b.style !== "body" && isTask.test(plainText(b.text))) count++;
+    else if (b.type === "textbox") count += plainText(b.text).split("\n").filter((l) => isTask.test(l)).length;
+  }
+  return taskTitle(count + 1, lang);
+}
+
 // Ghost examples shown in empty question texts, in the exam's language.
 const HINTS = {
   fr: {
@@ -94,6 +112,7 @@ const HINTS = {
     classify: "Classez les mots suivants dans le tableau :",
     groups: ["Noms", "Verbes"],
     part: "Sous-question",
+    statement: "Énoncé (facultatif) : données, texte, situation…",
   },
   ar: {
     question: "اكتب سؤالك هنا",
@@ -110,8 +129,15 @@ const HINTS = {
     classify: "صنف الكلمات التالية في الجدول :",
     groups: ["أسماء", "أفعال"],
     part: "سؤال فرعي",
+    statement: "السند (اختياري) : معطيات، نص، وضعية…",
   },
 };
+
+// The ghost examples of an open question's question and statement, for its texts being typed in (InlineEditor).
+export function openHints(lang: Lang) {
+  const h = HINTS[lang] ?? HINTS.fr;
+  return { question: h.question, statement: h.statement };
+}
 
 const GHOST = "#b4b9c3";
 // An empty text gets its example in light grey; a filled one stays as it is.
@@ -119,8 +145,9 @@ const ghost = (value: string, hint: string | undefined) => (value.trim() || !hin
 
 // The block as drawn on screen: empty question texts show a ghost example. Only for the editor
 // canvas: the saved block stays empty, and printing / export draw the real block.
-// (Only one-line texts, so the block keeps the height computed from its real content.)
-export function withHints(b: Block, lang: Lang): Block {
+// (Only one-line texts, so the block keeps the height computed from its real content.) `statement`: an open question without
+// a statement also shows its ghost statement line (the selected one: it is one line taller on screen, see screenHeights).
+export function withHints(b: Block, lang: Lang, opts: { statement?: boolean } = {}): Block {
   const h = HINTS[lang] ?? HINTS.fr;
   switch (b.type) {
     case "mcq":
@@ -130,7 +157,12 @@ export function withHints(b: Block, lang: Lang): Block {
     case "blank":
       return { ...b, text: ghost(b.text, h.blank), content: ghost(b.content, h.content) };
     case "open":
-      return { ...b, text: ghost(b.text, h.question), parts: b.parts?.map((p, i) => ({ ...p, text: ghost(p.text, `${h.part} ${i + 1}`) })) };
+      return {
+        ...b,
+        text: ghost(b.text, h.question),
+        ...(opts.statement ? { context: ghost(b.context ?? "", h.statement) } : {}),
+        parts: b.parts?.map((p, i) => ({ ...p, text: ghost(p.text, `${h.part} ${i + 1}`) })),
+      };
     case "match":
       return { ...b, text: ghost(b.text, h.match), pairs: b.pairs.map((p, i) => ({ ...p, left: ghost(p.left, h.left(i + 1)), right: ghost(p.right, h.right(i + 1)) })) };
     case "order":
@@ -354,6 +386,15 @@ export function questionNumbers(blocks: Block[], pages: Page[]): Map<string, num
 export function blockHeights(doc: ExamDoc): Map<string, number> {
   const numbers = questionNumbers(doc.blocks, doc.pages);
   return new Map(doc.blocks.map((b) => [b.id, blockHeight(b, numbers.get(b.id) ?? 1, doc.meta)]));
+}
+
+// The heights as drawn on screen: the selected open question without a statement shows its ghost statement line
+// (withHints), so it is that much taller there. Printing and placing blocks use the real heights.
+export function screenHeights(doc: ExamDoc, heights: Map<string, number>, selectedId: string | null): Map<string, number> {
+  const b = doc.blocks.find((x) => x.id === selectedId);
+  if (b?.type !== "open" || plainText(b.context ?? "").trim()) return heights;
+  const n = questionNumbers(doc.blocks, doc.pages).get(b.id) ?? 1;
+  return new Map(heights).set(b.id, blockHeight(withHints(b, doc.meta.lang, { statement: true }), n, doc.meta));
 }
 
 // Y position just below the lowest block of a page, so new blocks stack neatly.

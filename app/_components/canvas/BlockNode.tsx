@@ -47,9 +47,10 @@ interface Props {
 }
 
 // What to draw inside the block.
-function Content({ block: real, number, meta, mode, interactive, totalPoints }: Pick<Props, "block" | "number" | "meta" | "mode" | "interactive" | "totalPoints">) {
-  // On screen, empty question texts show a light example; export draws the real (empty) text.
-  const block = interactive ? withHints(real, meta.lang) : real;
+function Content({ block: real, number, meta, mode, interactive, selected, totalPoints }: Pick<Props, "block" | "number" | "meta" | "mode" | "interactive" | "selected" | "totalPoints">) {
+  // On screen, empty question texts show a light example (and the selected open question its statement); export draws the real
+  // (empty) text.
+  const block = interactive ? withHints(real, meta.lang, { statement: selected }) : real;
   switch (block.type) {
     case "mcq":
       return <McqView b={block} n={number} meta={meta} mode={mode} />;
@@ -151,12 +152,12 @@ export default function BlockNode(props: Props) {
         dash={[4, 3]}
         cornerRadius={4}
       />
-      <Content block={block} number={props.number} meta={props.meta} mode={props.mode} interactive={interactive} totalPoints={props.totalPoints} />
+      <Content block={block} number={props.number} meta={props.meta} mode={props.mode} interactive={interactive} selected={selected} totalPoints={props.totalPoints} />
 
       {/* Invisible areas on top of the texts: double-click, click a selected block (or click with
           the T tool) to type there. A text box types on the first click, anywhere inside it. */}
       {interactive &&
-        editRegions(withHints(block, props.meta.lang), props.number, props.meta, props.mode).map((r, k) => (
+        editRegions(withHints(block, props.meta.lang, { statement: selected }), props.number, props.meta, props.mode).map((r, k) => (
           <Rect
             key={`e${k}`}
             {...(r.hit ?? { x: r.x - 2, y: r.y - 1, width: r.width + 4, height: Math.max(r.height, 16) + 2 })}

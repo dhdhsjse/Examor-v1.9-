@@ -16,14 +16,17 @@ import {
   blockLabel,
   insertOption,
   isQuestion,
+  nextTaskTitle,
   questionNumbers,
+  screenHeights,
   type BlockPreset,
 } from "@/app/_lib/blocks";
 import { editRegions, fieldKey, fieldPatch, fieldValue, type EditField } from "@/app/_lib/editRegions";
 import { figureDef } from "@/app/_lib/figures";
 import { newId } from "@/app/_lib/id";
 import { preloadImages, readImageFile } from "@/app/_lib/images";
-import { sizingAfterResize } from "@/app/_lib/blockLayout";
+import { sizingAfterResize, textboxPad, textboxSpec } from "@/app/_lib/blockLayout";
+import { dotsFor, insertSnippet, snippetFor } from "@/app/_lib/textSnippets";
 import { drawInlineMath, inlineMathUrl } from "@/app/_lib/inlineMath";
 import { plainText } from "@/app/_lib/richText";
 import { docParagraphs, richFromDoc, textboxDoc } from "@/app/_lib/textboxDoc";
@@ -160,6 +163,7 @@ export default function Editor() {
 
   const heights = useMemo(() => blockHeights(doc), [doc]);
   const numbers = useMemo(() => questionNumbers(doc.blocks, doc.pages), [doc]);
+  const drawnHeights = useMemo(() => screenHeights(doc, heights, selectedId), [doc, heights, selectedId]);
   const stats = useMemo(() => {
     const questions = doc.blocks.filter(isQuestion);
     return { questions: questions.length, points: questions.reduce((s, q) => s + q.points, 0), pages: doc.pages.length };
@@ -321,9 +325,23 @@ export default function Editor() {
   const runTool = (action: ToolAction, at?: DropPoint) => {
     // Another tool used meanwhile: no text box or shape is drawn any more.
     setTool((cur) => (cur === "textbox" || cur === "shape" ? "select" : cur));
+    // A question type picked while a text box is being typed in goes inside that box, at the cursor.
+    const box = textEditor && !at ? doc.blocks.find((b) => b.id === editing?.id) : undefined;
+    if (box?.type === "textbox" && textEditor) {
+      const s = textboxSpec(box, doc.meta);
+      const width = box.layout.width - 2 * textboxPad(box);
+      const snippet = snippetFor(action, { lang: doc.meta.lang, blocks: doc.blocks, dotsPerLine: dotsFor(width, `${s.font.size}px ${s.font.family}`) });
+      if (snippet) return insertSnippet(textEditor, snippet);
+    }
     switch (action.kind) {
       case "block": {
-        const block = exam.addBlock(action.type, action.preset, at);
+        // A new exercise title follows the ones already in the exam ("Exercice 2 :", ...).
+        const textPreset = action.type === "text" ? (action.preset as { style?: string; text?: string } | undefined) : undefined;
+        const preset =
+          textPreset?.style === "heading" && textPreset.text === undefined
+            ? { ...action.preset, text: nextTaskTitle(doc.blocks, doc.meta.lang) }
+            : action.preset;
+        const block = exam.addBlock(action.type, preset, at);
         setTab("properties");
         setActiveInspectorId(inspectorFor(block));
         // Write right away on the page: the starting text is selected, so typing replaces it.
@@ -836,7 +854,7 @@ export default function Editor() {
             <Workspace
               key={session}
               doc={doc}
-              heights={heights}
+              heights={drawnHeights}
               numbers={numbers}
               mode={mode}
               selectedId={selectedId}

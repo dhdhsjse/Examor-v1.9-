@@ -3,7 +3,7 @@
 import type { Editor as TextEditor, JSONContent } from "@tiptap/core";
 import { Trash2 } from "lucide-react";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type DragEvent } from "react";
-import { isQuestion } from "@/app/_lib/blocks";
+import { addPart, isQuestion } from "@/app/_lib/blocks";
 import type { EditField } from "@/app/_lib/editRegions";
 import { CANVAS_BOTTOM_SPACE, CANVAS_TOP_GAP, LABEL_HEIGHT, canvasTopPadding, pageAt, pageBoxes, stackSize, type PageBox } from "@/app/_lib/pageStack";
 import { DRAG_MIME, type ToolAction } from "@/app/_lib/tools";
@@ -21,6 +21,7 @@ import DeletePageDialog from "./DeletePageDialog";
 import CorrectionBar from "./CorrectionBar";
 import InlineEditor from "./InlineEditor";
 import PageStrip from "./PageStrip";
+import SubQuestionButton from "./SubQuestionButton";
 import TextboxEditor from "./TextboxEditor";
 import type { StyleMark } from "@/app/_lib/textboxEditor";
 import ToolRail, { type CanvasTool } from "./ToolRail";
@@ -334,7 +335,7 @@ export default function Workspace(props: Props) {
                     active={i === activePage}
                     keyMode={mode === "key"}
                     onClick={() => scrollToPage(i)}
-                    onDelete={i > 0 ? () => setAskDelete(page.id) : undefined}
+                    onDelete={doc.pages.length > 1 ? () => setAskDelete(page.id) : undefined}
                   />
                 ))}
                 <div className={`absolute inset-0 ${props.tool === "textbox" || props.tool === "shape" ? "cursor-crosshair" : ""}`}>
@@ -435,19 +436,32 @@ export default function Workspace(props: Props) {
                 </div>
               )}
 
-              {/* Green answer bar under the selected question (screen size, not zoomed) */}
+              {/* Green answer bar under the selected question (screen size, not zoomed); an open question has its
+                  "+ Sub-question" button above it */}
               {question && (
                 <div
-                  className="pointer-events-none absolute z-30"
+                  className="pointer-events-none absolute z-30 flex flex-col gap-1.5"
                   style={{
                     left: blockLeft(question) * zoom,
                     top: (blockTop(question) + (heights.get(question.id) ?? 0)) * zoom + 6,
                     width: Math.max(300, question.layout.width * zoom),
                   }}
                 >
+                  {question.type === "open" && (question.parts?.length ?? 0) < 12 && (
+                    <div className="self-start">
+                      <SubQuestionButton
+                        block={question}
+                        number={numbers.get(question.id) ?? 1}
+                        lang={doc.meta.lang}
+                        onAdd={() => {
+                          props.onPatch(question.id, addPart(question), "parts");
+                          props.onEditStart(question.id, { kind: "part", i: question.parts?.length ?? 0 });
+                        }}
+                      />
+                    </div>
+                  )}
                   <AnswerBar
                     block={question}
-                    number={numbers.get(question.id) ?? 1}
                     lang={doc.meta.lang}
                     mode={mode}
                     open={answerOpen}
@@ -471,7 +485,7 @@ export default function Workspace(props: Props) {
         </div>
 
         {/* Warning before a page goes */}
-        {askDelete && pageIndex(askDelete) > 0 && (
+        {askDelete && (
           <DeletePageDialog
             page={pageIndex(askDelete) + 1}
             blocks={doc.blocks.filter((b) => b.layout.pageId === askDelete && !b.meta?.role).length}

@@ -1,8 +1,9 @@
 "use client";
 
-import { SlidersHorizontal } from "lucide-react";
+import { CornerDownRight, SlidersHorizontal } from "lucide-react";
 import FeatureRenderer, { resolveLabel } from "@/app/_features/core/FeatureRenderer";
 import type { Ctx, Feature } from "@/app/_features/core/types";
+import { goesInText } from "@/app/_lib/textSnippets";
 import { DRAG_MIME } from "@/app/_lib/tools";
 
 interface Props {
@@ -23,6 +24,9 @@ export default function FeatureRow({ feature, ctx, onLibrary }: Props) {
   const label = resolveLabel(feature.label, ctx.t);
   const drag = inspector ? undefined : feature.dragPayload;
   const open = inspector ? ctx.activeInspectorId === feature.id : !!feature.checked?.(ctx);
+  // A text box is being typed in and this question type goes inside it: the press keeps the box open, with its cursor.
+  const intoText = !!ctx.shell.textEditor && goesInText(drag);
+  const intoTextTip = ctx.t("Adds it in the text box");
   const onClick = () => {
     if (inspector) return ctx.openInspector(feature.id);
     if (feature.library) return onLibrary(feature);
@@ -32,6 +36,11 @@ export default function FeatureRow({ feature, ctx, onLibrary }: Props) {
     <button
       type="button"
       onClick={onClick}
+      // (data-text-format keeps the box open; no default keeps its cursor)
+      data-text-format={intoText ? "" : undefined}
+      onMouseDown={(e) => {
+        if (intoText) e.preventDefault();
+      }}
       aria-pressed={inspector || feature.checked ? open : undefined}
       draggable={!!drag}
       onDragStart={(e) => {
@@ -39,13 +48,14 @@ export default function FeatureRow({ feature, ctx, onLibrary }: Props) {
         e.dataTransfer.setData(DRAG_MIME, JSON.stringify(drag));
         e.dataTransfer.effectAllowed = "copy";
       }}
-      title={label}
+      title={intoText ? `${label} — ${intoTextTip}` : label}
       className={`flex h-9 w-full items-center gap-3 rounded-md px-2 text-start text-[13px] transition-colors duration-100 ${
         open ? "bg-accent-soft text-accent" : "text-ink hover:bg-subtle"
       }`}
     >
       <span className={`grid size-5 shrink-0 place-items-center ${open ? "text-accent" : "text-muted"}`}>{feature.icon}</span>
       <span className="min-w-0 flex-1 truncate">{label}</span>
+      {intoText && <CornerDownRight size={13} strokeWidth={1.8} aria-label={intoTextTip} className="shrink-0 text-accent rtl:-scale-x-100" />}
       {feature.hotkey && <span className="text-[10px] text-faint">{feature.hotkey}</span>}
       {inspector && <SlidersHorizontal size={14} strokeWidth={1.7} aria-hidden className={`shrink-0 ${open ? "text-accent" : "text-faint"}`} />}
     </button>

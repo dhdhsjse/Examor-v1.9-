@@ -174,10 +174,15 @@ export function useExam(initial: ExamDoc, t?: T) {
       if (at) {
         const page = pages[clamp(at.pageIndex, 0, pages.length - 1)];
         const size = pageSize(page);
+        // Wider than the page's text (a free question): from one margin to the other.
+        const left = page.margins?.left ?? PAGE_MARGIN;
+        const room = size.width - left - (page.margins?.right ?? PAGE_MARGIN);
+        const fit = w > room;
         block.layout = {
           ...block.layout,
           pageId: page.id,
-          x: clamp(at.corner ? at.x : at.x - w / 2, 0, size.width - w),
+          ...(fit ? { width: room } : {}),
+          x: fit ? left : clamp(at.corner ? at.x : at.x - w / 2, 0, size.width - w),
           y: clamp(at.corner ? at.y : at.y - Math.min(h, 40) / 2, 0, size.height - h),
         };
       } else {

@@ -1,18 +1,16 @@
 "use client";
 
-import { useState } from "react";
-import { PART_NUMBERINGS, blankAnswers, partLabel } from "@/app/_lib/blockLayout";
-import { MAX_OPTIONS, addOrderItem, addPair, addPart, insertOption, mcqAnswers, movePart, patchPart, removePart, reshuffle, toggleMcq } from "@/app/_lib/blocks";
+import { blankAnswers } from "@/app/_lib/blockLayout";
+import { MAX_OPTIONS, addOrderItem, addPair, insertOption, mcqAnswers, reshuffle, toggleMcq } from "@/app/_lib/blocks";
 import type { EditField } from "@/app/_lib/editRegions";
 import { isRtl, optionLabel, words } from "@/app/_lib/i18n";
 import { plainText } from "@/app/_lib/richText";
-import type { BlankBlock, Lang, OpenBlock, QuestionBlock, ViewMode } from "@/app/_lib/types";
+import type { BlankBlock, Lang, QuestionBlock, ViewMode } from "@/app/_lib/types";
 import { useT } from "@/app/_lib/uiLang";
 import type { BlockPatch } from "@/app/_lib/useExam";
 
 interface Props {
   block: QuestionBlock;
-  number: number;
   lang: Lang;
   mode: ViewMode;
   open: boolean;
@@ -40,8 +38,8 @@ function setBlank(b: BlankBlock, n: number, value: string): string {
 }
 
 // Small green bar under the selected question: correct answer, points, and adding
-// options / statements / sub-questions right there on the page.
-export default function AnswerBar({ block: b, number, lang, mode, open, onToggle, onPatch, onEdit, onShowCorrection }: Props) {
+// options / statements right there on the page (an open question's sub-questions: SubQuestionButton).
+export default function AnswerBar({ block: b, lang, mode, open, onToggle, onPatch, onEdit, onShowCorrection }: Props) {
   const t = words(lang);
   const ui = useT();
   const hasParts = b.type === "open" && !!b.parts?.length;
@@ -66,11 +64,6 @@ export default function AnswerBar({ block: b, number, lang, mode, open, onToggle
     if (b.type !== "truefalse") return;
     onPatch({ statements: [...b.statements, { text: "", answer: true }] }, "statements");
     onEdit({ kind: "statement", i: b.statements.length });
-  };
-  const newPart = () => {
-    if (b.type !== "open") return;
-    onPatch(addPart(b), "parts");
-    onEdit({ kind: "part", i: b.parts?.length ?? 0 });
   };
 
   return (
@@ -161,11 +154,6 @@ export default function AnswerBar({ block: b, number, lang, mode, open, onToggle
               + {ui("Statement")}
             </button>
           )}
-          {b.type === "open" && (b.parts?.length ?? 0) < 12 && (
-            <button className={addBtn} onClick={newPart} title={ui("Add a sub-question and type it on the page")}>
-              + {ui("Sub-question")}
-            </button>
-          )}
         </div>
 
         <label className="ms-auto flex shrink-0 items-center gap-1 text-[11px]" title={hasParts ? ui("Total of the sub-questions.") : ui("Points")}>
@@ -182,98 +170,7 @@ export default function AnswerBar({ block: b, number, lang, mode, open, onToggle
         </label>
       </div>
 
-      {/* Sub-questions: name, order (drag), points */}
-      {open && b.type === "open" && hasParts && <PartList b={b} number={number} lang={lang} onPatch={onPatch} onEdit={onEdit} />}
     </div>
   );
 }
 
-function PartList({ b, number, lang, onPatch, onEdit }: { b: OpenBlock; number: number; lang: Lang; onPatch: Props["onPatch"]; onEdit: Props["onEdit"] }) {
-  const ui = useT();
-  const parts = b.parts ?? [];
-  const [armed, setArmed] = useState<number | null>(null); // grabbed by its handle
-  const [drag, setDrag] = useState<number | null>(null);
-  const [over, setOver] = useState<number | null>(null);
-
-  const reset = () => {
-    setArmed(null);
-    setDrag(null);
-    setOver(null);
-  };
-
-  return (
-    <div className="flex flex-col gap-1 border-t border-emerald-200/70 px-2.5 py-1.5">
-      <div className="flex items-center gap-1.5 text-[10px] font-semibold text-emerald-700">
-        {ui("Numbering")}
-        <div className="flex rounded-md bg-white/70 p-0.5 ring-1 ring-emerald-100">
-          {PART_NUMBERINGS.map((n) => (
-            <button
-              key={n.value}
-              onClick={() => onPatch({ partNumbering: n.value }, "numbering")}
-              className={`rounded px-1.5 py-0.5 text-[10px] ${(b.partNumbering ?? "1a") === n.value ? "bg-emerald-600 text-white" : "hover:bg-emerald-100"}`}
-            >
-              {n.label}
-            </button>
-          ))}
-        </div>
-        <span className="ms-auto font-normal text-emerald-600/80">{ui("Drag ⋮⋮ to reorder")}</span>
-      </div>
-
-      {parts.map((p, i) => (
-        <div
-          key={i}
-          draggable={armed === i}
-          onDragStart={(e) => {
-            e.dataTransfer.effectAllowed = "move";
-            e.dataTransfer.setData("text/plain", String(i));
-            setDrag(i);
-          }}
-          onDragOver={(e) => {
-            if (drag === null) return;
-            e.preventDefault();
-            setOver(i);
-          }}
-          onDrop={(e) => {
-            e.preventDefault();
-            if (drag !== null && drag !== i) onPatch(movePart(b, drag, i), "parts-order");
-            reset();
-          }}
-          onDragEnd={reset}
-          className={`flex items-center gap-1.5 rounded-md transition-colors ${drag === i ? "opacity-40" : ""} ${over === i && drag !== i ? "bg-emerald-100 ring-1 ring-emerald-400" : ""}`}
-        >
-          <span
-            onMouseDown={() => setArmed(i)}
-            onMouseUp={() => setArmed(null)}
-            className="cursor-grab px-0.5 text-sm leading-none text-emerald-500 select-none active:cursor-grabbing"
-            title={ui("Drag to reorder")}
-          >
-            ⋮⋮
-          </span>
-          <input
-            dir="auto"
-            value={p.label ?? ""}
-            placeholder={partLabel({ ...b, parts: parts.map((x) => ({ ...x, label: "" })) }, number, i, lang) || "—"}
-            onChange={(e) => onPatch(patchPart(parts, i, { label: e.target.value }), `part${i}-label`)}
-            className={`${input} w-20! shrink-0 text-center font-semibold`}
-            title={ui("Name of the sub-question (empty = automatic)")}
-          />
-          <button onClick={() => onEdit({ kind: "part", i })} className="min-w-0 flex-1 truncate text-start text-[11px] text-emerald-900 hover:underline" title={ui("Type it on the page")}>
-            {plainText(p.text).trim() || <span className="text-emerald-400">{ui("Sub-question…")}</span>}
-          </button>
-          <input
-            type="number"
-            min={0}
-            step={0.25}
-            value={p.points}
-            onChange={(e) => onPatch(patchPart(parts, i, { points: Math.max(0, Number(e.target.value) || 0) }), `part${i}`)}
-            className={pointsInput}
-            title={ui("Points")}
-          />
-          <button onClick={() => onPatch(removePart(b, i), "parts")} className="grid size-5 shrink-0 place-items-center rounded text-emerald-500 hover:bg-red-50 hover:text-red-600" title={ui("Remove")}>
-            ×
-          </button>
-        </div>
-      ))}
-    </div>
-  );
-}

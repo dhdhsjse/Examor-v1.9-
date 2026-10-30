@@ -7,7 +7,7 @@ const action: ToolAction = { kind: "block", type: "text", preset: { style: "head
 export const toolInsertHeading: Feature = {
   id: "tool.insert.heading",
   kind: "tool",
-  label: "Heading",
+  label: "Task title",
   icon: <HeadingIcon />,
   tone: "amber",
   dragPayload: action,

@@ -1,5 +1,6 @@
 "use client";
 
+import { ListTree, Plus } from "lucide-react";
 import { useRef, useState, type ReactNode } from "react";
 import { PART_NUMBERINGS, blankAnswers, partLabel } from "@/app/_lib/blockLayout";
 import { MAX_OPTIONS, addPart, insertOption, mcqAnswers, movePart, patchPart, removeOption, removePart, toggleMcq } from "@/app/_lib/blocks";
@@ -252,34 +253,14 @@ export function OpenEditor({ b, onChange, number, lang }: { b: OpenBlock; onChan
   return (
     <>
       <QuestionBasics b={b} onChange={onChange} lockPoints={parts.length > 0} />
-      <Field label={t("Statement (optional)")} hint={t("Data, a short text or a situation, printed under the question.")}>
-        <RichInput value={b.context ?? ""} placeholder={t("e.g. Let ABC be a right triangle at A…")} onChange={(context) => onChange({ context }, "context")} rows={2} multiline />
-      </Field>
-      <Field group label={t("Answer space")}>
-        <ChoiceGrid value={b.answerStyle ?? "dotted"} onChange={(answerStyle) => onChange({ answerStyle }, "answerStyle")} options={answerStyleOptions(t)} cols={5} />
-      </Field>
-      <Field group label={t("Answer lines")} hint={parts.length ? t("Lines right under the question (often 0 when there are sub-questions).") : undefined}>
-        <div className="flex flex-wrap items-center gap-1.5">
-          <NumberInput value={b.lines} min={0} max={30} onChange={(lines) => onChange({ lines }, "lines")} />
-          {[2, 4, 8, 15].map((n) => (
-            <button
-              key={n}
-              type="button"
-              onClick={() => onChange({ lines: n }, "lines")}
-              className={`rounded-md px-2 py-1 text-[11px] font-medium ring-1 ${b.lines === n ? "bg-indigo-50 text-indigo-700 ring-indigo-200" : "text-muted ring-line hover:text-ink"}`}
-            >
-              {n}
-            </button>
-          ))}
+      {/* Sub-questions first, in their own card: splitting a question into 1a), 1b)… is the main choice here */}
+      <section aria-label={t("Sub-questions")} className="flex flex-col gap-2 rounded-xl border border-indigo-200 bg-indigo-50/60 p-2.5">
+        <div className="flex items-center gap-2">
+          <ListTree size={15} strokeWidth={1.8} aria-hidden className="text-indigo-600" />
+          <span className="text-xs font-semibold text-indigo-900">{t("Sub-questions")}</span>
+          {parts.length > 0 && <span className="rounded-full bg-indigo-600 px-1.5 text-[10px] font-semibold text-white">{parts.length}</span>}
         </div>
-      </Field>
-      {(b.lines > 0 || !parts.length) && (
-        <Field label={t("Model answer")} hint={t("Shown only on the correction sheet.")}>
-          <RichInput value={b.answer} onChange={(answer) => onChange({ answer }, "answer")} rows={3} multiline />
-        </Field>
-      )}
-
-      <Field group label={t("Sub-questions")} hint={t("Split the question into parts: 1a), 1b)… Each part has its own lines, points and answer.")}>
+        <span className="text-[11px] leading-snug text-indigo-700/80">{t("Split the question into parts: 1a), 1b)… Each part has its own lines, points and answer.")}</span>
         <div className="flex flex-col gap-2">
           {parts.length > 0 && (
             <div className="flex flex-col gap-1">
@@ -307,7 +288,8 @@ export function OpenEditor({ b, onChange, number, lang }: { b: OpenBlock; onChan
                 reset();
               }}
               onDragEnd={reset}
-              className={`flex flex-col gap-1.5 rounded-lg border bg-subtle/60 p-2 transition-colors ${drag === i ? "opacity-40" : ""} ${
+              // One sub-question, top to bottom: its name, points and remove; its text; its answer lines and model answer.
+              className={`flex flex-col gap-2 rounded-lg border bg-white p-2 transition-colors ${drag === i ? "opacity-40" : ""} ${
                 over === i && drag !== i ? "border-indigo-400 bg-indigo-50" : "border-line"
               }`}
             >
@@ -320,26 +302,63 @@ export function OpenEditor({ b, onChange, number, lang }: { b: OpenBlock; onChan
                 >
                   ⋮⋮
                 </span>
-                <div className="w-14 shrink-0" title={t("Name of the sub-question (empty = automatic)")}>
+                <div className="w-14 shrink-0 font-semibold" title={t("Name of the sub-question (empty = automatic)")}>
                   <TextInput value={p.label ?? ""} placeholder={autoLabel(i)} onChange={(label) => setPart(i, { label }, "label")} />
                 </div>
-                <RichInput value={p.text} placeholder={t("Sub-question…")} onChange={(text) => setPart(i, { text }, "text")} />
+                <span className="flex-1" />
+                <div className="w-16 shrink-0" title={t("Points")}>
+                  <NumberInput value={p.points} min={0} max={100} step={0.25} onChange={(points) => setPart(i, { points }, "points")} />
+                </div>
+                <span className="text-[11px] text-muted">{t("pts")}</span>
                 <RemoveButton title={t("Remove")} onClick={() => onChange(removePart(b, i), "parts")} />
               </div>
-              <div className="flex items-center gap-2 ps-6 text-[11px] text-muted">
-                {t("Lines")}
-                <NumberInput value={p.lines} min={0} max={20} onChange={(lines) => setPart(i, { lines }, "lines")} />
-                {t("Points")}
-                <NumberInput value={p.points} min={0} max={100} step={0.25} onChange={(points) => setPart(i, { points }, "points")} />
+              <RichInput value={p.text} placeholder={t("Sub-question…")} onChange={(text) => setPart(i, { text }, "text")} rows={2} multiline />
+              <div className="flex items-center gap-2 text-[11px] text-muted">
+                {t("Answer lines")}
+                <div className="w-16">
+                  <NumberInput value={p.lines} min={0} max={20} onChange={(lines) => setPart(i, { lines }, "lines")} />
+                </div>
               </div>
-              <div className="ps-6">
-                <RichInput value={p.answer} placeholder={t("Answer (correction sheet)…")} onChange={(answer) => setPart(i, { answer }, "answer")} multiline />
-              </div>
+              <RichInput value={p.answer} placeholder={t("Answer (correction sheet)…")} onChange={(answer) => setPart(i, { answer }, "answer")} rows={2} multiline />
             </div>
           ))}
-          {parts.length < 12 && <AddRowButton onClick={() => onChange(addPart(b), "parts")}>{t("Add sub-question")}</AddRowButton>}
+          {parts.length < 12 && (
+            <button
+              type="button"
+              onClick={() => onChange(addPart(b), "parts")}
+              className="flex w-full items-center justify-center gap-1.5 rounded-md bg-indigo-600 py-1.5 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-indigo-700"
+            >
+              <Plus size={13} strokeWidth={2.5} aria-hidden /> {t("Add sub-question")}
+            </button>
+          )}
+        </div>
+      </section>
+      <Field label={t("Statement (optional)")} hint={t("Data, a short text or a situation, printed under the question.")}>
+        <RichInput value={b.context ?? ""} placeholder={t("e.g. Let ABC be a right triangle at A…")} onChange={(context) => onChange({ context }, "context")} rows={2} multiline />
+      </Field>
+      <Field group label={t("Answer space")}>
+        <ChoiceGrid value={b.answerStyle ?? "dotted"} onChange={(answerStyle) => onChange({ answerStyle }, "answerStyle")} options={answerStyleOptions(t)} cols={5} />
+      </Field>
+      <Field group label={t("Answer lines")} hint={parts.length ? t("Lines right under the question (often 0 when there are sub-questions).") : undefined}>
+        <div className="flex flex-wrap items-center gap-1.5">
+          <NumberInput value={b.lines} min={0} max={30} onChange={(lines) => onChange({ lines }, "lines")} />
+          {[2, 4, 8, 15].map((n) => (
+            <button
+              key={n}
+              type="button"
+              onClick={() => onChange({ lines: n }, "lines")}
+              className={`rounded-md px-2 py-1 text-[11px] font-medium ring-1 ${b.lines === n ? "bg-indigo-50 text-indigo-700 ring-indigo-200" : "text-muted ring-line hover:text-ink"}`}
+            >
+              {n}
+            </button>
+          ))}
         </div>
       </Field>
+      {(b.lines > 0 || !parts.length) && (
+        <Field label={t("Model answer")} hint={t("Shown only on the correction sheet.")}>
+          <RichInput value={b.answer} onChange={(answer) => onChange({ answer }, "answer")} rows={3} multiline />
+        </Field>
+      )}
     </>
   );
 }

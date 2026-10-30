@@ -2,6 +2,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { blockRtl } from "@/app/_lib/blockLayout";
+import { openHints, withHints } from "@/app/_lib/blocks";
 import { editRegions, fieldKey, fieldValue, type EditField } from "@/app/_lib/editRegions";
 import { isRtl } from "@/app/_lib/i18n";
 import { richSessions } from "@/app/_lib/richSession";
@@ -38,10 +39,16 @@ export default function InlineEditor({ block, field, number, meta, mode, zoom, t
   const ref = useRef<RichHandle>(null);
   const wrap = useRef<HTMLDivElement>(null);
   const [sel, setSel] = useState<{ style: RunStyle; range: { start: number; end: number } }>({ style: {}, range: { start: 0, end: 0 } });
-  const region = editRegions(block, number, meta, mode).find((r) => fieldKey(r.field) === fieldKey(field));
+  // Placed over the texts as the canvas draws them: an open question being typed in is selected, so it shows its ghost statement
+  // line (one line more above its sub-questions and answers), and an empty statement is typed on that line.
+  const shown = block.type === "open" ? withHints(block, meta.lang, { statement: true }) : block;
+  const region = editRegions(shown, number, meta, mode).find((r) => fieldKey(r.field) === fieldKey(field));
   const value = fieldValue(block, field);
   // A text block can be written the other way round than the exam (Home → Paragraph).
   const rtl = block.type === "text" ? blockRtl(block, meta) : isRtl(meta.lang);
+  // The empty question or statement of an open question shows its ghost example (light grey) until the teacher types.
+  const hints = block.type === "open" ? openHints(meta.lang) : null;
+  const ghost = field.kind === "text" ? hints?.question : field.kind === "context" ? hints?.statement : undefined;
 
   // The ribbon of the right panel formats the selected words through this editor while it is open (see richSession.ts).
   const publish = (style: RunStyle, range: { start: number; end: number }) => {
@@ -119,7 +126,7 @@ export default function InlineEditor({ block, field, number, meta, mode, zoom, t
         }}
         multiline={region.multiline}
         dir={rtl ? "rtl" : "auto"}
-        placeholder={region.answer ? t("Model answer…") : t("Type here…")}
+        placeholder={ghost ?? (region.answer ? t("Model answer…") : t("Type here…"))}
         onKeyDown={(e) => {
           if (e.key === "Enter" && !e.shiftKey && !e.ctrlKey && LIST_FIELDS.includes(field.kind)) {
             e.preventDefault();
