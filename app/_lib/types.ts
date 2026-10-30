@@ -258,7 +258,7 @@ export interface TableBlock extends BlockBase {
 // A function graph drawn from formulas typed by the teacher, e.g. "x^2 - 2".
 export interface GraphBlock extends BlockBase {
   type: "graph";
-  functions: string[]; // up to 3 curves
+  functions: string[]; // any number of curves
   xMin: number;
   xMax: number;
   yMin: number;

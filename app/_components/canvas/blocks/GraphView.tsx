@@ -7,8 +7,11 @@ import { FONT_FAMILY } from "@/app/_lib/measure";
 import type { GraphBlock } from "@/app/_lib/types";
 import { INK } from "./shared";
 
-export const CURVE_COLORS = ["#1d4ed8", "#dc2626", "#059669"];
-const NAMES = ["f", "g", "h"];
+const CURVE_COLORS = ["#1d4ed8", "#dc2626", "#059669", "#d97706", "#7c3aed", "#0891b2"];
+const NAMES = ["f", "g", "h", "k", "p", "q"];
+// Curves are unlimited: colors and letters cycle, and a number tells the laps apart (f, g, h, k, p, q, f2, ...).
+export const curveColor = (i: number) => CURVE_COLORS[i % CURVE_COLORS.length];
+export const curveName = (i: number) => NAMES[i % NAMES.length] + (i >= NAMES.length ? String(Math.floor(i / NAMES.length) + 1) : "");
 const SAMPLES = 600;
 
 // Round tick labels nicely: 0.5, 2, -1.5 (no 0.30000000004).
@@ -156,11 +159,11 @@ export function GraphView({ b }: { b: GraphBlock }) {
         <Text {...text} fontSize={12} x={W - 12} y={Math.max(0, ay - 18)} text="x" />
         <Text {...text} fontSize={12} x={ax + 6} y={2} text="y" />
         {curves.map((pieces, k) =>
-          pieces.map((pts, j) => <Line key={`c${k}-${j}`} points={pts} stroke={CURVE_COLORS[k]} strokeWidth={2} lineJoin="round" lineCap="round" />),
+          pieces.map((pts, j) => <Line key={`c${k}-${j}`} points={pts} stroke={curveColor(k)} strokeWidth={2} lineJoin="round" lineCap="round" />),
         )}
         {/* Curve names (Cf, Cg...) next to their curve, never on top of each other */}
         {curveLabels(curves, W, H).map((l) =>
-          l ? <Text key={`n${l.k}`} {...text} fontSize={12} fontStyle="bold" fill={CURVE_COLORS[l.k]} x={l.x} y={l.y} text={`C${NAMES[l.k]}`} /> : null,
+          l ? <Text key={`n${l.k}`} {...text} fontSize={12} fontStyle="bold" fill={curveColor(l.k)} x={l.x} y={l.y} text={`C${curveName(l.k)}`} /> : null,
         )}
       </Group>
       <Rect width={W} height={H} stroke="#9ca3af" strokeWidth={0.8} />

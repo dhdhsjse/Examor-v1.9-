@@ -3,14 +3,13 @@
 import { tryCompile } from "@/app/_lib/graphMath";
 import type { GraphBlock } from "@/app/_lib/types";
 import { useT } from "@/app/_lib/uiLang";
-import { CURVE_COLORS } from "../canvas/blocks/GraphView";
+import { curveColor, curveName } from "../canvas/blocks/GraphView";
 import { AddRowButton, Field, NumberInput, RemoveButton } from "./fields";
 import type { OnChange } from "./QuestionEditors";
 
-const NAMES = ["f", "g", "h"];
 
 // Common functions the teacher can start from.
-const EXAMPLES = ["2x + 1", "x^2 - 2", "x^3 - 3x", "1/x", "sqrt(x)", "sin(x)", "e^x", "ln(x)", "|x|"];
+const EXAMPLES = ["e^x", "ln(x)", "sqrt(x)", "|x|"];
 
 // Formulas of the curves + the visible window (x and y ranges).
 export function GraphEditor({ b, onChange }: { b: GraphBlock; onChange: OnChange }) {
@@ -36,8 +35,8 @@ export function GraphEditor({ b, onChange }: { b: GraphBlock; onChange: OnChange
             return (
               <div key={i}>
                 <div className="flex items-center gap-1.5">
-                  <span className="w-11 shrink-0 text-xs font-semibold" dir="ltr" style={{ color: CURVE_COLORS[i] }}>
-                    {NAMES[i]}(x) =
+                  <span className="w-11 shrink-0 text-xs font-semibold" dir="ltr" style={{ color: curveColor(i) }}>
+                    {curveName(i)}(x) =
                   </span>
                   <input
                     dir="ltr"
@@ -54,9 +53,8 @@ export function GraphEditor({ b, onChange }: { b: GraphBlock; onChange: OnChange
               </div>
             );
           })}
-          {b.functions.length < 3 && (
-            <AddRowButton onClick={() => onChange({ functions: [...b.functions, "x"] }, "functions")}>{t("Add a curve")}</AddRowButton>
-          )}
+          <AddRowButton onClick={() => onChange({ functions: [...b.functions, "x"] }, "functions")}>{t("Add a curve")}</AddRowButton>
+
         </div>
       </Field>
 
