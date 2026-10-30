@@ -2,6 +2,8 @@
 
 import { ArrowLeft, Redo2, Undo2, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { StudioKeyboard } from "@/app/_components/math-keyboard/StudioKeyboard";
+import StudioDock from "@/app/_components/StudioDock";
 import DiscardDialog from "@/app/_components/molecule-studio/DiscardDialog";
 import { ShapesMenuButton } from "@/app/_components/shapes/ShapeGallery";
 import ShapeProperties from "@/app/_components/shapes/ShapeProperties";
@@ -12,7 +14,7 @@ import { makeActions } from "@/app/_components/table/tableActions";
 import { clampSel, selRange, type Sel } from "@/app/_components/table/tableSel";
 import { CONTENT_WIDTH } from "@/app/_lib/a4";
 import { DEFAULT_FONT } from "@/app/_lib/fonts";
-import { addShape, duplicateShape, isLine, newShapeItem, removeShape, reorderShape, updateShape, type DrawnBox, type Order } from "@/app/_lib/shapes";
+import { FREEHAND_ID, addShape, duplicateShape, isLine, newShapeItem, removeShape, reorderShape, updateShape, type DrawnBox, type Order, type ShapeStyle } from "@/app/_lib/shapes";
 import { anchorOf, colsOf, rowsOf, tableMirrored, wholeMerges } from "@/app/_lib/table";
 import type { ExamMeta, TableBlock } from "@/app/_lib/types";
 import { useUi } from "@/app/_lib/uiLang";
@@ -20,6 +22,7 @@ import { blankStudioTable, studioTableOf } from "./tablePreset";
 import TablePreview from "./TablePreview";
 import TableShapesCanvas from "./TableShapesCanvas";
 import { useTableStudio, type StudioTable } from "./useTableStudio";
+import { studioHeaderProps } from "@/app/_lib/desktopWindow";
 
 interface Props {
   meta: ExamMeta;
@@ -65,10 +68,11 @@ export default function TableStudio({ meta, editing, startShape, onInsert, onUpd
     setShapeId(null);
   };
   const changeShape = (id: string, patch: Parameters<typeof updateShape>[2], key: string) => apply({ shapes: updateShape(shapes, id, patch) }, key);
-  const drawShape = (box: DrawnBox) => {
+  const drawShape = (box: DrawnBox, style?: Partial<ShapeStyle>) => {
     if (!shapeTool) return;
-    const item = newShapeItem(shapeTool, box);
+    const item = newShapeItem(shapeTool, box, style);
     apply({ shapes: addShape(shapes, item) }, `add:${item.id}`);
+    if (shapeTool === FREEHAND_ID) return; // (the pencil stays in hand: a drawing is many strokes)
     setShapeId(item.id);
     setShapeTool(null); // (like PowerPoint: one shape, then the Select tool is back)
   };
@@ -130,10 +134,11 @@ export default function TableStudio({ meta, editing, startShape, onInsert, onUpd
 
   const iconButton = "grid size-8 place-items-center rounded-lg text-muted enabled:hover:bg-subtle enabled:hover:text-ink disabled:opacity-40";
   const shapesMode = mode === "shapes";
+  const pencil = shapeTool === FREEHAND_ID;
 
   return (
     <div data-testid="table-studio" dir={rtl ? "rtl" : "ltr"} className="fixed inset-0 z-50 flex flex-col bg-white">
-      <header className="flex items-center gap-3 border-b border-line px-4 py-2.5">
+      <header {...studioHeaderProps()}>
         <h2 className="shrink-0 text-base font-semibold text-ink">{t("Table Studio")}</h2>
         <span className="shrink-0 rounded-full bg-accent-soft px-2.5 py-0.5 text-xs font-medium text-accent-strong">{t("Spreadsheet")}</span>
         <div className="mx-2 h-5 w-px bg-line" />
@@ -153,7 +158,7 @@ export default function TableStudio({ meta, editing, startShape, onInsert, onUpd
       </header>
 
       <div className="flex min-h-0 flex-1">
-        <main className="flex min-w-0 flex-1 flex-col">
+        <main className="relative flex min-w-0 flex-1 flex-col">
           {shapesMode ? (
             <>
               <div data-testid="table-shapes-bar" className="flex items-center gap-2 border-b border-line bg-white px-2 py-1.5">
@@ -161,9 +166,9 @@ export default function TableStudio({ meta, editing, startShape, onInsert, onUpd
                   <ArrowLeft size={14} className="rtl:rotate-180" />
                   {t("Back to the cells")}
                 </button>
-                <ShapesMenuButton variant="icon" active={!!shapeTool} current={shapeTool} onPick={pickShape} testId="table-shapes" />
+                <ShapesMenuButton variant="icon" active={!!shapeTool && !pencil} current={pencil ? null : shapeTool} onPick={pickShape} testId="table-shapes" />
                 <p className="min-w-0 flex-1 truncate text-xs text-muted">
-                  {shapeTool ? t("Drag on the table to draw the shape (Shift: a square or a 45° line, Alt: from the centre), or click to put it at its usual size · Esc to stop") : t("Click a shape to change it · choose another one with the Shapes button")}
+                  {pencil ? t("Drag on the table to draw freely · Esc to stop") : shapeTool ? t("Drag on the table to draw the shape (Shift: a square or a 45° line, Alt: from the centre), or click to put it at its usual size · Esc to stop") : t("Click a shape to change it · choose another one with the Shapes button")}
                 </p>
               </div>
               <TableShapesCanvas table={table} meta={meta} tool={shapeTool} selectedId={shapeId} onSelect={setShapeId} onChange={changeShape} onDraw={drawShape} />
@@ -174,6 +179,8 @@ export default function TableStudio({ meta, editing, startShape, onInsert, onUpd
               <TableGrid table={table} lang={lang} sel={sel} onSelect={setSel} onChange={apply} onUndo={undo} onRedo={redo} actions={actions} examFont={meta.fontFamily} />
             </>
           )}
+          {/* the floating toolbar: the pencil draws freely over the table (in the shapes), Select puts it down */}
+          <StudioDock pencil={pencil} selecting={!shapeTool} onSelect={() => setShapeTool(null)} onPencil={() => (pencil ? setShapeTool(null) : pickShape(FREEHAND_ID))} hint={t("Pencil: draw freely over the table")} />
         </main>
 
         <aside className="flex w-[320px] shrink-0 flex-col gap-4 overflow-y-auto border-line bg-white p-4 ltr:border-l rtl:border-r">
@@ -202,6 +209,7 @@ export default function TableStudio({ meta, editing, startShape, onInsert, onUpd
         </aside>
       </div>
 
+      <StudioKeyboard />
       {confirmClose && <DiscardDialog onKeep={() => setConfirmClose(false)} onDiscard={onClose} />}
     </div>
   );

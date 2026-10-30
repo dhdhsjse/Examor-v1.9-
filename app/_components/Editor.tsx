@@ -657,12 +657,13 @@ export default function Editor() {
       } else if (key === "escape") {
         exam.setSelectedId(null);
         setTool("select");
-      } else if (!mod && key === "t") {
-        setTool("text");
       } else if (!mod && key === "b") {
         setCanvasTool("textbox");
       } else if (!mod && key === "v") {
         setTool("select");
+      } else if (!mod && !e.altKey && (key === "r" || key === "o" || key === "l")) {
+        // The shapes of the tool bar's Shapes menu (Shift+L: the arrow).
+        drawShape(key === "r" ? "rect" : key === "o" ? "ellipse" : e.shiftKey ? "arrow" : "line");
       } else if (selected && key.startsWith("arrow")) {
         // Arrow keys nudge the selected block (Shift = 10px).
         e.preventDefault();
@@ -853,6 +854,8 @@ export default function Editor() {
               onToggleMathKeyboard={() => toggleKeyboard()}
               onDrawBox={drawOnPage}
               drawShape={tool === "shape" && shapeToDraw ? (shapeDef(shapeToDraw).line ? "line" : "box") : undefined}
+              shapeToDraw={shapeToDraw}
+              onPickShape={drawShape}
               onPatch={(id, patch, field) => exam.updateBlock(id, patch, { key: `${id}:${field}` })}
               onEditStart={startEdit}
               onEditChange={editChange}

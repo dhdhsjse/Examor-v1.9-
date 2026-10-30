@@ -69,6 +69,8 @@ interface Props {
   onCreateText: (at: DropPoint) => void;
   onDrawBox: (box: DrawnBox) => void; // a box drawn with the text box tool (or a shape drawn with the Shapes tool)
   drawShape?: "box" | "line"; // the Shapes tool is in hand: what it draws
+  shapeToDraw: string | null; // (the shape of the Shapes tool)
+  onPickShape: (shape: string) => void; // the Shapes button of the tool bar: draw this shape
   onAddPage: () => void;
   onDeletePage: (pageId: string) => void;
   onActivePageChange: (index: number) => void;
@@ -523,7 +525,12 @@ export default function Workspace(props: Props) {
           style={{ bottom: `calc(var(${DOCKED_HEIGHT_VAR}, 0px) + 1rem)` }}
           dir="ltr"
         >
-          <ToolRail tool={props.tool} onChange={props.onToolChange} keyboardOpen={props.mathKeyboard} onToggleKeyboard={props.onToggleMathKeyboard} />
+          <ToolRail
+            tool={props.tool}
+            onChange={props.onToolChange}
+            shape={props.shapeToDraw}
+            onPickShape={props.onPickShape}
+            keyboardOpen={props.mathKeyboard} onToggleKeyboard={props.onToggleMathKeyboard} />
           <ZoomBar
             zoom={zoom}
             fitMode={fitMode}

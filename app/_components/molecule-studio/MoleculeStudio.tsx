@@ -17,6 +17,7 @@ import StudioCanvas from "./StudioCanvas";
 import StudioToolbar from "./StudioToolbar";
 import { useMoleculeStudio } from "./useMoleculeStudio";
 import { useRepresentation } from "./useRepresentation";
+import { studioHeaderProps } from "@/app/_lib/desktopWindow";
 
 interface Props {
   /** The drawing of the block being edited; null = a new drawing. */
@@ -117,7 +118,7 @@ export default function MoleculeStudio({ editing, onInsert, onUpdate, onInsertMo
 
   return (
     <div data-testid="molecule-studio-lab" dir={rtl ? "rtl" : "ltr"} className="fixed inset-0 z-50 flex flex-col bg-white">
-      <header className="flex items-center gap-3 border-b border-line px-4 py-2.5">
+      <header {...studioHeaderProps()}>
         <h2 className="shrink-0 text-base font-semibold text-ink">{t("Molecule Studio")}</h2>
         <span className="shrink-0 rounded-full bg-accent-soft px-2.5 py-0.5 text-xs font-medium text-accent-strong">{t("Drawing lab")}</span>
 

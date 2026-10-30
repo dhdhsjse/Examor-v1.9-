@@ -11,7 +11,7 @@ import type { Block } from "@/app/_lib/types";
 import type { T } from "@/app/_lib/uiLang";
 import { ColorGrid } from "@/app/_components/rich/FormatBar";
 import type { ParagraphTarget } from "./formatTarget";
-import { ColorMenu, Divider, Menu, MenuButton, MenuHeading, MenuItem, MenuSeparator, RibbonButton, RibbonGroup, RibbonRow, Segmented, keepFocus } from "./ribbonUi";
+import { ColorMenu, Menu, MenuButton, MenuHeading, MenuItem, MenuSeparator, RibbonButton, RibbonGroup, Segmented, keepFocus } from "./ribbonUi";
 
 const BULLET_NAMES: Record<string, string> = { bullet: "Bullet", circle: "Circle", square: "Square", arrow: "Arrow", check: "Check mark", dash: "Dash" };
 
@@ -254,6 +254,9 @@ const VALIGNS = [
   { value: "bottom", label: "Bottom", Icon: ArrowDownToLine },
 ] as const;
 
+// A group of buttons under one of the alignment groups: the same inner margin, so its buttons start under theirs.
+const Cell = ({ children }: { children: ReactNode }) => <div className="flex items-center px-0.5">{children}</div>;
+
 // What a block that is not a text cannot do says why.
 const only = (t: T, title: string, ok: boolean) => (ok ? title : `${title} — ${t("For texts and text boxes")}`);
 
@@ -263,11 +266,14 @@ export default function ParagraphGroup({ ctx, b, para, ownSpacing }: { ctx: Ctx;
   const { t } = ctx;
   const { can } = para;
   const align = para.align === "justify" ? undefined : para.align;
+  // A text box's section is named after its first line (its alignment across and down), without that line's label.
+  const box = b.type === "textbox";
   return (
-    <RibbonGroup title={t("Paragraph")}>
+    <RibbonGroup title={box ? t("Alignment") : t("Paragraph")}>
       <div className="flex flex-col gap-1.5">
-        <span className="text-[11px] text-muted">{t("Alignment")}</span>
-        <div className="flex items-center gap-2">
+        {!box && <span className="text-[11px] text-muted">{t("Alignment")}</span>}
+        {/* Two columns as wide as the alignment buttons: the buttons of the rows under them sit under their buttons. */}
+        <div className="grid grid-cols-[repeat(2,max-content)] items-center gap-x-2 gap-y-1.5">
           <Segmented
             label={t("Alignment")}
             value={align}
@@ -275,37 +281,36 @@ export default function ParagraphGroup({ ctx, b, para, ownSpacing }: { ctx: Ctx;
             options={ALIGNS.map(({ value, label, Icon }) => ({ value, title: only(t, t(label), can.align), icon: <Icon size={14} /> }))}
             onChange={(v) => para.setAlign(para.align === v ? undefined : v)}
           />
-          {b.type === "textbox" && (
+          {b.type === "textbox" ? (
             <Segmented
               label={t("Text position")}
               value={b.valign ?? "top"}
               options={VALIGNS.map(({ value, label, Icon }) => ({ value, title: t(label), icon: <Icon size={14} /> }))}
               onChange={(valign) => ctx.shell.updateBlock(b.id, { valign }, "valign")}
             />
+          ) : (
+            <span />
           )}
+
+          <Cell>
+            <RibbonButton title={only(t, t("Left-to-right"), can.dir)} icon={<PilcrowRight size={16} />} pressed={para.dirShown === "ltr"} disabled={!can.dir} onClick={() => para.setDirection(para.dir === "ltr" ? null : "ltr")} />
+            <RibbonButton title={only(t, t("Right-to-left"), can.dir)} icon={<PilcrowLeft size={16} />} pressed={para.dirShown === "rtl"} disabled={!can.dir} onClick={() => para.setDirection(para.dir === "rtl" ? null : "rtl")} />
+          </Cell>
+          <Cell>
+            <RibbonButton title={t("Decrease indent")} shortcut="Ctrl+Shift+M" icon={<IndentDecrease size={16} className="rtl:-scale-x-100" />} disabled={!can.indent || !para.indent.out} onClick={() => para.shiftIndent(-1)} />
+            <RibbonButton title={t("Increase indent")} shortcut="Ctrl+M" icon={<IndentIncrease size={16} className="rtl:-scale-x-100" />} disabled={!can.indent || !para.indent.in} onClick={() => para.shiftIndent(1)} />
+            {!ownSpacing && <SpacingMenu t={t} para={para} />}
+          </Cell>
+
+          <Cell>
+            <ListMenu t={t} para={para} kinds={BULLET_KINDS} icon={<List size={16} />} title={only(t, t("Bullets"), can.list)} />
+            <ListMenu t={t} para={para} kinds={NUMBER_KINDS} icon={<ListOrdered size={16} />} title={only(t, t("Numbering"), can.list)} />
+          </Cell>
+          <Cell>
+            <BordersMenu t={t} para={para} />
+          </Cell>
         </div>
       </div>
-
-      <RibbonRow>
-        <RibbonButton title={only(t, t("Left-to-right"), can.dir)} icon={<PilcrowRight size={16} />} pressed={para.dirShown === "ltr"} disabled={!can.dir} onClick={() => para.setDirection(para.dir === "ltr" ? null : "ltr")} />
-        <RibbonButton title={only(t, t("Right-to-left"), can.dir)} icon={<PilcrowLeft size={16} />} pressed={para.dirShown === "rtl"} disabled={!can.dir} onClick={() => para.setDirection(para.dir === "rtl" ? null : "rtl")} />
-        <Divider />
-        <RibbonButton title={t("Decrease indent")} shortcut="Ctrl+Shift+M" icon={<IndentDecrease size={16} className="rtl:-scale-x-100" />} disabled={!can.indent || !para.indent.out} onClick={() => para.shiftIndent(-1)} />
-        <RibbonButton title={t("Increase indent")} shortcut="Ctrl+M" icon={<IndentIncrease size={16} className="rtl:-scale-x-100" />} disabled={!can.indent || !para.indent.in} onClick={() => para.shiftIndent(1)} />
-        {!ownSpacing && (
-          <>
-            <Divider />
-            <SpacingMenu t={t} para={para} />
-          </>
-        )}
-      </RibbonRow>
-
-      <RibbonRow>
-        <ListMenu t={t} para={para} kinds={BULLET_KINDS} icon={<List size={16} />} title={only(t, t("Bullets"), can.list)} />
-        <ListMenu t={t} para={para} kinds={NUMBER_KINDS} icon={<ListOrdered size={16} />} title={only(t, t("Numbering"), can.list)} />
-        <Divider />
-        <BordersMenu t={t} para={para} />
-      </RibbonRow>
     </RibbonGroup>
   );
 }

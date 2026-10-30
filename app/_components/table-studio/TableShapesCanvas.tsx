@@ -6,7 +6,7 @@ import { TableView } from "@/app/_components/canvas/blocks/ContentViews";
 import ShapeDrawSurface from "@/app/_components/shapes/ShapeDrawSurface";
 import StudioShapes, { type ShapePatch } from "@/app/_components/shapes/StudioShapes";
 import { tableHeight } from "@/app/_lib/blockLayout";
-import type { DrawnBox } from "@/app/_lib/shapes";
+import type { DrawnBox, ShapeStyle } from "@/app/_lib/shapes";
 import type { ExamMeta, TableBlock } from "@/app/_lib/types";
 import { useT } from "@/app/_lib/uiLang";
 import type { StudioTable } from "./useTableStudio";
@@ -22,7 +22,7 @@ interface Props {
   selectedId: string | null;
   onSelect: (id: string | null) => void;
   onChange: (id: string, patch: ShapePatch, key: string) => void;
-  onDraw: (box: DrawnBox) => void;
+  onDraw: (box: DrawnBox, style?: Partial<ShapeStyle>) => void;
 }
 
 // The table as the page draws it, with its shapes on top, for drawing, moving and resizing them. The shapes are in pixels of the

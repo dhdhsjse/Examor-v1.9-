@@ -458,9 +458,11 @@ export default function TableGrid({ table, lang, sel, onSelect, onChange, onUndo
                 value={edit.draft}
                 onChange={(draft) => setEdit((cur) => (cur ? { ...cur, draft } : cur))}
                 dir={textRtl ? "rtl" : "ltr"}
-                className="rich-edit w-full bg-transparent outline-none"
+                className="rich-edit w-full bg-transparent whitespace-pre-wrap outline-none"
+                // Enter starts a new line in the cell (the editor types it); Ctrl+Enter is done and goes down a row.
+                multiline
                 onKeyDown={(ev) => {
-                  if (ev.key === "Enter") {
+                  if (ev.key === "Enter" && (ev.ctrlKey || ev.metaKey)) {
                     ev.preventDefault();
                     commit(ev.shiftKey ? -1 : 1, 0);
                   } else if (ev.key === "Tab") {
@@ -479,7 +481,7 @@ export default function TableGrid({ table, lang, sel, onSelect, onChange, onUndo
               />
             </div>
           ) : (
-            <span className={`min-w-0 ${showsError(text) ? "text-red-600" : ""}`}>
+            <span className={`min-w-0 whitespace-pre-wrap ${showsError(text) ? "text-red-600" : ""}`}>
               <RichSpan text={text} />
             </span>
           )}
@@ -510,9 +512,6 @@ export default function TableGrid({ table, lang, sel, onSelect, onChange, onUndo
       <div className="flex items-center gap-2 border-b border-line bg-white px-2 py-1.5" dir="ltr">
         <span data-testid="table-cell-name" className="grid h-7 min-w-14 place-items-center rounded-md border border-line bg-subtle px-2 text-xs font-semibold text-ink tabular-nums">
           {hasSel ? rangeName(range) : "—"}
-        </span>
-        <span className="text-xs font-semibold text-muted italic" aria-hidden>
-          fx
         </span>
         <div className={`min-w-0 flex-1 rounded-md border border-line bg-white px-2 py-1 text-[13px] focus-within:border-indigo-400 ${hasSel ? "" : "pointer-events-none opacity-50"}`} dir={textRtl ? "rtl" : "ltr"} data-testid="table-formula-bar">
           <RichEditable

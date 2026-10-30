@@ -1,6 +1,6 @@
 "use client";
 
-import { FlipHorizontal2, AlignCenter, AlignLeft, AlignRight, AlignVerticalJustifyCenter, AlignVerticalJustifyEnd, AlignVerticalJustifyStart, ArrowDownAZ, ArrowUpAZ, Baseline, Bold, Columns3, Grid3x3, Hash, Italic, PaintBucket, Rows3, TableCellsMerge, TableCellsSplit, Trash2 } from "lucide-react";
+import { AlignCenter, AlignLeft, AlignRight, AlignVerticalJustifyCenter, AlignVerticalJustifyEnd, AlignVerticalJustifyStart, Baseline, Bold, Columns3, Grid3x3, Hash, Italic, PaintBucket, Rows3, TableCellsMerge, TableCellsSplit, Trash2 } from "lucide-react";
 import { useRef, useState } from "react";
 import { ColorMenu, Divider, Menu, MenuButton, MenuHeading, MenuItem, MenuSeparator, RibbonButton, RibbonRow, fieldCls, keepFocus } from "@/app/_features/inspectors/format/ribbonUi";
 import { FontSelect } from "@/app/_components/rich/FormatBar";
@@ -250,9 +250,7 @@ export default function TableFormatBar({ table, range, active, actions, examFont
             </Menu>
           )}
         </MenuButton>
-        <RibbonButton title={t("Flip the table: the first column goes to the other side")} icon={<FlipHorizontal2 size={15} />} pressed={actions.flipped} onClick={actions.flip} />
-        <RibbonButton title={t("Sort A to Z")} icon={<ArrowDownAZ size={15} />} disabled={none} onClick={() => actions.sort("asc")} />
-        <RibbonButton title={t("Sort Z to A")} icon={<ArrowUpAZ size={15} />} disabled={none} onClick={() => actions.sort("desc")} />
+        {/* (flipping is in the table's settings, sorting in the right-click menu) */}
         {onPickShape && (
           <>
             <Divider />

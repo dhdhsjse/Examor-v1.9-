@@ -35,6 +35,7 @@ import GeometryTab from "./tabs/GeometryTab";
 import { EDITABLE, FIXED_LAYOUT } from "./layoutRules";
 import { useChemEngine } from "./useChemEngine";
 import { useMoleculeEditor } from "./useMoleculeEditor";
+import { hasWindowControls } from "@/app/_lib/desktopWindow";
 
 interface Props {
   editing: MoleculeBlockData | null; // the molecule of the block being edited (null = a new one)
@@ -264,7 +265,7 @@ export default function MoleculeStudio({ editing, onInsert, onInsertBoth, onUpda
   const showTip = !!block && editable && !tipSeen && isEmpty(selection);
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-slate-900/40 p-3 backdrop-blur-sm" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+    <div className={`fixed inset-0 z-50 grid place-items-center bg-slate-900/40 p-3 backdrop-blur-sm ${hasWindowControls() ? "pt-12" : ""}`} onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div dir={rtl ? "rtl" : "ltr"} className="relative flex h-[min(860px,100%)] w-full max-w-[1320px] flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
         <header className="flex items-center gap-4 border-b border-line px-5 py-3">
           <h2 className="shrink-0 text-base font-semibold text-ink">{t("Molecule Studio")}</h2>

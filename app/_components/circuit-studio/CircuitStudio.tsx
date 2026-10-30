@@ -2,14 +2,17 @@
 
 import { Redo2, Undo2, X } from "lucide-react";
 import { useEffect, useState } from "react";
-import { StudioKeyboard, StudioKeyboardButton } from "@/app/_components/math-keyboard/StudioKeyboard";
+import { StudioKeyboard } from "@/app/_components/math-keyboard/StudioKeyboard";
+import StudioDock from "@/app/_components/StudioDock";
 import DiscardDialog from "@/app/_components/molecule-studio/DiscardDialog";
 import { DEFAULT_CIRCUIT_CONFIG, type CircuitConfig } from "@/app/_lib/circuit/types";
+import { FREEHAND_ID } from "@/app/_lib/shapes";
 import { useUi } from "@/app/_lib/uiLang";
 import CircuitCanvas from "./CircuitCanvas";
 import CircuitPanel from "./CircuitPanel";
 import CircuitToolbar from "./CircuitToolbar";
 import { useCircuitStudio } from "./useCircuitStudio";
+import { studioHeaderProps } from "@/app/_lib/desktopWindow";
 
 interface Props {
   /** The circuit of the block being edited; null = a new circuit. */
@@ -28,6 +31,7 @@ export default function CircuitStudio({ editing, onInsert, onUpdate, onClose }: 
   const { t, rtl } = useUi();
   const studio = useCircuitStudio(editing ?? DEFAULT_CIRCUIT_CONFIG);
   const { config, tool, draft, selectedComponent, selectedWire, selectedShape, undo, redo, canUndo, canRedo, dirty, empty } = studio;
+  const pencil = tool === "shape" && studio.shapeKind === FREEHAND_ID; // (the pencil draws a freehand shape)
   const anySelected = !!(selectedComponent || selectedWire || selectedShape);
   const [confirmClose, setConfirmClose] = useState(false);
 
@@ -82,7 +86,7 @@ export default function CircuitStudio({ editing, onInsert, onUpdate, onClose }: 
 
   return (
     <div data-testid="circuit-studio" dir={rtl ? "rtl" : "ltr"} className="fixed inset-0 z-50 flex flex-col bg-white">
-      <header className="flex items-center gap-3 border-b border-line px-4 py-2.5">
+      <header {...studioHeaderProps()}>
         <h2 className="shrink-0 text-base font-semibold text-ink">{t("Circuit Studio")}</h2>
         <span className="shrink-0 rounded-full bg-accent-soft px-2.5 py-0.5 text-xs font-medium text-accent-strong">{t("Circuit lab")}</span>
 
@@ -93,7 +97,6 @@ export default function CircuitStudio({ editing, onInsert, onUpdate, onClose }: 
         <button onClick={redo} disabled={!canRedo} title={`${t("Redo")} (Ctrl+Y)`} aria-label={t("Redo")} data-testid="redo" className={iconButton}>
           <Redo2 size={16} />
         </button>
-        <StudioKeyboardButton />
 
         <button
           onClick={() => (editing ? onUpdate(config) : onInsert(config))}
@@ -114,8 +117,16 @@ export default function CircuitStudio({ editing, onInsert, onUpdate, onClose }: 
           <CircuitToolbar studio={studio} />
         </aside>
 
-        <main className="flex min-w-0 flex-1 flex-col">
+        <main className="relative flex min-w-0 flex-1 flex-col">
           <CircuitCanvas studio={studio} />
+          {/* the floating toolbar: the pencil draws freely on the drawing, Select puts it down */}
+          <StudioDock
+            pencil={pencil}
+            selecting={tool === "select"}
+            onSelect={() => studio.setTool("select")}
+            onPencil={() => (pencil ? studio.setTool("select") : studio.pickShape(FREEHAND_ID))}
+            hint={t("Draw freely on the drawing with the mouse · Esc to stop")}
+          />
         </main>
 
         <aside className="flex w-[300px] shrink-0 flex-col border-line bg-white ltr:border-l rtl:border-r">

@@ -293,11 +293,11 @@ export function useExam(initial: ExamDoc, t?: T) {
     revealPage(page.id);
   }, [commit, doc.pages]);
 
-  // Remove a page and everything on it (the first page, the main one, can't be removed).
+  // Remove a page and everything on it (any page, as long as one is left).
   const deletePage = useCallback(
     (pageId: string) => {
       commit((d) => {
-        if (d.pages.length <= 1 || d.pages[0].id === pageId) return d;
+        if (d.pages.length <= 1) return d;
         const next = { ...d, pages: d.pages.filter((p) => p.id !== pageId), blocks: d.blocks.filter((b) => b.layout.pageId !== pageId) };
         return tRef.current ? syncChrome(d, next, tRef.current, { pageCount: true }) : next;
       });

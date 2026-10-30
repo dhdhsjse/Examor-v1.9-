@@ -34,6 +34,7 @@ export function resolveStyle(style: ShapeStyle): ResolvedStyle {
 
 /** The values of the shape's handles: the ones changed, else the defaults. */
 export function adjustOf(def: ShapeDef, style: ShapeStyle): number[] {
+  if (def.freehand) return (style.adj ?? []).filter((v) => typeof v === "number" && Number.isFinite(v)); // (its points)
   const defaults = def.adjust?.defaults ?? [];
   return defaults.map((d, i) => {
     const v = style.adj?.[i];

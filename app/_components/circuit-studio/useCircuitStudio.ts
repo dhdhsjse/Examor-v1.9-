@@ -4,8 +4,9 @@ import { useCallback, useState } from "react";
 import { GRID, routeNext, type P, type SnapTarget } from "@/app/_lib/circuit/geometry";
 import { addComponent, addWire, moveComponent, moveWire, newComponent, numberLabels, removeComponent, removeWire, resizeArea, rotateComponent, updateComponent } from "@/app/_lib/circuit/ops";
 import { DEFAULT_CIRCUIT_CONFIG, type CircuitComponent, type CircuitConfig, type ComponentType } from "@/app/_lib/circuit/types";
-import { addShape, duplicateShape, isLine, newShapeItem, removeShape, reorderShape, updateShape, type DrawnBox, type Order } from "@/app/_lib/shapes";
+import { FREEHAND_ID, addShape, duplicateShape, isLine, newShapeItem, removeShape, reorderShape, updateShape, type DrawnBox, type Order } from "@/app/_lib/shapes";
 import type { ShapePatch } from "@/app/_components/shapes/StudioShapes";
+import type { ShapeStyle } from "@/app/_lib/shapes";
 import { canRedoStudio, canUndoStudio, editStudioHistory, isStudioDirty, redoStudioHistory, startStudioHistory, undoStudioHistory, type StudioHistory } from "@/app/_lib/studioHistory";
 
 /** The tool in hand: select and move, draw wires, or put a component of a kind. */
@@ -60,9 +61,10 @@ export function useCircuitStudio(initial: CircuitConfig = DEFAULT_CIRCUIT_CONFIG
   }, []);
   const selectShape = useCallback((id: string) => setSelection({ kind: "shape", id }), []);
   const drawShape = useCallback(
-    (box: DrawnBox) => {
-      const item = newShapeItem(shapeKind, box);
+    (box: DrawnBox, style?: Partial<ShapeStyle>) => {
+      const item = newShapeItem(shapeKind, box, style);
       change((c) => ({ ...c, shapes: addShape(c.shapes, item) }), `add:${item.id}`);
+      if (shapeKind === FREEHAND_ID) return; // (the pencil stays in hand: a drawing is many strokes)
       setSelection({ kind: "shape", id: item.id });
       setToolState("select"); // (like PowerPoint: one shape, then the Select tool is back)
     },
@@ -99,14 +101,28 @@ export function useCircuitStudio(initial: CircuitConfig = DEFAULT_CIRCUIT_CONFIG
     return at ? moveComponent(c, id, at.x + dx * GRID, at.y + dy * GRID) : c;
   }, `move:${id}`), [change]);
 
-  // R: turns the component about to be placed, or else the selected one.
+  // R: turns the selected component (the one just placed, too: no need to take the Select tool for it), and the component about to be
+  // placed follows it; with nothing selected, the component about to be placed, or else the selected shape.
   const rotate = useCallback(
     (by = 90) => {
-      if (tool !== "select" && tool !== "wire" && tool !== "shape") setPendingRotation((r) => (((r + by) % 360) + 360) % 360);
-      else if (selectedComponent) change((c) => rotateComponent(c, selectedComponent.id, by), `rotate:${selectedComponent.id}`);
+      const placing = tool !== "select" && tool !== "wire" && tool !== "shape";
+      const turned = (r: number) => (((r + by) % 360) + 360) % 360;
+      if (selectedComponent) {
+        change((c) => rotateComponent(c, selectedComponent.id, by), `rotate:${selectedComponent.id}`);
+        if (placing) setPendingRotation(turned(selectedComponent.rotation));
+      } else if (placing) setPendingRotation(turned);
       else if (selectedShape && !isLine(selectedShape)) changeShape(selectedShape.id, { rotation: ((((selectedShape.rotation ?? 0) + by) % 360) + 360) % 360 || undefined }, `shape-turn:${selectedShape.id}:${Date.now()}`);
     },
     [tool, selectedComponent, selectedShape, change, changeShape],
+  );
+
+  // A component turned on the drawing itself (its turn handle, or a right-click), whatever the tool in hand: it is selected too.
+  const rotateComponentBy = useCallback(
+    (id: string, by = 90) => {
+      setSelection({ kind: "component", id });
+      change((c) => rotateComponent(c, id, by), `rotate:${id}`);
+    },
+    [change],
   );
 
   const updateComponentProps = useCallback(
@@ -190,6 +206,7 @@ export function useCircuitStudio(initial: CircuitConfig = DEFAULT_CIRCUIT_CONFIG
     moveComponentTo,
     nudge,
     rotate,
+    rotateComponentBy,
     updateComponentProps,
     draft,
     wireClick,

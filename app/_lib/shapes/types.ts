@@ -81,6 +81,8 @@ export type ShapeDef = {
   adjust?: Adjust;
   /** A line: no inside, drawn from one corner to the opposite one, with two end handles instead of eight */
   line?: boolean;
+  /** A stroke of the pencil: `adj` holds its points (x, y pairs, as fractions of the box) instead of the values of handles */
+  freehand?: boolean;
   /** The room for the text inside the shape, as fractions of the box: left, top, right, bottom (default: all of it) */
   textInset?: readonly [number, number, number, number];
   /** The size of a shape put with a click instead of a drag (default 120×90) */

@@ -5,3 +5,4 @@ export { pushRecent, RECENT_LIMIT } from "./recent";
 export { shapeSvg, shapesSvg } from "./svg";
 export * from "./text";
 export * from "./types";
+export { FREEHAND_ID } from "./catalog/freehand";
