@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { GRAPH_AR, GRAPH_FR } from "../../graph/strings";
 import { STUDIO_AR, STUDIO_FR } from "../../chemistry/strings";
 import { MOLECULE_AR, MOLECULE_FR } from "../../../_molecule/strings";
+import { SHAPES_AR, SHAPES_FR } from "../../shapes/strings";
 import { CIRCUIT_AR, CIRCUIT_FR } from "../strings";
 import { COMPONENT_SPECS, COMPONENT_TYPES } from "../symbols";
 
@@ -25,14 +26,14 @@ describe("the interface strings of the Circuit Studio", () => {
 
   it("finds the strings of the screens, the hints and the component names", () => {
     expect(used.size).toBeGreaterThan(30);
-    expect(hints.length).toBe(11); // one per tool
+    expect(hints.length).toBe(12); // one per tool
     expect(used.has("Resistor")).toBe(true);
   });
 
   it("has a French text and an Arabic text for each, here or elsewhere in the app", () => {
     const known = (dicts: Record<string, string>[], k: string) => dicts.some((d) => k in d) || app.includes(`"${k}":`);
-    expect([...used].filter((k) => !known([CIRCUIT_FR, GRAPH_FR, STUDIO_FR, MOLECULE_FR], k))).toEqual([]);
-    expect([...used].filter((k) => !known([CIRCUIT_AR, GRAPH_AR, STUDIO_AR, MOLECULE_AR], k))).toEqual([]);
+    expect([...used].filter((k) => !known([CIRCUIT_FR, GRAPH_FR, STUDIO_FR, MOLECULE_FR, SHAPES_FR], k))).toEqual([]);
+    expect([...used].filter((k) => !known([CIRCUIT_AR, GRAPH_AR, STUDIO_AR, MOLECULE_AR, SHAPES_AR], k))).toEqual([]);
   });
 
   it("keeps the {placeholders} of the English text", () => {

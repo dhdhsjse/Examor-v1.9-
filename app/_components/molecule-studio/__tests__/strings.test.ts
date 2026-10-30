@@ -2,6 +2,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { STUDIO_AR, STUDIO_FR, TOOL_HINTS } from "../../../_lib/chemistry/strings";
+import { SHAPES_AR, SHAPES_FR } from "../../../_lib/shapes/strings";
 import { MOLECULE_AR, MOLECULE_FR } from "../../../_molecule/strings";
 
 const T_CALL = /\bt\("((?:[^"\\]|\\.)*)"/g;
@@ -23,11 +24,11 @@ describe("drawing Studio strings", () => {
   });
 
   it("has a French text for every string", () => {
-    expect([...used].filter((k) => !(k in STUDIO_FR) && !(k in MOLECULE_FR) && !app.includes(`"${k}":`))).toEqual([]);
+    expect([...used].filter((k) => !(k in STUDIO_FR) && !(k in MOLECULE_FR) && !(k in SHAPES_FR) && !app.includes(`"${k}":`))).toEqual([]);
   });
 
   it("has an Arabic text for every string", () => {
-    expect([...used].filter((k) => !(k in STUDIO_AR) && !(k in MOLECULE_AR) && !app.includes(`"${k}":`))).toEqual([]);
+    expect([...used].filter((k) => !(k in STUDIO_AR) && !(k in MOLECULE_AR) && !(k in SHAPES_AR) && !app.includes(`"${k}":`))).toEqual([]);
   });
 
   it("keeps the {placeholders} of the English text in both translations", () => {
@@ -37,7 +38,7 @@ describe("drawing Studio strings", () => {
   });
 
   it("translates the help line of every tool (they are looked up by tool name)", () => {
-    expect(Object.keys(TOOL_HINTS).sort()).toEqual(["arrow", "atom", "bond", "electron", "erase", "pair", "ring", "select", "template", "text"]);
+    expect(Object.keys(TOOL_HINTS).sort()).toEqual(["arrow", "atom", "bond", "electron", "erase", "pair", "ring", "select", "shape", "template", "text"]);
     for (const hint of Object.values(TOOL_HINTS)) {
       expect(STUDIO_FR[hint], `${hint} (fr)`).toBeTruthy();
       expect(STUDIO_AR[hint], `${hint} (ar)`).toBeTruthy();

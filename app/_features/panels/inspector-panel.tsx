@@ -24,6 +24,7 @@ export const inspectorPanel: Feature = {
         onDuplicate={shell.duplicateBlock}
         onSaveToLibrary={shell.saveToLibrary}
         onReplaceImage={shell.replaceImage}
+        onOpenTableStudio={(shape) => block && shell.openTableStudio(block.id, shape)}
         onMeta={shell.setMeta}
         onChangeTemplate={shell.openPicker}
       />

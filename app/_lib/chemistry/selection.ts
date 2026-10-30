@@ -256,7 +256,7 @@ export function pasteClipboard(graph: MoleculeGraph, clip: Clipboard, dx: number
   const bonds = clip.bonds.map((b) => ({ ...b, id: newId(), sourceId: ids.get(b.sourceId)!, targetId: ids.get(b.targetId)! }));
   const annotations = clip.annotations.map((n) => ({ ...n, id: newId(), x: n.x + dx, y: n.y + dy }));
   return {
-    graph: { atoms: [...graph.atoms, ...atoms], bonds: [...graph.bonds, ...bonds], annotations: [...graph.annotations, ...annotations] },
+    graph: { ...graph, atoms: [...graph.atoms, ...atoms], bonds: [...graph.bonds, ...bonds], annotations: [...graph.annotations, ...annotations] },
     selection: { atoms: atoms.map((a) => a.id), bonds: bonds.map((b) => b.id), notes: annotations.map((n) => n.id) },
   };
 }

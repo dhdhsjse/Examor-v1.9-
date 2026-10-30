@@ -1,20 +1,12 @@
-import MathKeyboard from "@/app/_components/math/MathKeyboard";
+import PageKeyboard from "@/app/_components/math-keyboard/PageKeyboard";
 import type { Feature } from "@/app/_features/core/types";
 
-// Math keyboard shown while an equation is selected (sits over the pages).
+// The math keyboard over the pages: a button to show / hide it, and the keyboard itself (a window that can be moved anywhere) while an
+// equation is selected. Its keys are Math or Physics, as the exam's subject says until the teacher picks by hand. It stays under the
+// full-screen dialogs (onboarding, template picker…), which are z-50. The studios have their own (StudioKeyboard).
 export const mathKeyboardOverlay: Feature = {
   id: "overlay.math-keyboard",
   kind: "overlay",
   label: "Math keyboard",
-  render: ({ ctx }) => {
-    const { shell } = ctx;
-    if (shell.selected?.type !== "equation" || !shell.mathKeyboard) return null;
-    return (
-      <div className="pointer-events-none absolute inset-x-0 bottom-16 z-40 flex justify-center px-4">
-        <div className="w-full max-w-[720px]">
-          <MathKeyboard onClose={() => shell.toggleMathKeyboard(false)} />
-        </div>
-      </div>
-    );
-  },
+  render: ({ ctx }) => <PageKeyboard ctx={ctx} />,
 };

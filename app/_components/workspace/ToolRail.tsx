@@ -5,7 +5,8 @@ import { useT } from "@/app/_lib/uiLang";
 // "select" = click to select and drag blocks. "text" = like the T tool in Photoshop:
 // click a text to type in it, or click empty paper to write a new text there.
 // "textbox" = drag on a page to draw a text box (Insert → Text box); back to "select" once drawn.
-export type CanvasTool = "select" | "text" | "textbox";
+// "shape" = drag on a page to draw the shape chosen in Insert → Shapes (not a button of this bar: the gallery sets it).
+export type CanvasTool = "select" | "text" | "textbox" | "shape";
 
 const TOOLS: { id: CanvasTool; label: string; key: string; icon: React.ReactNode }[] = [
   {

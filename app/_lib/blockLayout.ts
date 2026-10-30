@@ -1,10 +1,14 @@
 import { fontStack } from "./fonts";
 import { isRtl, optionLabel, words } from "./i18n";
-import { linesHeight, wrapRich, type RichLine, type TextFont } from "./measure";
-import { parseRich, plainText, replaceBlanks, serializeRich } from "./richText";
-import { docParagraphs, textboxDoc } from "./textboxDoc";
-import { INDENT_PX } from "./tiptap-indent";
+import { LIST_GAP, listMarkers } from "./lists";
+import { linesHeight, measureText, runFont, wrapRich, type Piece, type RichLine, type TextFont } from "./measure";
+import { parseRich, plainText, replaceBlanks, serializeRich, splitParagraphs, type Run } from "./richText";
+import { docParagraphs, textboxDoc, type DocParagraph } from "./textboxDoc";
+import { INDENT_PX, MAX_INDENT } from "./tiptap-indent";
 import { fixOrder, shuffled } from "./shuffle";
+import { shapesBounds } from "./shapes/geometry";
+import { shownText, tableSheet } from "./table/display";
+import { TABLE_HEADER_FILL, cellLook, hEdgeShown, isCovered, isPlainTable, mergeAt, tableMirrored, vEdgeShown, type CellLook } from "./table/model";
 import type {
   BlankBlock,
   Block,
@@ -406,6 +410,42 @@ export function textboxSpec(b: TextboxBlock, meta: ExamMeta): Spec {
 // Room between a text box's edge and its text (kept small enough to leave the text some width).
 export const textboxPad = (b: TextboxBlock) => Math.max(0, Math.min(b.padding ?? TEXTBOX_PAD, TEXTBOX_MAX_PAD, (b.layout.width - 20) / 2));
 
+// The writing direction of a text or text box: its own, else the exam's.
+export const blockRtl = (b: { dir?: "ltr" | "rtl" }, meta: ExamMeta) => (b.dir ? b.dir === "rtl" : isRtl(meta.lang));
+
+// The marker of a list item as a line of its own (a piece of text in the font the item starts with), placed
+// where it is drawn: `x` / `width` and `y` (the top of the first line of the item), in the block's own coordinates.
+export interface ListMarker {
+  line: RichLine;
+  x: number;
+  y: number;
+  width: number;
+}
+
+// The line of a marker: the marker text in the font the item starts with (size, face, color), not underlined or highlighted.
+function markerLine(text: string, runs: Run[], base: TextFont, first: RichLine | undefined): RichLine {
+  const start = runs.find((r) => r.text.length > 0);
+  const f = start ? runFont(start.style, base) : base;
+  const font: TextFont = { ...f, size: f.script ? (f.scriptBase ?? f.size) : f.size, underline: false, strike: false, highlight: undefined, script: undefined, scriptBase: undefined };
+  const width = measureText(text, font);
+  const piece: Piece = { text, x: 0, width, font };
+  return { pieces: [piece], width, height: first?.height ?? font.size, size: first?.size ?? font.size };
+}
+
+// The room a list item keeps in front of its text for the marker (a wider marker makes its own room).
+const markerGap = (line: RichLine | null) => (line ? Math.max(LIST_GAP, Math.ceil(line.width) + 6) : 0);
+
+// What is drawn behind a paragraph: its shading and the lines of its border, in the block's own coordinates.
+export interface ParagraphBox {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  shading?: string;
+  border?: string;
+  borderColor?: string;
+}
+
 // A paragraph of a text box, wrapped: `y` is from the top of the text, `x` / `width` its own (indented
 // from the start side).
 export interface TextboxParagraph {
@@ -414,25 +454,58 @@ export interface TextboxParagraph {
   y: number;
   width: number;
   align?: ParagraphAlign;
+  rtl: boolean;
+  marker?: ListMarker;
+  box?: ParagraphBox;
 }
 
-// A text box: its paragraphs (textboxDoc.ts) wrapped inside the box, each with its own alignment (else the
-// box's), the text placed at the top / middle / bottom. The box is as tall as it was made, or taller when
-// the text needs it. `hint`: drawn instead while the box is empty (one styled paragraph).
+const BOX_PAD = 3; // how far a shading or a border goes beyond the text (px)
+
+// A text box: its paragraphs (textboxDoc.ts) wrapped inside the box, each with its own alignment, direction,
+// spacing, list marker and shading (else the box's), the text placed at the top / middle / bottom. The box is
+// as tall as it was made, or taller when the text needs it. `hint`: drawn instead while the box is empty (one
+// styled paragraph).
 export function layoutTextbox(b: TextboxBlock, meta: ExamMeta, hint?: string) {
   const s = textboxSpec(b, meta);
   const pad = textboxPad(b);
   const width = Math.max(20, b.layout.width - pad * 2);
-  const rtl = isRtl(meta.lang);
-  const source = hint ? [{ runs: parseRich(hint), align: undefined, indent: 0 }] : docParagraphs(textboxDoc(b));
+  const boxRtl = blockRtl(b, meta);
+  const empty: DocParagraph = { runs: [], indent: 0, spaceBefore: 0, spaceAfter: 0 };
+  const source: DocParagraph[] = hint ? [{ ...empty, runs: parseRich(hint) }] : docParagraphs(textboxDoc(b));
+  const items = source.length ? source : [empty];
+  const rtls = items.map((p) => (p.dir ? p.dir === "rtl" : boxRtl));
+  const markers = listMarkers(items.map((p, i) => ({ list: p.list, level: p.indent, arabic: rtls[i] })));
   let top = 0;
-  const paragraphs: TextboxParagraph[] = (source.length ? source : [{ runs: [], align: undefined, indent: 0 }]).map((p) => {
+  const paragraphs: TextboxParagraph[] = items.map((p, i) => {
+    const rtl = rtls[i];
     // Indented from the start side, keeping some room for the text.
-    const indent = Math.min(p.indent * INDENT_PX, Math.max(0, width - 20));
-    // An empty paragraph is an empty line.
-    const lines = wrapRich(serializeRich(p.runs) || " ", width - indent, s.font, s.line);
-    const out = { lines, x: pad + (rtl ? 0 : indent), y: top, width: width - indent, align: p.align ?? b.align };
-    top += linesHeight(lines);
+    const indent = Math.min(Math.min(p.indent, MAX_INDENT) * INDENT_PX, Math.max(0, width - 20));
+    top += p.spaceBefore;
+    // The marker of a list item, then the room it takes before the text.
+    const markerText = markers[i];
+    const probe = markerText ? markerLine(markerText, p.runs, s.font, undefined) : null;
+    const gap = Math.min(markerGap(probe), Math.max(0, width - indent - 20));
+    // An empty paragraph is an empty line. Its own line spacing replaces the box's.
+    const line = p.lineHeight ? Math.round(s.font.size * (20 / 14) * p.lineHeight) : s.line;
+    const textWidth = width - indent - gap;
+    const lines = wrapRich(serializeRich(p.runs) || " ", textWidth, s.font, line);
+    const out: TextboxParagraph = { lines, x: pad + (rtl ? 0 : indent + gap), y: top, width: textWidth, align: p.align ?? b.align, rtl };
+    if (markerText) {
+      const placed = markerLine(markerText, p.runs, s.font, lines[0]);
+      out.marker = { line: placed, x: rtl ? pad + width - indent - placed.width : pad + indent, y: top, width: placed.width };
+    }
+    const h = linesHeight(lines);
+    if (p.shading || p.border) {
+      out.box = {
+        x: Math.max(0, pad + (rtl ? 0 : indent) - BOX_PAD),
+        y: top - 1,
+        width: width - indent + BOX_PAD * 2,
+        height: h + 2,
+        ...(p.shading ? { shading: p.shading } : {}),
+        ...(p.border ? { border: p.border, ...(p.borderColor ? { borderColor: p.borderColor } : {}) } : {}),
+      };
+    }
+    top += h + p.spaceAfter;
     return out;
   });
   const content = Math.max(top, s.line);
@@ -452,7 +525,7 @@ export interface Decoration {
 }
 
 export function layoutText(b: TextBlock, meta: ExamMeta) {
-  const rtl = isRtl(meta.lang);
+  const rtl = blockRtl(b, meta);
   const s = textSpec(b, meta);
   const w = b.layout.width;
   const W = inner(b);
@@ -488,7 +561,33 @@ export function layoutText(b: TextBlock, meta: ExamMeta) {
       extra = PAD + 6;
       break;
   }
-  const text = box(b.text, width, s, y);
+  // Indented from the start side (Home → Paragraph), and in front of the text of a list the room for its markers.
+  const indent = Math.min(Math.max(0, Math.min(b.indent ?? 0, MAX_INDENT)) * INDENT_PX, Math.max(0, width - 40));
+  const markers: ListMarker[] = [];
+  let text: TextBox;
+  const items = b.list ? splitParagraphs(b.text) : null;
+  if (items && b.list) {
+    // Every line is an item: its text is wrapped on its own, all with the same room for the markers.
+    const labels = listMarkers(items.map(() => ({ list: b.list, level: 0, arabic: rtl })));
+    const gap = Math.min(Math.max(...items.map((p, i) => markerGap(markerLine(labels[i] as string, parseRich(p), s.font, undefined)))), Math.max(0, width - indent - 40));
+    const textW = width - indent - gap;
+    const lines: RichLine[] = [];
+    let top = y;
+    items.forEach((p, i) => {
+      const own = wrapRich(p || " ", textW, s.font, s.line);
+      const placed = markerLine(labels[i] as string, parseRich(p), s.font, own[0]);
+      markers.push({ line: placed, x: rtl ? x + width - indent - placed.width : x + indent, y: top, width: placed.width });
+      lines.push(...own);
+      top += linesHeight(own);
+    });
+    text = { lines, y, height: linesHeight(lines) };
+    if (!rtl) x += indent + gap;
+    width = textW;
+  } else {
+    if (indent && !rtl) x += indent;
+    width -= indent;
+    text = box(b.text, width, s, y);
+  }
   const textW = Math.max(0, ...text.lines.map((l) => l.width));
 
   switch (kind) {
@@ -523,7 +622,19 @@ export function layoutText(b: TextBlock, meta: ExamMeta) {
       break;
     }
   }
-  return { spec: s, text, x, width, align, deco, height: y + text.height + extra };
+  // A shading or a border round the text (not under a decoration of its own).
+  const around =
+    kind === "plain" && (b.shading || b.border)
+      ? {
+          x: Math.max(0, (rtl ? PAD : PAD + indent) - BOX_PAD),
+          y: text.y - 3,
+          width: W - indent + BOX_PAD * 2,
+          height: text.height + 6,
+          ...(b.shading ? { shading: b.shading } : {}),
+          ...(b.border ? { border: b.border, ...(b.borderColor ? { borderColor: b.borderColor } : {}) } : {}),
+        }
+      : null;
+  return { spec: s, text, x, width, align, deco, rtl, markers, box: around satisfies ParagraphBox | null, height: y + text.height + extra };
 }
 
 export const TABLE_MIN_COL = 24;
@@ -537,29 +648,152 @@ export function tableColumnWidths(b: TableBlock): number[] {
   return Array.from({ length: cols }, (_, c) => (shares && sum > 0 ? (shares[c] / sum) * w : w / cols));
 }
 
+// One cell of a laid-out table (a merged cell is one box): where it is, its text, how it is drawn. `fill` and `align` are only
+// set where the table asks for them.
+export interface TableCellBox {
+  r: number;
+  c: number;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  text: TextBox;
+  /** Top of the text, in block coordinates */
+  textY: number;
+  spec: Spec;
+  align?: "left" | "center" | "right";
+  fill?: string;
+}
+
+export interface TableLayout {
+  F: Fonts;
+  colX: number[];
+  colW: number[];
+  rows: { y: number; height: number; cells: TextBox[]; bold: boolean }[];
+  height: number;
+  /** Every cell (a merged one once), for drawing and for typing in */
+  cellBoxes: TableCellBox[];
+  /** Whether the table has any of the extras (merges, looks, borders, formulas): a plain one is drawn the way tables always were */
+  ext: boolean;
+  /** The first column is on the right (an Arabic exam, or a table flipped in a French one): the text keeps the exam's direction */
+  mirror: boolean;
+  /** With extras: the lines to draw, as [x1, y1, x2, y2] */
+  lines: [number, number, number, number][];
+}
+
 // In Arabic the first column is on the right.
-export function layoutTable(b: TableBlock, meta: ExamMeta) {
+export function layoutTable(b: TableBlock, meta: ExamMeta): TableLayout {
   const F = blockFonts(b, meta);
-  const rtl = F.rtl;
+  const mirror = tableMirrored(b, F.rtl);
   const w = b.layout.width;
   const colW = tableColumnWidths(b);
   let acc = 0;
   const colX = colW.map((cw) => {
-    const x = rtl ? w - acc - cw : acc;
+    const x = mirror ? w - acc - cw : acc;
     acc += cw;
     return x;
   });
+  if (!isPlainTable(b)) return layoutTableExt(b, F, mirror, colW, colX);
   const boldBody: Spec = { ...F.body, font: { ...F.body.font, bold: true } };
   let y = 0;
+  const cellBoxes: TableCellBox[] = [];
   const rows = b.cells.map((row, r) => {
     const bold = b.header && r === 0;
-    const cells = row.map((c, k) => box(c, (colW[k] ?? colW[0]) - 12, bold ? boldBody : F.body, 0));
+    const spec = bold ? boldBody : F.body;
+    const cells = row.map((c, k) => box(c, (colW[k] ?? colW[0]) - 12, spec, 0));
     const h = Math.max(TABLE_MIN_ROW, b.rowHeights?.[r] ?? 0, ...cells.map((c) => c.height + 8));
     const out = { y, height: h, cells, bold };
+    cells.forEach((text, c) => cellBoxes.push({ r, c, x: colX[c], y, w: colW[c], h, text, textY: y + (h - text.height) / 2, spec, align: bold ? "center" : undefined }));
     y += h;
     return out;
   });
-  return { F, colX, colW, rows, height: y };
+  return { F, colX, colW, rows, height: y, cellBoxes, ext: false, mirror, lines: [] };
+}
+
+export { TABLE_HEADER_FILL };
+
+// A table with merged cells, cell looks, borders, banding or formulas.
+function layoutTableExt(b: TableBlock, F: Fonts, mirror: boolean, colW: number[], colX: number[]): TableLayout {
+  const w = b.layout.width;
+  const rowsN = b.cells.length;
+  const colsN = colW.length;
+  const sheet = tableSheet(b);
+  const body = F.body.font;
+
+  // the text of every cell that is not under a merged cell
+  type Item = { r: number; c: number; rs: number; cs: number; x: number; w: number; spec: Spec; text: TextBox; look: CellLook };
+  const items: Item[] = [];
+  const logical: TextBox[][] = b.cells.map((row) => row.map(() => ({ lines: [], y: 0, height: 0 })));
+  for (let r = 0; r < rowsN; r++)
+    for (let c = 0; c < colsN; c++) {
+      if (isCovered(b, r, c)) continue;
+      const m = mergeAt(b, r, c);
+      const rs = m?.rs ?? 1;
+      const cs = Math.min(m?.cs ?? 1, colsN - c);
+      const span = Array.from({ length: cs }, (_, k) => c + k);
+      const width = span.reduce((s, k) => s + colW[k], 0);
+      const x = Math.min(...span.map((k) => colX[k]));
+      const look = cellLook(b, r, c);
+      const size = look.size ?? body.size;
+      const font = { ...body, family: look.family ? fontStack(look.family) : body.family, size, bold: look.bold ?? body.bold, italic: look.italic ?? body.italic, color: look.color ?? body.color };
+      const spec: Spec = { font, line: size === body.size ? F.body.line : Math.round(size * (20 / 14)) };
+      const text = box(shownText(b, sheet, r, c, F.lang), width - 12, spec, 0);
+      logical[r][c] = text;
+      items.push({ r, c, rs, cs, x, w: width, spec, text, look });
+    }
+
+  // heights: a row fits its single-row cells; a merged cell over several rows asks the last of them for what it lacks
+  const heights = Array.from({ length: rowsN }, (_, r) => Math.max(TABLE_MIN_ROW, b.rowHeights?.[r] ?? 0));
+  for (const it of items) if (it.rs === 1) heights[it.r] = Math.max(heights[it.r], it.text.height + 8);
+  for (const it of items) {
+    if (it.rs <= 1) continue;
+    const have = heights.slice(it.r, it.r + it.rs).reduce((s, v) => s + v, 0);
+    const need = it.text.height + 8;
+    if (need > have) heights[Math.min(it.r + it.rs, rowsN) - 1] += need - have;
+  }
+  let y = 0;
+  const ys = heights.map((h) => {
+    const top = y;
+    y += h;
+    return top;
+  });
+  const height = y;
+  const rows = heights.map((h, r) => ({ y: ys[r], height: h, cells: logical[r], bold: b.header && r === 0 }));
+
+  const cellBoxes: TableCellBox[] = items.map((it) => {
+    const top = ys[it.r];
+    const h = heights.slice(it.r, it.r + it.rs).reduce((s, v) => s + v, 0);
+    const valign = it.look.valign;
+    const textY = valign === "top" ? top + 4 : valign === "bottom" ? top + h - it.text.height - 4 : top + (h - it.text.height) / 2;
+    return { r: it.r, c: it.c, x: it.x, y: top, w: it.w, h, text: it.text, textY, spec: it.spec, align: it.look.align, fill: it.look.fill };
+  });
+
+  // the lines: every edge of the grid that is drawn, except inside a merged cell
+  const lines: TableLayout["lines"] = [];
+  for (let i = 0; i <= rowsN; i++)
+    for (let c = 0; c < colsN; c++) {
+      if (!hEdgeShown(b, rowsN, i, c)) continue;
+      const above = i > 0 ? mergeAt(b, i - 1, c) : undefined;
+      if (i > 0 && i < rowsN && above && above === mergeAt(b, i, c)) continue;
+      const yy = i === rowsN ? height : ys[i];
+      lines.push([colX[c], yy, colX[c] + colW[c], yy]);
+    }
+  for (let j = 0; j <= colsN; j++)
+    for (let r = 0; r < rowsN; r++) {
+      if (!vEdgeShown(b, colsN, j, r)) continue;
+      const before = j > 0 ? mergeAt(b, r, j - 1) : undefined;
+      if (j > 0 && j < colsN && before && before === mergeAt(b, r, j)) continue;
+      const x = mirror ? (j === 0 ? w : colX[j - 1]) : j === colsN ? w : colX[j];
+      lines.push([x, ys[r], x, ys[r] + heights[r]]);
+    }
+  return { F, colX, colW, rows, height, cellBoxes, ext: true, mirror, lines };
+}
+
+// A table is as high as its rows, or lower if a shape drawn over it goes below them.
+export function tableHeight(b: TableBlock, meta: ExamMeta): number {
+  const rows = layoutTable(b, meta).height;
+  const shapes = shapesBounds(b.shapes);
+  return shapes ? Math.max(rows, Math.ceil(shapes.maxY)) : rows;
 }
 
 // Height of any block (used for stacking, snapping and thumbnails).
@@ -584,12 +818,13 @@ export function blockHeight(b: Block, n: number, meta: ExamMeta): number {
     case "textbox":
       return layoutTextbox(b, meta).height;
     case "table":
-      return layoutTable(b, meta).height;
+      return tableHeight(b, meta);
     case "header":
       return HEADER_HEIGHT[b.style] ?? HEADER_HEIGHT.classic;
     case "equation":
     case "image":
     case "graph":
+    case "shape":
       return b.layout.height;
   }
 }

@@ -4,6 +4,7 @@ import { RotateCcw, RotateCw, Trash2 } from "lucide-react";
 import { useId, useState, type ReactNode } from "react";
 import { COMPONENT_SPECS, UNITS, withUnit } from "@/app/_lib/circuit/symbols";
 import { MAX_AREA, MIN_AREA, type LabelSide } from "@/app/_lib/circuit/types";
+import ShapeProperties from "@/app/_components/shapes/ShapeProperties";
 import { useT } from "@/app/_lib/uiLang";
 import type { CircuitStudioState } from "./useCircuitStudio";
 
@@ -72,7 +73,7 @@ const iconButton = "grid size-8 place-items-center rounded-lg border border-line
 // state of a switch; a wire), or, with nothing selected, the size of the drawing area.
 export default function CircuitPanel({ studio }: { studio: CircuitStudioState }) {
   const t = useT();
-  const { config, selectedComponent: comp, selectedWire: wire, updateComponentProps, rotate, deleteSelected, setArea, numberTheLabels } = studio;
+  const { config, selectedComponent: comp, selectedWire: wire, selectedShape: shape, updateComponentProps, rotate, deleteSelected, setArea, numberTheLabels } = studio;
   const sides: { id: LabelSide; name: string }[] = [
     { id: "auto", name: t("Automatic") },
     { id: "top", name: t("Above") },
@@ -151,7 +152,19 @@ export default function CircuitPanel({ studio }: { studio: CircuitStudioState })
         </Section>
       )}
 
-      {!comp && !wire && (
+      {shape && (
+        <ShapeProperties
+          key={shape.id}
+          item={shape}
+          geometry
+          onChange={(patch) => studio.changeShape(shape.id, patch, `shape:${shape.id}:${Object.keys(patch).sort().join(",")}`)}
+          onOrder={(order) => studio.orderShape(shape.id, order)}
+          onDuplicate={() => studio.duplicateShapeOf(shape.id)}
+          onDelete={deleteSelected}
+        />
+      )}
+
+      {!comp && !wire && !shape && (
         <Section title={t("Drawing area")} testId="area-properties">
           <div className="grid grid-cols-2 gap-2">
             <SizeField label={t("Width (px)")} value={config.width} onCommit={(w) => setArea(w, config.height)} testId="area-width" />

@@ -1,5 +1,6 @@
 // The picture of a circuit for the page (an image block's `src`): the same scene as the canvas, cropped to what is drawn, with a
 // margin. Pure function, unit-tested.
+import { shapesSvg } from "@/app/_lib/shapes";
 import { JUNCTION_RADIUS, WIRE_STROKE, buildCircuitScene, contentBounds } from "./scene";
 import { SYMBOL_STROKE, type SymbolShape } from "./symbols";
 import type { CircuitConfig } from "./types";
@@ -36,6 +37,7 @@ export function renderCircuitSvg(config: CircuitConfig): CircuitImage | null {
         `<g stroke="${INK}" stroke-width="${SYMBOL_STROKE}" stroke-linecap="round" stroke-linejoin="round" data-component="${esc(c.id)}" data-type="${c.type}">${c.shapes.map(shapeSvg).join("")}</g>` +
         c.texts.map((t) => `<text x="${num(t.x)}" y="${num(t.y)}" dy="0.35em" text-anchor="${t.align}" font-size="${t.size}"${t.bold ? ' font-weight="bold"' : ""} fill="${INK}">${esc(t.text)}</text>`).join(""),
     ),
+    shapesSvg(scene.shapes),
   ];
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" font-family="${FONT}"><g transform="translate(${-x0} ${-y0})">${body.join("")}</g></svg>`;
   return { svg, width, height };

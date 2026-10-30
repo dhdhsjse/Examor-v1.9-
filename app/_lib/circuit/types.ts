@@ -1,5 +1,6 @@
 // The electrical circuit of the Circuit Studio: components on a 20 px grid joined by orthogonal wires.
 // Pure data (no React): the canvas, the picture for the page and the tests all start from a CircuitConfig.
+import type { ShapeItem } from "@/app/_lib/shapes";
 
 export type ComponentType = "battery" | "resistor" | "capacitor" | "inductor" | "switch" | "lamp" | "diode" | "ammeter" | "voltmeter";
 
@@ -37,6 +38,8 @@ export type CircuitConfig = {
   height: number;
   components: CircuitComponent[];
   wires: CircuitWire[];
+  /** Shapes drawn over the circuit (Shapes in the toolbar); missing in circuits made before they existed */
+  shapes?: ShapeItem[];
 };
 
 export const DEFAULT_CIRCUIT_CONFIG: CircuitConfig = {

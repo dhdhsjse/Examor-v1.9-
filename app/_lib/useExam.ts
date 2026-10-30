@@ -136,6 +136,16 @@ export function useExam(initial: ExamDoc, t?: T) {
     [commit],
   );
 
+  // Change several blocks in one undo step (Find and replace → Replace all).
+  const updateBlocks = useCallback(
+    (changes: { id: string; patch: BlockPatch }[]) => {
+      if (!changes.length) return;
+      const by = new Map(changes.map((c) => [c.id, c.patch]));
+      commit((d) => ({ ...d, blocks: d.blocks.map((b) => (by.has(b.id) ? ({ ...b, ...by.get(b.id), layout: { ...b.layout, ...by.get(b.id)?.layout } } as Block) : b)) }));
+    },
+    [commit],
+  );
+
   // Draw the equation with MathJax, then store the svg (no undo step).
   const refreshEquation = useCallback(
     (b: EquationBlock, latex = b.latex) => {
@@ -230,6 +240,25 @@ export function useExam(initial: ExamDoc, t?: T) {
       setSelectedId((cur) => (cur === id ? null : cur));
     },
     [commit],
+  );
+
+  // Put a copy of a block (taken from the clipboard, maybe from another exam) on its own page, or on the page in view when that one
+  // is not here; a little aside when another block already is where it was.
+  const pasteBlock = useCallback(
+    (src: Block) => {
+      const page = doc.pages.find((p) => p.id === src.layout.pageId) ?? doc.pages[clamp(activePage, 0, doc.pages.length - 1)];
+      if (!page) return;
+      const size = pageSize(page);
+      const taken = doc.blocks.some((b) => b.layout.pageId === page.id && Math.abs(b.layout.x - src.layout.x) < 1 && Math.abs(b.layout.y - src.layout.y) < 1);
+      const copy = {
+        ...structuredClone(src),
+        id: newId(),
+        layout: { ...src.layout, pageId: page.id, x: clamp(src.layout.x + (taken ? 12 : 0), 0, size.width - src.layout.width), y: clamp(src.layout.y + (taken ? 24 : 0), 0, size.height - src.layout.height) },
+      } as Block;
+      commit((d) => ({ ...d, blocks: [...d.blocks, copy] }));
+      setSelectedId(copy.id);
+    },
+    [doc, activePage, commit],
   );
 
   const duplicateBlock = useCallback(
@@ -367,10 +396,13 @@ export function useExam(initial: ExamDoc, t?: T) {
     redo,
     addBlock,
     updateBlock,
+    updateBlocks,
+    revealPage,
     refreshEquation,
     moveBlock,
     deleteBlock,
     duplicateBlock,
+    pasteBlock,
     addPage,
     deletePage,
     setMargins,

@@ -64,7 +64,8 @@ interface Props {
   onDropBoxStyle: (mark: StyleMark) => void;
   onTextEditor: (editor: TextEditor | null) => void;
   onCreateText: (at: DropPoint) => void;
-  onDrawBox: (box: DrawnBox) => void; // a box drawn with the text box tool
+  onDrawBox: (box: DrawnBox) => void; // a box drawn with the text box tool (or a shape drawn with the Shapes tool)
+  drawShape?: "box" | "line"; // the Shapes tool is in hand: what it draws
   onAddPage: () => void;
   onDeletePage: (pageId: string) => void;
   onActivePageChange: (index: number) => void;
@@ -328,7 +329,7 @@ export default function Workspace(props: Props) {
                     onDelete={i > 0 ? () => setAskDelete(page.id) : undefined}
                   />
                 ))}
-                <div className={`absolute inset-0 ${props.tool === "textbox" ? "cursor-crosshair" : ""}`}>
+                <div className={`absolute inset-0 ${props.tool === "textbox" || props.tool === "shape" ? "cursor-crosshair" : ""}`}>
                   <ExamCanvas
                     doc={doc}
                     heights={heights}
@@ -347,7 +348,8 @@ export default function Workspace(props: Props) {
                     onPatch={(id, patch) => props.onPatch(id, patch, "click")}
                     onDragging={setDragging}
                     onCreateText={(at) => props.onCreateText({ ...at, corner: true })}
-                    drawBox={props.tool === "textbox"}
+                    drawBox={props.tool === "textbox" || props.tool === "shape"}
+                    drawShape={props.tool === "shape" ? props.drawShape : undefined}
                     onDrawBox={props.onDrawBox}
                     onHandleDown={() => {
                       handleHeld.current = true;

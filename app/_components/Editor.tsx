@@ -34,12 +34,14 @@ import { buildDoc, templateById, type Template } from "@/app/_lib/templates";
 import { assetToBlock, type ToolAction } from "@/app/_lib/tools";
 import type { Block, BlockType, PageMargins, ViewMode } from "@/app/_lib/types";
 import { UiProvider, loadUiLang, saveUiLang, translate, type UiLang } from "@/app/_lib/uiLang";
+import { useBlockClipboard } from "@/app/_lib/useBlockClipboard";
 import { useExam, type DropPoint } from "@/app/_lib/useExam";
 import { addVersion, type Version } from "@/app/_lib/versions";
 import { appLayout } from "@/app/_features/app";
 import BarRenderer from "@/app/_features/core/BarRenderer";
 import type { BarPosition, Ctx, MarginEdit, RightTab, Shell } from "@/app/_features/core/types";
 import { blockInspectorFor, findSectionFeature } from "@/app/_features/sections";
+import { defaultSize, shapeDef } from "@/app/_lib/shapes";
 import type { DrawnBox } from "./canvas/ExamCanvas";
 import type { CanvasTool } from "./workspace/ToolRail";
 import Workspace, { type Editing } from "./workspace/Workspace";
@@ -76,6 +78,7 @@ function hotkeyHit(e: KeyboardEvent, hotkey: string) {
 }
 
 const HEADER_FOOTER_INSPECTOR = "inspector.layout.header-footer"; // where exam headers are edited
+const FIND_INSPECTOR = "inspector.home.find"; // Home → Find and replace (Ctrl+F, Ctrl+H)
 const MARGIN_SAVE_DELAY = 500; // ms without a change before typed margins become an undo step
 const SNAPSHOT_EVERY = 3 * 60 * 1000; // automatic copy in the version history
 
@@ -111,11 +114,13 @@ export default function Editor() {
   const [moleculeLab, setMoleculeLab] = useState<Shell["moleculeLab"]>({ open: false, blockId: null }); // the drawing Studio
   const [graphStudio, setGraphStudio] = useState<Shell["graphStudio"]>({ open: false, blockId: null }); // the Graph Studio
   const [circuitStudio, setCircuitStudio] = useState<Shell["circuitStudio"]>({ open: false, blockId: null }); // the Circuit Studio
+  const [tableStudio, setTableStudio] = useState<Shell["tableStudio"]>({ open: false, blockId: null }); // the Table Studio
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const eqTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const [tool, setTool] = useState<CanvasTool>("select");
+  const [shapeToDraw, setShapeToDraw] = useState<string | null>(null); // (Insert → Shapes: what the Shapes tool draws)
   const [editing, setEditing] = useState<Editing | null>(null);
   const [textEditor, setTextEditor] = useState<TextEditor | null>(null); // Tiptap editor of the text box being typed in
   const [session, setSession] = useState(0); // +1 for each new/opened exam (resets the zoom)
@@ -303,9 +308,16 @@ export default function Editor() {
     if (next === "textbox" && tool !== "textbox") notify(tr("Drag on the page to draw a text box — Esc to cancel"));
   };
 
+  // A shape chosen in Insert → Shapes: the next drag on the page draws it.
+  const drawShape = (shape: string) => {
+    setShapeToDraw(shape);
+    setTool("shape");
+    notify(tr("Drag on the page to draw the shape — Esc to cancel"));
+  };
+
   const runTool = (action: ToolAction, at?: DropPoint) => {
-    // Another tool used meanwhile: no text box is drawn any more.
-    setTool((cur) => (cur === "textbox" ? "select" : cur));
+    // Another tool used meanwhile: no text box or shape is drawn any more.
+    setTool((cur) => (cur === "textbox" || cur === "shape" ? "select" : cur));
     switch (action.kind) {
       case "block": {
         const block = exam.addBlock(action.type, action.preset, at);
@@ -349,6 +361,9 @@ export default function Editor() {
         break;
       case "circuit-studio":
         setCircuitStudio({ open: true, blockId: null });
+        break;
+      case "table-studio":
+        setTableStudio({ open: true, blockId: null });
         break;
       case "library":
         setTab("library");
@@ -466,6 +481,19 @@ export default function Editor() {
   const drawTextbox = ({ pageIndex, x, y, width, height }: DrawnBox) =>
     runTool({ kind: "block", type: "textbox", preset: { width, height } }, { pageIndex, x, y, corner: true });
 
+  // Shapes tool: the box (or line) drawn on the page becomes a shape block of that size (a click: of its usual size, centred on the
+  // click), and the select tool is back. A line drawn leftwards or upwards is flipped.
+  const drawOnPage = (box: DrawnBox) => {
+    if (tool !== "shape" || !shapeToDraw) return drawTextbox(box);
+    const line = !!shapeDef(shapeToDraw).line;
+    const click = !box.width && !box.height;
+    const [dw, dh] = defaultSize(shapeToDraw);
+    const width = click ? dw : box.width;
+    const height = click ? dh : box.height;
+    const preset = { shape: shapeToDraw, width, height, ...(line && box.flipX ? { flipX: true } : {}), ...(line && box.flipY ? { flipY: true } : {}) };
+    runTool({ kind: "block", type: "shape", preset }, { pageIndex: box.pageIndex, x: click ? box.x - width / 2 : box.x, y: click ? box.y - height / 2 : box.y, corner: true });
+  };
+
   // Equation typed in MathLive: save the LaTeX now, redraw it shortly after.
   const onLatex = (block: Block, latex: string) => {
     if (block.type !== "equation") return;
@@ -544,9 +572,16 @@ export default function Editor() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement;
-      const typing = t.isContentEditable || ["INPUT", "TEXTAREA", "SELECT", "MATH-FIELD"].includes(t.tagName);
+      const inGrid = !!t.closest?.("[data-table-grid]"); // (the cells of a table in the right panel: its keys are its own, except undo and redo)
+      const typing = t.isContentEditable || inGrid || ["INPUT", "TEXTAREA", "SELECT", "MATH-FIELD"].includes(t.tagName);
       const mod = e.ctrlKey || e.metaKey;
       const key = e.key.toLowerCase();
+      if (inGrid && mod && (key === "z" || key === "y") && !picker.open && !preview && !history && !tableStudio.open) {
+        e.preventDefault();
+        if (key === "y" || e.shiftKey) exam.redo();
+        else exam.undo();
+        return;
+      }
 
       if (mod && key === "s") {
         e.preventDefault();
@@ -558,6 +593,12 @@ export default function Editor() {
         setPreview(true);
         return;
       }
+      // Ctrl+F and Ctrl+H: Find and replace (also while typing: the browser's own search would not know the page).
+      if (mod && !e.altKey && (key === "f" || key === "h")) {
+        e.preventDefault();
+        openInspector(FIND_INSPECTOR);
+        return;
+      }
       // Ctrl+[ / Ctrl+] open or close the side bars. Not with Alt: AltGr (= Ctrl+Alt) types "[" on
       // French keyboards. The physical key also works there, where "[" has no key of its own.
       const bar = mod && !e.altKey && appLayout.find((b) => b.collapse?.hotkey && hotkeyHit(e, b.collapse.hotkey));
@@ -566,7 +607,7 @@ export default function Editor() {
         setBarOpen(bar.id);
         return;
       }
-      if (typing || picker.open || preview || history || molecule.open || moleculeLab.open || graphStudio.open || circuitStudio.open) return;
+      if (typing || picker.open || preview || history || molecule.open || moleculeLab.open || graphStudio.open || circuitStudio.open || tableStudio.open) return;
 
       if (mod && key === "z") {
         e.preventDefault();
@@ -607,6 +648,17 @@ export default function Editor() {
     return () => window.removeEventListener("keydown", onKey);
   });
 
+  // Copy, cut and paste of whole blocks (when no text is being typed in).
+  const clipboard = useBlockClipboard({
+    selected,
+    active: !(picker.open || preview || history || molecule.open || moleculeLab.open || graphStudio.open || circuitStudio.open || tableStudio.open),
+    deleteBlock: exam.deleteBlock,
+    pasteBlock: exam.pasteBlock,
+    addText: (text) => exam.addBlock("text", { text, style: "body" }),
+    notify,
+    t: tr,
+  });
+
   // ---- What the features can use ----
 
   const shell: Shell = {
@@ -625,8 +677,19 @@ export default function Editor() {
     runTool: (action) => runTool(action),
     canvasTool: tool,
     setCanvasTool,
+    shapeToDraw,
+    drawShape,
     textEditor,
     updateBlock: (id, patch, field) => exam.updateBlock(id, patch, { key: `${id}:${field}` }),
+    updateBlocks: exam.updateBlocks,
+    selectBlock: (id) => {
+      const block = doc.blocks.find((x) => x.id === id);
+      exam.setSelectedId(id);
+      if (block) exam.revealPage(block.layout.pageId);
+    },
+    copyBlock: clipboard.copyBlock,
+    pasteClip: clipboard.pasteClip,
+    notify,
     onLatex,
     deleteBlock: exam.deleteBlock,
     duplicateBlock: exam.duplicateBlock,
@@ -691,6 +754,9 @@ export default function Editor() {
     graphStudio,
     openGraphStudio: (blockId) => setGraphStudio({ open: true, blockId: blockId ?? null }),
     closeGraphStudio: () => setGraphStudio({ open: false, blockId: null }),
+    tableStudio,
+    openTableStudio: (blockId, shape) => setTableStudio({ open: true, blockId: blockId ?? null, shape }),
+    closeTableStudio: () => setTableStudio({ open: false, blockId: null }),
     circuitStudio,
     openCircuitStudio: (blockId) => setCircuitStudio({ open: true, blockId: blockId ?? null }),
     closeCircuitStudio: () => setCircuitStudio({ open: false, blockId: null }),
@@ -750,7 +816,8 @@ export default function Editor() {
         onChromeScope={exam.chromeScope}
         onChromeSettings={() => openInspector(HEADER_FOOTER_INSPECTOR)}
               onToolChange={setCanvasTool}
-              onDrawBox={drawTextbox}
+              onDrawBox={drawOnPage}
+              drawShape={tool === "shape" && shapeToDraw ? (shapeDef(shapeToDraw).line ? "line" : "box") : undefined}
               onPatch={(id, patch, field) => exam.updateBlock(id, patch, { key: `${id}:${field}` })}
               onEditStart={startEdit}
               onEditChange={editChange}

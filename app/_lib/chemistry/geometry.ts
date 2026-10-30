@@ -1,5 +1,6 @@
 // Shapes of the drawing: rings, and the box around a whole drawing. Pure functions (no React).
 import { newId } from "../id";
+import { shapesBounds } from "../shapes";
 import { BOND_LENGTH, graphBounds } from "./bondGeometry";
 import { LABEL_REACH, hydrogenLabels } from "./hydrogenLabel";
 import { PAIR_DISTANCE, lonePairMarks } from "./lonePairs";
@@ -69,5 +70,7 @@ export function drawingBounds(graph: MoleculeGraph) {
       points.push({ x: note.x, y: note.y }, { x: note.x + estimateTextWidth(note.text ?? "", TEXT_SIZE), y: note.y + TEXT_SIZE * 1.3 });
     }
   }
+  const shapes = shapesBounds(graph.shapes);
+  if (shapes) points.push({ x: shapes.minX, y: shapes.minY }, { x: shapes.maxX, y: shapes.maxY });
   return graphBounds(points);
 }

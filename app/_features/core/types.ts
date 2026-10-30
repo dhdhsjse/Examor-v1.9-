@@ -8,6 +8,7 @@ import type { ToolAction } from '@/app/_lib/tools';
 import type { Subject } from '@/app/_lib/subjects';
 import type { T, UiLang } from '@/app/_lib/uiLang';
 import type { BlockPatch, SaveState } from '@/app/_lib/useExam';
+import type { ClipSource } from '@/app/_lib/richClipboard';
 import type { Asset, AssetKind } from '@/app/_lib/library';
 import type { Template } from '@/app/_lib/templates';
 import type { Version } from '@/app/_lib/versions';
@@ -37,10 +38,23 @@ export type Shell = {
   // (Insert → Text box); Escape, the select arrow or drawing one goes back to "select".
   canvasTool: CanvasTool;
   setCanvasTool: (tool: CanvasTool) => void;
+  // Insert → Shapes: the shape the next drag on the page draws (null when none was chosen), and the call that chooses one and puts the
+  // Shapes tool in hand (`canvasTool` "shape").
+  shapeToDraw: string | null;
+  drawShape: (shape: string) => void;
   // The rich-text editor of the text box being typed in on the page (null otherwise): the right panel
   // formats the selected words through it.
   textEditor: TextEditor | null;
   updateBlock: (id: string, patch: BlockPatch, field: string) => void;
+  updateBlocks: (changes: { id: string; patch: BlockPatch }[]) => void; // several blocks, one undo step
+  // Select a block and show its page, without changing the panel on the right (Find and replace goes through the blocks).
+  selectBlock: (id: string) => void;
+  // The clipboard of whole blocks, for when no text is being typed in (Ctrl+C / X / V on the page, Home → Clipboard): the
+  // selected block is copied (or cut); `pasteClip` pastes a block that was copied, else the text as a new paragraph (null: the clipboard
+  // could not be read, so the block copied in the app is pasted).
+  copyBlock: (cut: boolean) => void;
+  pasteClip: (clip: ClipSource | null) => void;
+  notify: (message: string) => void; // a message for a moment, at the bottom of the screen
   onLatex: (block: Block, latex: string) => void;
   deleteBlock: (id: string) => void;
   duplicateBlock: (id: string) => void;
@@ -107,6 +121,11 @@ export type Shell = {
   graphStudio: { open: boolean; blockId: string | null };
   openGraphStudio: (blockId?: string) => void;
   closeGraphStudio: () => void;
+  // The Table Studio (table-studio/): a spreadsheet that puts a table block on the page. `blockId` = the table block being edited, null = a
+  // new table; `shape` = the Studio opens on the shapes with this one ready to draw.
+  tableStudio: { open: boolean; blockId: string | null; shape?: string };
+  openTableStudio: (blockId?: string, shape?: string) => void;
+  closeTableStudio: () => void;
   // The Circuit Studio (circuit-studio/): `blockId` = the circuit block being edited, null = a new circuit.
   circuitStudio: { open: boolean; blockId: string | null };
   openCircuitStudio: (blockId?: string) => void;

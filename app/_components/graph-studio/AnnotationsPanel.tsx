@@ -2,12 +2,12 @@
 
 import { EyeOff, Trash2 } from "lucide-react";
 import type { ReactNode } from "react";
-import { ANNOTATION_SPECS, DEFAULT_FONT_SIZE, curveName, freeFromCurve, markerY, readout, resolveAnnotation, tangentOf, triangleDeltas } from "@/app/_lib/graph/annotations";
+import { ANNOTATION_SPECS, DEFAULT_FONT_SIZE, curveName, freeFromCurve, guideTarget, markerY, readout, resolveAnnotation, tangentOf, triangleDeltas } from "@/app/_lib/graph/annotations";
 import { buildScene } from "@/app/_lib/graph/grid";
 import { formatNumber, isMathFunction } from "@/app/_lib/graph/mathUtils";
-import type { GraphAnnotation, GraphConfig } from "@/app/_lib/graph/types";
+import type { GraphAnnotation, GraphConfig, TextFrame } from "@/app/_lib/graph/types";
 import { useT } from "@/app/_lib/uiLang";
-import { NumberField, TextField } from "./fields";
+import { NumberField, OptionalNumberField, TextField } from "./fields";
 import type { GraphStudioState } from "./useGraphStudio";
 
 const select = "w-full rounded-lg border border-line bg-subtle px-2.5 py-1.5 text-sm text-ink outline-none focus:border-accent";
@@ -28,8 +28,9 @@ function useAnnotationLabel(config: GraphConfig) {
   const t = useT();
   return (a: GraphAnnotation) => {
     const base = t(ANNOTATION_SPECS[a.type].name);
-    if (a.type === "text") return a.text ? `${base}: ${a.text}` : base;
+    if (a.type === "text" || a.type === "curveLabel") return a.text ? `${base}: ${a.text}` : base;
     if (a.type === "asymptote") return `${base} ${a.orientation === "vertical" ? "x" : "y"} = ${formatNumber(a.value ?? 0)}`;
+    if (a.type === "axisMark") return `${base} ${a.axis === "y" ? "y" : "x"} = ${formatNumber(a.value ?? 0)}`;
     const fn = a.curveId ? config.functions.find((f) => f.id === a.curveId) : undefined;
     if (!fn) return base;
     const { name, n } = curveName(config, fn);
@@ -55,10 +56,11 @@ export default function AnnotationsPanel({ studio }: { studio: GraphStudioState 
       testId={testId}
     />
   );
+  const scriptHint = t("u_C writes a subscript, 10^-4 a power (put several characters in braces).");
 
   // what is wrong with the selected one (it is then not drawn)
   const status = sel ? resolveAnnotation(sel, config, buildScene(config).origin).status : "ok";
-  const curveOptions = config.functions.filter(isMathFunction).map((f) => {
+  const optionFor = (f: GraphConfig["functions"][number]) => {
     const { name, n } = curveName(config, f);
     return (
       <option key={f.id} value={f.id}>
@@ -66,11 +68,22 @@ export default function AnnotationsPanel({ studio }: { studio: GraphStudioState 
         {n ? ` ${n}` : ""}
       </option>
     );
-  });
+  };
+  const curveOptions = config.functions.filter(isMathFunction).map(optionFor);
+  const everyCurveOptions = config.functions.map(optionFor); // (the name of a curve may be of a series of measured points too)
+  const frameOptions = (
+    <>
+      <option value="none">{t("Nothing")}</option>
+      <option value="box">{t("White box")}</option>
+      <option value="circle">{t("Circle")}</option>
+    </>
+  );
   const onCurve = !!sel?.curveId;
   const deltas = sel?.type === "triangle" ? triangleDeltas(sel, config) : null;
   const tangent = sel?.type === "tangent" ? tangentOf(sel, config) : null;
   const my = sel?.type === "marker" ? markerY(sel, config) : null;
+  const guideAt = sel?.type === "axisMark" && sel.guides ? guideTarget(sel, config) : null;
+  const complete = sel?.type === "line" && [sel.x, sel.y, sel.x2, sel.y2].every((v) => v !== undefined);
 
   return (
     <section data-testid="graph-annotations" className="flex flex-col gap-2.5 border-b border-line px-4 py-3.5">
@@ -111,12 +124,17 @@ export default function AnnotationsPanel({ studio }: { studio: GraphStudioState 
 
           {sel.type === "text" && (
             <>
-              <TextField label={t("Text")} value={sel.text ?? ""} onChange={(text) => set({ text })} testId="anno-text" />
+              <TextField label={t("Text")} value={sel.text ?? ""} onChange={(text) => set({ text })} testId="anno-text" hint={scriptHint} />
               <div className="grid grid-cols-2 gap-2" dir="ltr">
                 {num("x", "anno-x", "x", sel.x)}
                 {num("y", "anno-y", "y", sel.y)}
               </div>
               {num("fontSize", "anno-size", t("Font size"), sel.fontSize ?? DEFAULT_FONT_SIZE)}
+              <Row label={t("Behind the text")}>
+                <select value={sel.frame ?? "none"} onChange={(e) => set({ frame: e.target.value as TextFrame })} data-testid="anno-frame" className={`${select} w-40`}>
+                  {frameOptions}
+                </select>
+              </Row>
             </>
           )}
 
@@ -129,7 +147,7 @@ export default function AnnotationsPanel({ studio }: { studio: GraphStudioState 
                 </select>
               </Row>
               <div dir="ltr">{num("value", "anno-value", sel.orientation === "vertical" ? "x" : "y", sel.value)}</div>
-              <TextField label={t("Label (optional)")} value={sel.text ?? ""} onChange={(text) => set({ text })} testId="anno-label" />
+              <TextField label={t("Label (optional)")} value={sel.text ?? ""} onChange={(text) => set({ text })} testId="anno-label" hint={scriptHint} />
             </>
           )}
 
@@ -141,6 +159,13 @@ export default function AnnotationsPanel({ studio }: { studio: GraphStudioState 
                 </select>
               </Row>
               <div dir="ltr">{num("x", "anno-x", t("Point of contact (x)"), sel.x)}</div>
+              <Row label={t("Draw the tangent")}>
+                <select value={sel.side ?? "both"} onChange={(e) => set({ side: e.target.value === "both" ? undefined : (e.target.value as "right" | "left") })} data-testid="anno-side" className={`${select} w-40`}>
+                  <option value="both">{t("On both sides")}</option>
+                  <option value="right">{t("To the right of the point")}</option>
+                  <option value="left">{t("To the left of the point")}</option>
+                </select>
+              </Row>
               {tangent && typeof tangent !== "string" && (
                 <p className="text-xs text-muted tabular-nums" dir="ltr" data-testid="tangent-readout">
                   y = {readout(tangent.slope)}·x {tangent.y - tangent.slope * tangent.x < 0 ? "−" : "+"} {readout(Math.abs(tangent.y - tangent.slope * tangent.x))} · {t("Slope")} = {readout(tangent.slope)}
@@ -221,10 +246,88 @@ export default function AnnotationsPanel({ studio }: { studio: GraphStudioState 
                   <option value="dot">{t("Dot")}</option>
                 </select>
               </Row>
-              <TextField label={t("Label (optional)")} value={sel.text ?? ""} onChange={(text) => set({ text })} testId="anno-label" />
+              <TextField label={t("Label (optional)")} value={sel.text ?? ""} onChange={(text) => set({ text })} testId="anno-label" hint={scriptHint} />
               <label className="flex items-center gap-2 text-sm text-ink">
                 <input type="checkbox" checked={!!sel.guides} onChange={(e) => set({ guides: e.target.checked })} data-testid="anno-guides" className={check} />
                 {t("Dashed lines to the axes")}
+              </label>
+            </>
+          )}
+
+          {sel.type === "axisMark" && (
+            <>
+              <Row label={t("Axis")}>
+                <select value={sel.axis ?? "x"} onChange={(e) => set({ axis: e.target.value as "x" | "y" })} data-testid="anno-axis" className={`${select} w-40`}>
+                  <option value="x">{t("Horizontal axis")}</option>
+                  <option value="y">{t("Vertical axis")}</option>
+                </select>
+              </Row>
+              <div dir="ltr">{num("value", "anno-value", t("Value"), sel.value)}</div>
+              <TextField label={t("Text (empty: the value)")} value={sel.text ?? ""} onChange={(text) => set({ text })} testId="anno-label" hint={scriptHint} />
+              <Row label={t("Curve")}>
+                <select value={sel.curveId ?? ""} onChange={(e) => set({ curveId: e.target.value || undefined })} data-testid="anno-curve" className={`${select} w-40`}>
+                  <option value="">{t("None (free)")}</option>
+                  {curveOptions}
+                </select>
+              </Row>
+              <label className="flex items-center gap-2 text-sm text-ink">
+                <input type="checkbox" checked={!!sel.guides} onChange={(e) => set({ guides: e.target.checked })} data-testid="anno-guides" className={check} />
+                {t("Dashed line from the axis")}
+              </label>
+              {sel.guides && !onCurve && (
+                <div dir="ltr">
+                  <OptionalNumberField label={t("The line ends at (other axis)")} value={sel.guideTo} onCommit={(guideTo) => set({ guideTo })} testId="anno-guide-to" />
+                </div>
+              )}
+              {sel.guides && (
+                <p className="text-xs text-muted tabular-nums" dir="ltr" data-testid="guide-readout">
+                  {guideAt === null ? t("The line has nowhere to go: pick a curve or say where it ends.") : `${sel.axis === "y" ? "x" : "y"} = ${readout(guideAt)}`}
+                </p>
+              )}
+            </>
+          )}
+
+          {sel.type === "curveLabel" && (
+            <>
+              <Row label={t("Curve")}>
+                <select value={sel.curveId ?? ""} onChange={(e) => set({ curveId: e.target.value })} data-testid="anno-curve" className={`${select} w-40`}>
+                  {everyCurveOptions}
+                </select>
+              </Row>
+              <TextField label={t("Text")} value={sel.text ?? ""} onChange={(text) => set({ text })} testId="anno-text" hint={t("(1), (2), A… Drag the name to move it; it goes with its curve.")} />
+              <Row label={t("Behind the text")}>
+                <select value={sel.frame ?? "none"} onChange={(e) => set({ frame: e.target.value as TextFrame })} data-testid="anno-frame" className={`${select} w-40`}>
+                  {frameOptions}
+                </select>
+              </Row>
+              <div className="grid grid-cols-2 gap-2" dir="ltr">
+                {num("x", "anno-x", "x", sel.x)}
+                {num("y", "anno-y", "y", sel.y)}
+              </div>
+              {num("fontSize", "anno-size", t("Font size"), sel.fontSize ?? DEFAULT_FONT_SIZE)}
+            </>
+          )}
+
+          {sel.type === "line" && (
+            <>
+              <div className="grid grid-cols-2 gap-2" dir="ltr">
+                {num("x", "anno-x", "x₁", sel.x)}
+                {num("y", "anno-y", "y₁", sel.y)}
+                {num("x2", "anno-x2", "x₂", sel.x2)}
+                {num("y2", "anno-y2", "y₂", sel.y2)}
+              </div>
+              {complete && sel.x2 !== sel.x && (
+                <p className="text-xs text-muted tabular-nums" dir="ltr" data-testid="line-readout">
+                  {t("Slope")} = {readout(((sel.y2 ?? 0) - (sel.y ?? 0)) / ((sel.x2 ?? 0) - (sel.x ?? 0)))}
+                </p>
+              )}
+              <label className="flex items-center gap-2 text-sm text-ink">
+                <input type="checkbox" checked={!!sel.extend} onChange={(e) => set({ extend: e.target.checked })} data-testid="anno-extend" className={check} />
+                {t("Carry the line to the edges of the paper")}
+              </label>
+              <label className="flex items-center gap-2 text-sm text-ink">
+                <input type="checkbox" checked={!!sel.arrow} onChange={(e) => set({ arrow: e.target.checked })} data-testid="anno-arrow" className={check} />
+                {t("Arrowhead at the end")}
               </label>
             </>
           )}

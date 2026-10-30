@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { STUDIO_AR, STUDIO_FR } from "../../chemistry/strings";
 import { MOLECULE_AR, MOLECULE_FR } from "../../../_molecule/strings";
+import { SHAPES_AR, SHAPES_FR } from "../../shapes/strings";
 import { GRAPH_AR, GRAPH_FR } from "../strings";
 import { PAPER_MARGIN, buildScene, configIssues, fatalIssue, formatNumber, graphToPxX, graphToPxY, lineCount, multiples, pxToGraphX, pxToGraphY } from "../grid";
 import { COALESCE_MS, canRedo, canUndo, edit, isDirty, redo, startHistory, undo } from "../history";
@@ -212,8 +213,8 @@ describe("the interface strings", () => {
 
   it("have a French and an Arabic text each, here or elsewhere in the app", () => {
     expect(used.size).toBeGreaterThan(15);
-    expect([...used].filter((k) => !(k in GRAPH_FR) && !(k in STUDIO_FR) && !(k in MOLECULE_FR) && !app.includes(`"${k}":`))).toEqual([]);
-    expect([...used].filter((k) => !(k in GRAPH_AR) && !(k in STUDIO_AR) && !(k in MOLECULE_AR) && !app.includes(`"${k}":`))).toEqual([]);
+    expect([...used].filter((k) => !(k in GRAPH_FR) && !(k in STUDIO_FR) && !(k in MOLECULE_FR) && !(k in SHAPES_FR) && !app.includes(`"${k}":`))).toEqual([]);
+    expect([...used].filter((k) => !(k in GRAPH_AR) && !(k in STUDIO_AR) && !(k in MOLECULE_AR) && !(k in SHAPES_AR) && !app.includes(`"${k}":`))).toEqual([]);
   });
 
   it("translate the names of the examples, and keep the {placeholders}", () => {

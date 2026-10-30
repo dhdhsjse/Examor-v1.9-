@@ -2,6 +2,9 @@ import type { JSONContent } from "@tiptap/core";
 import type { MoleculeGraph } from "@/app/_lib/chemistry/types";
 import type { CircuitConfig } from "@/app/_lib/circuit/types";
 import type { GraphConfig } from "@/app/_lib/graph/types";
+import type { ListKind } from "@/app/_lib/lists";
+import type { ShapeStyle } from "@/app/_lib/shapes/types";
+import type { TableExtras } from "@/app/_lib/table/model";
 import type { MoleculeBlockData } from "@/app/_molecule/model";
 
 // Language of the exam content. "ar" = Arabic, written right-to-left.
@@ -210,7 +213,17 @@ export type HeadingDecor = "plain" | "underline" | "bar" | "band" | "pill" | "bo
 // Alignment of a paragraph of text.
 export type ParagraphAlign = "left" | "center" | "right" | "justify";
 
-export interface TextBlock extends BlockBase {
+// Paragraph formatting of a whole text block (Home → Paragraph); a text box keeps its own on each paragraph.
+export interface TextParagraphFormat {
+  indent?: number; // levels (24 px each) from the start side
+  list?: ListKind; // every line is an item of this list
+  dir?: "ltr" | "rtl"; // writing direction; missing = the exam's
+  shading?: string; // background color behind the text
+  border?: string; // the sides that have a line: some of "t", "b", "l", "r"
+  borderColor?: string;
+}
+
+export interface TextBlock extends BlockBase, TextParagraphFormat {
   align?: ParagraphAlign; // missing = titles centered, the rest along the writing direction
   type: "text";
   text: string;
@@ -247,7 +260,10 @@ export interface ImageBlock extends BlockBase {
   circuitStudio?: CircuitConfig; // a circuit from the Circuit Studio: `src` is its picture, redrawn on edit
 }
 
-export interface TableBlock extends BlockBase {
+// A table (Insert → Table, or the Table Studio). `cells` is the text of each cell, as typed (a formula as a formula); everything else about
+// the look and the calculation is optional (TableExtras: merged cells, cell looks, borders, banding, formulas), so a table made before
+// they existed is drawn as it was.
+export interface TableBlock extends BlockBase, TableExtras {
   type: "table";
   cells: string[][];
   header: boolean; // first row in bold
@@ -326,12 +342,19 @@ export interface TextboxBlock extends BlockBase {
   text: string; // the same text as styled runs (kept up to date from `content`)
   align?: ParagraphAlign; // missing = along the writing direction
   valign?: "top" | "middle" | "bottom"; // missing = top
+  dir?: "ltr" | "rtl"; // writing direction of the paragraphs that do not have their own; missing = the exam's
   background?: string; // fill color of the box, printed (missing = none)
   border?: string; // color of a line around the box, printed (missing = none)
   padding?: number; // room between the box's edge and its text, px (missing = TEXTBOX_PAD)
 }
 
-export type Block = QuestionBlock | TextBlock | TextboxBlock | EquationBlock | ImageBlock | TableBlock | GraphBlock | HeaderBlock;
+// A shape (Insert → Shapes): a line, an arrow, a box, a callout… drawn on the page in the block's box, with its own fill, outline and
+// text (ShapeStyle). A line runs from one corner of the box to the opposite one, so its height can be 0.
+export interface ShapeBlock extends BlockBase, ShapeStyle {
+  type: "shape";
+}
+
+export type Block = QuestionBlock | TextBlock | TextboxBlock | ShapeBlock | EquationBlock | ImageBlock | TableBlock | GraphBlock | HeaderBlock;
 export type BlockType = Block["type"];
 
 // The editable fields of any one block type, all optional (used for changes and presets).

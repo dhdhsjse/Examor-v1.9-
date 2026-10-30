@@ -9,6 +9,7 @@ import type { Block, ExamMeta, ViewMode } from "@/app/_lib/types";
 import type { BlockPatch } from "@/app/_lib/useExam";
 import { EquationView, ImageView, TableView, TextboxView, TextView } from "./blocks/ContentViews";
 import { GraphView } from "./blocks/GraphView";
+import { ShapeView } from "./blocks/ShapeView";
 import { HeaderNode } from "./blocks/headerParts";
 import { ClassifyView, MatchView, OrderView } from "./blocks/MoreQuestionViews";
 import { BlankView, McqView, OpenView, TrueFalseView } from "./blocks/QuestionViews";
@@ -77,6 +78,8 @@ function Content({ block: real, number, meta, mode, interactive, totalPoints }: 
       return <ImageView b={block} />;
     case "graph":
       return <GraphView b={block} />;
+    case "shape":
+      return <ShapeView b={block} />;
     case "header":
       return <HeaderNode b={block} meta={meta} mode={mode} totalPoints={totalPoints} />;
   }
@@ -94,7 +97,7 @@ export default function BlockNode(props: Props) {
   // Was the block already selected when the mouse went down? Then one click on a text types in it.
   const wasSelected = useRef(false);
   const width = block.layout.width;
-  const media = block.type === "image" || block.type === "equation";
+  const media = block.type === "image" || block.type === "equation" || block.type === "shape";
   const moveCursor = textTool ? "text" : "move";
 
   // Resizing scales the group; turn that scale into a real width/height. The drawn height is what was

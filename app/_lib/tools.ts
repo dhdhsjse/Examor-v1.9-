@@ -14,6 +14,7 @@ export type ToolAction =
   | { kind: "molecule-lab" } // opens the drawing Studio
   | { kind: "graph-studio" } // opens the Graph Studio
   | { kind: "circuit-studio" } // opens the Circuit Studio
+  | { kind: "table-studio" } // opens the Table Studio
   | { kind: "blocks"; items: { type: BlockType; preset?: BlockPreset }[] }; // several blocks, one under the other
 
 // Data type used for HTML drag & drop onto the page.

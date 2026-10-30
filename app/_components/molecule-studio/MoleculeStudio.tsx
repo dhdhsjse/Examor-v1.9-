@@ -9,6 +9,7 @@ import { useUi } from "@/app/_lib/uiLang";
 import type { MoleculeBlockData, Representation } from "@/app/_molecule/model";
 import { availableRepresentations } from "@/app/_molecule/render";
 import { REP_LABEL, REP_SHORT } from "@/app/_molecule/strings";
+import { StudioKeyboard, StudioKeyboardButton } from "@/app/_components/math-keyboard/StudioKeyboard";
 import DiscardDialog from "./DiscardDialog";
 import PeriodicTableDialog from "./PeriodicTableDialog";
 import PropertiesPanel from "./PropertiesPanel";
@@ -55,8 +56,9 @@ export default function MoleculeStudio({ editing, onInsert, onUpdate, onInsertMo
   const locked = !!rep || student; // looking at it, not editing it: the tools and the properties are off
   const [startId, setStartId] = useState(STARTS[0].id);
   const start = STARTS.find((s) => s.id === startId) ?? STARTS[0];
-  const empty = graph.atoms.length === 0 && graph.annotations.length === 0;
-  const hasSelection = selection.atoms.length + selection.bonds.length + selection.notes.length > 0;
+  const { selectedShape } = studio;
+  const empty = graph.atoms.length === 0 && graph.annotations.length === 0 && !graph.shapes?.length;
+  const hasSelection = selection.atoms.length + selection.bonds.length + selection.notes.length > 0 || !!selectedShape;
 
   // Closing with changes in the drawing asks first (the drawing is lost otherwise).
   const requestClose = () => (dirty ? setConfirmClose(true) : onClose());
@@ -89,12 +91,20 @@ export default function MoleculeStudio({ editing, onInsert, onUpdate, onInsertMo
       } else if ((e.key === "Delete" || e.key === "Backspace") && !typing && hasSelection) {
         e.preventDefault();
         deleteSelected();
+      } else if (selectedShape && !typing && e.key.startsWith("Arrow")) {
+        // a shape moves by a pixel (ten with Shift)
+        e.preventDefault();
+        const step = e.shiftKey ? 10 : 1;
+        studio.nudgeShape(selectedShape.id, e.key === "ArrowLeft" ? -step : e.key === "ArrowRight" ? step : 0, e.key === "ArrowUp" ? -step : e.key === "ArrowDown" ? step : 0);
+      } else if (selectedShape && !typing && key === "r" && !e.ctrlKey && !e.metaKey) {
+        e.preventDefault();
+        studio.turnShape(selectedShape.id, e.shiftKey ? -90 : 90);
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tableOpen, confirmClose, locked, hasSelection, clearSelection, selectEverything, deleteSelected, copy, cut, paste, undo, redo, dirty, onClose]);
+  }, [tableOpen, confirmClose, locked, hasSelection, selectedShape, clearSelection, selectEverything, deleteSelected, copy, cut, paste, undo, redo, dirty, onClose]);
 
   const chooseStart = (id: string) => {
     const next = STARTS.find((s) => s.id === id);
@@ -118,6 +128,7 @@ export default function MoleculeStudio({ editing, onInsert, onUpdate, onInsertMo
         <button onClick={redo} disabled={!canRedo} title={`${t("Redo")} (Ctrl+Y)`} aria-label={t("Redo")} data-testid="redo" className={iconButton}>
           <Redo2 size={16} />
         </button>
+        <StudioKeyboardButton />
 
         <div className="mx-1 flex rounded-lg bg-subtle p-0.5" role="group" aria-label={t("View")} data-testid="view-toggle">
           {(["teacher", "student"] as const).map((v) => (
@@ -239,6 +250,7 @@ export default function MoleculeStudio({ editing, onInsert, onUpdate, onInsertMo
           onClose={() => setTableFor(null)}
         />
       )}
+      <StudioKeyboard />
       {confirmClose && <DiscardDialog onKeep={() => setConfirmClose(false)} onDiscard={onClose} />}
     </div>
   );

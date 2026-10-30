@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Lightbulb, Search, X } from "lucide-react";
+import { StudioKeyboard, StudioKeyboardButton } from "@/app/_components/math-keyboard/StudioKeyboard";
 import { useUi } from "@/app/_lib/uiLang";
 import { buildBlock } from "@/app/_molecule/block";
 import { formula as hillFormulaOf } from "@/app/_molecule/chem";
@@ -285,6 +286,7 @@ export default function MoleculeStudio({ editing, onInsert, onInsertBoth, onUpda
               </button>
             )}
           </div>
+          <StudioKeyboardButton />
           <button onClick={onClose} className="grid size-8 shrink-0 place-items-center rounded-lg text-muted hover:bg-subtle hover:text-ink" title={t("Close (Esc)")} aria-label={t("Close (Esc)")}>
             <X size={18} />
           </button>
@@ -375,6 +377,7 @@ export default function MoleculeStudio({ editing, onInsert, onInsertBoth, onUpda
 
         {galleryOpen && block && <IsomerGallery engine={chem.engine} formula={hillFormulaOf(block.graph)} smiles={block.smiles} graph={block.graph} onPick={(e) => void pickIsomer(e)} onClose={() => setGalleryOpen(false)} />}
       </div>
+      <StudioKeyboard />
     </div>
   );
 }

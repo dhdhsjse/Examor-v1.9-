@@ -7,6 +7,7 @@ import { COMMON_ELEMENTS, PERIODIC_TABLE, elementName, textColor } from "@/app/_
 import { FRAGMENTS, FRAGMENT_IDS, type FragmentId } from "@/app/_lib/chemistry/fragments";
 import { TOOL_HINTS } from "@/app/_lib/chemistry/strings";
 import type { RingSpec } from "@/app/_lib/chemistry/types";
+import { ShapesMenuButton } from "@/app/_components/shapes/ShapeGallery";
 import { useUi } from "@/app/_lib/uiLang";
 import { BOND_GROUPS, useBondGroupNames, useBondNames } from "./bondNames";
 import { BondGlyph, ChemLabel } from "./glyphs";
@@ -237,6 +238,11 @@ export default function StudioToolbar({ studio, onOpenTable }: Props) {
           <ToolButton tool="text" active={activeTool} onPick={setActiveTool} icon={<Type size={16} />} label={t("Text")} hint={t(TOOL_HINTS.text)} />
           <ToolButton tool="arrow" active={activeTool} onPick={setActiveTool} icon={<ArrowRight size={16} />} label={t("Arrow")} hint={t(TOOL_HINTS.arrow)} />
         </div>
+      </section>
+
+      <section className="flex flex-col gap-2" aria-label={t("Shapes")} data-testid="molecule-shapes">
+        <h3 className="text-xs font-semibold uppercase tracking-wide text-faint">{t("Shapes")}</h3>
+        <ShapesMenuButton active={activeTool === "shape"} current={activeTool === "shape" ? studio.shapeKind : null} onPick={studio.pickShape} />
       </section>
 
       <section className="flex flex-col gap-2" aria-label={t("Element to draw with")}>

@@ -9,6 +9,8 @@ import { SYMBOL_STROKE, drawComponent, type SymbolShape } from "@/app/_lib/circu
 import { INK } from "@/app/_lib/circuit/svg";
 import type { ComponentType } from "@/app/_lib/circuit/types";
 import { newComponent } from "@/app/_lib/circuit/ops";
+import ShapeDrawSurface from "@/app/_components/shapes/ShapeDrawSurface";
+import StudioShapes from "@/app/_components/shapes/StudioShapes";
 import { useT } from "@/app/_lib/uiLang";
 import type { CircuitStudioState } from "./useCircuitStudio";
 
@@ -88,7 +90,7 @@ export default function CircuitCanvas({ studio }: { studio: CircuitStudioState }
     return p ? { x: p.x / scale, y: p.y / scale } : null;
   };
 
-  const placing = tool !== "select" && tool !== "wire" ? (tool as ComponentType) : null;
+  const placing = tool !== "select" && tool !== "wire" && tool !== "shape" ? (tool as ComponentType) : null;
   const target = pointer && tool === "wire" ? snapTarget(config, pointer) : null;
   const ghost = pointer && placing ? drawComponent(newComponent(config, placing, pointer.x, pointer.y, pendingRotation, "ghost")) : null;
   const preview = draft && target ? routeNext(draft.points, draft.startDir, target.point, shift) : null;
@@ -211,6 +213,9 @@ export default function CircuitCanvas({ studio }: { studio: CircuitStudioState }
               <Circle key={i} x={j.x} y={j.y} radius={JUNCTION_RADIUS} fill={INK} listening={false} />
             ))}
 
+            {/* the shapes drawn over the circuit */}
+            <StudioShapes shapes={config.shapes ?? []} selectedId={studio.selectedShape?.id ?? null} interactive={selecting} scale={scale} onSelect={studio.selectShape} onChange={studio.changeShape} />
+
             {/* with the wire tool the places a wire can end are shown, and the one it would go to is filled */}
             {tool === "wire" &&
               scene.components.flatMap((c) =>
@@ -227,6 +232,9 @@ export default function CircuitCanvas({ studio }: { studio: CircuitStudioState }
 
             {/* the component about to be put, where it would go */}
             {ghost && <Shapes shapes={ghost.shapes} color={ACCENT} opacity={0.6} />}
+
+            {/* with the Shapes tool: drag to draw the shape chosen in the gallery */}
+            {tool === "shape" && <ShapeDrawSurface width={config.width} height={config.height} shape={studio.shapeKind} snap={GRID / 2} onDraw={studio.drawShape} />}
           </Layer>
         </Stage>
       </div>

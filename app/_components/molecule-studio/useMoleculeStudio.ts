@@ -1,6 +1,9 @@
 "use client";
 
 import { useCallback, useMemo, useRef, useState } from "react";
+import type { ShapePatch } from "@/app/_components/shapes/StudioShapes";
+import { addShape, duplicateShape, isLine, newShapeItem, removeShape, reorderShape, updateShape, type DrawnBox, type Order } from "@/app/_lib/shapes";
+import { COALESCE_MS } from "@/app/_lib/studioHistory";
 import { FRAGMENTS, attachFragment, placeFragment, type FragmentId } from "@/app/_lib/chemistry/fragments";
 import {
   addAnnotationTo,
@@ -74,6 +77,9 @@ export function useMoleculeStudio(initialGraph: MoleculeGraph) {
   const [activeRing, setActiveRing] = useState<RingSpec>({ sides: 6, isAromatic: false });
   const [activeTemplate, setActiveTemplate] = useState<FragmentId>("oh");
   const [picked, setPicked] = useState<Selection>(EMPTY_SELECTION);
+  const [shapeId, setShapeId] = useState<string | null>(null); // the selected shape (when one is, nothing else is)
+  const [shapeKind, setShapeKind] = useState("rect"); // the shape the Shapes tool draws
+  const lastShapeEdit = useRef<{ key: string; at: number } | null>(null);
   const [clipboard, setClipboard] = useState<Clipboard | null>(null);
   // How the drawing is looked at (neither is an edit, so neither is in the undo history): the teacher's or the student's
   // view of it (the masks applied), and the drawing itself (null) or one of the school representations made from it.
@@ -84,10 +90,23 @@ export function useMoleculeStudio(initialGraph: MoleculeGraph) {
   // Atoms, bonds, texts and arrows can be selected together. What is gone (deleted, or a hydrogen that is no
   // longer needed) is no longer selected.
   const selection = useMemo(() => prune(picked, graph), [picked, graph]);
-  const select = useCallback((next: Selection) => setPicked(next), []);
-  const selectOnly = useCallback((kind: SelectionKind, id: string) => setPicked(only(kind, id)), []);
-  const toggleSelected = useCallback((kind: SelectionKind, id: string) => setPicked((s) => toggle(s, kind, id)), []);
-  const clearSelection = useCallback(() => setPicked(EMPTY_SELECTION), []);
+  const select = useCallback((next: Selection) => {
+    setPicked(next);
+    setShapeId(null);
+  }, []);
+  const selectOnly = useCallback((kind: SelectionKind, id: string) => {
+    setPicked(only(kind, id));
+    setShapeId(null);
+  }, []);
+  const toggleSelected = useCallback((kind: SelectionKind, id: string) => {
+    setPicked((s) => toggle(s, kind, id));
+    setShapeId(null);
+  }, []);
+  const clearSelection = useCallback(() => {
+    setPicked(EMPTY_SELECTION);
+    setShapeId(null);
+  }, []);
+  const selectedShape = shapeId ? ((graph.shapes ?? []).find((s) => s.id === shapeId) ?? null) : null; // (what undo took away is no longer selected)
 
   // An edit that changes nothing (the same graph back) is not a step.
   const apply = useCallback(
@@ -112,6 +131,7 @@ export function useMoleculeStudio(initialGraph: MoleculeGraph) {
   const loadGraph = useCallback((next: MoleculeGraph) => {
     setHistory(startHistory(applyHydrogenMode(next)));
     setPicked(EMPTY_SELECTION);
+    setShapeId(null);
   }, []);
 
   // ---- hydrogens ----
@@ -247,7 +267,12 @@ export function useMoleculeStudio(initialGraph: MoleculeGraph) {
   // ---- the selection ----
 
   const selectEverything = useCallback(() => setPicked(selectAll(graph)), [graph]);
-  const deleteSelected = useCallback(() => edit((g) => deleteSelection(g, selection)), [edit, selection]);
+  const deleteSelected = useCallback(() => {
+    if (shapeId) {
+      editNotes((g) => ({ ...g, shapes: removeShape(g.shapes, shapeId) }));
+      setShapeId(null);
+    } else edit((g) => deleteSelection(g, selection));
+  }, [edit, editNotes, selection, shapeId]);
 
   // The properties of the selection: the same value for all its atoms or bonds.
   const setElementOf = useCallback((ids: readonly string[], symbol: string) => edit((g) => setElement(g, ids, symbol)), [edit]);
@@ -277,7 +302,62 @@ export function useMoleculeStudio(initialGraph: MoleculeGraph) {
     const result = pasteClipboard(graph, clipboard, offset, offset);
     edit(() => result.graph);
     setPicked(result.selection);
+    setShapeId(null);
   }, [clipboard, graph, edit]);
+
+  // ---- shapes ----
+
+  // A shape chosen in the gallery: the next drag on the paper draws it.
+  const pickShape = useCallback((shape: string) => {
+    setShapeKind(shape);
+    setActiveTool("shape");
+    setPicked(EMPTY_SELECTION);
+    setShapeId(null);
+  }, []);
+  const selectShape = useCallback((id: string) => {
+    setPicked(EMPTY_SELECTION);
+    setShapeId(id);
+  }, []);
+  const drawShape = useCallback(
+    (box: DrawnBox) => {
+      const item = newShapeItem(shapeKind, box);
+      editNotes((g) => ({ ...g, shapes: addShape(g.shapes, item) }));
+      setPicked(EMPTY_SELECTION);
+      setShapeId(item.id);
+      setActiveTool("select"); // (like PowerPoint: one shape, then the Select tool is back)
+    },
+    [shapeKind, editNotes],
+  );
+  // `key` names what changed: edits of the same thing close together (typing the text, a thickness) are one step of the undo.
+  const changeShape = useCallback(
+    (id: string, patch: ShapePatch, key: string) => {
+      const now = Date.now();
+      const merge = lastShapeEdit.current?.key === key && now - lastShapeEdit.current.at < COALESCE_MS;
+      lastShapeEdit.current = { key, at: now };
+      const change = (g: MoleculeGraph): MoleculeGraph => ({ ...g, shapes: updateShape(g.shapes, id, patch) });
+      if (merge) setHistory((h) => (change(h.graph) === h.graph ? h : { ...h, graph: change(h.graph) }));
+      else editNotes(change);
+    },
+    [editNotes],
+  );
+  const orderShape = useCallback((id: string, order: Order) => editNotes((g) => ({ ...g, shapes: reorderShape(g.shapes, id, order) })), [editNotes]);
+  const duplicateShapeOf = useCallback(
+    (id: string) => {
+      const { copy: dup } = duplicateShape(graph.shapes, id);
+      if (!dup) return;
+      editNotes((g) => ({ ...g, shapes: addShape(g.shapes, dup) }));
+      setShapeId(dup.id);
+    },
+    [graph.shapes, editNotes],
+  );
+  const nudgeShape = useCallback((id: string, dx: number, dy: number) => changeShape(id, { x: (graph.shapes ?? []).find((s) => s.id === id)!.x + dx, y: (graph.shapes ?? []).find((s) => s.id === id)!.y + dy }, `shape-move:${id}`), [changeShape, graph.shapes]);
+  const turnShape = useCallback(
+    (id: string, by: number) => {
+      const s = (graph.shapes ?? []).find((k) => k.id === id);
+      if (s && !isLine(s)) changeShape(id, { rotation: ((((s.rotation ?? 0) + by) % 360) + 360) % 360 || undefined }, `shape-turn:${id}:${Date.now()}`);
+    },
+    [graph.shapes, changeShape],
+  );
 
   return {
     graph,
@@ -315,6 +395,16 @@ export function useMoleculeStudio(initialGraph: MoleculeGraph) {
     selectOnly,
     toggleSelected,
     clearSelection,
+    selectedShape,
+    shapeKind,
+    pickShape,
+    selectShape,
+    drawShape,
+    changeShape,
+    orderShape,
+    duplicateShapeOf,
+    nudgeShape,
+    turnShape,
     selectEverything,
     deleteSelected,
     setElementOf,

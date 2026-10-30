@@ -3,6 +3,9 @@
 import { STUDIO_AR, STUDIO_FR } from "@/app/_lib/chemistry/strings";
 import { CIRCUIT_AR, CIRCUIT_FR } from "@/app/_lib/circuit/strings";
 import { GRAPH_AR, GRAPH_FR } from "@/app/_lib/graph/strings";
+import { RIBBON_AR, RIBBON_FR } from "@/app/_lib/ribbon/strings";
+import { SHAPES_AR, SHAPES_FR } from "@/app/_lib/shapes/strings";
+import { TABLE_AR, TABLE_FR } from "@/app/_lib/table/strings";
 import { MOLECULE_AR, MOLECULE_FR } from "@/app/_molecule/strings";
 
 export const FR: Record<string, string> = {
@@ -184,8 +187,25 @@ export const FR: Record<string, string> = {
   "Basics": "Bases",
   "Functions & limits": "Fonctions et limites",
   "Sets & logic": "Ensembles et logique",
-  "Greek & physics": "Grec et physique",
+  "Trigonometry": "Trigonométrie",
+  "Greek letters": "Lettres grecques",
+  "Vectors": "Vecteurs",
+  "Constants": "Constantes",
+  "Mechanics": "Mécanique",
+  "Electricity": "Électricité",
+  "Waves & atoms": "Ondes et atomes",
+  "Chemistry": "Chimie",
+  "Math keyboard": "Clavier mathématique",
+  "Drag to move · double-click to put it back": "Glisser pour déplacer · double-clic pour le remettre en place",
+  "Show the Properties panel to type in this equation.": "Affichez le panneau Propriétés pour écrire dans cette équation.",
+  "Select an equation to use the math keyboard.": "Sélectionnez une équation pour utiliser le clavier mathématique.",
   "Ready formulas": "Formules prêtes",
+  "Keyboard keys": "Touches du clavier",
+  "Math keys: fractions, trigonometry, limits, sets…": "Touches de maths : fractions, trigonométrie, limites, ensembles…",
+  "Physics keys: vectors, units, constants, formulas…": "Touches de physique : vecteurs, unités, constantes, formules…",
+  "no text form in this field": "pas utilisable dans ce champ",
+  "The keys type in the field you last clicked.": "Les touches écrivent dans le champ où vous avez cliqué en dernier.",
+  "Click a text field to type in it.": "Cliquez dans un champ de texte pour y écrire.",
 
   // ---- Properties ----
   "Properties": "Propriétés",
@@ -991,8 +1011,25 @@ export const AR: Record<string, string> = {
   "Basics": "الأساسيات",
   "Functions & limits": "الدوال والنهايات",
   "Sets & logic": "المجموعات والمنطق",
-  "Greek & physics": "الحروف اليونانية والفيزياء",
+  "Trigonometry": "حساب المثلثات",
+  "Greek letters": "الحروف اليونانية",
+  "Vectors": "المتجهات",
+  "Constants": "الثوابت",
+  "Mechanics": "الميكانيك",
+  "Electricity": "الكهرباء",
+  "Waves & atoms": "الموجات والذرات",
+  "Chemistry": "الكيمياء",
+  "Math keyboard": "لوحة المفاتيح الرياضية",
+  "Drag to move · double-click to put it back": "اسحب للتحريك · انقر مرتين لإعادتها إلى مكانها",
+  "Show the Properties panel to type in this equation.": "أظهر لوحة الخصائص للكتابة في هذه المعادلة.",
+  "Select an equation to use the math keyboard.": "حدّد معادلة لاستعمال لوحة المفاتيح الرياضية.",
   "Ready formulas": "صيغ جاهزة",
+  "Keyboard keys": "مفاتيح لوحة المفاتيح",
+  "Math keys: fractions, trigonometry, limits, sets…": "مفاتيح الرياضيات: الكسور وحساب المثلثات والنهايات والمجموعات…",
+  "Physics keys: vectors, units, constants, formulas…": "مفاتيح الفيزياء: الأشعة والوحدات والثوابت والصيغ…",
+  "no text form in this field": "غير متاح في هذا الحقل",
+  "The keys type in the field you last clicked.": "تكتب المفاتيح في الحقل الذي نقرت فيه آخر مرة.",
+  "Click a text field to type in it.": "انقر في حقل نص للكتابة فيه.",
 
   // ---- Properties ----
   "Properties": "الخصائص",
@@ -1634,3 +1671,15 @@ Object.assign(AR, GRAPH_AR);
 // Circuit Studio (app/_lib/circuit/strings.ts)
 Object.assign(FR, CIRCUIT_FR);
 Object.assign(AR, CIRCUIT_AR);
+
+// The Home ribbon (right panel): font, paragraph, clipboard, find and replace, symbols.
+Object.assign(FR, RIBBON_FR);
+Object.assign(AR, RIBBON_AR);
+
+// Shapes (Insert → Shapes and the Shapes tool of every Studio).
+Object.assign(FR, SHAPES_FR);
+Object.assign(AR, SHAPES_AR);
+
+// The Table Studio and the table editor of the right panel.
+Object.assign(FR, TABLE_FR);
+Object.assign(AR, TABLE_AR);

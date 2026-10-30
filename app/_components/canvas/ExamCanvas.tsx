@@ -7,6 +7,7 @@ import { DEFAULT_MARGINS, MAX_MARGIN_MM, MIN_MARGIN_MM, mmToPx, pxToMm } from "@
 import { questionNumbers, totalPoints as sumPoints } from "@/app/_lib/blocks";
 import type { EditField } from "@/app/_lib/editRegions";
 import { pageAt, pageBoxes, stackSize, type PageBox } from "@/app/_lib/pageStack";
+import { MIN_SHAPE_SIZE, isLine } from "@/app/_lib/shapes";
 import { snapBox, type Guide } from "@/app/_lib/snapping";
 import type { Block, BlockLayout, ExamDoc, PageMargins, ViewMode } from "@/app/_lib/types";
 import type { BlockPatch } from "@/app/_lib/useExam";
@@ -24,7 +25,8 @@ const HANDLE_SHORT = 6;
 export type MarginEditView = { margins: PageMargins; dragging: boolean };
 
 // A box drawn on a page with the text box tool (page pixels, relative to that page).
-export type DrawnBox = { pageIndex: number; x: number; y: number; width: number; height: number };
+// (`flipX` / `flipY`: a line drawn leftwards / upwards; a click without a drag has no size: width and height 0, and x, y are where it was)
+export type DrawnBox = { pageIndex: number; x: number; y: number; width: number; height: number; flipX?: boolean; flipY?: boolean };
 const MIN_DRAWN = { width: 40, height: 20 }; // a smaller drag is taken for a click: no box
 type DrawDraft = { page: number; x0: number; y0: number; x1: number; y1: number };
 const SNAP_COLOR = "#ec4899"; // pink lines while dragging
@@ -54,6 +56,8 @@ interface Props {
   onCreateText?: (at: { pageIndex: number; x: number; y: number }) => void;
   // Text box tool: dragging on a page draws a box (dashed while drawn) instead of selecting.
   drawBox?: boolean;
+  // With the Shapes tool: what is drawn is a shape (a box, or a line from one corner to the other): a click is allowed, and Shift keeps it square / at 45°.
+  drawShape?: "box" | "line";
   onDrawBox?: (box: DrawnBox) => void;
   // A resize handle of the selected block is pressed (the text box editor stays open for it), and where
   // the block is while it is resized (stage = page stack coordinates; null = done).
@@ -99,8 +103,10 @@ export default function ExamCanvas(props: Props) {
   const [draft, setDraft] = useState<DrawDraft | null>(null);
   const stopDraw = useRef<(() => void) | null>(null);
   const onDrawBox = useRef(props.onDrawBox); // the latest one, for the release of a box drawn meanwhile
+  const drawShape = useRef(props.drawShape);
   useEffect(() => {
     onDrawBox.current = props.onDrawBox;
+    drawShape.current = props.drawShape;
   });
 
   // Draw at a higher resolution when zoomed in, so text stays sharp.
@@ -152,10 +158,11 @@ export default function ExamCanvas(props: Props) {
   const handleResize = (b: Block, r: ResizeResult) => {
     const i = pageAt(r.y + r.height / 2, boxes);
     const page = boxes[i];
-    const width = clamp(r.width, 40, page.width);
+    const width = clamp(r.width, b.type === "shape" ? (isLine(b) ? 0 : MIN_SHAPE_SIZE) : 40, page.width);
     const ratio = b.type === "image" ? b.ratio : b.type === "equation" ? b.exW / Math.max(0.1, b.exH) : 0;
-    const graph = b.type === "graph" || b.type === "textbox"; // graphs and text boxes can change shape freely
-    const h = graph ? clamp(r.height, b.type === "textbox" ? 30 : 80, page.height) : ratio ? width / ratio : (heights.get(b.id) ?? 0);
+    const shape = b.type === "shape";
+    const graph = b.type === "graph" || b.type === "textbox" || shape; // graphs, text boxes and shapes can change shape freely
+    const h = graph ? clamp(r.height, b.type === "textbox" ? 30 : shape ? (isLine(b) ? 0 : MIN_SHAPE_SIZE) : 80, page.height) : ratio ? width / ratio : (heights.get(b.id) ?? 0);
     props.onResize?.(b.id, {
       pageId: pages[i].id,
       x: clamp(r.x - page.left, 0, page.width - width),
@@ -185,7 +192,26 @@ export default function ExamCanvas(props: Props) {
       stage.setPointersPositions(e);
       const p = stage.getPointerPosition();
       if (!p) return;
-      d = { ...d, x1: clamp(p.x, box.left, box.left + box.width), y1: clamp(p.y, box.top, box.top + box.height) };
+      const inX = (v: number) => clamp(v, box.left, box.left + box.width);
+      const inY = (v: number) => clamp(v, box.top, box.top + box.height);
+      let x1 = inX(p.x);
+      let y1 = inY(p.y);
+      const kind = drawShape.current;
+      if (e.shiftKey && kind) {
+        const dx = x1 - d.x0;
+        const dy = y1 - d.y0;
+        if (kind === "line") {
+          const len = Math.hypot(dx, dy);
+          const step = Math.round(Math.atan2(dy, dx) / (Math.PI / 4)) * (Math.PI / 4);
+          x1 = inX(d.x0 + Math.cos(step) * len);
+          y1 = inY(d.y0 + Math.sin(step) * len);
+        } else {
+          const side = Math.max(Math.abs(dx), Math.abs(dy));
+          x1 = inX(d.x0 + Math.sign(dx || 1) * side);
+          y1 = inY(d.y0 + Math.sign(dy || 1) * side);
+        }
+      }
+      d = { ...d, x1, y1 };
       setDraft(d);
     };
     const stop = () => {
@@ -198,6 +224,13 @@ export default function ExamCanvas(props: Props) {
       follow(e);
       stop();
       const r = draftRect(d);
+      const kind = drawShape.current;
+      if (kind) {
+        // a shape: a click puts it at its usual size, where the mouse is
+        const click = kind === "line" ? Math.hypot(r.width, r.height) < 10 : r.width < 8 && r.height < 8;
+        onDrawBox.current?.(click ? { pageIndex: page, x: d.x0 - box.left, y: d.y0 - box.top, width: 0, height: 0 } : { pageIndex: page, x: r.x - box.left, y: r.y - box.top, width: r.width, height: r.height, flipX: d.x1 < d.x0, flipY: d.y1 < d.y0 });
+        return;
+      }
       if (r.width < MIN_DRAWN.width || r.height < MIN_DRAWN.height) return;
       onDrawBox.current?.({ pageIndex: page, x: r.x - box.left, y: r.y - box.top, width: r.width, height: r.height });
     };
@@ -208,7 +241,7 @@ export default function ExamCanvas(props: Props) {
 
   const media = selected?.type === "image" || selected?.type === "equation";
   const corners = media || selected?.type === "graph";
-  const freeBox = selected?.type === "textbox"; // a text box: every side and corner
+  const freeBox = selected?.type === "textbox" || selected?.type === "shape"; // a text box or a shape: every side and corner
 
   return (
     <Stage
@@ -280,7 +313,8 @@ export default function ExamCanvas(props: Props) {
           ))}
 
         {/* The text box being drawn */}
-        {draft && (
+        {draft && props.drawShape === "line" && <Line points={[draft.x0, draft.y0, draft.x1, draft.y1]} stroke={ACCENT} strokeWidth={1.5 / zoom} dash={[4 / zoom, 4 / zoom]} listening={false} />}
+        {draft && props.drawShape !== "line" && (
           <Rect
             {...draftRect(draft)}
             fill="rgba(0,0,0,0.05)"

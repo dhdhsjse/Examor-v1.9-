@@ -6,6 +6,7 @@ import type { StudioTool } from "./types";
 // Arabic ones wait for a reviewed list. The Arabic UI words below are generic and still to be read by a teacher.
 
 export const STUDIO_FR: Record<string, string> = {
+  "Drag on the paper to draw the shape (Shift: a square or a 45° line, Alt: from the centre), or click to put it at its usual size": "Faites glisser sur la feuille pour tracer la forme (Maj : un carré ou un trait à 45°, Alt : depuis le centre), ou cliquez pour la placer à sa taille habituelle",
   "Draw a molecule": "Dessiner une molécule",
   "Drawing lab": "Atelier de dessin",
   "Drawing": "Dessin",
@@ -162,6 +163,7 @@ export const STUDIO_FR: Record<string, string> = {
 };
 
 export const STUDIO_AR: Record<string, string> = {
+  "Drag on the paper to draw the shape (Shift: a square or a 45° line, Alt: from the centre), or click to put it at its usual size": "اسحب على الورقة لرسم الشكل (Shift : مربع أو خط بزاوية 45°، Alt : من المركز)، أو انقر لوضعه بحجمه المعتاد",
   "Draw a molecule": "رسم جزيء",
   "Drawing lab": "ورشة الرسم",
   "Drawing": "الرسم",
@@ -320,6 +322,7 @@ export const STUDIO_AR: Record<string, string> = {
 // One line of help for each tool of the Studio, shown over the drawing area (looked up by tool name,
 // so a test checks that each one is translated).
 export const TOOL_HINTS: Record<StudioTool, string> = {
+  shape: "Drag on the paper to draw the shape (Shift: a square or a 45° line, Alt: from the centre), or click to put it at its usual size",
   select: "Drag an atom to move it (Shift: the whole molecule) · drag on the paper to select several · click a bond to change its order",
   atom: "Click the paper to place an atom · click an atom to change its element",
   bond: "Drag from an atom to draw a bond",
