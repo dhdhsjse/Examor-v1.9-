@@ -424,7 +424,8 @@ export function pushDownOverlaps(blocks: Block[], movedId: string, heights: Map<
   if (!moved) return blocks;
   const h = (b: Block) => heights.get(b.id) ?? 0;
   const sideBySide = (a: Block, b: Block) => a.layout.x + a.layout.width <= b.layout.x || b.layout.x + b.layout.width <= a.layout.x;
-  const samePage = blocks.filter((b) => b.layout.pageId === moved.layout.pageId && !sideBySide(b, moved) && b.id !== movedId);
+  // (a block inside a text box is placed by its box, and not pushed on its own)
+  const samePage = blocks.filter((b) => b.layout.pageId === moved.layout.pageId && !sideBySide(b, moved) && b.id !== movedId && !b.meta?.slot);
 
   // A block that starts higher but reaches into the dropped one: the dropped one goes below it.
   let y = moved.layout.y;

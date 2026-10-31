@@ -461,6 +461,7 @@ export interface TextboxParagraph {
   rtl: boolean;
   marker?: ListMarker;
   box?: ParagraphBox;
+  slot?: { id: string; height: number }; // no text: the room of a block placed here (textboxSlots.ts)
 }
 
 const BOX_PAD = 3; // how far a shading or a border goes beyond the text (px)
@@ -526,6 +527,12 @@ function layoutTextboxIn(b: TextboxBlock, meta: ExamMeta, width: number, hint?: 
   let natural = 0; // the width the longest line takes, with its indent and list marker
   const paragraphs: TextboxParagraph[] = items.map((p, i) => {
     const rtl = rtls[i];
+    // A block placed in the text: its room, the full width of the text.
+    if (p.slot) {
+      const room: TextboxParagraph = { lines: [], x: pad, y: top, width, rtl, slot: { id: p.slot.id, height: p.slot.h } };
+      top += p.slot.h;
+      return room;
+    }
     // Indented from the start side, keeping some room for the text.
     const indent = Math.min(Math.min(p.indent, MAX_INDENT) * INDENT_PX, Math.max(0, width - 20));
     top += p.spaceBefore;

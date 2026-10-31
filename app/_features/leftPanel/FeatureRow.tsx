@@ -49,15 +49,22 @@ export default function FeatureRow({ feature, ctx, onLibrary }: Props) {
         e.dataTransfer.effectAllowed = "copy";
       }}
       title={intoText ? `${label} — ${intoTextTip}` : label}
-      className={`flex h-9 w-full items-center gap-3 rounded-md px-2 text-start text-[13px] transition-colors duration-100 ${
-        open ? "bg-accent-soft text-accent" : "text-ink hover:bg-subtle"
+      className={`group flex h-8 w-full items-center gap-2 rounded-[5px] px-1.5 text-start text-xs transition-colors duration-100 outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+        open ? "bg-accent-soft text-accent" : "text-ink hover:bg-hover"
       }`}
     >
-      <span className={`grid size-5 shrink-0 place-items-center ${open ? "text-accent" : "text-muted"}`}>{feature.icon}</span>
+      <span className={`ui-icon grid size-4 shrink-0 place-items-center ${open ? "text-accent" : "text-muted"}`}>{feature.icon}</span>
       <span className="min-w-0 flex-1 truncate">{label}</span>
-      {intoText && <CornerDownRight size={13} strokeWidth={1.8} aria-label={intoTextTip} className="shrink-0 text-accent rtl:-scale-x-100" />}
-      {feature.hotkey && <span className="text-[10px] text-faint">{feature.hotkey}</span>}
-      {inspector && <SlidersHorizontal size={14} strokeWidth={1.7} aria-hidden className={`shrink-0 ${open ? "text-accent" : "text-faint"}`} />}
+      {intoText && <CornerDownRight size={12} strokeWidth={2} aria-label={intoTextTip} className="shrink-0 text-accent rtl:-scale-x-100" />}
+      {feature.hotkey && <span className="text-[11px] text-faint">{feature.hotkey}</span>}
+      {inspector && (
+        <SlidersHorizontal
+          size={12}
+          strokeWidth={2}
+          aria-hidden
+          className={`shrink-0 ${open ? "text-accent" : "text-faint opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"}`}
+        />
+      )}
     </button>
   );
 }

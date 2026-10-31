@@ -66,6 +66,7 @@ export interface BlockMeta {
   role?: "header" | "footer";
   templateId?: string;
   field?: string; // a header/footer text block: the text of its settings it shows (HeaderFooterConfig.data key)
+  slot?: string; // a block inside a text box (textboxSlots.ts): the id of that box; the box places it and sizes it
 }
 
 // Where a block sits (page pixels, relative to its own page).

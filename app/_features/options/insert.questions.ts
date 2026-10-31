@@ -14,5 +14,5 @@ export const insertQuestionsOption: Option = {
   id: "option.insert.questions",
   order: 10,
   label: (t) => t("Questions"),
-  features: [hintQuestionsInText, toolInsertHeading, toolQuestionFree, toolQuestionMcq, toolQuestionTrueFalse, toolQuestionBlank, toolQuestionOpen, toolQuestionMatch, toolQuestionOrder, toolQuestionClassify],
+  features: [hintQuestionsInText, toolInsertHeading, toolQuestionFree, toolQuestionMcq, toolQuestionOpen, toolQuestionTrueFalse, toolQuestionBlank, toolQuestionMatch, toolQuestionOrder, toolQuestionClassify],
 };

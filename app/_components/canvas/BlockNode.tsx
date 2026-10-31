@@ -117,7 +117,7 @@ export default function BlockNode(props: Props) {
       id={block.id}
       x={x}
       y={y}
-      draggable={interactive && !textTool && !drawing}
+      draggable={interactive && !textTool && !drawing && !block.meta?.slot}
       listening={interactive && !drawing}
       onMouseDown={() => {
         wasSelected.current = selected;

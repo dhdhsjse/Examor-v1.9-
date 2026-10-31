@@ -78,7 +78,7 @@ export function TextboxView({ b, meta, interactive }: { b: TextboxBlock; meta: E
       ) : (
         interactive && <Rect width={b.layout.width} height={L.height} stroke="#cbd5e1" strokeWidth={1} dash={[4, 3]} listening={false} />
       )}
-      {L.paragraphs.map((p, k) => (
+      {L.paragraphs.map((p, k) => p.slot ? null : (
         <Fragment key={k}>
           {p.box && <ParagraphBackdrop box={{ ...p.box, y: L.y + p.box.y }} />}
           {p.marker && <Marker m={p.marker} dy={L.y} rtl={p.rtl} />}

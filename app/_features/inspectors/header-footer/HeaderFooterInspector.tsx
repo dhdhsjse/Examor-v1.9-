@@ -91,7 +91,7 @@ function SelectedHeader({ ctx, block, loose, index }: { ctx: Ctx; block: HeaderB
     if (c) shell.setChrome("header", { ...c, enabled: false }, block.layout.pageId);
   };
   return (
-    <div className="mb-3 flex flex-col gap-2 rounded-lg border border-indigo-200 bg-indigo-50/60 p-2.5 text-xs text-indigo-900">
+    <div className="mb-3 flex flex-col gap-2 rounded-[5px] border border-line p-2.5 text-xs text-ink">
       <div className="flex items-center justify-between gap-2">
         <span className="font-semibold">{t("Exam header of page {n}", { n: index + 1 })}</span>
         <span className="flex gap-1">

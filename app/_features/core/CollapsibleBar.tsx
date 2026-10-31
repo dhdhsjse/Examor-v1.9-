@@ -75,7 +75,7 @@ export default function CollapsibleBar({ bar, collapse, ctx, children }: { bar: 
       aria-label={t(collapse.label)}
       data-bar={bar.id}
       data-open={open}
-      className={`relative shrink-0 ${drag ? "" : "transition-[width] duration-200 ease-out motion-reduce:transition-none"}`}
+      className={`group/edge relative shrink-0 ${drag ? "" : "transition-[width] duration-200 ease-out motion-reduce:transition-none"}`}
       style={{ width: shown ? width : STRIP_WIDTH }}
     >
       <div className={`absolute inset-0 overflow-hidden border-line bg-surface ${side === "start" ? "border-e" : "border-s"}`}>

@@ -25,8 +25,9 @@ import { editRegions, fieldKey, fieldPatch, fieldValue, type EditField } from "@
 import { figureDef } from "@/app/_lib/figures";
 import { newId } from "@/app/_lib/id";
 import { preloadImages, readImageFile } from "@/app/_lib/images";
-import { sizingAfterResize, textboxPad, textboxSpec } from "@/app/_lib/blockLayout";
-import { dotsFor, insertSnippet, snippetFor } from "@/app/_lib/textSnippets";
+import { sizingAfterResize } from "@/app/_lib/blockLayout";
+import { insertSnippet, snippetFor } from "@/app/_lib/textSnippets";
+import { canEmbed, newEmbedded } from "@/app/_lib/textboxSlots";
 import { drawInlineMath, inlineMathUrl } from "@/app/_lib/inlineMath";
 import { plainText } from "@/app/_lib/richText";
 import { docParagraphs, richFromDoc, textboxDoc } from "@/app/_lib/textboxDoc";
@@ -325,12 +326,20 @@ export default function Editor() {
   const runTool = (action: ToolAction, at?: DropPoint) => {
     // Another tool used meanwhile: no text box or shape is drawn any more.
     setTool((cur) => (cur === "textbox" || cur === "shape" ? "select" : cur));
-    // A question type picked while a text box is being typed in goes inside that box, at the cursor.
+    // A question type or a table picked while a text box is being typed in is a real block placed in that box's text, at the cursor
+    // (textboxSlots.ts). It is then edited like any block, as when added on the page.
     const box = textEditor && !at ? doc.blocks.find((b) => b.id === editing?.id) : undefined;
     if (box?.type === "textbox" && textEditor) {
-      const s = textboxSpec(box, doc.meta);
-      const width = box.layout.width - 2 * textboxPad(box);
-      const snippet = snippetFor(action, { lang: doc.meta.lang, blocks: doc.blocks, dotsPerLine: dotsFor(width, `${s.font.size}px ${s.font.family}`) });
+      if (action.kind === "block" && canEmbed(action.type)) {
+        const { block, slotContent } = newEmbedded(box, action.type, doc.meta.lang, action.preset);
+        textEditor.chain().focus().insertContent(slotContent).run();
+        setTab("properties");
+        setActiveInspectorId(inspectorFor(block));
+        exam.setSelectedId(block.id);
+        setEditing(TYPE_ON_ADD.includes(block.type) ? { id: block.id, field: { kind: "text" }, selectAll: true } : null);
+        return;
+      }
+      const snippet = snippetFor(action, { lang: doc.meta.lang, blocks: doc.blocks });
       if (snippet) return insertSnippet(textEditor, snippet);
     }
     switch (action.kind) {

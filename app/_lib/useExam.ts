@@ -22,6 +22,7 @@ import {
   type ChromeKind,
 } from "./pageChrome";
 import { saveAutosave } from "./storage";
+import { removeBlock, syncEmbedded } from "./textboxSlots";
 import { buildDoc, type Template } from "./templates";
 import type { Block, BlockData, BlockLayout, BlockType, EquationBlock, ExamDoc, ExamMeta, HeaderBlock, HeaderFooterConfig, Page, PageFormat, PageMargins } from "./types";
 import type { T } from "./uiLang";
@@ -61,6 +62,13 @@ const newPageLike = (pages: Page[]): Page => {
 
 const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(v, max));
 
+// The meta of a copy of a block: a copy of a block that sits in a text box is a block of the page, no longer in that box.
+const looseMeta = (b: Block): Block["meta"] => {
+  if (!b.meta?.slot) return b.meta;
+  const { slot: _slot, ...rest } = b.meta;
+  return Object.keys(rest).length ? rest : undefined;
+};
+
 // New svg + size for an equation, keeping its current zoom (pixels per "ex").
 export function equationPatch(b: EquationBlock, r: RenderedEquation): BlockPatch {
   const pxPerEx = b.layout.height / Math.max(0.1, b.exH);
@@ -94,7 +102,8 @@ export function useExam(initial: ExamDoc, t?: T) {
     if (!opts.silent) lastEdit.current = opts.key ? { key: opts.key, time: now } : null;
     setHist((h) => {
       // (text boxes with an automatic size follow their text in the same step: typing, a font, a margin…)
-      const next = fitTextboxes(update(h.present));
+      // (and the blocks placed in a text box follow its text)
+      const next = fitTextboxes(syncEmbedded(update(h.present)));
       if (next === h.present) return h;
       if (merge) return { ...h, present: next };
       return { past: [...h.past.slice(-99), h.present], present: next, future: [] };
@@ -243,7 +252,7 @@ export function useExam(initial: ExamDoc, t?: T) {
   const deleteBlock = useCallback(
     (id: string) => {
       // A header/footer goes from its settings: the page's own, or the document's (see deleteChrome).
-      commit((d) => (tRef.current && deleteChrome(d, id, tRef.current)) || { ...d, blocks: d.blocks.filter((b) => b.id !== id) });
+      commit((d) => (tRef.current && deleteChrome(d, id, tRef.current)) || removeBlock(d, id));
       setSelectedId((cur) => (cur === id ? null : cur));
     },
     [commit],
@@ -260,6 +269,7 @@ export function useExam(initial: ExamDoc, t?: T) {
       const copy = {
         ...structuredClone(src),
         id: newId(),
+        meta: looseMeta(src),
         layout: { ...src.layout, pageId: page.id, x: clamp(src.layout.x + (taken ? 12 : 0), 0, size.width - src.layout.width), y: clamp(src.layout.y + (taken ? 24 : 0), 0, size.height - src.layout.height) },
       } as Block;
       commit((d) => ({ ...d, blocks: [...d.blocks, copy] }));
@@ -277,6 +287,7 @@ export function useExam(initial: ExamDoc, t?: T) {
       const copy = {
         ...structuredClone(src),
         id: newId(),
+        meta: looseMeta(src),
         layout: { ...src.layout, y: clamp(src.layout.y + 24, 0, size.height - h), x: clamp(src.layout.x + 12, 0, size.width - src.layout.width) },
       } as Block;
       commit((d) => ({ ...d, blocks: [...d.blocks, copy] }));

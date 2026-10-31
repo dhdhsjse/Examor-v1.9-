@@ -16,14 +16,14 @@ export const activeInspectorPanel: Feature = {
     if (!feature?.renderInspector) return null;
     const label = resolveLabel(feature.label, ctx.t);
     return (
-      <section aria-label={label} className="flex flex-col gap-3.5 p-3.5">
-        <div className="flex items-center justify-between gap-2">
-          <h2 className="truncate text-sm font-semibold text-ink">{label}</h2>
+      <section aria-label={label} className="flex flex-col">
+        <div className="flex h-10 items-center justify-between gap-2 border-b border-line ps-3 pe-1.5">
+          <h2 className="truncate text-xs font-semibold text-ink">{label}</h2>
           <button type="button" onClick={ctx.closeInspector} aria-label={ctx.t("Close")} title={ctx.t("Close")} className={iconBtn}>
-            <X size={16} strokeWidth={1.7} />
+            <X aria-hidden />
           </button>
         </div>
-        {feature.renderInspector({ ctx })}
+        <div className="flex flex-col gap-3 p-3">{feature.renderInspector({ ctx })}</div>
       </section>
     );
   },

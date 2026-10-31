@@ -18,8 +18,11 @@ export const fileGroup: Group = {
   menu: true,
   className: "shrink-0",
   header: (ctx) => (
-    <span className="flex items-center gap-1">
-      <FileIcon /> {ctx.t("File")}
+    <span className="flex items-center gap-1.5">
+      <span className="ui-icon text-muted">
+        <FileIcon />
+      </span>
+      {ctx.t("File")}
     </span>
   ),
   features: [

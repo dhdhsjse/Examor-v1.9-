@@ -208,7 +208,8 @@ export const PenLinesIcon = () => (
 
 export const HeadingIcon = () => (
   <svg {...base}>
-    <path d="M4 3.5v11M14 3.5v11M4 9h10" />
+    <path d="M3 5h7.5M6.75 5v6" strokeWidth={2} />
+    <path d="M3 14h12M12.5 8.5H15" />
   </svg>
 );
 

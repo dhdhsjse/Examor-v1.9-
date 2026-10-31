@@ -20,12 +20,25 @@ export function mathOfAttrs(attrs: Record<string, unknown> | undefined): InlineM
   return { latex, w: num(attrs?.w, guess.w), h: num(attrs?.h, guess.h), d: typeof attrs?.d === "number" && attrs.d >= 0 ? attrs.d : guess.d, ...svg };
 }
 
+/** A real block (a table, a question…) among the paragraphs of the box: the room it keeps (`h`, the block's height) and which block it is. */
+export const BLOCK_SLOT = "blockSlot";
+export interface Slot {
+  id: string;
+  h: number;
+}
+const slotOfNode = (n: JSONContent): Slot => ({ id: typeof n.attrs?.blockId === "string" ? n.attrs.blockId : "", h: Math.max(0, Number(n.attrs?.h) || 0) });
+const slotNode = (s: Slot): JSONContent => ({ type: BLOCK_SLOT, attrs: { blockId: s.id, h: s.h } });
+
+/** The blocks placed inside the box's text, in reading order. */
+export const slotsOf = (doc: JSONContent): Slot[] => (doc.content ?? []).filter((n) => n.type === BLOCK_SLOT).map(slotOfNode);
+
 type Mark = NonNullable<JSONContent["marks"]>[number];
 
 // One paragraph, ready to draw: its runs and its own formatting (alignment, indent level, list, direction, spacing,
-// shading and borders; what it does not set is the box's).
+// shading and borders; what it does not set is the box's). A `slot` is no text but the room of a block placed there.
 export interface DocParagraph extends ParagraphFormat {
   runs: Run[];
+  slot?: Slot;
 }
 
 // A font name as stored by the editor: the first family of a CSS list, without quotes.
@@ -84,7 +97,9 @@ const runsOf = (p: JSONContent): Run[] => (p.content ?? []).map(runOf);
 
 // The paragraphs of a document (a line break inside one is "\n" in its runs).
 export function docParagraphs(doc: JSONContent): DocParagraph[] {
-  return (doc.content ?? []).map((p) => ({ runs: runsOf(p), ...paragraphFormat(p.attrs, MAX_INDENT) }));
+  return (doc.content ?? []).map((p) =>
+    p.type === BLOCK_SLOT ? { runs: [], ...paragraphFormat(undefined, MAX_INDENT), slot: slotOfNode(p) } : { runs: runsOf(p), ...paragraphFormat(p.attrs, MAX_INDENT) },
+  );
 }
 
 // A paragraph node: its runs as text (and line breaks), and its formatting as attributes.
@@ -122,8 +137,23 @@ export function docFromRich(text: string): JSONContent {
 // A document from paragraphs, with their formatting (what a transform of the text gives back).
 export const docFromParagraphs = (paragraphs: DocParagraph[]): JSONContent => ({
   type: "doc",
-  content: (paragraphs.length ? paragraphs : [{ runs: [], indent: 0, spaceBefore: 0, spaceAfter: 0 }]).map(({ runs, ...format }) => paragraphNode(runs, format)),
+  content: (paragraphs.length ? paragraphs : [{ runs: [], indent: 0, spaceBefore: 0, spaceAfter: 0 }]).map(({ runs, slot, ...format }) => (slot ? slotNode(slot) : paragraphNode(runs, format))),
 });
+
+/** The document with each block's room changed by `fn` (null = the room goes). The same document when nothing changes. */
+export function updateSlots(doc: JSONContent, fn: (s: Slot) => Slot | null): JSONContent {
+  let changed = false;
+  const content = (doc.content ?? []).flatMap((n) => {
+    if (n.type !== BLOCK_SLOT) return [n];
+    const s = slotOfNode(n);
+    const next = fn(s);
+    if (next && next.id === s.id && next.h === s.h) return [n];
+    changed = true;
+    return next ? [slotNode(next)] : [];
+  });
+  // (a box never ends up with no paragraph at all)
+  return changed ? { ...doc, content: content.length ? content : [{ type: "paragraph" }] } : doc;
+}
 
 // The same text as a styled string, kept in TextboxBlock.text (labels, hints, search, older versions).
 export const richFromDoc = (doc: JSONContent) => docParagraphs(doc).map((p) => serializeRich(p.runs)).join("\n");

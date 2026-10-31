@@ -72,8 +72,8 @@ export default function EquationEditor({ b, onLatex, keyboardOpen, onToggleKeybo
         <button
           type="button"
           onClick={onToggleKeyboard}
-          className={`flex flex-1 items-center justify-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors ${
-            keyboardOpen ? "bg-indigo-600 text-white hover:bg-indigo-700" : "bg-indigo-50 text-indigo-700 hover:bg-indigo-100"
+          className={`flex h-7 flex-1 items-center justify-center gap-1.5 rounded-[5px] px-2 text-xs font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+            keyboardOpen ? "bg-accent text-white hover:bg-accent-strong" : "bg-subtle text-ink hover:bg-hover"
           }`}
         >
           <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4">

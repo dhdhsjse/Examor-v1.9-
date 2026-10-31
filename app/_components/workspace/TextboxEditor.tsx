@@ -4,13 +4,13 @@ import type { Editor, JSONContent } from "@tiptap/core";
 import { EditorContent, useEditor, useEditorState } from "@tiptap/react";
 import { useEffect, useLayoutEffect, useRef, useState, type MouseEvent as ReactMouseEvent, type RefObject } from "react";
 import { mathCommand, onNextMathfield } from "@/app/_lib/activeMathfield";
-import { blockRtl, textboxPad, textboxSpec } from "@/app/_lib/blockLayout";
+import { blockRtl, layoutTextbox, textboxPad, textboxSpec } from "@/app/_lib/blockLayout";
 import { setCurrentFormula } from "@/app/_lib/currentFormula";
 import { registerFormulaField } from "../math-keyboard/fieldTarget";
 import { useShowMarks } from "@/app/_lib/formattingMarks";
 import { isRtl } from "@/app/_lib/i18n";
 import type { StylePatch } from "@/app/_lib/richText";
-import { textboxDoc } from "@/app/_lib/textboxDoc";
+import { BLOCK_SLOT, slotsOf, textboxDoc } from "@/app/_lib/textboxDoc";
 import * as cmd from "@/app/_lib/textboxEditor";
 import type { ExamMeta, TextboxBlock } from "@/app/_lib/types";
 import FormatBar from "../rich/FormatBar";
@@ -29,6 +29,7 @@ interface Props {
   onDropBoxStyle: (mark: cmd.StyleMark) => void; // the whole box loses bold / italic / … (see cmd.toggleStyle)
   onDone: () => void;
   onReady: (editor: Editor | null) => void; // for the right panel, which formats the selection through it
+  onOpenBlock: (blockId: string) => void; // a block in the text was double-clicked: the box closes, the block is selected
   // Its edge is dragged (page stack pixels): it starts, where the box would go (snapped, inside its page), where it is dropped.
   onMoveStart: () => void;
   onMoving: (left: number, top: number) => { x: number; y: number };
@@ -46,7 +47,7 @@ const BAR_MARK = { b: "bold", i: "italic", u: "underline", x: "strike" } as cons
 // it; pasted formatted text keeps what the canvas can draw. The canvas draws the same document when the
 // editor is closed (textboxDoc.ts). A click anywhere else (except the right panel's formatting) or Escape
 // closes it. Its edge can be dragged to move the box while typing goes on.
-export default function TextboxEditor({ block, meta, zoom, box, selectAll, keepOpen, onChange, onDropBoxStyle, onDone, onReady, onMoveStart, onMoving, onMoveEnd }: Props) {
+export default function TextboxEditor({ block, meta, zoom, box, selectAll, keepOpen, onChange, onDropBoxStyle, onDone, onReady, onOpenBlock, onMoveStart, onMoving, onMoveEnd }: Props) {
   const root = useRef<HTMLDivElement>(null);
   const [moved, setMoved] = useState<{ x: number; y: number } | null>(null); // the edge is being dragged: where the box is (page stack pixels)
   const stopMove = useRef<(() => void) | null>(null);
@@ -54,14 +55,14 @@ export default function TextboxEditor({ block, meta, zoom, box, selectAll, keepO
   const showMarks = useShowMarks();
   const s = textboxSpec(block, meta);
   const autoWidth = block.sizing === "auto-width";
-  const latest = useRef({ onChange, onDone, onReady, onMoveStart, onMoving, onMoveEnd });
+  const latest = useRef({ onChange, onDone, onReady, onOpenBlock, onMoveStart, onMoving, onMoveEnd });
   useEffect(() => {
-    latest.current = { onChange, onDone, onReady, onMoveStart, onMoving, onMoveEnd };
+    latest.current = { onChange, onDone, onReady, onOpenBlock, onMoveStart, onMoving, onMoveEnd };
   });
 
   // The extensions are made once for this editing session (new ones on every render would be new options every time).
   // The direction and the size are those of the box when typing starts: they do not change while it is open.
-  const [extensions] = useState(() => cmd.textboxExtensions({ rtl, size: s.font.size }));
+  const [extensions] = useState(() => cmd.textboxExtensions({ rtl, size: s.font.size }, (id) => latest.current.onOpenBlock(id)));
   const editor = useEditor({
     extensions,
     content: textboxDoc(block),
@@ -100,6 +101,19 @@ export default function TextboxEditor({ block, meta, zoom, box, selectAll, keepO
       editor.chain().focus().insertInlineMath().run();
     });
   }, [editor]);
+
+  // The room of each block in the text is as tall as the block (the page's document knows, once the block has its width): the
+  // editor's frame follows, with no step in the undo history of the editor.
+  useEffect(() => {
+    if (!editor) return;
+    const heights = new Map(slotsOf(textboxDoc(block)).map((slot) => [slot.id, slot.h]));
+    const tr = editor.state.tr;
+    editor.state.doc.descendants((node, pos) => {
+      const h = heights.get(node.attrs.blockId);
+      if (node.type.name === BLOCK_SLOT && h !== undefined && h !== node.attrs.h) tr.setNodeMarkup(pos, undefined, { ...node.attrs, h });
+    });
+    if (tr.docChanged) editor.view.dispatch(tr.setMeta("addToHistory", false));
+  }, [editor, block]);
 
   // The Properties panel shows the formula being edited (currentFormula.ts) until the cursor is back in the words, or the box closes.
   useEffect(() => {
@@ -203,6 +217,9 @@ export default function TextboxEditor({ block, meta, zoom, box, selectAll, keepO
   };
 
   const decoration = [s.font.underline && "underline", s.font.strike && "line-through"].filter(Boolean).join(" ");
+  // The fill covers the box except where a block sits in the text: the page draws that block, and it must show through.
+  const layout = layoutTextbox(block, meta);
+  const holes = layout.paragraphs.flatMap((p) => (p.slot ? [`M${p.x} ${layout.y + p.y}h${p.width}v${p.slot.height}h${-p.width}Z`] : []));
   return (
     <div
       ref={root}
@@ -249,7 +266,6 @@ export default function TextboxEditor({ block, meta, zoom, box, selectAll, keepO
           minHeight: box.height,
           padding: textboxPad(block),
           justifyContent: JUSTIFY[block.valign ?? "top"],
-          background: block.background ?? "#ffffff",
           boxShadow: block.border ? `inset 0 0 0 1px ${block.border}` : undefined,
           fontFamily: s.font.family,
           fontSize: s.font.size,
@@ -262,6 +278,11 @@ export default function TextboxEditor({ block, meta, zoom, box, selectAll, keepO
           textAlign: block.align ?? "start",
         }}
       >
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 -z-10"
+          style={{ background: block.background ?? "#ffffff", clipPath: holes.length ? `path(evenodd, "M0 0H100000V100000H0Z ${holes.join(" ")}")` : undefined }}
+        />
         <EditorContent editor={editor} />
         {bands.map((style, i) => (
           <div key={i} aria-hidden onMouseDown={startMove} className="absolute z-10 cursor-move" style={style} />

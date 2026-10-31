@@ -3,15 +3,17 @@
    which crashed the CSS build during `tauri dev`. */
 @source not "../src-tauri";
 
-/* App theme: white panels, a grey work area, and one indigo accent. */
+/* App theme, close to Figma's: white panels, neutral greys (no blue tint), hairline borders, and one
+   indigo accent kept for the main action and the active tool. */
 @theme {
-  --color-canvas: #e6e9ef;      /* grey work area around the pages */
+  --color-canvas: #ececec;      /* grey work area around the pages */
   --color-surface: #ffffff;     /* panels and bars */
-  --color-subtle: #f6f7f9;      /* tiles and inputs inside panels */
-  --color-line: #e2e5eb;        /* borders */
-  --color-ink: #111827;         /* main text */
-  --color-muted: #5b6475;       /* secondary text */
-  --color-faint: #667085;       /* hints: at least 4.5:1 on surface and subtle (WCAG AA) */
+  --color-subtle: #f5f5f5;      /* inputs inside panels */
+  --color-hover: #ebebeb;       /* hover on rows and icon buttons */
+  --color-line: #e6e6e6;        /* borders */
+  --color-ink: #1e1e1e;         /* main text */
+  --color-muted: #5c5c5c;       /* secondary text */
+  --color-faint: #6b6b6b;       /* hints: at least 4.5:1 on surface and subtle (WCAG AA) */
   --color-accent: #4f46e5;      /* active state, main actions */
   --color-accent-strong: #4338ca;
   --color-accent-soft: #eceafe; /* hover / selected backgrounds */
@@ -44,6 +46,14 @@ body {
 }
 ::-webkit-scrollbar-thumb:hover {
   background-color: rgba(100, 110, 130, 0.45);
+}
+
+/* Icons in the panels and toolbars: one size and one stroke everywhere (16px, 1.5), like Figma. The slot
+   sizes whatever icon a feature brings (lucide or icons.tsx), so the features don't have to agree on it. */
+.ui-icon > svg {
+  width: 16px;
+  height: 16px;
+  stroke-width: 1.5;
 }
 
 /* MathLive equation field in the properties panel. */
@@ -93,7 +103,7 @@ body {
 /* Soft dot grid behind the pages, like a design tool. */
 .workspace-dots {
   background-color: var(--color-canvas);
-  background-image: radial-gradient(#cdd2dc 1px, transparent 1px);
+  background-image: radial-gradient(#d4d4d4 1px, transparent 1px);
   background-size: 20px 20px;
 }
 
@@ -144,6 +154,16 @@ body[data-painter="on"] * {
 }
 .textbox-editor .ProseMirror p {
   position: relative;
+}
+/* A block placed in the text (tiptap-slot.ts): only its room, the page draws the block in it. */
+.textbox-editor .block-slot {
+  flex: none;
+  outline: 1px dashed #a5b4fc;
+  outline-offset: -1px;
+  cursor: pointer;
+}
+.textbox-editor .block-slot.ProseMirror-selectednode {
+  outline: 2px solid #6366f1;
 }
 /* An item of a list: its marker (the decoration of lists, tiptap-paragraph.ts) hangs in the room kept before its text. */
 .textbox-editor .ProseMirror p[data-marker] {

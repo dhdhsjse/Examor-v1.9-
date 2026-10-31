@@ -1,5 +1,6 @@
 "use client";
 
+import { Check } from "lucide-react";
 import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 
 export interface MenuItem {
@@ -60,7 +61,7 @@ export default function Dropdown({ trigger, items, alignEnd, className }: { trig
           setOpen(true);
           requestAnimationFrame(() => focusItem((rows) => Math.max(0, rows.findIndex((r) => r.getAttribute("aria-checked") === "true"))));
         }}
-        className={`flex h-7 items-center whitespace-nowrap rounded-md px-2 text-[13px] font-medium text-ink transition-colors hover:bg-subtle ${open ? "bg-subtle" : ""}`}
+        className={`flex h-7 items-center whitespace-nowrap rounded-[5px] px-2 text-xs font-medium text-ink transition-colors outline-none hover:bg-hover focus-visible:ring-2 focus-visible:ring-accent ${open ? "bg-hover" : ""}`}
       >
         {trigger}
       </button>
@@ -68,12 +69,12 @@ export default function Dropdown({ trigger, items, alignEnd, className }: { trig
         <div
           ref={menu}
           role="menu"
-          className={`absolute top-full z-50 mt-1.5 w-max min-w-56 max-w-72 rounded-lg border border-line bg-white p-1 shadow-lg ${alignEnd ? "end-0" : "start-0"}`}
+          className={`absolute top-full z-50 mt-1 w-max min-w-52 max-w-72 rounded-md bg-neutral-900 p-1 text-white shadow-lg ${alignEnd ? "end-0" : "start-0"}`}
         >
           {items.map((it) => (
             <div key={it.label}>
-              {it.separator && <div className="my-1 h-px bg-line" />}
-              {it.heading && <p className="px-2.5 pt-1 pb-0.5 text-[11px] font-semibold text-muted">{it.heading}</p>}
+              {it.separator && <div className="-mx-1 my-1 h-px bg-white/15" />}
+              {it.heading && <p className="px-2 pt-1 pb-0.5 text-[11px] font-semibold text-white/60">{it.heading}</p>}
               <button
                 type="button"
                 role={it.checked === undefined ? "menuitem" : "menuitemcheckbox"}
@@ -82,10 +83,10 @@ export default function Dropdown({ trigger, items, alignEnd, className }: { trig
                   setOpen(false);
                   it.onClick();
                 }}
-                className={`flex w-full items-center justify-between gap-3 rounded-md px-2.5 py-1.5 text-start text-[13px] outline-none hover:bg-subtle focus-visible:bg-subtle ${it.checked ? "font-semibold text-indigo-600" : "text-ink"}`}
+                className={`flex h-7 w-full items-center justify-between gap-3 rounded-[5px] px-2 text-start text-xs outline-none hover:bg-accent focus-visible:bg-accent ${it.checked ? "font-semibold" : ""}`}
               >
                 {it.label}
-                {it.checked ? <span aria-hidden>✓</span> : it.hint && <span className="text-[11px] text-faint" dir="ltr">{it.hint}</span>}
+                {it.checked ? <Check size={12} strokeWidth={2.5} aria-hidden /> : it.hint && <span className="text-[11px] text-white/60" dir="ltr">{it.hint}</span>}
               </button>
             </div>
           ))}

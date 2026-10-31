@@ -387,6 +387,10 @@ export default function Workspace(props: Props) {
                     onChange={props.onRichChange}
                     onDropBoxStyle={props.onDropBoxStyle}
                     onReady={props.onTextEditor}
+                    onOpenBlock={(id) => {
+                      props.onEditDone(editBlock.id);
+                      props.onSelect(id);
+                    }}
                     onMoveStart={() => setMovingId(editBlock.id)}
                     onMoving={(x, y) => mover.current?.move(editBlock.id, x, y) ?? { x, y }}
                     onMoveEnd={(x, y) => {

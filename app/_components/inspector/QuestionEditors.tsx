@@ -1,6 +1,6 @@
 "use client";
 
-import { ListTree, Plus } from "lucide-react";
+import { GripVertical, ListTree, Plus } from "lucide-react";
 import { useRef, useState, type ReactNode } from "react";
 import { PART_NUMBERINGS, blankAnswers, partLabel } from "@/app/_lib/blockLayout";
 import { MAX_OPTIONS, addPart, insertOption, mcqAnswers, movePart, patchPart, removeOption, removePart, toggleMcq } from "@/app/_lib/blocks";
@@ -173,7 +173,7 @@ export function BlankEditor({ b, onChange }: { b: BlankBlock; onChange: OnChange
         type="button"
         onMouseDown={(e) => e.preventDefault() /* keep the text selection */}
         onClick={makeBlank}
-        className="self-start rounded-md bg-indigo-50 px-2.5 py-1.5 text-xs font-medium text-indigo-700 hover:bg-indigo-100"
+        className="h-7 self-start rounded-[5px] bg-subtle px-2 text-xs font-medium text-ink transition-colors outline-none hover:bg-hover focus-visible:ring-2 focus-visible:ring-accent"
       >
         {t("Make blank from selection")}
       </button>
@@ -253,18 +253,18 @@ export function OpenEditor({ b, onChange, number, lang }: { b: OpenBlock; onChan
   return (
     <>
       <QuestionBasics b={b} onChange={onChange} lockPoints={parts.length > 0} />
-      {/* Sub-questions first, in their own card: splitting a question into 1a), 1b)… is the main choice here */}
-      <section aria-label={t("Sub-questions")} className="flex flex-col gap-2 rounded-xl border border-indigo-200 bg-indigo-50/60 p-2.5">
-        <div className="flex items-center gap-2">
-          <ListTree size={15} strokeWidth={1.8} aria-hidden className="text-indigo-600" />
-          <span className="text-xs font-semibold text-indigo-900">{t("Sub-questions")}</span>
-          {parts.length > 0 && <span className="rounded-full bg-indigo-600 px-1.5 text-[10px] font-semibold text-white">{parts.length}</span>}
+      {/* Sub-questions first, in their own band between two lines: splitting a question into 1a), 1b)… is the main choice here */}
+      <section aria-label={t("Sub-questions")} className="-mx-3 flex flex-col gap-2 border-y border-line px-3 py-3">
+        <div className="flex h-5 items-center gap-1.5">
+          <ListTree size={16} strokeWidth={1.5} aria-hidden className="text-muted" />
+          <span className="text-[11px] font-semibold text-ink">{t("Sub-questions")}</span>
+          {parts.length > 0 && <span className="rounded bg-hover px-1 text-[10px] font-semibold tabular-nums text-ink">{parts.length}</span>}
         </div>
-        <span className="text-[11px] leading-snug text-indigo-700/80">{t("Split the question into parts: 1a), 1b)… Each part has its own lines, points and answer.")}</span>
+        <span className="text-[11px] leading-snug text-faint">{t("Split the question into parts: 1a), 1b)… Each part has its own lines, points and answer.")}</span>
         <div className="flex flex-col gap-2">
           {parts.length > 0 && (
             <div className="flex flex-col gap-1">
-              <span className="text-[10px] text-muted">{t("Numbering")}</span>
+              <span className="text-[11px] text-muted">{t("Numbering")}</span>
               <Segmented value={b.partNumbering ?? "1a"} onChange={(partNumbering) => onChange({ partNumbering }, "numbering")} options={PART_NUMBERINGS} />
             </div>
           )}
@@ -289,18 +289,18 @@ export function OpenEditor({ b, onChange, number, lang }: { b: OpenBlock; onChan
               }}
               onDragEnd={reset}
               // One sub-question, top to bottom: its name, points and remove; its text; its answer lines and model answer.
-              className={`flex flex-col gap-2 rounded-lg border bg-white p-2 transition-colors ${drag === i ? "opacity-40" : ""} ${
-                over === i && drag !== i ? "border-indigo-400 bg-indigo-50" : "border-line"
+              className={`flex flex-col gap-2 rounded-[5px] border bg-white p-2 transition-colors ${drag === i ? "opacity-40" : ""} ${
+                over === i && drag !== i ? "border-accent" : "border-line"
               }`}
             >
               <div className="flex items-center gap-1.5">
                 <span
                   onMouseDown={() => setArmed(i)}
                   onMouseUp={() => setArmed(null)}
-                  className="cursor-grab px-0.5 text-sm leading-none text-faint select-none hover:text-indigo-600 active:cursor-grabbing"
+                  className="grid h-7 w-4 cursor-grab place-items-center text-faint select-none hover:text-ink active:cursor-grabbing"
                   title={t("Drag to reorder")}
                 >
-                  ⋮⋮
+                  <GripVertical size={12} strokeWidth={2} aria-hidden />
                 </span>
                 <div className="w-14 shrink-0 font-semibold" title={t("Name of the sub-question (empty = automatic)")}>
                   <TextInput value={p.label ?? ""} placeholder={autoLabel(i)} onChange={(label) => setPart(i, { label }, "label")} />
@@ -326,9 +326,9 @@ export function OpenEditor({ b, onChange, number, lang }: { b: OpenBlock; onChan
             <button
               type="button"
               onClick={() => onChange(addPart(b), "parts")}
-              className="flex w-full items-center justify-center gap-1.5 rounded-md bg-indigo-600 py-1.5 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-indigo-700"
+              className="flex h-7 w-full items-center justify-center gap-1.5 rounded-[5px] bg-subtle text-xs font-medium text-ink transition-colors outline-none hover:bg-hover focus-visible:ring-2 focus-visible:ring-accent"
             >
-              <Plus size={13} strokeWidth={2.5} aria-hidden /> {t("Add sub-question")}
+              <Plus size={12} strokeWidth={2} aria-hidden /> {t("Add sub-question")}
             </button>
           )}
         </div>
@@ -347,7 +347,8 @@ export function OpenEditor({ b, onChange, number, lang }: { b: OpenBlock; onChan
               key={n}
               type="button"
               onClick={() => onChange({ lines: n }, "lines")}
-              className={`rounded-md px-2 py-1 text-[11px] font-medium ring-1 ${b.lines === n ? "bg-indigo-50 text-indigo-700 ring-indigo-200" : "text-muted ring-line hover:text-ink"}`}
+              aria-pressed={b.lines === n}
+              className={`h-7 min-w-7 rounded-[5px] px-2 text-[11px] tabular-nums transition-colors outline-none focus-visible:ring-2 focus-visible:ring-accent ${b.lines === n ? "bg-hover font-semibold text-ink" : "text-muted hover:bg-subtle hover:text-ink"}`}
             >
               {n}
             </button>

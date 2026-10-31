@@ -18,17 +18,17 @@ export default function LibraryCard({ ctx, template, onChoose }: Props) {
     <button
       type="button"
       onClick={onChoose}
-      className="relative flex flex-col overflow-hidden rounded-lg border border-line bg-surface text-start transition hover:border-indigo-300 hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500"
+      className="relative flex flex-col overflow-hidden rounded-[5px] border border-line bg-surface text-start transition-colors hover:border-faint focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
     >
       <span className="grid aspect-[4/3] place-items-center bg-subtle text-faint">
-        <FileText size={28} strokeWidth={1.5} />
+        <FileText size={24} strokeWidth={1.5} aria-hidden />
       </span>
-      <span className="flex flex-col gap-0.5 px-2.5 py-2">
-        <span className="text-[13px] font-semibold text-ink">{label}</span>
+      <span className="flex flex-col gap-0.5 px-2 py-1.5">
+        <span className="text-xs font-semibold text-ink">{label}</span>
         {description && <span className="text-[11px] leading-snug text-muted">{description}</span>}
       </span>
       {template.recommended && (
-        <span className="absolute end-2 top-2 rounded bg-indigo-600 px-1.5 py-0.5 text-[10px] font-semibold text-white">{ctx.t("Recommended")}</span>
+        <span className="absolute end-2 top-2 rounded bg-accent px-1.5 py-0.5 text-[10px] font-semibold text-white">{ctx.t("Recommended")}</span>
       )}
     </button>
   );
