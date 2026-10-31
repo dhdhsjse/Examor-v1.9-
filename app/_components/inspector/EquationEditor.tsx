@@ -3,9 +3,11 @@
 import type { MathfieldElement } from "mathlive";
 import { useEffect, useRef } from "react";
 import { mathCommand, setActiveMathfield } from "@/app/_lib/activeMathfield";
-import type { EquationBlock } from "@/app/_lib/types";
+import type { BlockPreset } from "@/app/_lib/blocks";
+import type { BlockType, EquationBlock, Lang } from "@/app/_lib/types";
 import { useT } from "@/app/_lib/uiLang";
 import { Field } from "./fields";
+import FunctionTools from "./FunctionTools";
 
 interface VirtualKeyboard {
   hide(): void;
@@ -16,10 +18,12 @@ interface Props {
   onLatex: (latex: string) => void;
   keyboardOpen: boolean;
   onToggleKeyboard: () => void;
+  lang: Lang;
+  onInsert: (type: BlockType, preset: BlockPreset) => void; // a block made from the function, under the equation
 }
 
 // The equation field (MathLive). The buttons are on our own math keyboard under the pages.
-export default function EquationEditor({ b, onLatex, keyboardOpen, onToggleKeyboard }: Props) {
+export default function EquationEditor({ b, onLatex, keyboardOpen, onToggleKeyboard, lang, onInsert }: Props) {
   const t = useT();
   const hostRef = useRef<HTMLDivElement>(null);
   const mfRef = useRef<MathfieldElement | null>(null);
@@ -97,6 +101,7 @@ export default function EquationEditor({ b, onLatex, keyboardOpen, onToggleKeybo
       <p className="text-[10px] leading-snug text-faint">
         {t("Tip: double-click the equation on the page to edit it. Resize it with the corner handles.")}
       </p>
+      <FunctionTools latex={b.latex} lang={lang} onInsert={onInsert} />
     </>
   );
 }

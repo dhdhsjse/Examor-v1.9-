@@ -1,12 +1,12 @@
 "use client";
 
-import { ChevronDown } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronDown } from "lucide-react";
 import type { ReactNode } from "react";
 import { ANSWER_COLOR, DEFAULT_SIZE } from "@/app/_lib/blockLayout";
-import { BLOCK_TYPE_NAMES } from "@/app/_lib/blocks";
+import { BLOCK_TYPE_NAMES, type BlockPreset } from "@/app/_lib/blocks";
 import { DEFAULT_FONT } from "@/app/_lib/fonts";
 import { EXAM_LANGS } from "@/app/_lib/i18n";
-import type { Block, ExamMeta } from "@/app/_lib/types";
+import type { Block, BlockType, ExamMeta } from "@/app/_lib/types";
 import { useT } from "@/app/_lib/uiLang";
 import type { BlockPatch } from "@/app/_lib/useExam";
 import { BookmarkIcon, CopyIcon, TrashIcon } from "../icons";
@@ -34,6 +34,9 @@ interface Props {
   onChangeTemplate: () => void;
   keyboardOpen: boolean;
   onToggleKeyboard: () => void;
+  onInsertBelow: (sourceId: string, type: BlockType, preset: BlockPreset) => void;
+  inBox?: { up: boolean; down: boolean }; // the block sits in a text box's text: can it go up / down among the box's blocks?
+  onStepInBox: (dir: -1 | 1) => void;
 }
 
 // Right panel "Properties": edits the selected block, or the exam settings if nothing is selected.
@@ -48,6 +51,16 @@ export default function Inspector(props: Props) {
       <div className="flex h-10 items-center justify-between gap-2 border-b border-line ps-3 pe-1.5">
         <h2 className="truncate text-xs font-semibold text-ink">{t(BLOCK_TYPE_NAMES[block.type])}</h2>
         <div className="flex">
+          {props.inBox && (
+            <>
+              <HeaderButton label={t("Move up in the text box")} disabled={!props.inBox.up} onClick={() => props.onStepInBox(-1)}>
+                <ArrowUp size={15} strokeWidth={1.8} />
+              </HeaderButton>
+              <HeaderButton label={t("Move down in the text box")} disabled={!props.inBox.down} onClick={() => props.onStepInBox(1)}>
+                <ArrowDown size={15} strokeWidth={1.8} />
+              </HeaderButton>
+            </>
+          )}
           <HeaderButton label={t("Save to my library (reuse it in other exams)")} onClick={() => props.onSaveToLibrary(block)}>
             <BookmarkIcon />
           </HeaderButton>
@@ -68,6 +81,7 @@ export default function Inspector(props: Props) {
         totalPoints={props.stats.points}
         keyboardOpen={props.keyboardOpen}
         onToggleKeyboard={props.onToggleKeyboard}
+        onInsertBelow={(type, preset) => props.onInsertBelow(block.id, type, preset)}
         onChange={(patch, field) => props.onChange(block.id, patch, field)}
         onLatex={(latex) => props.onLatex(block, latex)}
         onReplaceImage={() => props.onReplaceImage(block.id)}
@@ -81,9 +95,9 @@ export default function Inspector(props: Props) {
 }
 
 // An icon button of the panel header (Save to library, Duplicate, Delete).
-function HeaderButton({ label, danger, onClick, children }: { label: string; danger?: boolean; onClick: () => void; children: ReactNode }) {
+function HeaderButton({ label, danger, disabled, onClick, children }: { label: string; danger?: boolean; disabled?: boolean; onClick: () => void; children: ReactNode }) {
   return (
-    <button type="button" title={label} aria-label={label} onClick={onClick} className={danger ? `${iconBtn} hover:bg-red-50! hover:text-red-700!` : iconBtn}>
+    <button type="button" title={label} aria-label={label} disabled={disabled} onClick={onClick} className={`${danger ? `${iconBtn} hover:bg-red-50! hover:text-red-700!` : iconBtn} disabled:pointer-events-none disabled:opacity-35`}>
       {children}
     </button>
   );

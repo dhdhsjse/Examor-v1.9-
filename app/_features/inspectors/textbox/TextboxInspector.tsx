@@ -4,6 +4,7 @@ import { PaintBucket, Square } from "lucide-react";
 import { useState } from "react";
 import { Stepper } from "@/app/_components/inspector/fields";
 import FormulaField from "@/app/_components/inspector/FormulaField";
+import FunctionTools from "@/app/_components/inspector/FunctionTools";
 import { useCurrentFormula } from "@/app/_lib/currentFormula";
 import { BookmarkIcon, CopyIcon, TrashIcon } from "@/app/_components/icons";
 import type { Ctx } from "@/app/_features/core/types";
@@ -38,6 +39,7 @@ export default function TextboxInspector({ ctx }: { ctx: Ctx }) {
 
       {/* A formula of the box is being edited: here too, like an equation. */}
       {formula && <FormulaField formula={formula} />}
+      {formula && <FunctionTools latex={formula.latex} lang={ctx.doc.meta.lang} onInsert={(type, preset) => shell.insertBelow(b.id, type, preset)} />}
 
       <TextRibbon ctx={ctx} b={b} target={target} ownSpacing>
         <RibbonGroup title={t("Box settings")}>

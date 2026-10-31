@@ -14,7 +14,7 @@ export const BlockSlot = Node.create<SlotOptions>({
   group: "block",
   atom: true,
   selectable: true,
-  draggable: false,
+  draggable: true, // (dragged up or down among the paragraphs: the block goes with its room)
 
   addOptions() {
     return { onOpen: () => {} };
@@ -40,7 +40,8 @@ export const BlockSlot = Node.create<SlotOptions>({
       dom.className = "block-slot";
       dom.contentEditable = "false";
       dom.style.height = `${node.attrs.h}px`;
-      dom.title = "Double-click to edit this block";
+      dom.title = "Drag to move this block up or down — double-click to edit it";
+      dom.draggable = true;
       dom.addEventListener("dblclick", () => this.options.onOpen(node.attrs.blockId));
       return {
         dom,

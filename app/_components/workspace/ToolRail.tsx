@@ -2,13 +2,16 @@
 
 import { Check, ChevronDown, Circle, Keyboard, Minus, MoveUpRight, Square, Star, Triangle, Type } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import type { InkTools } from "@/app/_lib/ink/useInkTools";
 import { useT } from "@/app/_lib/uiLang";
+import DrawTools from "./DrawTools";
 
 // "select" = click to select and drag blocks. "text" = like the T tool in Photoshop:
 // click a text to type in it, or click empty paper to write a new text there.
 // "textbox" = drag on a page to draw a text box (Insert → Text box); back to "select" once drawn.
 // "shape" = drag on a page to draw a shape: the one of the Shapes button of this bar, or the one chosen in Insert → Shapes.
-export type CanvasTool = "select" | "text" | "textbox" | "shape";
+// "draw" = the brush, pencil or highlighter of the Draw button: a drag on a page draws a stroke (it stays in hand: a drawing is many).
+export type CanvasTool = "select" | "text" | "textbox" | "shape" | "draw";
 
 // The shapes of the Shapes button's menu, like Figma's (the whole gallery is in Insert → Shapes). `key` = its shortcut (Editor).
 export const QUICK_SHAPES: { id: string; label: string; key: string; Icon: typeof Square }[] = [
@@ -27,12 +30,14 @@ const toolBtn = (on: boolean) =>
 // Small floating toolbar next to the zoom bar (bottom-right), away from the page labels: Select, Shapes (its arrow opens the menu of
 // shapes), Text box. After a line, the math keyboard: it is not a tool (the tool stays as it is), it shows / hides the keyboard that
 // types in the text being written.
-export default function ToolRail({ tool, onChange, shape, onPickShape, keyboardOpen, onToggleKeyboard }: {
+export default function ToolRail({ tool, onChange, shape, onPickShape, ink, keyboardOpen, onToggleKeyboard }: {
   tool: CanvasTool;
   onChange: (tool: CanvasTool) => void;
   /** The shape the Shapes tool draws (null: none chosen yet) */
   shape: string | null;
   onPickShape: (shape: string) => void;
+  /** The Draw button's tools (brush, pencil, highlighter) and how each draws */
+  ink: InkTools;
   keyboardOpen: boolean;
   onToggleKeyboard: () => void;
 }) {
@@ -59,12 +64,14 @@ export default function ToolRail({ tool, onChange, shape, onPickShape, keyboardO
 
   const tip = (label: string, key: string) => (key ? `${t(label)} (${key})` : t(label));
   return (
-    <div className="pointer-events-auto flex items-center gap-0.5 rounded-[10px] border border-line bg-surface p-1 shadow-[0_4px_16px_-4px_rgba(0,0,0,0.16)]">
+    <div className="pointer-events-auto relative flex items-center gap-0.5 rounded-[10px] border border-line bg-surface p-1 shadow-[0_4px_16px_-4px_rgba(0,0,0,0.16)]">
       <button onClick={() => onChange("select")} aria-pressed={tool === "select"} title={tip("Select and move", "V")} className={toolBtn(tool === "select")}>
         <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden>
           <path d="M3 1.5l9.5 7.2-4.3.6 2.6 4.9-1.9 1-2.6-5-3.3 3z" />
         </svg>
       </button>
+
+      <DrawTools open={tool === "draw"} ink={ink} onOpen={() => onChange("draw")} />
 
       <div ref={shapesRef} className="relative flex items-center">
         <button

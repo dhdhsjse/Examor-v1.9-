@@ -178,6 +178,7 @@ export interface ClassifyBlock extends BlockBase {
   groups: ClassifyGroup[];
   points: number;
   hideBank?: boolean; // don't print the box of words (the student finds them, e.g. in a text)
+  bankHint?: string; // on screen only (withHints, never saved): the ghost of the empty box of words, "… / … / …"
 }
 
 // A sub-question of an open question: "1a)", "1b)"...
@@ -364,7 +365,20 @@ export interface ShapeBlock extends BlockBase, ShapeStyle {
   type: "shape";
 }
 
-export type Block = QuestionBlock | TextBlock | TextboxBlock | ShapeBlock | EquationBlock | ImageBlock | TableBlock | GraphBlock | HeaderBlock;
+// A separating line between parts of the exam (Insert → Questions → Separator), in one of several looks. As wide as the block;
+// its height is the line's own and the room above and below it.
+export type DividerStyle = "solid" | "dashed" | "dotted" | "double" | "thick" | "thickThin" | "fade" | "dots" | "wave" | "ornament" | "label" | "scissors";
+
+export interface DividerBlock extends BlockBase {
+  type: "divider";
+  style: DividerStyle;
+  color?: string; // missing = dark grey
+  thickness?: number; // px of the line (missing = the style's own)
+  space?: number; // room above and below the line, px (missing = DIVIDER_SPACE)
+  label?: string; // the text in the middle of the "label" style
+}
+
+export type Block = QuestionBlock | TextBlock | TextboxBlock | ShapeBlock | EquationBlock | ImageBlock | TableBlock | GraphBlock | HeaderBlock | DividerBlock;
 export type BlockType = Block["type"];
 
 // The editable fields of any one block type, all optional (used for changes and presets).

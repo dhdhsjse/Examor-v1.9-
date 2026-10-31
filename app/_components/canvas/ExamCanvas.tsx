@@ -3,12 +3,15 @@
 import type Konva from "konva";
 import { useEffect, useImperativeHandle, useMemo, useRef, useState, type RefObject } from "react";
 import { Layer, Line, Rect, Stage, Transformer } from "react-konva";
+import { InkStroke } from "@/app/_components/shapes/InkGraphic";
+import { InkCapture, finishInk, type InkPoint, type InkSettings, type InkTool } from "@/app/_lib/ink/engine";
 import { DEFAULT_MARGINS, MAX_MARGIN_MM, MIN_MARGIN_MM, mmToPx, pxToMm } from "@/app/_lib/a4";
 import { questionNumbers, totalPoints as sumPoints } from "@/app/_lib/blocks";
 import type { EditField } from "@/app/_lib/editRegions";
 import { pageAt, pageBoxes, stackSize, type PageBox } from "@/app/_lib/pageStack";
 import { MIN_SHAPE_SIZE, isLine } from "@/app/_lib/shapes";
 import { snapBox, type Guide } from "@/app/_lib/snapping";
+import { slotDrop } from "@/app/_lib/textboxSlots";
 import type { Block, BlockLayout, ExamDoc, PageMargins, ViewMode } from "@/app/_lib/types";
 import type { BlockPatch } from "@/app/_lib/useExam";
 import BlockNode, { type ResizeResult } from "./BlockNode";
@@ -20,6 +23,11 @@ const SHADE = "rgba(0,0,0,0.05)"; // outside the margins, while they are being e
 const GLIDE_SECONDS = 0.15; // margin guides move to new values instead of jumping
 const HANDLE_LONG = 24; // margin handles, in screen pixels (the same at every zoom)
 const HANDLE_SHORT = 6;
+
+// A stroke of the drawing tools, done: its points in the pixels of the page it was drawn on.
+export type DrawnInk = { pageIndex: number; tool: InkTool; settings: InkSettings; points: InkPoint[] };
+/** The drawing tool in hand and how it draws */
+export type InkInHand = InkSettings & { tool: InkTool };
 
 // Margins being edited (Page layout → Margins) and whether a handle is being dragged.
 export type MarginEditView = { margins: PageMargins; dragging: boolean };
@@ -59,6 +67,9 @@ interface Props {
   // With the Shapes tool: what is drawn is a shape (a box, or a line from one corner to the other): a click is allowed, and Shift keeps it square / at 45°.
   drawShape?: "box" | "line";
   onDrawBox?: (box: DrawnBox) => void;
+  // The Draw tool (brush, pencil, highlighter): a drag on a page draws a stroke, over the blocks (they let the mouse through).
+  ink?: InkInHand | null;
+  onInk?: (stroke: DrawnInk) => void;
   // A resize handle of the selected block is pressed (the text box editor stays open for it), and where
   // the block is while it is resized (stage = page stack coordinates; null = done).
   onHandleDown?: () => void;
@@ -106,6 +117,8 @@ export default function ExamCanvas(props: Props) {
   // order, each text box followed by the blocks of its text (over the box's background, in the order of its text), and the
   // last block dragged with its blocks over the others.
   const [liftedId, setLiftedId] = useState<string | null>(null);
+  // A block of a text box being dragged in it: where it would go (a line across the box's text, stage px).
+  const [slotLine, setSlotLine] = useState<{ left: number; top: number; width: number } | null>(null);
   const inBox = useMemo(() => {
     const m = new Map<string, Block[]>();
     for (const b of blocks) if (b.meta?.slot) m.set(b.meta.slot, [...(m.get(b.meta.slot) ?? []), b]);
@@ -132,15 +145,31 @@ export default function ExamCanvas(props: Props) {
   const edit = interactive ? props.marginEdit : null;
   const preview = edit?.margins;
   const totalPoints = useMemo(() => sumPoints(blocks), [blocks]);
-  const drawing = interactive && !!props.drawBox;
+  const inking = interactive && !!props.ink;
+  const drawing = interactive && (!!props.drawBox || inking);
   const [draft, setDraft] = useState<DrawDraft | null>(null);
   const stopDraw = useRef<(() => void) | null>(null);
   const onDrawBox = useRef(props.onDrawBox); // the latest one, for the release of a box drawn meanwhile
   const drawShape = useRef(props.drawShape);
+  const ink = useRef(props.ink);
+  const onInk = useRef(props.onInk);
+  const zoomRef = useRef(zoom);
   useEffect(() => {
     onDrawBox.current = props.onDrawBox;
     drawShape.current = props.drawShape;
+    ink.current = props.ink;
+    onInk.current = props.onInk;
+    zoomRef.current = zoom;
   });
+  // The stroke being drawn is shown on a layer of its own (only it is redrawn while the mouse moves).
+  const liveInk = useRef<((s: LiveInk | null) => void) | null>(null);
+  const inkLayerRef = useRef<Konva.Layer>(null);
+  useEffect(() => {
+    const layer = inkLayerRef.current;
+    if (!layer) return;
+    layer.getCanvas().setPixelRatio(Math.min((window.devicePixelRatio || 1) * Math.max(1, zoom), 30000 / height));
+    layer.batchDraw();
+  }, [zoom, height, inking]);
 
   // Draw at a higher resolution when zoomed in, so text stays sharp.
   useEffect(() => {
@@ -186,6 +215,19 @@ export default function ExamCanvas(props: Props) {
   };
   const placeDragged = (b: Block, x: number, y: number) => {
     const h = heights.get(b.id) ?? 0;
+    // A block in a text box's text moves up and down in its box only: it goes above or below the box's other blocks and paragraphs
+    // (where it would land is shown by a line).
+    const owner = b.meta?.slot ? blocks.find((o) => o.id === b.meta?.slot) : undefined;
+    if (owner) {
+      const i = pageIndex.get(owner.layout.pageId) ?? 0;
+      const page = boxes[i];
+      const top = owner.layout.y - h / 2;
+      const bottom = owner.layout.y + (heights.get(owner.id) ?? 0) - h / 2;
+      const py = clamp(y - page.top, top, Math.max(top, bottom));
+      const drop = slotDrop(doc, b.id, py + h / 2);
+      setSlotLine(drop && !drop.same ? { left: page.left + drop.x, top: page.top + drop.y, width: drop.width } : null);
+      return { x: page.left + b.layout.x, y: page.top + py };
+    }
     const i = pageAt(y + h / 2, boxes);
     const page = boxes[i];
     const others = blocks
@@ -203,6 +245,16 @@ export default function ExamCanvas(props: Props) {
 
   // Drop: save which page the block landed on and its position on that page.
   const handleDragEnd = (b: Block, x: number, y: number) => {
+    const owner = b.meta?.slot ? blocks.find((o) => o.id === b.meta?.slot) : undefined;
+    if (owner) {
+      // In its box: it takes its new place in the text (or none), and the node goes back to its room until the page draws it there.
+      const i = pageIndex.get(owner.layout.pageId) ?? 0;
+      setSlotLine(null);
+      props.onDragging?.(false);
+      layerRef.current?.findOne(`#${b.id}`)?.position({ x: boxes[i].left + b.layout.x, y: boxes[i].top + b.layout.y });
+      props.onMove?.(b.id, owner.layout.pageId, b.layout.x, y - boxes[i].top);
+      return;
+    }
     const i = pageAt(y + (heights.get(b.id) ?? 0) / 2, boxes);
     setSnap(null);
     setDragAt(null);
@@ -244,9 +296,12 @@ export default function ExamCanvas(props: Props) {
   // being drawn; so does closing the page.
   useEffect(() => {
     const container = layerRef.current?.getStage()?.container();
-    if (container) container.style.cursor = drawing ? "crosshair" : "";
+    if (container) {
+      container.style.cursor = inking && props.ink ? inkCursor(props.ink, zoom) : drawing ? "crosshair" : "";
+      container.style.touchAction = inking ? "none" : ""; // (a pen or a finger draws instead of scrolling)
+    }
     if (!drawing) stopDraw.current?.();
-  }, [drawing]);
+  }, [drawing, inking, props.ink, zoom]);
   useEffect(() => () => stopDraw.current?.(), []);
 
   // Mouse down on a page with the text box tool: follow the mouse (even outside the canvas) within that
@@ -307,6 +362,56 @@ export default function ExamCanvas(props: Props) {
     stopDraw.current = stop;
   };
 
+  // Mouse (pen, finger) down on a page with a drawing tool: the stroke follows the pointer within that page, steadied as it goes
+  // (InkCapture), shown as it will be, and handed over when let go.
+  const startInk = (stage: Konva.Stage, x: number, y: number, t: number) => {
+    const hand = ink.current;
+    if (!hand) return;
+    const page = pageAt(y, boxes);
+    const box = boxes[page];
+    const capture = new InkCapture(x, y, hand.smoothing, zoomRef.current, t);
+    const at = (e: PointerEvent) => {
+      stage.setPointersPositions(e);
+      const p = stage.getPointerPosition();
+      return p && { x: clamp(p.x, box.left, box.left + box.width), y: clamp(p.y, box.top, box.top + box.height) };
+    };
+    let frame = 0;
+    const show = () => {
+      frame = 0;
+      liveInk.current?.({ ...hand, points: finishInk(capture.points, hand.tool, hand.smoothing) });
+    };
+    const follow = (e: PointerEvent) => {
+      // every position the pointer went through since the last event (a fast stroke stays round, not made of corners)
+      const all = e.getCoalescedEvents?.() ?? [];
+      for (const c of all.length ? all : [e]) {
+        const p = at(c);
+        if (p) capture.add(p.x, p.y, c.timeStamp, c.pointerType === "pen" ? c.pressure : undefined);
+      }
+      if (!frame) frame = requestAnimationFrame(show);
+    };
+    const stop = () => {
+      window.removeEventListener("pointermove", follow);
+      window.removeEventListener("pointerup", release);
+      window.removeEventListener("pointercancel", release);
+      cancelAnimationFrame(frame);
+      stopDraw.current = null;
+      liveInk.current?.(null);
+    };
+    const release = (e: PointerEvent) => {
+      const p = at(e);
+      if (p) capture.end(p.x, p.y);
+      stop();
+      const points = finishInk(capture.points, hand.tool, hand.smoothing).map((q) => ({ ...q, x: q.x - box.left, y: q.y - box.top }));
+      const { tool, ...settings } = hand;
+      if (points.length) onInk.current?.({ pageIndex: page, tool, settings, points });
+    };
+    window.addEventListener("pointermove", follow);
+    window.addEventListener("pointerup", release);
+    window.addEventListener("pointercancel", release);
+    stopDraw.current = stop;
+    show();
+  };
+
   const media = selected?.type === "image" || selected?.type === "equation";
   const corners = media || selected?.type === "graph";
   const freeBox = selected?.type === "textbox" || selected?.type === "shape"; // a text box or a shape: every side and corner
@@ -318,12 +423,22 @@ export default function ExamCanvas(props: Props) {
       height={height}
       // Clicking empty paper clears the selection (with the T tool: starts a new text there; with the
       // text box tool: starts drawing a box, blocks let the mouse through then).
+      // A drawing tool starts its stroke on pointer down (a mouse, a pen with its pressure, or a finger).
+      onPointerDown={(e) => {
+        if (!inking || e.evt.button !== 0 || e.target.name() !== "paper") return;
+        const stage = e.target.getStage();
+        stage?.setPointersPositions(e.evt);
+        const p = stage?.getPointerPosition();
+        if (stage && p) startInk(stage, p.x, p.y, e.evt.timeStamp);
+      }}
       onMouseDown={(e) => {
         if (e.target !== e.target.getStage() && e.target.name() !== "paper") return;
         props.onSelect?.(null);
         const stage = e.target.getStage();
         const p = stage?.getPointerPosition();
-        if (drawing && stage && p && e.target.name() === "paper" && e.evt.button === 0) {
+        if (inking) {
+          e.evt.preventDefault(); // (the stroke started on pointer down) no text selection while drawing
+        } else if (drawing && stage && p && e.target.name() === "paper" && e.evt.button === 0) {
           e.evt.preventDefault(); // no text selection while dragging
           startDraw(stage, p.x, p.y);
         } else if (props.textTool && p && e.target.name() === "paper") {
@@ -394,6 +509,11 @@ export default function ExamCanvas(props: Props) {
           />
         )}
 
+        {/* Where the block dragged in its text box would go */}
+        {slotLine && (
+          <Line points={[slotLine.left, slotLine.top, slotLine.left + slotLine.width, slotLine.top]} stroke={SNAP_COLOR} strokeWidth={2.5 / zoom} lineCap="round" listening={false} />
+        )}
+
         {/* Pink alignment lines on the page being dragged over */}
         {snap?.guides.map((g, k) => {
           const page = boxes[snap.page];
@@ -438,6 +558,12 @@ export default function ExamCanvas(props: Props) {
           />
         )}
       </Layer>
+      {/* the stroke being drawn (a layer of its own: only it is redrawn while the pointer moves) */}
+      {inking && (
+        <Layer ref={inkLayerRef} listening={false}>
+          <LiveStroke bindRef={liveInk} layer={inkLayerRef} />
+        </Layer>
+      )}
     </Stage>
   );
 }
@@ -574,4 +700,36 @@ function GlideLine({ x, y, length, instant, ...style }: { x: number; y: number; 
   const [start] = useState({ x, y, points: [0, 0, 0, length] });
   useEffect(() => glide(ref.current, { x, y, points: [0, 0, 0, length] }, instant), [x, y, length, instant]);
   return <Line ref={ref} {...start} {...style} listening={false} />;
+}
+
+// The stroke being drawn, with the tool that draws it (stage pixels).
+type LiveInk = InkInHand & { points: InkPoint[] };
+
+// The stroke being drawn: the canvas hands it over through `bind` at each frame, so the page's blocks are not redrawn meanwhile.
+// A highlighter's layer darkens what is under it, like the stroke once it is on the page.
+function LiveStroke({ bindRef, layer }: { bindRef: RefObject<((s: LiveInk | null) => void) | null>; layer: RefObject<Konva.Layer | null> }) {
+  const [live, setLive] = useState<LiveInk | null>(null);
+  useEffect(() => {
+    bindRef.current = setLive;
+    return () => {
+      bindRef.current = null;
+    };
+  }, [bindRef]);
+  useEffect(() => {
+    const el = layer.current?.getCanvas()._canvas;
+    if (el) el.style.mixBlendMode = live?.tool === "highlighter" ? "multiply" : "";
+  }, [layer, live?.tool]);
+  if (!live || live.points.length < 1) return null;
+  return <InkStroke tool={live.tool} points={live.points} color={live.color} size={live.size} />;
+}
+
+// The pointer of a drawing tool: a ring the size of the stroke on screen (a small cross in it when that is tiny).
+function inkCursor(hand: InkInHand, zoom: number) {
+  const d = Math.max(4, Math.min(64, Math.round(hand.size * zoom)));
+  const s = d + 4;
+  const c = s / 2;
+  const cross = d < 10 ? `<path d='M${c} ${c - 5}v10M${c - 5} ${c}h10' stroke='white' stroke-width='3'/><path d='M${c} ${c - 5}v10M${c - 5} ${c}h10' stroke='black' stroke-width='1'/>` : "";
+  const ring = `<circle cx='${c}' cy='${c}' r='${d / 2}' fill='none' stroke='white' stroke-width='2.5'/><circle cx='${c}' cy='${c}' r='${d / 2}' fill='none' stroke='black' stroke-width='1'/>`;
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='${s}' height='${s}'>${ring}${cross}</svg>`;
+  return `url("data:image/svg+xml,${encodeURIComponent(svg)}") ${c} ${c}, crosshair`;
 }

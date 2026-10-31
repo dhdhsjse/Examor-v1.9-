@@ -37,6 +37,10 @@ export type ShapeStyle = {
   italic?: boolean;
   textAlign?: ShapeTextAlign;
   textVAlign?: ShapeVAlign;
+  /** A stroke of the page's drawing tools (a freehand shape): which tool drew it. `stroke` is its color, `strokeWidth` its size. */
+  ink?: "brush" | "pencil" | "highlighter";
+  /** How hard each point of an ink stroke was pressed (0..1), one per point of `adj` */
+  pressure?: number[];
 };
 
 /** A shape in a Studio: where it is (the top-left corner of its box, before it is turned) and how it is turned. */

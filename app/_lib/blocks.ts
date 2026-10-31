@@ -1,3 +1,4 @@
+import { defaultDividerLabel } from "./divider";
 import { CONTENT_WIDTH, PAGE_MARGIN } from "./a4";
 import { pageSize } from "./pageFormats";
 import { blockHeight } from "./blockLayout";
@@ -47,6 +48,7 @@ export const BLOCK_TYPE_NAMES: Record<BlockType, string> = {
   header: "Exam header",
   textbox: "Text box",
   shape: "Shape",
+  divider: "Separator",
 };
 
 // Questions start empty, so the teacher types right away instead of deleting sample text first.
@@ -111,6 +113,7 @@ const HINTS = {
     items: ["Première étape", "Deuxième étape", "Troisième étape", "Quatrième étape"],
     classify: "Classez les mots suivants dans le tableau :",
     groups: ["Noms", "Verbes"],
+    bank: "mot … / mot … / mot … / mot …",
     part: "Sous-question",
     statement: "Énoncé (facultatif) : données, texte, situation…",
   },
@@ -128,6 +131,7 @@ const HINTS = {
     items: ["المرحلة الأولى", "المرحلة الثانية", "المرحلة الثالثة", "المرحلة الرابعة"],
     classify: "صنف الكلمات التالية في الجدول :",
     groups: ["أسماء", "أفعال"],
+    bank: "كلمة … / كلمة … / كلمة … / كلمة …",
     part: "سؤال فرعي",
     statement: "السند (اختياري) : معطيات، نص، وضعية…",
   },
@@ -169,8 +173,11 @@ export function withHints(b: Block, lang: Lang, opts: { statement?: boolean } = 
       // "Sentence" style: the words are the items, they are not shown one per line.
       if (b.style === "sentence") return { ...b, text: ghost(b.text, h.order) };
       return { ...b, text: ghost(b.text, h.order), items: b.items.map((it, i) => ghost(it, h.items[i] ?? h.items[0])) };
-    case "classify":
-      return { ...b, text: ghost(b.text, h.classify), groups: b.groups.map((g, i) => ({ ...g, name: ghost(g.name, h.groups[i]) })) };
+    case "classify": {
+      // The selected one with no words yet shows where they will go: a ghost box of words, filled as the categories are.
+      const empty = !b.hideBank && !b.groups.some((g) => g.items.some((w) => plainText(w).trim()));
+      return { ...b, text: ghost(b.text, h.classify), groups: b.groups.map((g, i) => ({ ...g, name: ghost(g.name, h.groups[i]) })), ...(empty && opts.statement ? { bankHint: h.bank } : {}) };
+    }
     default:
       return b;
   }
@@ -254,6 +261,8 @@ export function createBlock(type: BlockType, lang: Lang, pageId: string, preset:
         return { type, text: "" };
       case "shape":
         return { type, shape: "rect" };
+      case "divider":
+        return { type, style: "solid" as const, label: defaultDividerLabel(lang) };
     }
   })();
 
@@ -392,7 +401,9 @@ export function blockHeights(doc: ExamDoc): Map<string, number> {
 // (withHints), so it is that much taller there. Printing and placing blocks use the real heights.
 export function screenHeights(doc: ExamDoc, heights: Map<string, number>, selectedId: string | null): Map<string, number> {
   const b = doc.blocks.find((x) => x.id === selectedId);
-  if (b?.type !== "open" || plainText(b.context ?? "").trim()) return heights;
+  // (the selected "sort into groups" with no words yet shows its ghost box of words too)
+  const ghostBank = b?.type === "classify" && !b.hideBank && !b.groups.some((g) => g.items.some((w) => plainText(w).trim()));
+  if (!ghostBank && (b?.type !== "open" || plainText(b.context ?? "").trim())) return heights;
   const n = questionNumbers(doc.blocks, doc.pages).get(b.id) ?? 1;
   return new Map(heights).set(b.id, blockHeight(withHints(b, doc.meta.lang, { statement: true }), n, doc.meta));
 }

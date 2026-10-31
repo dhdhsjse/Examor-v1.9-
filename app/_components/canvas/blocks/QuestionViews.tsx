@@ -115,7 +115,7 @@ export function WordBankView({ bank, rtl }: { bank: WordBank; rtl: boolean }) {
   const inset = 9;
   return (
     <>
-      <Rect x={bank.x} y={bank.y} width={bank.width} height={bank.height} stroke="#6b7280" strokeWidth={1} dash={[5, 3]} cornerRadius={6} listening={false} />
+      <Rect x={bank.x} y={bank.y} width={bank.width} height={bank.height} stroke={bank.ghost ? "#c7cbd3" : "#6b7280"} strokeWidth={1} dash={[5, 3]} cornerRadius={6} fill={bank.ghost ? "#fafafb" : undefined} listening={false} />
       <RichText lines={bank.text.lines} x={bank.x + inset} y={bank.text.y} width={bank.width - inset * 2} rtl={rtl} align="center" />
     </>
   );

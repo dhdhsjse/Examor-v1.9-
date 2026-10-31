@@ -3,7 +3,7 @@
 import type { Editor as TextEditor, JSONContent } from "@tiptap/core";
 import type Konva from "konva";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { CONTENT_WIDTH } from "@/app/_lib/a4";
+import { CONTENT_WIDTH, PAGE_MARGIN } from "@/app/_lib/a4";
 import { pageMargins } from "@/app/_lib/onboarding/applyOnboarding";
 import { pageSize } from "@/app/_lib/pageFormats";
 import { focusMathfield } from "@/app/_lib/activeMathfield";
@@ -48,7 +48,10 @@ import BarRenderer from "@/app/_features/core/BarRenderer";
 import type { BarPosition, Ctx, MarginEdit, RightTab, Shell } from "@/app/_features/core/types";
 import { blockInspectorFor, findSectionFeature } from "@/app/_features/sections";
 import { defaultSize, shapeDef } from "@/app/_lib/shapes";
-import type { DrawnBox } from "./canvas/ExamCanvas";
+import type { DrawnBox, DrawnInk } from "./canvas/ExamCanvas";
+import { FREEHAND_ID } from "@/app/_lib/shapes";
+import { inkToShape } from "@/app/_lib/ink/engine";
+import { useInkTools } from "@/app/_lib/ink/useInkTools";
 import type { CanvasTool } from "./workspace/ToolRail";
 import type { OpenedTarget } from "./math-keyboard/FloatingKeyboard";
 import Workspace, { type Editing } from "./workspace/Workspace";
@@ -128,6 +131,7 @@ export default function Editor() {
   const eqTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const [tool, setTool] = useState<CanvasTool>("select");
   const [shapeToDraw, setShapeToDraw] = useState<string | null>(null); // (Insert → Shapes: what the Shapes tool draws)
+  const ink = useInkTools(); // the Draw tool: its brush, pencil and highlighter and how each draws (kept between sessions)
   const [editing, setEditing] = useState<Editing | null>(null);
   const [textEditor, setTextEditor] = useState<TextEditor | null>(null); // Tiptap editor of the text box being typed in
   const [session, setSession] = useState(0); // +1 for each new/opened exam (resets the zoom)
@@ -323,9 +327,27 @@ export default function Editor() {
     notify(tr("Drag on the page to draw the shape — Esc to cancel"));
   };
 
+  // A new block right under another one (under its text box when it sits in one), pushing down what is there: an equation's graph or
+  // table of variations. It is a block of the page, never put in the text box.
+  const insertBelow = (sourceId: string, type: BlockType, preset: BlockPreset) => {
+    const source = doc.blocks.find((b) => b.id === sourceId);
+    const anchor = (source?.meta?.slot && doc.blocks.find((b) => b.id === source.meta?.slot)) || source;
+    if (!anchor) return void runTool({ kind: "block", type, preset });
+    const pageIndex = Math.max(0, doc.pages.findIndex((p) => p.id === anchor.layout.pageId));
+    const y = anchor.layout.y + (heights.get(anchor.id) ?? anchor.layout.height) + 16;
+    // A table goes from the page's margin (it is as wide as the text); a graph is centered under the equation.
+    const page = doc.pages[pageIndex];
+    const x = type === "table" ? (page?.margins?.left ?? PAGE_MARGIN) : anchor.layout.x + anchor.layout.width / 2 - (preset.width ?? (type === "graph" ? 320 : anchor.layout.width)) / 2;
+    const block = exam.addBlock(type, preset, { pageIndex, x: Math.max(0, x), y, corner: true });
+    exam.moveBlock(block.id, block.layout.pageId, block.layout.x, block.layout.y); // (what it lands on goes down)
+    setEditing(null);
+    setTab("properties");
+    setActiveInspectorId(inspectorFor(block));
+  };
+
   const runTool = (action: ToolAction, at?: DropPoint) => {
     // Another tool used meanwhile: no text box or shape is drawn any more.
-    setTool((cur) => (cur === "textbox" || cur === "shape" ? "select" : cur));
+    setTool((cur) => (cur === "textbox" || cur === "shape" || cur === "draw" ? "select" : cur));
     // A question type or a table picked while a text box is being typed in is a real block placed in that box's text, at the cursor
     // (textboxSlots.ts). It is then edited like any block, as when added on the page.
     const box = textEditor && !at ? doc.blocks.find((b) => b.id === editing?.id) : undefined;
@@ -547,6 +569,15 @@ export default function Editor() {
     runTool({ kind: "block", type: "shape", preset }, { pageIndex: box.pageIndex, x: click ? box.x - width / 2 : box.x, y: click ? box.y - height / 2 : box.y, corner: true });
   };
 
+  // Draw tool: each stroke is a shape of the page (a freehand one drawn as ink), so it moves, stretches and is undone like any
+  // shape. The tool stays in hand: a drawing is many strokes.
+  const drawInk = ({ pageIndex, tool: inkTool, settings, points }: DrawnInk) => {
+    const s = inkToShape(points, settings.size);
+    if (!s) return;
+    const preset = { shape: FREEHAND_ID, ink: inkTool, stroke: settings.color, strokeWidth: settings.size, adj: s.adj, pressure: s.pressure, width: s.w, height: s.h };
+    exam.addBlock("shape", preset, { pageIndex, x: s.x, y: s.y, corner: true }, { quiet: true });
+  };
+
   // Equation typed in MathLive: save the LaTeX now, redraw it shortly after.
   const onLatex = (block: Block, latex: string) => {
     if (block.type !== "equation") return;
@@ -688,6 +719,10 @@ export default function Editor() {
         setCanvasTool("textbox");
       } else if (!mod && key === "v") {
         setTool("select");
+      } else if (!mod && !e.altKey && key === "p") {
+        // P: the Draw tool (again: the next of its brush, pencil and highlighter)
+        if (tool === "draw") ink.cycle();
+        setTool("draw");
       } else if (!mod && !e.altKey && (key === "r" || key === "o" || key === "l")) {
         // The shapes of the tool bar's Shapes menu (Shift+L: the arrow).
         drawShape(key === "r" ? "rect" : key === "o" ? "ellipse" : e.shiftKey ? "arrow" : "line");
@@ -735,6 +770,8 @@ export default function Editor() {
     redo: exam.redo,
     busy,
     runTool: (action) => runTool(action),
+    insertBelow,
+    stepInBox: exam.stepInBox,
     canvasTool: tool,
     setCanvasTool,
     shapeToDraw,
@@ -880,6 +917,8 @@ export default function Editor() {
               mathKeyboard={mathKb}
               onToggleMathKeyboard={() => toggleKeyboard()}
               onDrawBox={drawOnPage}
+              ink={ink}
+              onInk={drawInk}
               drawShape={tool === "shape" && shapeToDraw ? (shapeDef(shapeToDraw).line ? "line" : "box") : undefined}
               shapeToDraw={shapeToDraw}
               onPickShape={drawShape}

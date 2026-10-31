@@ -8,11 +8,11 @@ import type { JSONContent } from "@tiptap/core";
 import { createBlock, questionNumbers, type BlockPreset } from "./blocks";
 import { blockHeight, layoutTextbox, textboxPad } from "./blockLayout";
 import { newId } from "./id";
-import { slotsOf, textboxDoc, updateSlots } from "./textboxDoc";
+import { BLOCK_SLOT, slotsOf, textboxDoc, updateSlots } from "./textboxDoc";
 import type { Block, BlockType, ExamDoc, Lang, TextboxBlock } from "./types";
 
 // The block types that can sit in the text of a box.
-const EMBEDDABLE: BlockType[] = ["mcq", "truefalse", "blank", "open", "match", "order", "classify", "table", "graph", "equation", "image"];
+const EMBEDDABLE: BlockType[] = ["mcq", "truefalse", "blank", "open", "match", "order", "classify", "table", "graph", "equation", "image", "divider"];
 export const canEmbed = (type: BlockType) => EMBEDDABLE.includes(type);
 
 // Blocks made for a box and put in its text, not in the exam yet: the text reaches the exam first (the editor's change), and
@@ -38,7 +38,85 @@ export function removeBlock(d: ExamDoc, id: string): ExamDoc {
   };
 }
 
-const SAME_LAYOUT = (a: Block["layout"], b: Block["layout"]) =>
+// The box holding the block `id` in its text, and where that block's room is among the box's paragraphs.
+function slotPlace(d: ExamDoc, id: string): { box: TextboxBlock; nodes: JSONContent[]; at: number } | null {
+  const block = d.blocks.find((b) => b.id === id);
+  const box = block?.meta?.slot ? d.blocks.find((b) => b.id === block.meta?.slot) : undefined;
+  if (box?.type !== "textbox") return null;
+  const nodes = textboxDoc(box).content ?? [];
+  const at = nodes.findIndex((n) => n.type === BLOCK_SLOT && n.attrs?.blockId === id);
+  return at < 0 ? null : { box, nodes, at };
+}
+
+const withNodes = (d: ExamDoc, box: TextboxBlock, nodes: JSONContent[]): ExamDoc => ({
+  ...d,
+  blocks: d.blocks.map((b) => (b.id === box.id ? ({ ...box, content: { ...textboxDoc(box), content: nodes } } as Block) : b)),
+});
+
+/**
+ * Where the block `id` of a text box, dragged with its middle at `middleY` (px of the box's page), would go in the box's text: before
+ * the node `target` (the first paragraph or block whose middle is lower; the number of nodes = at the end). `y` is the top of that place
+ * on the page (where to show it while dragging), `same` when it is the block's own place.
+ */
+export function slotDrop(d: ExamDoc, id: string, middleY: number) {
+  const place = slotPlace(d, id);
+  if (!place) return null;
+  const { box, nodes, at } = place;
+  const L = layoutTextbox(box, d.meta);
+  const top = (i: number) => box.layout.y + L.y + (L.paragraphs[i]?.y ?? 0);
+  const bottom = (i: number) => (i + 1 < L.paragraphs.length ? top(i + 1) : top(i) + (L.paragraphs[i]?.slot?.height ?? 20));
+  let target = nodes.length; // (after everything)
+  for (let i = 0; i < nodes.length; i++) {
+    if (i !== at && (top(i) + bottom(i)) / 2 > middleY) {
+      target = i;
+      break;
+    }
+  }
+  const y = target < nodes.length ? top(target) : bottom(nodes.length - 1);
+  return { box, nodes, at, target, y, x: box.layout.x + textboxPad(box), width: Math.max(20, box.layout.width - textboxPad(box) * 2), same: target === at || target === at + 1 };
+}
+
+/**
+ * The exam with the block `id` of a text box moved, in the box's text, to where it was dropped: `middleY` is the middle of the block
+ * dropped, in px of the box's page. It goes before the first paragraph (or block) whose middle is lower. The same exam when it stays.
+ */
+export function moveSlotTo(d: ExamDoc, id: string, middleY: number): ExamDoc {
+  const drop = slotDrop(d, id, middleY);
+  if (!drop || drop.same) return d; // dropped where it was
+  const { box, nodes, at, target } = drop;
+  const moved = nodes[at];
+  const rest = nodes.filter((_, i) => i !== at);
+  const into = target > at ? target - 1 : target;
+  return withNodes(d, box, [...rest.slice(0, into), moved, ...rest.slice(into)]);
+}
+
+/** The exam with the block `id` of a text box swapped with the block before it (`dir` −1) or after it (+1) in the box's text. */
+export function stepSlot(d: ExamDoc, id: string, dir: -1 | 1): ExamDoc {
+  const place = slotPlace(d, id);
+  if (!place) return d;
+  const { box, nodes, at } = place;
+  let other = at + dir;
+  while (other >= 0 && other < nodes.length && nodes[other].type !== BLOCK_SLOT) other += dir;
+  // No block that way: past the paragraphs to the very start / end of the text.
+  if (other < 0 || other >= nodes.length) {
+    const edge = dir < 0 ? 0 : nodes.length - 1;
+    if (edge === at) return d;
+    const rest = nodes.filter((_, i) => i !== at);
+    return withNodes(d, box, dir < 0 ? [nodes[at], ...rest] : [...rest, nodes[at]]);
+  }
+  const next = [...nodes];
+  [next[at], next[other]] = [next[other], next[at]];
+  return withNodes(d, box, next);
+}
+
+/** Can the block `id` of a text box go up (−1) or down (+1) in its text? */
+export function canStepSlot(d: ExamDoc, id: string, dir: -1 | 1): boolean {
+  const place = slotPlace(d, id);
+  if (!place) return false;
+  return dir < 0 ? place.at > 0 : place.at < place.nodes.length - 1;
+}
+
+const SAME_LAYOUT =(a: Block["layout"], b: Block["layout"]) =>
   a.pageId === b.pageId && a.x === b.x && a.y === b.y && a.width === b.width && a.height === b.height;
 
 /** The exam with every block of a text box in the room of its box (the same document when everything is in place already). */

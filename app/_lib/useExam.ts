@@ -22,7 +22,7 @@ import {
   type ChromeKind,
 } from "./pageChrome";
 import { saveAutosave } from "./storage";
-import { removeBlock, syncEmbedded } from "./textboxSlots";
+import { moveSlotTo, removeBlock, stepSlot, syncEmbedded } from "./textboxSlots";
 import { buildDoc, type Template } from "./templates";
 import type { Block, BlockData, BlockLayout, BlockType, EquationBlock, ExamDoc, ExamMeta, HeaderBlock, HeaderFooterConfig, Page, PageFormat, PageMargins } from "./types";
 import type { T } from "./uiLang";
@@ -183,7 +183,8 @@ export function useExam(initial: ExamDoc, t?: T) {
   // Add a block. With `at`: dropped at that spot. Without: stacked on the page in view,
   // or the next page with room, or a new page.
   const addBlock = useCallback(
-    (type: BlockType, preset: BlockPreset = {}, at?: DropPoint) => {
+    // `quiet`: the new block is neither selected nor scrolled to (a stroke of the drawing tools).
+    (type: BlockType, preset: BlockPreset = {}, at?: DropPoint, opts: { quiet?: boolean } = {}) => {
       const lang = doc.meta.lang;
       const block = createBlock(type, lang, "", preset);
       const h = blockHeight(block, 1, doc.meta);
@@ -243,24 +244,35 @@ export function useExam(initial: ExamDoc, t?: T) {
         // An exam header on a page without one becomes that page's header.
         return block.type === "header" ? adoptHeaders(next) : next;
       });
-      setSelectedId(block.id);
-      revealPage(block.layout.pageId);
+      if (!opts.quiet) {
+        setSelectedId(block.id);
+        revealPage(block.layout.pageId);
+      }
       if (block.type === "equation") refreshEquation(block);
       return block;
     },
     [doc, activePage, commit, refreshEquation],
   );
 
-  // Drop a block somewhere; blocks it lands on are pushed down below it.
+  // Drop a block somewhere; blocks it lands on are pushed down below it. A block in a text box's text stays in it: it takes its place
+  // among the box's paragraphs and blocks where it was dropped (above or below the others).
   const moveBlock = useCallback(
     (id: string, pageId: string, x: number, y: number) =>
       commit((d) => {
+        const cur = d.blocks.find((b) => b.id === id);
+        if (cur?.meta?.slot && d.blocks.some((b) => b.id === cur.meta?.slot)) {
+          const h = blockHeights(d).get(id) ?? 0;
+          return moveSlotTo(d, id, y + h / 2);
+        }
         const moved = { ...d, blocks: d.blocks.map((b) => (b.id === id ? ({ ...b, layout: { ...b.layout, pageId, x, y } } as Block) : b)) };
         const pageHeight = pageSize(d.pages.find((p) => p.id === pageId)).height;
         return { ...moved, blocks: pushDownOverlaps(moved.blocks, id, blockHeights(moved), pageHeight) };
       }),
     [commit],
   );
+
+  // A block of a text box one place up (−1) or down (+1) among the blocks of its text.
+  const stepInBox = useCallback((id: string, dir: -1 | 1) => commit((d) => stepSlot(d, id, dir)), [commit]);
 
   const deleteBlock = useCallback(
     (id: string) => {
@@ -431,6 +443,7 @@ export function useExam(initial: ExamDoc, t?: T) {
     revealPage,
     refreshEquation,
     moveBlock,
+    stepInBox,
     deleteBlock,
     duplicateBlock,
     pasteBlock,
