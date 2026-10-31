@@ -66,11 +66,15 @@ interface Props {
   // A block moved from outside the stage (the text box being typed in, dragged by its edge): it is not drawn here
   // meanwhile (`hiddenId`), and `mover` snaps it and drops it like a block dragged on the canvas.
   hiddenId?: string | null;
+  typingId?: string | null; // the text box being typed in: the page draws only its fill and border (its editor is see-through)
   mover?: RefObject<BlockMover | null>;
 }
 
 // Moving a block from outside (page stack pixels): `move` gives where it goes (snapped, inside its page), `end` drops it there.
 export type BlockMover = { move: (id: string, x: number, y: number) => { x: number; y: number }; end: (id: string, x: number, y: number) => void };
+
+// Blocks drawn over all the others (see drawOrder).
+const ON_TOP = new Set<Block["type"]>(["shape", "image", "graph", "equation"]);
 
 const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(v, max));
 
@@ -98,6 +102,28 @@ export default function ExamCanvas(props: Props) {
     const moved = blocks.map((b) => (b.id === dragAt.id ? { ...b, layout: { ...b.layout, pageId: dragAt.pageId, y: dragAt.y } } : b));
     return questionNumbers(moved, pages);
   }, [dragAt, props.numbers, blocks, pages]);
+  // The order blocks are drawn in, decided here (not by moving Konva nodes, which React would not know about): the exam's
+  // order, each text box followed by the blocks of its text (over the box's background, in the order of its text), and the
+  // last block dragged with its blocks over the others.
+  const [liftedId, setLiftedId] = useState<string | null>(null);
+  const inBox = useMemo(() => {
+    const m = new Map<string, Block[]>();
+    for (const b of blocks) if (b.meta?.slot) m.set(b.meta.slot, [...(m.get(b.meta.slot) ?? []), b]);
+    for (const list of m.values()) list.sort((a, c) => a.layout.y - c.layout.y);
+    return m;
+  }, [blocks]);
+  const drawOrder = useMemo(() => {
+    const ids = new Set(blocks.map((b) => b.id));
+    const withOwn = (b: Block) => [b, ...(inBox.get(b.id) ?? [])];
+    const loose = blocks.filter((b) => !b.meta?.slot || !ids.has(b.meta.slot)); // (a block whose box is gone is drawn on its own)
+    // Two layers: text, questions, tables, text boxes… below; shapes, images, graphs and equations always over them
+    // (drawn on a page, they are never hidden by a text box). In each, the last block dragged is on top.
+    const layer = (list: Block[]) => {
+      const lifted = list.find((b) => b.id === liftedId);
+      return [...list.filter((b) => b !== lifted).flatMap(withOwn), ...(lifted ? withOwn(lifted) : [])];
+    };
+    return [...layer(loose.filter((b) => !ON_TOP.has(b.type))), ...layer(loose.filter((b) => ON_TOP.has(b.type)))];
+  }, [blocks, inBox, liftedId]);
   const boxes = useMemo(() => pageBoxes(pages), [pages]);
   const { width, height } = stackSize(boxes);
   const pageIndex = new Map(pages.map((p, i) => [p.id, i]));
@@ -135,13 +161,36 @@ export default function ExamCanvas(props: Props) {
     tr.getLayer()?.batchDraw();
   });
 
+  // The blocks placed in a text box (questions, tables… in its text, textboxSlots.ts) go with it while it is dragged.
+  const embeddedNodes = (b: Block) => {
+    const layer = layerRef.current;
+    if (!layer || b.type !== "textbox") return [];
+    return (inBox.get(b.id) ?? []).flatMap((o) => {
+      const node = layer.findOne(`#${o.id}`);
+      return node ? [{ node, dx: o.layout.x - b.layout.x, dy: o.layout.y - b.layout.y }] : [];
+    });
+  };
+  const handleDragStart = (b: Block) => {
+    setLiftedId(b.id);
+    props.onDragging?.(true);
+  };
+  const followBox = (b: Block, pos: { x: number; y: number }) => {
+    embeddedNodes(b).forEach(({ node, dx, dy }) => node.position({ x: pos.x + dx, y: pos.y + dy }));
+  };
+
   // While dragging: pick the closest page, snap to guides, keep the block inside that page.
   const handleDragMove = (b: Block, x: number, y: number) => {
+    const at = placeDragged(b, x, y);
+    followBox(b, at);
+    return at;
+  };
+  const placeDragged = (b: Block, x: number, y: number) => {
     const h = heights.get(b.id) ?? 0;
     const i = pageAt(y + h / 2, boxes);
     const page = boxes[i];
     const others = blocks
-      .filter((o) => o.id !== b.id && o.layout.pageId === pages[i].id)
+      // (not to the blocks in its own text, which move with it)
+      .filter((o) => o.id !== b.id && o.meta?.slot !== b.id && o.layout.pageId === pages[i].id)
       .map((o) => ({ ...o.layout, height: heights.get(o.id) ?? 0 }));
 
     const box = { x: x - page.left, y: y - page.top, width: b.layout.width, height: h };
@@ -297,7 +346,7 @@ export default function ExamCanvas(props: Props) {
           />
         ))}
 
-        {blocks.filter((b) => b.id !== props.hiddenId).map((b) => (
+        {drawOrder.filter((b) => b.id !== props.hiddenId).map((b) => (
           <BlockNode
             key={b.id}
             block={b}
@@ -313,8 +362,9 @@ export default function ExamCanvas(props: Props) {
             interactive={interactive}
             textTool={!!props.textTool}
             drawing={drawing}
+            typing={b.id === props.typingId}
             onSelect={() => props.onSelect?.(b.id)}
-            onDragStart={() => props.onDragging?.(true)}
+            onDragStart={() => handleDragStart(b)}
             onEdit={(field) => props.onEdit?.(b.id, field)}
             onPatch={(patch) => props.onPatch?.(b.id, patch)}
             onDragMove={(x, y) => handleDragMove(b, x, y)}

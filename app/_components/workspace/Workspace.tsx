@@ -366,6 +366,7 @@ export default function Workspace(props: Props) {
                     }}
                     onResizing={(id, r) => setLiveBox(r && editing?.id === id ? { ...r, id } : null)}
                     hiddenId={movingId}
+                    typingId={editing && editBlock?.type === "textbox" ? editBlock.id : null}
                     mover={mover}
                   />
                 </div>

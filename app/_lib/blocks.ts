@@ -416,6 +416,9 @@ export function patchPart(parts: OpenPart[], i: number, patch: Partial<OpenPart>
   return { parts: next, points: next.reduce((s, p) => s + p.points, 0) };
 }
 
+// Two blocks that may lie over each other: a shape and another shape, or a shape and a text box.
+const mayOverlap = (a: Block, b: Block) => (a.type === "shape" && (b.type === "shape" || b.type === "textbox")) || (b.type === "shape" && a.type === "textbox");
+
 // After a block is dropped: blocks it covers are pushed down below it (and so on),
 // so nothing overlaps and the reading order (question numbers) matches what you see.
 export function pushDownOverlaps(blocks: Block[], movedId: string, heights: Map<string, number>, pageHeight: number): Block[] {
@@ -424,8 +427,11 @@ export function pushDownOverlaps(blocks: Block[], movedId: string, heights: Map<
   if (!moved) return blocks;
   const h = (b: Block) => heights.get(b.id) ?? 0;
   const sideBySide = (a: Block, b: Block) => a.layout.x + a.layout.width <= b.layout.x || b.layout.x + b.layout.width <= a.layout.x;
-  // (a block inside a text box is placed by its box, and not pushed on its own)
-  const samePage = blocks.filter((b) => b.layout.pageId === moved.layout.pageId && !sideBySide(b, moved) && b.id !== movedId && !b.meta?.slot);
+  // (a block inside a text box is placed by its box, and not pushed on its own; a shape may lie over another shape or a text
+  // box, or a text box over a shape: neither of them moves)
+  const samePage = blocks.filter(
+    (b) => b.layout.pageId === moved.layout.pageId && !sideBySide(b, moved) && b.id !== movedId && !b.meta?.slot && !mayOverlap(b, moved),
+  );
 
   // A block that starts higher but reaches into the dropped one: the dropped one goes below it.
   let y = moved.layout.y;

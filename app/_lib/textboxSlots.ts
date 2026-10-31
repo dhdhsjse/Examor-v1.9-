@@ -5,8 +5,8 @@
 // and goes when its place in the text does, or when the box does.
 
 import type { JSONContent } from "@tiptap/core";
-import { blockHeights, createBlock, type BlockPreset } from "./blocks";
-import { layoutTextbox, textboxPad } from "./blockLayout";
+import { createBlock, questionNumbers, type BlockPreset } from "./blocks";
+import { blockHeight, layoutTextbox, textboxPad } from "./blockLayout";
 import { newId } from "./id";
 import { slotsOf, textboxDoc, updateSlots } from "./textboxDoc";
 import type { Block, BlockType, ExamDoc, Lang, TextboxBlock } from "./types";
@@ -86,7 +86,9 @@ export function syncEmbedded(d: ExamDoc): ExamDoc {
     if (!box || b.layout.width === widthOf(box)) return b;
     return { ...b, layout: { ...b.layout, width: widthOf(box) } } as Block;
   });
-  const heights = blockHeights({ ...d, blocks });
+  // (only the blocks in the boxes are measured: this runs on every change, every key typed)
+  const numbers = questionNumbers(blocks, d.pages);
+  const heights = new Map(blocks.filter((b) => b.meta?.slot).map((b) => [b.id, blockHeight(b, numbers.get(b.id) ?? 1, d.meta)]));
   const placed = new Map<string, Block["layout"]>();
   blocks = blocks.map((b) => {
     if (b.type !== "textbox" || !b.content || !slotsOf(b.content).length) return b;

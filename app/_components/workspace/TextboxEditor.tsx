@@ -217,7 +217,9 @@ export default function TextboxEditor({ block, meta, zoom, box, selectAll, keepO
   };
 
   const decoration = [s.font.underline && "underline", s.font.strike && "line-through"].filter(Boolean).join(" ");
-  // The fill covers the box except where a block sits in the text: the page draws that block, and it must show through.
+  // See-through: the page draws the box's fill and border under the editor (not its words), so shapes, images… over the box stay
+  // in sight while typing. While the box is dragged by its edge the page does not draw it: the editor has the fill then, except
+  // where a block sits in the text (the page draws that block, and it must show through).
   const layout = layoutTextbox(block, meta);
   const holes = layout.paragraphs.flatMap((p) => (p.slot ? [`M${p.x} ${layout.y + p.y}h${p.width}v${p.slot.height}h${-p.width}Z`] : []));
   return (
@@ -266,7 +268,7 @@ export default function TextboxEditor({ block, meta, zoom, box, selectAll, keepO
           minHeight: box.height,
           padding: textboxPad(block),
           justifyContent: JUSTIFY[block.valign ?? "top"],
-          boxShadow: block.border ? `inset 0 0 0 1px ${block.border}` : undefined,
+          boxShadow: moved && block.border ?`inset 0 0 0 1px ${block.border}` : undefined,
           fontFamily: s.font.family,
           fontSize: s.font.size,
           lineHeight: s.line / s.font.size,
@@ -278,11 +280,13 @@ export default function TextboxEditor({ block, meta, zoom, box, selectAll, keepO
           textAlign: block.align ?? "start",
         }}
       >
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0 -z-10"
-          style={{ background: block.background ?? "#ffffff", clipPath: holes.length ? `path(evenodd, "M0 0H100000V100000H0Z ${holes.join(" ")}")` : undefined }}
-        />
+        {moved && (
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-0 -z-10"
+            style={{ background: block.background ?? "#ffffff", clipPath: holes.length ? `path(evenodd, "M0 0H100000V100000H0Z ${holes.join(" ")}")` : undefined }}
+          />
+        )}
         <EditorContent editor={editor} />
         {bands.map((style, i) => (
           <div key={i} aria-hidden onMouseDown={startMove} className="absolute z-10 cursor-move" style={style} />

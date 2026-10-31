@@ -51,9 +51,9 @@ export default function EquationEditor({ b, onLatex, keyboardOpen, onToggleKeybo
     });
     return () => {
       cancelled = true;
+      setActiveMathfield(null); // first, while the field still holds the equation (it is kept in the keyboard's clipboard)
       mf?.remove();
       mfRef.current = null;
-      setActiveMathfield(null);
     };
   }, [b.id]);
 

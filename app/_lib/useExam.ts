@@ -69,6 +69,19 @@ const looseMeta = (b: Block): Block["meta"] => {
   return Object.keys(rest).length ? rest : undefined;
 };
 
+// Text boxes and the blocks in their text depend on each other: a box's size follows its text (whose rooms are as tall as its blocks),
+// and its blocks follow the box's place and width. Repeated until nothing moves (in practice 1–2 rounds), so a block is never left
+// where the box was a moment before (an auto-sized box that grew or shrank after its blocks were placed).
+function settleTextboxes(d: ExamDoc): ExamDoc {
+  let cur = d;
+  for (let i = 0; i < 4; i++) {
+    const next = fitTextboxes(syncEmbedded(cur));
+    if (next === cur) break;
+    cur = next;
+  }
+  return cur;
+}
+
 // New svg + size for an equation, keeping its current zoom (pixels per "ex").
 export function equationPatch(b: EquationBlock, r: RenderedEquation): BlockPatch {
   const pxPerEx = b.layout.height / Math.max(0.1, b.exH);
@@ -103,7 +116,7 @@ export function useExam(initial: ExamDoc, t?: T) {
     setHist((h) => {
       // (text boxes with an automatic size follow their text in the same step: typing, a font, a margin…)
       // (and the blocks placed in a text box follow its text)
-      const next = fitTextboxes(syncEmbedded(update(h.present)));
+      const next = settleTextboxes(update(h.present));
       if (next === h.present) return h;
       if (merge) return { ...h, present: next };
       return { past: [...h.past.slice(-99), h.present], present: next, future: [] };
