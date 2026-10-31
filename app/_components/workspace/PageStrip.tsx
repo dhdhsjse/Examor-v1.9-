@@ -53,7 +53,7 @@ export default function PageStrip({ pages, blocks, heights, activeIndex, onJump,
     <div
       onClick={(e) => collapsed && e.target === e.currentTarget && toggle()}
       title={collapsed ? t("Show pages") : undefined}
-      className={`relative flex shrink-0 flex-col border-e border-line bg-surface transition-[width] duration-200 ease-out motion-reduce:transition-none ${
+      className={`group/edge relative flex shrink-0 flex-col border-e border-line bg-surface transition-[width] duration-200 ease-out motion-reduce:transition-none ${
         collapsed ? "w-3 cursor-pointer" : "w-16"
       }`}
     >

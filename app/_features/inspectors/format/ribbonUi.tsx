@@ -278,7 +278,7 @@ export function Menu({ children, label }: { children: ReactNode; label?: string 
   );
 }
 
-export const MenuHeading = ({ children }: { children: ReactNode }) => <p className="px-2 pt-1.5 pb-1 text-[10px] font-semibold tracking-wide text-faint uppercase">{children}</p>;
+export const MenuHeading = ({ children }: { children: ReactNode }) => <p className="px-2 pt-1.5 pb-1 text-[11px] font-semibold text-faint">{children}</p>;
 export const MenuSeparator = () => <hr className="my-1 border-line" />;
 
 interface ItemProps {

@@ -36,7 +36,7 @@ describe("keyboard layouts", () => {
     }
   });
 
-  // One key, one place: the same key in two tabs is clutter (π lives in Basics, θ in Greek letters, sin in Trigonometry…).
+  // One key, one place: the same key in two tabs is clutter (π lives in Basics, θ in Greek letters, sin in Functions…).
   it.each(layouts)("%s: no key is in two tabs", (_name, tabs) => {
     const home = new Map<string, string>();
     for (const { tab, key } of allKeys(tabs)) {
@@ -45,15 +45,15 @@ describe("keyboard layouts", () => {
     }
   });
 
-  it("the math keyboard has the Basics and Trigonometry tabs", () => {
+  it("the math keyboard has the Basics and Functions tabs", () => {
     const ids = mathTabs.map((tab) => tab.id);
     expect(ids).toContain("basic");
-    expect(ids).toContain("trig");
+    expect(ids).toContain("functions");
   });
 
-  it("the physics keyboard has vectors, Greek letters, units and constants", () => {
+  it("the physics keyboard has vectors, Greek letters, and units & constants", () => {
     const ids = physicsTabs.map((tab) => tab.id);
-    for (const id of ["vectors", "greek", "units", "constants"]) expect(ids).toContain(id);
+    for (const id of ["vectors", "greek", "units"]) expect(ids).toContain(id);
   });
 
   it("a physics paper still has the everyday symbols (fraction, power, root)", () => {

@@ -3,9 +3,11 @@
 import type { MathfieldElement } from "mathlive";
 import { useEffect, useRef } from "react";
 import { mathCommand, setActiveMathfield } from "@/app/_lib/activeMathfield";
-import type { EquationBlock } from "@/app/_lib/types";
+import type { BlockPreset } from "@/app/_lib/blocks";
+import type { BlockType, EquationBlock, Lang } from "@/app/_lib/types";
 import { useT } from "@/app/_lib/uiLang";
 import { Field } from "./fields";
+import FunctionTools from "./FunctionTools";
 
 interface VirtualKeyboard {
   hide(): void;
@@ -16,10 +18,12 @@ interface Props {
   onLatex: (latex: string) => void;
   keyboardOpen: boolean;
   onToggleKeyboard: () => void;
+  lang: Lang;
+  onInsert: (type: BlockType, preset: BlockPreset) => void; // a block made from the function, under the equation
 }
 
 // The equation field (MathLive). The buttons are on our own math keyboard under the pages.
-export default function EquationEditor({ b, onLatex, keyboardOpen, onToggleKeyboard }: Props) {
+export default function EquationEditor({ b, onLatex, keyboardOpen, onToggleKeyboard, lang, onInsert }: Props) {
   const t = useT();
   const hostRef = useRef<HTMLDivElement>(null);
   const mfRef = useRef<MathfieldElement | null>(null);
@@ -51,9 +55,9 @@ export default function EquationEditor({ b, onLatex, keyboardOpen, onToggleKeybo
     });
     return () => {
       cancelled = true;
+      setActiveMathfield(null); // first, while the field still holds the equation (it is kept in the keyboard's clipboard)
       mf?.remove();
       mfRef.current = null;
-      setActiveMathfield(null);
     };
   }, [b.id]);
 
@@ -72,8 +76,8 @@ export default function EquationEditor({ b, onLatex, keyboardOpen, onToggleKeybo
         <button
           type="button"
           onClick={onToggleKeyboard}
-          className={`flex flex-1 items-center justify-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors ${
-            keyboardOpen ? "bg-indigo-600 text-white hover:bg-indigo-700" : "bg-indigo-50 text-indigo-700 hover:bg-indigo-100"
+          className={`flex h-7 flex-1 items-center justify-center gap-1.5 rounded-[5px] px-2 text-xs font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+            keyboardOpen ? "bg-accent text-white hover:bg-accent-strong" : "bg-subtle text-ink hover:bg-hover"
           }`}
         >
           <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4">
@@ -97,6 +101,7 @@ export default function EquationEditor({ b, onLatex, keyboardOpen, onToggleKeybo
       <p className="text-[10px] leading-snug text-faint">
         {t("Tip: double-click the equation on the page to edit it. Resize it with the corner handles.")}
       </p>
+      <FunctionTools latex={b.latex} lang={lang} onInsert={onInsert} />
     </>
   );
 }

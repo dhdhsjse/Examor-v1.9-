@@ -1,12 +1,20 @@
 "use client";
 
 import { Group, Path, Text } from "react-konva";
+import { InkGraphic } from "./InkGraphic";
 import { LINE_HEIGHT, dashArray, layoutShapeText, paintFill, resolveStyle, shapeParts, type ShapeStyle } from "@/app/_lib/shapes";
 
 // One shape on a Konva canvas, in the coordinates of its own box (0,0 = its top-left corner): its parts, flipped if it is, then its text.
 // The place and the turn belong to whoever holds it (a Group). The parts and the text lines come from _lib/shapes, the same ones
 // the picture on the page is made of.
 export function ShapeGraphic({ style, w, h, opacity = 1 }: { style: ShapeStyle; w: number; h: number; opacity?: number }) {
+  // (a stroke of the page's brush, pencil or highlighter: drawn as ink, flipped like any shape)
+  if (style.ink && style.shape === "freehand")
+    return (
+      <Group x={style.flipX ? w : 0} y={style.flipY ? h : 0} scaleX={style.flipX ? -1 : 1} scaleY={style.flipY ? -1 : 1}>
+        <InkGraphic style={style} w={w} h={h} opacity={opacity} />
+      </Group>
+    );
   const { stroke, strokeWidth } = resolveStyle(style);
   const dash = dashArray(style);
   const text = layoutShapeText(style, w, h);

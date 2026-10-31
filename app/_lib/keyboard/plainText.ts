@@ -17,6 +17,7 @@ export interface PlainInsert {
 }
 
 const CARET = "\u0001"; // stands for a box to fill while the text is built
+const BEFORE = "\u0002"; // stands for "the thing just before the cursor" (#@): already in the field
 
 const SYMBOLS: Record<string, string> = {
   // Greek
@@ -64,6 +65,7 @@ const wrap = (s: string) => (s.includes(CARET) || !ATOM.test(s) ? `(${s})` : s);
 const FORMULA_ATOM = /^(?:\d+\.?\d*|\p{L})$/u;
 
 function accent(arg: string, mark: string): string {
+  if (arg === BEFORE) return mark; // on the letter just typed: the sign alone joins it
   if (arg.includes(CARET) || !arg.trim()) return no(); // nothing to put the sign on
   return arg + mark;
 }
@@ -111,7 +113,7 @@ class Reader {
         const kind = this.src[this.i++];
         if (kind === "?") return CARET; // a box to fill
         if (kind === "0") return this.selection || CARET; // the selected part
-        if (kind === "@") return ""; // the thing before the cursor: it is already there
+        if (kind === "@") return BEFORE; // the thing before the cursor: it is already there
         return no();
       }
       case "&":
@@ -237,7 +239,7 @@ class Reader {
  */
 export function plainFromLatex(latex: string, flavor: PlainFlavor = "label", selection = ""): PlainInsert | null {
   try {
-    const built = new Reader(latex, flavor, selection).seq();
+    const built = new Reader(latex, flavor, selection).seq().replaceAll(BEFORE, "");
     const text = built.replaceAll(CARET, "");
     if (!text) return null;
     const caret = built.indexOf(CARET);

@@ -22,6 +22,7 @@ import {
   type ChromeKind,
 } from "./pageChrome";
 import { saveAutosave } from "./storage";
+import { moveSlotTo, removeBlock, stepSlot, syncEmbedded } from "./textboxSlots";
 import { buildDoc, type Template } from "./templates";
 import type { Block, BlockData, BlockLayout, BlockType, EquationBlock, ExamDoc, ExamMeta, HeaderBlock, HeaderFooterConfig, Page, PageFormat, PageMargins } from "./types";
 import type { T } from "./uiLang";
@@ -61,6 +62,26 @@ const newPageLike = (pages: Page[]): Page => {
 
 const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(v, max));
 
+// The meta of a copy of a block: a copy of a block that sits in a text box is a block of the page, no longer in that box.
+const looseMeta = (b: Block): Block["meta"] => {
+  if (!b.meta?.slot) return b.meta;
+  const { slot: _slot, ...rest } = b.meta;
+  return Object.keys(rest).length ? rest : undefined;
+};
+
+// Text boxes and the blocks in their text depend on each other: a box's size follows its text (whose rooms are as tall as its blocks),
+// and its blocks follow the box's place and width. Repeated until nothing moves (in practice 1–2 rounds), so a block is never left
+// where the box was a moment before (an auto-sized box that grew or shrank after its blocks were placed).
+function settleTextboxes(d: ExamDoc): ExamDoc {
+  let cur = d;
+  for (let i = 0; i < 4; i++) {
+    const next = fitTextboxes(syncEmbedded(cur));
+    if (next === cur) break;
+    cur = next;
+  }
+  return cur;
+}
+
 // New svg + size for an equation, keeping its current zoom (pixels per "ex").
 export function equationPatch(b: EquationBlock, r: RenderedEquation): BlockPatch {
   const pxPerEx = b.layout.height / Math.max(0.1, b.exH);
@@ -94,7 +115,8 @@ export function useExam(initial: ExamDoc, t?: T) {
     if (!opts.silent) lastEdit.current = opts.key ? { key: opts.key, time: now } : null;
     setHist((h) => {
       // (text boxes with an automatic size follow their text in the same step: typing, a font, a margin…)
-      const next = fitTextboxes(update(h.present));
+      // (and the blocks placed in a text box follow its text)
+      const next = settleTextboxes(update(h.present));
       if (next === h.present) return h;
       if (merge) return { ...h, present: next };
       return { past: [...h.past.slice(-99), h.present], present: next, future: [] };
@@ -161,7 +183,8 @@ export function useExam(initial: ExamDoc, t?: T) {
   // Add a block. With `at`: dropped at that spot. Without: stacked on the page in view,
   // or the next page with room, or a new page.
   const addBlock = useCallback(
-    (type: BlockType, preset: BlockPreset = {}, at?: DropPoint) => {
+    // `quiet`: the new block is neither selected nor scrolled to (a stroke of the drawing tools).
+    (type: BlockType, preset: BlockPreset = {}, at?: DropPoint, opts: { quiet?: boolean } = {}) => {
       const lang = doc.meta.lang;
       const block = createBlock(type, lang, "", preset);
       const h = blockHeight(block, 1, doc.meta);
@@ -221,18 +244,26 @@ export function useExam(initial: ExamDoc, t?: T) {
         // An exam header on a page without one becomes that page's header.
         return block.type === "header" ? adoptHeaders(next) : next;
       });
-      setSelectedId(block.id);
-      revealPage(block.layout.pageId);
+      if (!opts.quiet) {
+        setSelectedId(block.id);
+        revealPage(block.layout.pageId);
+      }
       if (block.type === "equation") refreshEquation(block);
       return block;
     },
     [doc, activePage, commit, refreshEquation],
   );
 
-  // Drop a block somewhere; blocks it lands on are pushed down below it.
+  // Drop a block somewhere; blocks it lands on are pushed down below it. A block in a text box's text stays in it: it takes its place
+  // among the box's paragraphs and blocks where it was dropped (above or below the others).
   const moveBlock = useCallback(
     (id: string, pageId: string, x: number, y: number) =>
       commit((d) => {
+        const cur = d.blocks.find((b) => b.id === id);
+        if (cur?.meta?.slot && d.blocks.some((b) => b.id === cur.meta?.slot)) {
+          const h = blockHeights(d).get(id) ?? 0;
+          return moveSlotTo(d, id, y + h / 2);
+        }
         const moved = { ...d, blocks: d.blocks.map((b) => (b.id === id ? ({ ...b, layout: { ...b.layout, pageId, x, y } } as Block) : b)) };
         const pageHeight = pageSize(d.pages.find((p) => p.id === pageId)).height;
         return { ...moved, blocks: pushDownOverlaps(moved.blocks, id, blockHeights(moved), pageHeight) };
@@ -240,10 +271,13 @@ export function useExam(initial: ExamDoc, t?: T) {
     [commit],
   );
 
+  // A block of a text box one place up (−1) or down (+1) among the blocks of its text.
+  const stepInBox = useCallback((id: string, dir: -1 | 1) => commit((d) => stepSlot(d, id, dir)), [commit]);
+
   const deleteBlock = useCallback(
     (id: string) => {
       // A header/footer goes from its settings: the page's own, or the document's (see deleteChrome).
-      commit((d) => (tRef.current && deleteChrome(d, id, tRef.current)) || { ...d, blocks: d.blocks.filter((b) => b.id !== id) });
+      commit((d) => (tRef.current && deleteChrome(d, id, tRef.current)) || removeBlock(d, id));
       setSelectedId((cur) => (cur === id ? null : cur));
     },
     [commit],
@@ -260,6 +294,7 @@ export function useExam(initial: ExamDoc, t?: T) {
       const copy = {
         ...structuredClone(src),
         id: newId(),
+        meta: looseMeta(src),
         layout: { ...src.layout, pageId: page.id, x: clamp(src.layout.x + (taken ? 12 : 0), 0, size.width - src.layout.width), y: clamp(src.layout.y + (taken ? 24 : 0), 0, size.height - src.layout.height) },
       } as Block;
       commit((d) => ({ ...d, blocks: [...d.blocks, copy] }));
@@ -277,6 +312,7 @@ export function useExam(initial: ExamDoc, t?: T) {
       const copy = {
         ...structuredClone(src),
         id: newId(),
+        meta: looseMeta(src),
         layout: { ...src.layout, y: clamp(src.layout.y + 24, 0, size.height - h), x: clamp(src.layout.x + 12, 0, size.width - src.layout.width) },
       } as Block;
       commit((d) => ({ ...d, blocks: [...d.blocks, copy] }));
@@ -407,6 +443,7 @@ export function useExam(initial: ExamDoc, t?: T) {
     revealPage,
     refreshEquation,
     moveBlock,
+    stepInBox,
     deleteBlock,
     duplicateBlock,
     pasteBlock,

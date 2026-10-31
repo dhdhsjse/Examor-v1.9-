@@ -1,3 +1,4 @@
+import { dividerHeight } from "./divider";
 import { fontStack } from "./fonts";
 import { isRtl, optionLabel, words } from "./i18n";
 import { LIST_GAP, listMarkers } from "./lists";
@@ -201,6 +202,7 @@ export interface WordBank {
   y: number;
   width: number;
   height: number;
+  ghost?: boolean; // on screen only: the place of the words to come (an empty "sort into groups" selected)
 }
 
 const BANK_PAD = 7;
@@ -211,6 +213,12 @@ function wordBank(words: string[], seed: string, b: Block, F: Fonts, y: number):
   // Items stay whole on a line; " / " between them.
   const text = box(shuffled(clean, seed).join(" / "), inner(b) - BANK_PAD * 2 - 4, F.body, y + BANK_PAD);
   return { text, x: PAD, y, width: inner(b), height: text.height + BANK_PAD * 2 };
+}
+
+// On screen, the empty box of words of a selected "sort into groups": a ghost of the words to come (withHints).
+function ghostBank(hint: string, b: Block, F: Fonts, y: number): WordBank {
+  const text = box(`⁅c=#b4b9c3⁆${hint}⁅/⁆`, inner(b) - BANK_PAD * 2 - 4, F.body, y + BANK_PAD);
+  return { text, x: PAD, y, width: inner(b), height: text.height + BANK_PAD * 2, ghost: true };
 }
 
 // Blanks: "[answer]" becomes "________" on the exam, "« answer »" (answer color) on the key.
@@ -372,7 +380,7 @@ export function layoutClassify(b: ClassifyBlock, n: number, meta: ExamMeta) {
   const F = blockFonts(b, meta);
   const title = box(questionTitle(b, n, F), inner(b), F.title, PAD);
   let y = PAD + title.height + GAP;
-  const bank = b.hideBank ? null : wordBank(b.groups.flatMap((g) => g.items), b.id, b, F, y);
+  const bank = b.hideBank ? null : (wordBank(b.groups.flatMap((g) => g.items), b.id, b, F, y) ?? (b.bankHint ? ghostBank(b.bankHint, b, F, y) : null));
   if (bank) y += bank.height + GAP + 2;
 
   const cols = Math.max(1, b.groups.length);
@@ -461,6 +469,7 @@ export interface TextboxParagraph {
   rtl: boolean;
   marker?: ListMarker;
   box?: ParagraphBox;
+  slot?: { id: string; height: number }; // no text: the room of a block placed here (textboxSlots.ts)
 }
 
 const BOX_PAD = 3; // how far a shading or a border goes beyond the text (px)
@@ -526,6 +535,12 @@ function layoutTextboxIn(b: TextboxBlock, meta: ExamMeta, width: number, hint?: 
   let natural = 0; // the width the longest line takes, with its indent and list marker
   const paragraphs: TextboxParagraph[] = items.map((p, i) => {
     const rtl = rtls[i];
+    // A block placed in the text: its room, the full width of the text.
+    if (p.slot) {
+      const room: TextboxParagraph = { lines: [], x: pad, y: top, width, rtl, slot: { id: p.slot.id, height: p.slot.h } };
+      top += p.slot.h;
+      return room;
+    }
     // Indented from the start side, keeping some room for the text.
     const indent = Math.min(Math.min(p.indent, MAX_INDENT) * INDENT_PX, Math.max(0, width - 20));
     top += p.spaceBefore;
@@ -871,6 +886,8 @@ export function blockHeight(b: Block, n: number, meta: ExamMeta): number {
       return tableHeight(b, meta);
     case "header":
       return HEADER_HEIGHT[b.style] ?? HEADER_HEIGHT.classic;
+    case "divider":
+      return dividerHeight(b);
     case "equation":
     case "image":
     case "graph":

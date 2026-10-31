@@ -1,64 +1,36 @@
 // The math keyboard, chosen for writing exam questions. Used for every subject except Physics.
+//
+// Only building blocks: no ready-made formulas or identities (the Clipboard tab keeps the teacher's own equations instead), and no
+// key that is just another key plus a power or an index (sin², u_{n+1}, ℝ*, π/3…): those are typed with Squared / Power / Index.
 
 import { k, type KeyboardTab } from "./keys";
 import { basicTab, greekTab } from "./sharedTabs";
 
-const trigTab: KeyboardTab = {
-  id: "trig",
-  label: "Trigonometry",
+const functionsTab: KeyboardTab = {
+  id: "functions",
+  label: "Functions",
   buttons: [
+    k("f(x)=", "f(x) ="),
     k("\\sin\\left(#0\\right)", "Sine"),
     k("\\cos\\left(#0\\right)", "Cosine"),
     k("\\tan\\left(#0\\right)", "Tangent"),
-    k("\\cot\\left(#0\\right)", "Cotangent"),
     k("\\arcsin\\left(#0\\right)", "Arcsine"),
     k("\\arccos\\left(#0\\right)", "Arccosine"),
     k("\\arctan\\left(#0\\right)", "Arctangent"),
-    k("\\sin^{2}\\left(#0\\right)", "Sine squared"),
-    k("\\cos^{2}\\left(#0\\right)", "Cosine squared"),
-    k("\\frac{\\pi}{2}", "π/2"),
-    k("\\frac{\\pi}{3}", "π/3"),
-    k("\\frac{\\pi}{4}", "π/4"),
-    k("\\frac{\\pi}{6}", "π/6"),
-    k("\\,\\mathrm{rad}", "Radians"),
-    k("\\frac{1}{2}", "1/2"),
-    k("\\frac{\\sqrt{2}}{2}", "√2/2"),
-    k("\\frac{\\sqrt{3}}{2}", "√3/2"),
-    k("\\cos^{2}x+\\sin^{2}x=1", "cos² + sin² = 1", { wide: true }),
-    k("\\tan x=\\frac{\\sin x}{\\cos x}", "tan = sin / cos", { wide: true }),
-    k("\\cos\\left(a+b\\right)=\\cos a\\cos b-\\sin a\\sin b", "cos(a + b)", { wide: true }),
-    k("\\sin\\left(a+b\\right)=\\sin a\\cos b+\\cos a\\sin b", "sin(a + b)", { wide: true }),
-    k("\\sin\\left(2x\\right)=2\\sin x\\cos x", "sin 2x", { wide: true }),
-    k("\\cos\\left(2x\\right)=\\cos^{2}x-\\sin^{2}x", "cos 2x", { wide: true }),
-  ],
-};
-
-const analysisTab: KeyboardTab = {
-  id: "analysis",
-  label: "Functions & limits",
-  buttons: [
-    k("f(x)=", "f(x) ="),
+    k("\\ln\\left(#0\\right)", "Natural log"),
+    k("\\log_{#?}\\left(#0\\right)", "Log base a"),
+    k("e^{#?}", "Exponential"),
+    k("f'(x)", "Derivative"),
+    k("\\frac{\\mathrm{d}#?}{\\mathrm{d}x}", "d/dx"),
     k("\\lim_{x\\to #?}", "Limit when x → a"),
     k("\\lim_{x\\to+\\infty}", "Limit at +∞"),
-    k("\\lim_{x\\to-\\infty}", "Limit at −∞"),
-    k("\\lim_{x\\to #?^{+}}", "Limit on the right"),
-    k("\\lim_{x\\to #?^{-}}", "Limit on the left"),
-    k("f'(x)", "Derivative"),
-    k("f''(x)", "Second derivative"),
-    k("\\frac{\\mathrm{d}#?}{\\mathrm{d}x}", "d/dx"),
+    k("\\to", "Tends to"),
     k("\\int_{#?}^{#?}#?\\,\\mathrm{d}x", "Integral"),
     k("\\left[#?\\right]_{#?}^{#?}", "Bracket [F(x)] from a to b"),
     k("\\sum_{k=#?}^{#?}#?", "Sum"),
-    k("\\ln\\left(#0\\right)", "Natural log"),
-    k("\\log\\left(#0\\right)", "Log base 10"),
-    k("\\log_{#?}\\left(#0\\right)", "Log base a"),
-    k("e^{#?}", "Exponential"),
     k("u_{n}", "Sequence uₙ"),
-    k("u_{n+1}", "Next term"),
-    k("\\left(u_{n}\\right)_{n\\in\\mathbb{N}}", "Sequence (uₙ)"),
     k("#@!", "Factorial"),
     k("\\binom{#?}{#?}", "Binomial"),
-    k("\\to", "Tends to"),
   ],
 };
 
@@ -76,11 +48,8 @@ const setsTab: KeyboardTab = {
     k("\\mathbb{Z}", "Integers"),
     k("\\mathbb{Q}", "Rationals"),
     k("\\mathbb{R}", "Real numbers"),
-    k("\\mathbb{R}^{*}", "Non-zero reals"),
     k("\\left[#?;#?\\right]", "Closed interval"),
     k("\\left]#?;#?\\right[", "Open interval"),
-    k("\\left[#?;+\\infty\\right[", "Interval to +∞"),
-    k("\\left]-\\infty;#?\\right]", "Interval from −∞"),
     k("\\left\\{#?\\right\\}", "Set { }"),
     k("\\Rightarrow", "Implies"),
     k("\\Leftrightarrow", "Equivalent"),
@@ -104,34 +73,7 @@ const geometryTab: KeyboardTab = {
     k("\\triangle", "Triangle"),
     k("\\left(#?;#?\\right)", "Coordinates (x ; y)"),
     k("\\begin{pmatrix}#?\\\\#?\\end{pmatrix}", "Column vector"),
-    k("\\mathrm{cm}^{2}", "cm²"),
-    k("\\mathrm{cm}^{3}", "cm³"),
   ],
 };
 
-const templatesTab: KeyboardTab = {
-  id: "templates",
-  label: "Ready formulas",
-  buttons: [
-    k("x=\\frac{-b\\pm\\sqrt{\\Delta}}{2a}", "Quadratic formula", { wide: true }),
-    k("\\Delta=b^2-4ac", "Discriminant", { wide: true }),
-    k("ax^2+bx+c=0", "Quadratic equation", { wide: true }),
-    k("\\begin{cases}#?x+#?y=#?\\\\#?x+#?y=#?\\end{cases}", "System of 2 equations", { wide: true, label: "\\begin{cases}ax+by=c\\\\a'x+b'y=c'\\end{cases}" }),
-    k("f(x)=\\begin{cases}#? & \\text{si } x\\geq #?\\\\#? & \\text{si } x<#?\\end{cases}", "Piecewise function", {
-      wide: true,
-      label: "f(x)=\\begin{cases}\\ldots & x\\geq a\\\\\\ldots & x<a\\end{cases}",
-    }),
-    k("\\lim_{x\\to+\\infty}f(x)=#?", "Limit of f", { wide: true }),
-    k("\\lim_{x\\to #?}\\frac{f(x)-f(#?)}{x-#?}", "Derivative (definition)", { wide: true, label: "\\lim_{x\\to a}\\frac{f(x)-f(a)}{x-a}" }),
-    k("\\int_{#?}^{#?}f(x)\\,\\mathrm{d}x", "Integral of f", { wide: true }),
-    k("u_{n+1}=#?u_{n}+#?", "Recurrent sequence", { wide: true, label: "u_{n+1}=a\\,u_{n}+b" }),
-    k("u_{n}=u_{0}+n\\,r", "Arithmetic sequence", { wide: true }),
-    k("u_{n}=u_{0}\\,q^{n}", "Geometric sequence", { wide: true }),
-    k("a=\\frac{y_{B}-y_{A}}{x_{B}-x_{A}}", "Slope of (AB)", { wide: true }),
-    k("AB=\\sqrt{\\left(x_{B}-x_{A}\\right)^{2}+\\left(y_{B}-y_{A}\\right)^{2}}", "Distance AB", { wide: true }),
-    k("BC^2=AB^2+AC^2", "Pythagoras", { wide: true }),
-    k("\\frac{AM}{AB}=\\frac{AN}{AC}=\\frac{MN}{BC}", "Thales", { wide: true }),
-  ],
-};
-
-export const mathTabs: KeyboardTab[] = [basicTab, trigTab, analysisTab, setsTab, geometryTab, greekTab, templatesTab];
+export const mathTabs: KeyboardTab[] = [basicTab, functionsTab, setsTab, geometryTab, greekTab];

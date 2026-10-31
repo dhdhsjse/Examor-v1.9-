@@ -10,6 +10,7 @@ import type { BlockPatch } from "@/app/_lib/useExam";
 import { EquationView, ImageView, TableView, TextboxView, TextView } from "./blocks/ContentViews";
 import { GraphView } from "./blocks/GraphView";
 import { ShapeView } from "./blocks/ShapeView";
+import { DividerView } from "./blocks/DividerView";
 import { HeaderNode } from "./blocks/headerParts";
 import { ClassifyView, MatchView, OrderView } from "./blocks/MoreQuestionViews";
 import { BlankView, McqView, OpenView, TrueFalseView } from "./blocks/QuestionViews";
@@ -36,6 +37,7 @@ interface Props {
   interactive: boolean; // false when exporting
   textTool: boolean; // "T" tool: one click starts typing
   drawing: boolean; // a box is being drawn on the page (text box tool): blocks ignore the mouse
+  typing?: boolean; // a text box being typed in: its editor shows the words, the page only its fill and border
   onSelect: () => void;
   onDragStart: () => void;
   onDragMove: (x: number, y: number) => { x: number; y: number };
@@ -47,7 +49,7 @@ interface Props {
 }
 
 // What to draw inside the block.
-function Content({ block: real, number, meta, mode, interactive, selected, totalPoints }: Pick<Props, "block" | "number" | "meta" | "mode" | "interactive" | "selected" | "totalPoints">) {
+function Content({ block: real, number, meta, mode, interactive, selected, totalPoints, typing }: Pick<Props, "block" | "number" | "meta" | "mode" | "interactive" | "selected" | "totalPoints" | "typing">) {
   // On screen, empty question texts show a light example (and the selected open question its statement); export draws the real
   // (empty) text.
   const block = interactive ? withHints(real, meta.lang, { statement: selected }) : real;
@@ -69,7 +71,7 @@ function Content({ block: real, number, meta, mode, interactive, selected, total
     case "text":
       return <TextView b={block} meta={meta} />;
     case "textbox":
-      return <TextboxView b={block} meta={meta} interactive={interactive} />;
+      return <TextboxView b={block} meta={meta} interactive={interactive} frameOnly={typing} />;
     case "table":
       return <TableView b={block} meta={meta} />;
     case "equation":
@@ -81,6 +83,8 @@ function Content({ block: real, number, meta, mode, interactive, selected, total
       return <GraphView b={block} />;
     case "shape":
       return <ShapeView b={block} />;
+    case "divider":
+      return <DividerView b={block} />;
     case "header":
       return <HeaderNode b={block} meta={meta} mode={mode} totalPoints={totalPoints} />;
   }
@@ -98,7 +102,7 @@ export default function BlockNode(props: Props) {
   // Was the block already selected when the mouse went down? Then one click on a text types in it.
   const wasSelected = useRef(false);
   const width = block.layout.width;
-  const media = block.type === "image" || block.type === "equation" || block.type === "shape";
+  const media = block.type === "image" || block.type === "equation" || block.type === "shape" || block.type === "divider";
   const moveCursor = textTool ? "text" : "move";
 
   // Resizing scales the group; turn that scale into a real width/height. The drawn height is what was
@@ -125,10 +129,8 @@ export default function BlockNode(props: Props) {
       }}
       onTap={onSelect}
       onDblClick={() => onEdit(null)}
-      onDragStart={(e) => {
-        e.target.moveToTop();
-        props.onDragStart();
-      }}
+      // (the canvas draws the dragged block over the others: ExamCanvas's drawOrder)
+      onDragStart={() => props.onDragStart()}
       onDragMove={(e) => e.target.position(onDragMove(e.target.x(), e.target.y()))}
       onDragEnd={(e) => onDragEnd(e.target.x(), e.target.y())}
       onTransform={(e) => props.onResizing?.({ x: e.target.x(), y: e.target.y(), width: width * e.target.scaleX(), height: height * e.target.scaleY() })}
@@ -152,7 +154,7 @@ export default function BlockNode(props: Props) {
         dash={[4, 3]}
         cornerRadius={4}
       />
-      <Content block={block} number={props.number} meta={props.meta} mode={props.mode} interactive={interactive} selected={selected} totalPoints={props.totalPoints} />
+      <Content block={block} number={props.number} meta={props.meta} mode={props.mode} interactive={interactive} selected={selected} totalPoints={props.totalPoints} typing={props.typing} />
 
       {/* Invisible areas on top of the texts: double-click, click a selected block (or click with
           the T tool) to type there. A text box types on the first click, anywhere inside it. */}

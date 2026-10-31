@@ -81,7 +81,11 @@ describe("plainFromLatex: structures", () => {
     expect(label("\\sqrt[#?]{#0}")).toBeNull();
     expect(label("\\binom{#?}{#?}")).toBeNull();
     expect(label("\\vec{#?}")).toBeNull(); // no letter to put the arrow on
-    expect(label("\\dot{#@}")).toBeNull();
+  });
+
+  it("puts a dot over the letter just typed: the dot alone joins it", () => {
+    expect(label("\\dot{#@}")).toEqual({ text: "\u0307", caret: 1 });
+    expect(label("\\ddot{#@}")?.text).toBe("\u0308");
   });
 
   it("reads what the Graph Studio's formula field reads", () => {

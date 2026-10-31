@@ -44,7 +44,7 @@ export default function SymbolPicker({ t, onPick, disabled }: { t: T; onPick: (s
       </div>
       {recent.length > 0 && (
         <div className="flex flex-col gap-1 border-t border-line pt-1.5">
-          <span className="text-[10px] font-semibold tracking-wide text-faint uppercase">{t("Recently used")}</span>
+          <span className="text-[11px] font-semibold text-faint">{t("Recently used")}</span>
           <div className="grid grid-cols-8 gap-0.5" dir="ltr">
             {recent.map((s) => cell(s, `recent-${s}`))}
           </div>

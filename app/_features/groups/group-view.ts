@@ -5,6 +5,6 @@ import { modeKeyToggle } from "@/app/_features/toggles/mode-key";
 export const viewGroup: Group = {
   id: "group.view",
   order: 60,
-  className: "flex shrink-0 rounded-md bg-subtle p-0.5 ring-1 ring-line",
+  className: "flex shrink-0 rounded-[6px] bg-subtle p-0.5",
   features: [modeExamToggle, modeKeyToggle],
 };

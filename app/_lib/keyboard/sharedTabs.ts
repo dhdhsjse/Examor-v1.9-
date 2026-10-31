@@ -6,6 +6,7 @@ export const basicTab: KeyboardTab = {
   id: "basic",
   label: "Basics",
   buttons: [
+    k("f\\left(x\\right)", "Function f(x)"),
     k("\\frac{#0}{#?}", "Fraction"),
     k("#@^{2}", "Squared"),
     k("#@^{#?}", "Power"),

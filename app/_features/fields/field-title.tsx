@@ -22,7 +22,7 @@ function TitleInput({ ctx }: { ctx: Ctx }) {
       spellCheck={false}
       aria-label={t("Exam name")}
       title={t("Click to rename")}
-      className="min-w-16 max-w-80 shrink truncate rounded-md px-1.5 py-1 text-[13px] font-medium text-ink ring-1 ring-transparent outline-none transition-colors [field-sizing:content] hover:bg-subtle hover:ring-line focus:bg-white focus:ring-indigo-300"
+      className="h-7 min-w-16 max-w-80 shrink truncate rounded-[5px] px-1.5 text-xs font-semibold text-ink ring-1 ring-transparent outline-none transition-colors [field-sizing:content] hover:ring-line focus:bg-white focus:ring-2 focus:ring-accent"
     />
   );
 }

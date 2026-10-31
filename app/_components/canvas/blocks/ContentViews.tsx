@@ -67,7 +67,9 @@ export function TextView({ b, meta }: { b: TextBlock; meta: ExamMeta }) {
 // A text box: its paragraphs wrapped inside it (each with its alignment), on its fill color and inside its
 // border (both printed). On screen the box shows as a light dashed frame, and an empty one shows a grey
 // hint (neither is printed).
-export function TextboxView({ b, meta, interactive }: { b: TextboxBlock; meta: ExamMeta; interactive: boolean }) {
+// While it is typed in (`frameOnly`), the editor over it shows the words: only the fill and the border are drawn here, under
+// it (the editor is see-through, so shapes and images over the box stay in sight).
+export function TextboxView({ b, meta, interactive, frameOnly }: { b: TextboxBlock; meta: ExamMeta; interactive: boolean; frameOnly?: boolean }) {
   const hint = interactive && !plainText(b.text).trim() ? serializeRich([{ text: meta.lang === "ar" ? "اكتب هنا…" : "Tapez ici…", style: { color: "#9ca3af" } }]) : undefined;
   const L = layoutTextbox(b, meta, hint);
   return (
@@ -78,7 +80,7 @@ export function TextboxView({ b, meta, interactive }: { b: TextboxBlock; meta: E
       ) : (
         interactive && <Rect width={b.layout.width} height={L.height} stroke="#cbd5e1" strokeWidth={1} dash={[4, 3]} listening={false} />
       )}
-      {L.paragraphs.map((p, k) => (
+      {!frameOnly && L.paragraphs.map((p, k) => p.slot ? null : (
         <Fragment key={k}>
           {p.box && <ParagraphBackdrop box={{ ...p.box, y: L.y + p.box.y }} />}
           {p.marker && <Marker m={p.marker} dy={L.y} rtl={p.rtl} />}

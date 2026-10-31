@@ -19,6 +19,6 @@ export const toolQuestionFree: Feature = {
   dragPayload: action,
   run: (ctx) => {
     ctx.shell.runTool(action);
-    ctx.shell.notify(ctx.t("Type the question, then pick a question type to add it inside"));
+    ctx.shell.notify(ctx.t("Type the question, then pick a question type or a table to place it inside"));
   },
 };

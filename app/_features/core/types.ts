@@ -35,6 +35,11 @@ export type Shell = {
   redo: () => void;
   busy: boolean;
   runTool: (action: ToolAction) => void;
+  // A new block put on the page right under the block `sourceId` (under its text box when it is in one), then selected: the graph or
+  // the table of variations of an equation's function.
+  insertBelow: (sourceId: string, type: BlockType, preset: BlockPreset) => void;
+  // A block in a text box's text one place up (−1) or down (+1) among the box's blocks.
+  stepInBox: (id: string, dir: -1 | 1) => void;
   // What a mouse drag on the page does (the tools of the bar under the page). "textbox" draws a text box
   // (Insert → Text box); Escape, the select arrow or drawing one goes back to "select".
   canvasTool: CanvasTool;

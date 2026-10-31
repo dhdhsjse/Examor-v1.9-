@@ -25,6 +25,8 @@ import SubQuestionButton from "./SubQuestionButton";
 import TextboxEditor from "./TextboxEditor";
 import type { StyleMark } from "@/app/_lib/textboxEditor";
 import ToolRail, { type CanvasTool } from "./ToolRail";
+import type { InkTools } from "@/app/_lib/ink/useInkTools";
+import type { DrawnInk, InkInHand } from "../canvas/ExamCanvas";
 import ZoomBar from "./ZoomBar";
 
 export interface Editing {
@@ -72,6 +74,8 @@ interface Props {
   drawShape?: "box" | "line"; // the Shapes tool is in hand: what it draws
   shapeToDraw: string | null; // (the shape of the Shapes tool)
   onPickShape: (shape: string) => void; // the Shapes button of the tool bar: draw this shape
+  ink: InkTools; // the Draw button's brush, pencil and highlighter
+  onInk: (stroke: DrawnInk) => void; // a stroke drawn on a page with one of them
   onAddPage: () => void;
   onDeletePage: (pageId: string) => void;
   onActivePageChange: (index: number) => void;
@@ -86,6 +90,11 @@ const ANSWER_BAR_KEY = "examBuilder.answerBarOpen";
 export default function Workspace(props: Props) {
   const t = useT();
   const { doc, heights, numbers, mode, selectedId, activePage, reveal, editing } = props;
+  // The drawing tool in hand (none unless the Draw tool is): its stroke is drawn on the pages.
+  const drawing = props.tool === "draw";
+  const inkTool = props.ink.tool;
+  const inkSettings = props.ink.settings[inkTool];
+  const inkInHand = useMemo<InkInHand | null>(() => (drawing ? { tool: inkTool, ...inkSettings } : null), [drawing, inkTool, inkSettings]);
   const { pages } = doc;
   const scrollRef = useRef<HTMLDivElement>(null);
   const stackRef = useRef<HTMLDivElement>(null);
@@ -360,12 +369,15 @@ export default function Workspace(props: Props) {
                     drawBox={props.tool === "textbox" || props.tool === "shape"}
                     drawShape={props.tool === "shape" ? props.drawShape : undefined}
                     onDrawBox={props.onDrawBox}
+                    ink={inkInHand}
+                    onInk={props.onInk}
                     onHandleDown={() => {
                       handleHeld.current = true;
                       window.addEventListener("mouseup", () => setTimeout(() => (handleHeld.current = false)), { once: true });
                     }}
                     onResizing={(id, r) => setLiveBox(r && editing?.id === id ? { ...r, id } : null)}
                     hiddenId={movingId}
+                    typingId={editing && editBlock?.type === "textbox" ? editBlock.id : null}
                     mover={mover}
                   />
                 </div>
@@ -387,6 +399,10 @@ export default function Workspace(props: Props) {
                     onChange={props.onRichChange}
                     onDropBoxStyle={props.onDropBoxStyle}
                     onReady={props.onTextEditor}
+                    onOpenBlock={(id) => {
+                      props.onEditDone(editBlock.id);
+                      props.onSelect(id);
+                    }}
                     onMoveStart={() => setMovingId(editBlock.id)}
                     onMoving={(x, y) => mover.current?.move(editBlock.id, x, y) ?? { x, y }}
                     onMoveEnd={(x, y) => {
@@ -544,6 +560,7 @@ export default function Workspace(props: Props) {
             onChange={props.onToolChange}
             shape={props.shapeToDraw}
             onPickShape={props.onPickShape}
+            ink={props.ink}
             keyboardOpen={props.mathKeyboard} onToggleKeyboard={props.onToggleMathKeyboard} />
           <ZoomBar
             zoom={zoom}

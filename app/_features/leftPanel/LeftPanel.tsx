@@ -64,7 +64,7 @@ export default function LeftPanel({ ctx }: { ctx: Ctx }) {
   if (q) {
     const hits = sectionFeatures().filter((f) => f.kind === "tool" && matches(f, ctx, q));
     return (
-      <div className="flex flex-col gap-0.5 p-2">
+      <div className="flex flex-col p-2">
         {hits.map((f) => (
           <FeatureRow key={f.id} feature={f} ctx={ctx} onLibrary={(feat) => openLibrary(feat, null)} />
         ))}
@@ -75,10 +75,6 @@ export default function LeftPanel({ ctx }: { ctx: Ctx }) {
   const open = view.kind === "section" ? sections.find((s) => s.id === view.sectionId) : undefined;
   if (open) return <SectionDetail section={open} ctx={ctx} onBack={back} onLibrary={(f) => openLibrary(f, open.id)} />;
 
-  return (
-    <div className="flex flex-col">
-      <h3 className="px-4 pb-2 pt-1 text-[10px] font-semibold uppercase tracking-wider text-faint">{ctx.t("Tools")}</h3>
-      <SectionList sections={sections} ctx={ctx} onOpen={(sectionId) => setView({ kind: "section", sectionId })} />
-    </div>
-  );
+  // (The toolbox heading above already names this list.)
+  return <SectionList sections={sections} ctx={ctx} onOpen={(sectionId) => setView({ kind: "section", sectionId })} />;
 }

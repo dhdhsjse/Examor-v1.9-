@@ -1,11 +1,14 @@
 // Small presentational pieces shared by the top bar, the right panel and the overlays.
+// Figma-like: 28px icon buttons, grey hover, a 16px icon (ui-icon, globals.css) and a visible focus ring.
+
+const focusRing = 'outline-none focus-visible:ring-2 focus-visible:ring-accent';
 
 export const iconBtn =
-  'grid size-7 place-items-center rounded-md text-muted transition-colors hover:bg-subtle hover:text-ink disabled:opacity-35 disabled:hover:bg-transparent';
+  `ui-icon grid size-7 place-items-center rounded-[5px] text-muted transition-colors hover:bg-hover hover:text-ink disabled:opacity-35 disabled:hover:bg-transparent ${focusRing}`;
 
-// An icon button that stays highlighted while what it controls is on (e.g. an open side panel).
+// An icon button that stays pressed while what it controls is on (e.g. an open side panel): grey, like Figma's toggles.
 export const toggleBtn = (on: boolean) =>
-  `grid size-7 place-items-center rounded-md transition-colors ${on ? 'bg-accent-soft text-accent hover:bg-indigo-100' : 'text-muted hover:bg-subtle hover:text-ink'}`;
+  `ui-icon grid size-7 place-items-center rounded-[5px] transition-colors ${focusRing} ${on ? 'bg-hover text-ink' : 'text-muted hover:bg-hover hover:text-ink'}`;
 
 export function ModeTab({ text, correction, active, onClick }: { text: string; correction: boolean; active: boolean; onClick: () => void }) {
   const on = correction ? 'bg-emerald-600 font-semibold text-white shadow-sm' : 'bg-white font-semibold text-ink shadow-sm';
@@ -14,20 +17,21 @@ export function ModeTab({ text, correction, active, onClick }: { text: string; c
       type="button"
       onClick={onClick}
       aria-pressed={active}
-      className={`whitespace-nowrap rounded px-2.5 py-1 text-xs transition-colors ${active ? on : 'text-muted hover:text-ink'}`}
+      className={`h-6 whitespace-nowrap rounded px-2.5 text-xs transition-colors ${focusRing} ${active ? on : 'text-muted hover:text-ink'}`}
     >
       {text}
     </button>
   );
 }
 
+// A panel tab (Properties / Library): the open one is a grey pill, as in Figma's Design / Prototype tabs.
 export function TabButton({ text, active, onClick }: { text: string; active: boolean; onClick: () => void }) {
   return (
     <button
       type="button"
       onClick={onClick}
       aria-pressed={active}
-      className={`-mb-px whitespace-nowrap border-b-2 pb-2 text-[13px] transition-colors ${active ? 'border-indigo-600 font-semibold text-ink' : 'border-transparent text-muted hover:text-ink'}`}
+      className={`h-6 whitespace-nowrap rounded-[5px] px-2 text-xs font-semibold transition-colors ${focusRing} ${active ? 'bg-subtle text-ink' : 'text-muted hover:text-ink'}`}
     >
       {text}
     </button>

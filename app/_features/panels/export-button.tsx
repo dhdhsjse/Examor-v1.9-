@@ -12,7 +12,7 @@ export const exportButtonPanel: Feature = {
       disabled={ctx.shell.busy}
       onClick={ctx.shell.showPreview}
       title={`${ctx.t("Print preview & export…")} (Ctrl+P)`}
-      className="flex h-7 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md bg-accent px-3 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-accent-strong disabled:opacity-60"
+      className="ui-icon flex h-7 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-[5px] bg-accent px-2.5 text-xs font-semibold text-white transition-colors outline-none hover:bg-accent-strong focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1 disabled:opacity-60"
     >
       <DownloadIcon /> {ctx.shell.busy ? ctx.t("Exporting…") : ctx.t("Export PDF")}
     </button>
