@@ -18,6 +18,7 @@ import type {
   ExamMeta,
   HeaderStyle,
   HeadingDecor,
+  ImageBlock,
   Lang,
   MatchBlock,
   McqBlock,
@@ -861,6 +862,34 @@ export function tableHeight(b: TableBlock, meta: ExamMeta): number {
   return shapes ? Math.max(rows, Math.ceil(shapes.maxY)) : rows;
 }
 
+// ---- Picture caption: a description printed under an image ----
+
+export const CAPTION_GAP = 6; // room between the picture and its caption
+export const CAPTION_COLOR = "#374151";
+export const CAPTION_MIN_SIZE = 8;
+export const CAPTION_MAX_SIZE = 40;
+
+// Size of a caption that keeps the default: a bit smaller than the exam's text.
+export const defaultCaptionSize = (meta: ExamMeta) => Math.max(9, (meta.fontSize ?? DEFAULT_SIZE) - 2);
+
+// The caption's wrapped lines, under the picture (block coordinates); null when the image has none.
+export function layoutImageCaption(b: ImageBlock, meta: ExamMeta): (PlacedBox & { align: "left" | "center" | "right" }) | null {
+  if (!b.caption || !plainText(b.caption).trim()) return null;
+  const c = b.captionStyle ?? {};
+  const size = c.size ?? defaultCaptionSize(meta);
+  const s = spec(fontStack(c.family || meta.fontFamily), size, c.bold ?? false, c.color ?? CAPTION_COLOR, 20 / 14, {
+    italic: c.italic ?? true,
+    underline: c.underline,
+  });
+  return { ...placed(b.caption, 0, b.layout.width, s, b.layout.height + CAPTION_GAP), align: c.align ?? "center" };
+}
+
+// The picture and its caption.
+export function imageHeight(b: ImageBlock, meta: ExamMeta): number {
+  const c = layoutImageCaption(b, meta);
+  return c ? c.y + c.height : b.layout.height;
+}
+
 // Height of any block (used for stacking, snapping and thumbnails).
 export function blockHeight(b: Block, n: number, meta: ExamMeta): number {
   switch (b.type) {
@@ -888,8 +917,9 @@ export function blockHeight(b: Block, n: number, meta: ExamMeta): number {
       return HEADER_HEIGHT[b.style] ?? HEADER_HEIGHT.classic;
     case "divider":
       return dividerHeight(b);
-    case "equation":
     case "image":
+      return imageHeight(b, meta);
+    case "equation":
     case "graph":
     case "shape":
       return b.layout.height;

@@ -427,8 +427,10 @@ export function patchPart(parts: OpenPart[], i: number, patch: Partial<OpenPart>
   return { parts: next, points: next.reduce((s, p) => s + p.points, 0) };
 }
 
-// Two blocks that may lie over each other: a shape and another shape, or a shape and a text box.
-const mayOverlap = (a: Block, b: Block) => (a.type === "shape" && (b.type === "shape" || b.type === "textbox")) || (b.type === "shape" && a.type === "textbox");
+// Two blocks that may lie over each other. Shapes and pictures are laid freely on the page: over each other, or over a text box (a picture in a frame, a photo on a
+// colored shape…). Nothing is pushed away for them.
+const LOOSE = new Set<Block["type"]>(["shape", "image"]);
+const mayOverlap = (a: Block, b: Block) => (LOOSE.has(a.type) && (LOOSE.has(b.type) || b.type === "textbox")) || (LOOSE.has(b.type) && a.type === "textbox");
 
 // After a block is dropped: blocks it covers are pushed down below it (and so on),
 // so nothing overlaps and the reading order (question numbers) matches what you see.

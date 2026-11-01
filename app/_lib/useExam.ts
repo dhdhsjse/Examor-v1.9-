@@ -264,7 +264,11 @@ export function useExam(initial: ExamDoc, t?: T) {
           const h = blockHeights(d).get(id) ?? 0;
           return moveSlotTo(d, id, y + h / 2);
         }
-        const moved = { ...d, blocks: d.blocks.map((b) => (b.id === id ? ({ ...b, layout: { ...b.layout, pageId, x, y } } as Block) : b)) };
+        // The block moved goes over the others (saved, so the PDF draws it on top too, as the page shows it).
+        const others = d.blocks.filter((b) => b.id !== id).map((b) => b.layout.z ?? 0);
+        const top = Math.max(0, ...others);
+        const z = (cur?.layout.z ?? 0) > top ? cur!.layout.z : top + 1;
+        const moved = { ...d, blocks: d.blocks.map((b) => (b.id === id ? ({ ...b, layout: { ...b.layout, pageId, x, y, z } } as Block) : b)) };
         const pageHeight = pageSize(d.pages.find((p) => p.id === pageId)).height;
         return { ...moved, blocks: pushDownOverlaps(moved.blocks, id, blockHeights(moved), pageHeight) };
       }),
@@ -279,6 +283,15 @@ export function useExam(initial: ExamDoc, t?: T) {
       // A header/footer goes from its settings: the page's own, or the document's (see deleteChrome).
       commit((d) => (tRef.current && deleteChrome(d, id, tRef.current)) || removeBlock(d, id));
       setSelectedId((cur) => (cur === id ? null : cur));
+    },
+    [commit],
+  );
+
+  // The eraser of the tool bar: the drawings and shapes it rubs go; `key` names the stroke of the eraser (one step of the undo).
+  const eraseBlocks = useCallback(
+    (ids: readonly string[], key: string) => {
+      commit((d) => ids.reduce((acc, id) => (acc.blocks.some((b) => b.id === id) ? removeBlock(acc, id) : acc), d), { key });
+      setSelectedId((cur) => (cur && ids.includes(cur) ? null : cur));
     },
     [commit],
   );
@@ -445,6 +458,7 @@ export function useExam(initial: ExamDoc, t?: T) {
     moveBlock,
     stepInBox,
     deleteBlock,
+    eraseBlocks,
     duplicateBlock,
     pasteBlock,
     addPage,

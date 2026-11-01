@@ -1,7 +1,7 @@
 "use client";
 
 import type { BlockPreset } from "@/app/_lib/blocks";
-import type { Block, BlockType, Lang } from "@/app/_lib/types";
+import type { Block, BlockType, ExamMeta, Lang } from "@/app/_lib/types";
 import TablePanel from "@/app/_components/table/TablePanel";
 import { HeaderEditor, ImageEditor, TextboxEditor, TextEditor } from "./ContentEditors";
 import { DividerEditor } from "./DividerEditor";
@@ -19,6 +19,7 @@ interface Props {
   onLatex: (latex: string) => void;
   onReplaceImage: () => void;
   examFont?: string;
+  meta?: ExamMeta; // the exam settings (an image caption's default font and size)
   onOpenTableStudio: (shape?: string) => void;
   keyboardOpen: boolean;
   onToggleKeyboard: () => void;
@@ -26,7 +27,7 @@ interface Props {
 }
 
 // Picks the right editor for the selected block type.
-export function ContentEditorSwitch({ block, number, lang, totalPoints, onChange, onLatex, onReplaceImage, examFont, onOpenTableStudio, keyboardOpen, onToggleKeyboard, onInsertBelow }: Props) {
+export function ContentEditorSwitch({ block, number, lang, totalPoints, onChange, onLatex, onReplaceImage, examFont, meta, onOpenTableStudio, keyboardOpen, onToggleKeyboard, onInsertBelow }: Props) {
   switch (block.type) {
     case "mcq":
       return <McqEditor b={block} onChange={onChange} />;
@@ -51,7 +52,7 @@ export function ContentEditorSwitch({ block, number, lang, totalPoints, onChange
     case "equation":
       return <EquationEditor b={block} onLatex={onLatex} keyboardOpen={keyboardOpen} onToggleKeyboard={onToggleKeyboard} lang={lang} onInsert={onInsertBelow} />;
     case "image":
-      return <ImageEditor b={block} lang={lang} onChange={onChange} onReplace={onReplaceImage} />;
+      return <ImageEditor b={block} lang={lang} meta={meta} onChange={onChange} onReplace={onReplaceImage} />;
     case "graph":
       return <GraphEditor b={block} onChange={onChange} />;
     case "divider":

@@ -3,7 +3,8 @@
 import { Fragment } from "react";
 import { Group, Image as KImage, Line, Rect, Shape } from "react-konva";
 import StudioShapes from "@/app/_components/shapes/StudioShapes";
-import { DEFAULT_ACCENT, layoutTable, layoutText, layoutTextbox, type ListMarker, type ParagraphBox } from "@/app/_lib/blockLayout";
+import { isRtl } from "@/app/_lib/i18n";
+import { DEFAULT_ACCENT, layoutImageCaption, layoutTable, layoutText, layoutTextbox, type ListMarker, type ParagraphBox } from "@/app/_lib/blockLayout";
 import { useImage } from "@/app/_lib/images";
 import { svgUrl } from "@/app/_lib/library";
 import { plainText, serializeRich } from "@/app/_lib/richText";
@@ -176,6 +177,13 @@ export function EquationView({ b }: { b: EquationBlock }) {
   return <Picture src={svgUrl(b.svg)} width={b.layout.width} height={b.layout.height} />;
 }
 
-export function ImageView({ b }: { b: ImageBlock }) {
-  return <Picture src={b.src} width={b.layout.width} height={b.layout.height} />;
+// A picture, and its caption under it.
+export function ImageView({ b, meta }: { b: ImageBlock; meta: ExamMeta }) {
+  const caption = layoutImageCaption(b, meta);
+  return (
+    <>
+      <Picture src={b.src} width={b.layout.width} height={b.layout.height} />
+      {caption && <RichText lines={caption.lines} x={caption.x} y={caption.y} width={caption.width} rtl={isRtl(meta.lang)} align={caption.align} />}
+    </>
+  );
 }

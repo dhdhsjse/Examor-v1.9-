@@ -28,8 +28,8 @@ import { preloadImages, readImageFile } from "@/app/_lib/images";
 import { sizingAfterResize } from "@/app/_lib/blockLayout";
 import { insertSnippet, snippetFor } from "@/app/_lib/textSnippets";
 import { canEmbed, newEmbedded } from "@/app/_lib/textboxSlots";
-import { drawInlineMath, inlineMathUrl } from "@/app/_lib/inlineMath";
-import { plainText } from "@/app/_lib/richText";
+import { drawInlineMath, inlineMathUrl, type InlineMath } from "@/app/_lib/inlineMath";
+import { isRich, parseRich, plainText } from "@/app/_lib/richText";
 import { docParagraphs, richFromDoc, textboxDoc } from "@/app/_lib/textboxDoc";
 import type { StyleMark } from "@/app/_lib/textboxEditor";
 import { BUILTIN_ASSETS, svgUrl, type Asset, type AssetKind } from "@/app/_lib/library";
@@ -621,10 +621,24 @@ export default function Editor() {
   // Draw a clean copy off-screen (fonts and pictures loaded first) and return its pages as images.
   const renderPages = async (m: ViewMode, pixelRatio: number, quality: number) => {
     const srcs = doc.blocks.flatMap((b) => (b.type === "image" ? [b.src] : b.type === "equation" && b.svg ? [svgUrl(b.svg)] : []));
-    // The formulas inside the text boxes: their drawings (made by MathJax first for those that keep none), so they are in the pages.
+    // The formulas written in the text — of the text boxes, and of every other block (questions, tables, headers…): their drawings
+    // (made by MathJax first for those that keep none), loaded before the copy is drawn, else the page is taken without them.
+    const mathIn = (v: unknown): InlineMath[] =>
+      typeof v === "string"
+        ? isRich(v)
+          ? parseRich(v).flatMap((r) => (r.style.math ? [r.style.math] : []))
+          : []
+        : Array.isArray(v)
+          ? v.flatMap(mathIn)
+          : v && typeof v === "object"
+            ? Object.values(v).flatMap(mathIn)
+            : [];
     const formulas = await Promise.all(
       doc.blocks
-        .flatMap((b) => (b.type === "textbox" ? docParagraphs(textboxDoc(b)).flatMap((p) => p.runs.flatMap((r) => (r.style.math ? [r.style.math] : []))) : []))
+        .flatMap((b) => [
+          ...(b.type === "textbox" ? docParagraphs(textboxDoc(b)).flatMap((p) => p.runs.flatMap((r) => (r.style.math ? [r.style.math] : []))) : []),
+          ...(b.type === "image" ? mathIn(b.caption) : b.type === "equation" ? [] : mathIn(b)),
+        ])
         .map((m) => inlineMathUrl(m) ?? drawInlineMath(m.latex).then((d) => d.url, () => "")),
     );
     await Promise.all([preloadImages([...srcs, ...formulas]), document.fonts.ready]);
@@ -723,6 +737,9 @@ export default function Editor() {
         // P: the Draw tool (again: the next of its brush, pencil and highlighter)
         if (tool === "draw") ink.cycle();
         setTool("draw");
+      } else if (!mod && !e.altKey && key === "e") {
+        // E: the eraser (again: back to Select)
+        setTool(tool === "eraser" ? "select" : "eraser");
       } else if (!mod && !e.altKey && (key === "r" || key === "o" || key === "l")) {
         // The shapes of the tool bar's Shapes menu (Shift+L: the arrow).
         drawShape(key === "r" ? "rect" : key === "o" ? "ellipse" : e.shiftKey ? "arrow" : "line");
@@ -919,6 +936,7 @@ export default function Editor() {
               onDrawBox={drawOnPage}
               ink={ink}
               onInk={drawInk}
+              onErase={exam.eraseBlocks}
               drawShape={tool === "shape" && shapeToDraw ? (shapeDef(shapeToDraw).line ? "line" : "box") : undefined}
               shapeToDraw={shapeToDraw}
               onPickShape={drawShape}

@@ -1,7 +1,7 @@
 "use client";
 
 import type Konva from "konva";
-import { useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { Group, Rect } from "react-konva";
 import { withHints } from "@/app/_lib/blocks";
 import { clickTargets, editRegions, type EditField } from "@/app/_lib/editRegions";
@@ -38,7 +38,15 @@ interface Props {
   textTool: boolean; // "T" tool: one click starts typing
   drawing: boolean; // a box is being drawn on the page (text box tool): blocks ignore the mouse
   typing?: boolean; // a text box being typed in: its editor shows the words, the page only its fill and border
-  onSelect: () => void;
+  erasable?: boolean; // the eraser is in hand and this block is a drawing or a shape: what it draws (not its box) catches the eraser
+  // Blocks over each other: the selected block takes the clicks even where another one is drawn over it. It is then put on top
+  // of the others but not seen ("ghost"), while a copy that ignores the mouse ("passive") draws it in its place in the stack.
+  ghost?: boolean;
+  passive?: boolean;
+  hovered?: boolean; // (passive copy) the mouse is over its ghost
+  onHover?: (hover: boolean) => void; // (ghost) tells its passive copy
+  // A click on the block (alt: Alt held, pick the block under it). Returns false when another block was picked instead.
+  onSelect: (alt?: boolean) => boolean;
   onDragStart: () => void;
   onDragMove: (x: number, y: number) => { x: number; y: number };
   onDragEnd: (x: number, y: number) => void;
@@ -78,7 +86,7 @@ function Content({ block: real, number, meta, mode, interactive, selected, total
       // An empty equation is only a hint on screen: it is not printed.
       return interactive || block.latex.trim() ? <EquationView b={block} /> : null;
     case "image":
-      return <ImageView b={block} />;
+      return <ImageView b={block} meta={meta} />;
     case "graph":
       return <GraphView b={block} />;
     case "shape":
@@ -98,12 +106,30 @@ const setCursor = (e: Konva.KonvaEventObject<MouseEvent>, cursor: string) => {
 // One block on the canvas: handles select, hover, drag and resize. Draws its content inside.
 export default function BlockNode(props: Props) {
   const { block, x, y, height, selected, interactive, textTool, drawing, onSelect, onDragMove, onDragEnd, onResize, onEdit } = props;
-  const [hover, setHover] = useState(false);
+  const [hoverHere, setHoverHere] = useState(false);
+  const hover = props.passive ? !!props.hovered : hoverHere;
+  const setHover = (h: boolean) => {
+    setHoverHere(h);
+    props.onHover?.(h);
+  };
   // Was the block already selected when the mouse went down? Then one click on a text types in it.
   const wasSelected = useRef(false);
+  // The click picked another block (Alt+click on blocks over each other): this one neither moves nor types.
+  const passedOn = useRef(false);
   const width = block.layout.width;
   const media = block.type === "image" || block.type === "equation" || block.type === "shape" || block.type === "divider";
   const moveCursor = textTool ? "text" : "move";
+  const groupRef = useRef<Konva.Group>(null);
+
+  // After a drag or a resize, the node is put back where the exam says the block is. React only moves it when x/y change, and
+  // a drop that lands where the block already was (pushed back, kept in its page…) changes nothing: the node would stay where
+  // the mouse left it, and the page would show the block somewhere the exam (and so the PDF) does not have it.
+  const [settled, setSettled] = useState(0);
+  useLayoutEffect(() => {
+    if (!settled) return;
+    const node = groupRef.current;
+    if (node && !node.isDragging() && (node.x() !== x || node.y() !== y)) node.position({ x, y });
+  }, [settled, x, y]);
 
   // Resizing scales the group; turn that scale into a real width/height. The drawn height is what was
   // scaled (a text box can be taller than it was made, to fit its text).
@@ -114,32 +140,49 @@ export default function BlockNode(props: Props) {
     node.scale({ x: 1, y: 1 });
     props.onResizing?.(null);
     onResize({ x: node.x(), y: node.y(), width: width * sx, height: height * sy });
+    setSettled((n) => n + 1);
   };
 
   return (
     <Group
-      id={block.id}
+      ref={groupRef}
+      id={props.passive ? undefined : block.id}
       x={x}
       y={y}
-      draggable={interactive && !textTool && !drawing}
-      listening={interactive && !drawing}
-      onMouseDown={() => {
+      opacity={props.ghost ? 0 : 1}
+      draggable={interactive && !textTool && !drawing && !props.passive}
+      listening={interactive && (!drawing || !!props.erasable) && !props.passive}
+      onMouseDown={(e) => {
+        if (props.erasable) return; // (the eraser rubs it, it does not pick it)
         wasSelected.current = selected;
+        passedOn.current = !onSelect(e.evt.altKey);
+      }}
+      onTap={() => {
+        passedOn.current = false;
         onSelect();
       }}
-      onTap={onSelect}
-      onDblClick={() => onEdit(null)}
+      onDblClick={() => {
+        if (!passedOn.current) onEdit(null);
+      }}
       // (the canvas draws the dragged block over the others: ExamCanvas's drawOrder)
-      onDragStart={() => props.onDragStart()}
+      onDragStart={(e) => {
+        if (passedOn.current) return e.target.stopDrag();
+        props.onDragStart();
+      }}
       onDragMove={(e) => e.target.position(onDragMove(e.target.x(), e.target.y()))}
-      onDragEnd={(e) => onDragEnd(e.target.x(), e.target.y())}
+      onDragEnd={(e) => {
+        onDragEnd(e.target.x(), e.target.y());
+        setSettled((n) => n + 1);
+      }}
       onTransform={(e) => props.onResizing?.({ x: e.target.x(), y: e.target.y(), width: width * e.target.scaleX(), height: height * e.target.scaleY() })}
       onTransformEnd={handleTransformEnd}
       onMouseEnter={(e) => {
+        if (props.erasable) return;
         setHover(true);
         setCursor(e, moveCursor);
       }}
       onMouseLeave={(e) => {
+        if (props.erasable) return;
         setHover(false);
         setCursor(e, "default");
       }}
@@ -153,12 +196,14 @@ export default function BlockNode(props: Props) {
         strokeWidth={1}
         dash={[4, 3]}
         cornerRadius={4}
+        listening={!props.erasable}
       />
       <Content block={block} number={props.number} meta={props.meta} mode={props.mode} interactive={interactive} selected={selected} totalPoints={props.totalPoints} typing={props.typing} />
 
       {/* Invisible areas on top of the texts: double-click, click a selected block (or click with
           the T tool) to type there. A text box types on the first click, anywhere inside it. */}
       {interactive &&
+        !props.erasable &&
         editRegions(withHints(block, props.meta.lang, { statement: selected }), props.number, props.meta, props.mode).map((r, k) => (
           <Rect
             key={`e${k}`}
@@ -170,11 +215,12 @@ export default function BlockNode(props: Props) {
             onMouseEnter={(e) => setCursor(e, textTool || selected || r.direct ? "text" : moveCursor)}
             onMouseLeave={(e) => setCursor(e, moveCursor)}
             onClick={(e) => {
-              if (!textTool && !wasSelected.current && !r.direct) return;
+              if (passedOn.current || (!textTool && !wasSelected.current && !r.direct)) return;
               e.cancelBubble = true;
               onEdit(r.field);
             }}
             onDblClick={(e) => {
+              if (passedOn.current) return;
               e.cancelBubble = true;
               onEdit(r.field);
             }}
@@ -183,6 +229,7 @@ export default function BlockNode(props: Props) {
 
       {/* Click a circle / box to set the correct answer */}
       {interactive &&
+        !props.erasable &&
         clickTargets(block, props.number, props.meta).map((t, k) => (
           <Rect
             key={`c${k}`}
@@ -193,7 +240,9 @@ export default function BlockNode(props: Props) {
             fill="transparent"
             onMouseEnter={(e) => setCursor(e, "pointer")}
             onMouseLeave={(e) => setCursor(e, moveCursor)}
-            onClick={() => props.onPatch(t.patch)}
+            onClick={() => {
+              if (!passedOn.current) props.onPatch(t.patch);
+            }}
           />
         ))}
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, ChevronDown, Circle, Keyboard, Minus, MoveUpRight, Square, Star, Triangle, Type } from "lucide-react";
+import { Check, ChevronDown, Circle, Eraser, Keyboard, Minus, MoveUpRight, Square, Star, Triangle, Type } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { InkTools } from "@/app/_lib/ink/useInkTools";
 import { useT } from "@/app/_lib/uiLang";
@@ -11,7 +11,8 @@ import DrawTools from "./DrawTools";
 // "textbox" = drag on a page to draw a text box (Insert → Text box); back to "select" once drawn.
 // "shape" = drag on a page to draw a shape: the one of the Shapes button of this bar, or the one chosen in Insert → Shapes.
 // "draw" = the brush, pencil or highlighter of the Draw button: a drag on a page draws a stroke (it stays in hand: a drawing is many).
-export type CanvasTool = "select" | "text" | "textbox" | "shape" | "draw";
+// "eraser" = a drag on a page rubs out the drawings and shapes it goes over (the other blocks stay: they are deleted as blocks).
+export type CanvasTool = "select" | "text" | "textbox" | "shape" | "draw" | "eraser";
 
 // The shapes of the Shapes button's menu, like Figma's (the whole gallery is in Insert → Shapes). `key` = its shortcut (Editor).
 export const QUICK_SHAPES: { id: string; label: string; key: string; Icon: typeof Square }[] = [
@@ -119,6 +120,16 @@ export default function ToolRail({ tool, onChange, shape, onPickShape, ink, keyb
 
       <button onClick={() => onChange("textbox")} aria-pressed={tool === "textbox"} title={tip("Text box — drag on the page to draw one", "B")} className={toolBtn(tool === "textbox")}>
         <Type aria-hidden />
+      </button>
+
+      <button
+        onClick={() => onChange(tool === "eraser" ? "select" : "eraser")}
+        aria-pressed={tool === "eraser"}
+        title={tip("Eraser — rub out drawings and shapes", "E")}
+        data-testid="eraser-tool"
+        className={toolBtn(tool === "eraser")}
+      >
+        <Eraser aria-hidden />
       </button>
 
       <span aria-hidden className="mx-0.5 h-5 w-px bg-line" />

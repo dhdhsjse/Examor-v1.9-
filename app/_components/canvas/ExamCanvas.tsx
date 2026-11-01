@@ -5,6 +5,7 @@ import { useEffect, useImperativeHandle, useMemo, useRef, useState, type RefObje
 import { Layer, Line, Rect, Stage, Transformer } from "react-konva";
 import { InkStroke } from "@/app/_components/shapes/InkGraphic";
 import { InkCapture, finishInk, type InkPoint, type InkSettings, type InkTool } from "@/app/_lib/ink/engine";
+import { ERASER_CURSOR, ERASER_RADIUS, eraserPoints } from "@/app/_lib/ink/eraser";
 import { DEFAULT_MARGINS, MAX_MARGIN_MM, MIN_MARGIN_MM, mmToPx, pxToMm } from "@/app/_lib/a4";
 import { questionNumbers, totalPoints as sumPoints } from "@/app/_lib/blocks";
 import type { EditField } from "@/app/_lib/editRegions";
@@ -70,6 +71,10 @@ interface Props {
   // The Draw tool (brush, pencil, highlighter): a drag on a page draws a stroke, over the blocks (they let the mouse through).
   ink?: InkInHand | null;
   onInk?: (stroke: DrawnInk) => void;
+  // The eraser: a drag on a page rubs out the drawings and shapes it goes over (the shape blocks; the others let the mouse through).
+  // `key` names the stroke of the eraser: one step of the undo.
+  eraser?: boolean;
+  onErase?: (ids: string[], key: string) => void;
   // A resize handle of the selected block is pressed (the text box editor stays open for it), and where
   // the block is while it is resized (stage = page stack coordinates; null = done).
   onHandleDown?: () => void;
@@ -130,10 +135,12 @@ export default function ExamCanvas(props: Props) {
     const withOwn = (b: Block) => [b, ...(inBox.get(b.id) ?? [])];
     const loose = blocks.filter((b) => !b.meta?.slot || !ids.has(b.meta.slot)); // (a block whose box is gone is drawn on its own)
     // Two layers: text, questions, tables, text boxes… below; shapes, images, graphs and equations always over them
-    // (drawn on a page, they are never hidden by a text box). In each, the last block dragged is on top.
+    // (drawn on a page, they are never hidden by a text box). In each, the saved stacking order (layout.z, raised when a block is
+    // dropped — so the PDF stacks them as the page does), then the block being dragged right now over all of them.
     const layer = (list: Block[]) => {
       const lifted = list.find((b) => b.id === liftedId);
-      return [...list.filter((b) => b !== lifted).flatMap(withOwn), ...(lifted ? withOwn(lifted) : [])];
+      const rest = list.filter((b) => b !== lifted).sort((a, c) => (a.layout.z ?? 0) - (c.layout.z ?? 0)); // (stable: same z → exam's order)
+      return [...rest.flatMap(withOwn), ...(lifted ? withOwn(lifted) : [])];
     };
     return [...layer(loose.filter((b) => !ON_TOP.has(b.type))), ...layer(loose.filter((b) => ON_TOP.has(b.type)))];
   }, [blocks, inBox, liftedId]);
@@ -141,24 +148,62 @@ export default function ExamCanvas(props: Props) {
   const { width, height } = stackSize(boxes);
   const pageIndex = new Map(pages.map((p, i) => [p.id, i]));
   const selected = interactive ? blocks.find((b) => b.id === selectedId) : undefined;
+
+  // Blocks over each other (a text under a photo…): the selected block takes the clicks even where another block is drawn over
+  // it, so it can be moved and typed in there. Its node goes over all the others, unseen ("ghost"), and a copy of it that lets
+  // the mouse through ("passive") is drawn in its place in the stack, so the page looks the same. While it is dragged or resized
+  // the node itself is shown (over the others, as a dragged block already is). A text box comes up with the blocks of its text.
+  const [resizingId, setResizingId] = useState<string | null>(null);
+  const [ghostHover, setGhostHover] = useState(false);
+  const raised = !!selected && (liftedId === selected.id || resizingId === selected.id);
+  const ghostIds = useMemo(() => {
+    if (!selected) return new Set<string>();
+    const inABox = !!selected.meta?.slot && blocks.some((o) => o.id === selected.meta?.slot);
+    return new Set([selected.id, ...(inABox ? [] : (inBox.get(selected.id) ?? []).map((o) => o.id))]);
+  }, [selected, blocks, inBox]);
+  const shown = drawOrder.filter((b) => b.id !== props.hiddenId);
+
+  // Alt+click: the block under the one clicked (again: the next one down, then back to the top one), as the page stacks them.
+  const pick = (b: Block, alt: boolean) => {
+    let id = b.id;
+    const p = alt ? layerRef.current?.getStage()?.getPointerPosition() : null;
+    if (p) {
+      const under = shown
+        .filter((o) => {
+          const page = boxes[pageIndex.get(o.layout.pageId) ?? 0];
+          const x0 = page.left + o.layout.x;
+          const y0 = page.top + o.layout.y;
+          return p.x >= x0 && p.x <= x0 + o.layout.width && p.y >= y0 && p.y <= y0 + (heights.get(o.id) ?? 0);
+        })
+        .reverse(); // top first
+      const at = under.findIndex((o) => o.id === selectedId);
+      const from = at >= 0 ? at : under.findIndex((o) => o.id === b.id);
+      if (under.length > 1) id = under[(from + 1) % under.length].id;
+    }
+    props.onSelect?.(id);
+    return id === b.id;
+  };
   const guidesOn = showGuides && interactive;
   const edit = interactive ? props.marginEdit : null;
   const preview = edit?.margins;
   const totalPoints = useMemo(() => sumPoints(blocks), [blocks]);
   const inking = interactive && !!props.ink;
   const drawing = interactive && (!!props.drawBox || inking);
+  const erasing = interactive && !!props.eraser;
   const [draft, setDraft] = useState<DrawDraft | null>(null);
   const stopDraw = useRef<(() => void) | null>(null);
   const onDrawBox = useRef(props.onDrawBox); // the latest one, for the release of a box drawn meanwhile
   const drawShape = useRef(props.drawShape);
   const ink = useRef(props.ink);
   const onInk = useRef(props.onInk);
+  const onErase = useRef(props.onErase);
   const zoomRef = useRef(zoom);
   useEffect(() => {
     onDrawBox.current = props.onDrawBox;
     drawShape.current = props.drawShape;
     ink.current = props.ink;
     onInk.current = props.onInk;
+    onErase.current = props.onErase;
     zoomRef.current = zoom;
   });
   // The stroke being drawn is shown on a layer of its own (only it is redrawn while the mouse moves).
@@ -184,7 +229,7 @@ export default function ExamCanvas(props: Props) {
   useEffect(() => {
     const tr = trRef.current;
     if (!tr) return;
-    const node = selected && !drawing ? tr.getStage()?.findOne(`#${selected.id}`) : undefined;
+    const node = selected && !drawing && !erasing ? tr.getStage()?.findOne(`#${selected.id}`) : undefined;
     tr.nodes(node ? [node] : []);
     tr.forceUpdate();
     tr.getLayer()?.batchDraw();
@@ -245,6 +290,7 @@ export default function ExamCanvas(props: Props) {
 
   // Drop: save which page the block landed on and its position on that page.
   const handleDragEnd = (b: Block, x: number, y: number) => {
+    setLiftedId(null); // from now on its saved place in the stack (layout.z, raised by the move) keeps it on top
     const owner = b.meta?.slot ? blocks.find((o) => o.id === b.meta?.slot) : undefined;
     if (owner) {
       // In its box: it takes its new place in the text (or none), and the node goes back to its room until the page draws it there.
@@ -283,10 +329,12 @@ export default function ExamCanvas(props: Props) {
     const shape = b.type === "shape";
     const graph = b.type === "graph" || b.type === "textbox" || shape; // graphs, text boxes and shapes can change shape freely
     const h = graph ? clamp(r.height, b.type === "textbox" ? 30 : shape ? (isLine(b) ? 0 : MIN_SHAPE_SIZE) : 80, page.height) : ratio ? width / ratio : (heights.get(b.id) ?? 0);
+    // (an image's caption sits under its picture: keep it on the page too)
+    const below = b.type === "image" ? Math.max(0, (heights.get(b.id) ?? 0) - b.layout.height) : 0;
     props.onResize?.(b.id, {
       pageId: pages[i].id,
       x: clamp(r.x - page.left, 0, page.width - width),
-      y: clamp(r.y - page.top, 0, page.height - h),
+      y: clamp(r.y - page.top, 0, page.height - h - below),
       width,
       ...(ratio || graph ? { height: h } : {}),
     });
@@ -297,11 +345,11 @@ export default function ExamCanvas(props: Props) {
   useEffect(() => {
     const container = layerRef.current?.getStage()?.container();
     if (container) {
-      container.style.cursor = inking && props.ink ? inkCursor(props.ink, zoom) : drawing ? "crosshair" : "";
-      container.style.touchAction = inking ? "none" : ""; // (a pen or a finger draws instead of scrolling)
+      container.style.cursor = inking && props.ink ? inkCursor(props.ink, zoom) : erasing ? ERASER_CURSOR : drawing ? "crosshair" : "";
+      container.style.touchAction = inking || erasing ? "none" : ""; // (a pen or a finger draws / rubs instead of scrolling)
     }
-    if (!drawing) stopDraw.current?.();
-  }, [drawing, inking, props.ink, zoom]);
+    if (!drawing && !erasing) stopDraw.current?.();
+  }, [drawing, erasing, inking, props.ink, zoom]);
   useEffect(() => () => stopDraw.current?.(), []);
 
   // Mouse down on a page with the text box tool: follow the mouse (even outside the canvas) within that
@@ -412,6 +460,38 @@ export default function ExamCanvas(props: Props) {
     show();
   };
 
+  // The eraser down on a page: every drawing or shape it goes over goes (the shape blocks: the others let the mouse through),
+  // until it is let go (one step of the undo).
+  const startErase = (stage: Konva.Stage, e: PointerEvent) => {
+    const key = `erase:${Date.now()}`;
+    const erasable = new Set(blocks.filter((b) => b.type === "shape").map((b) => b.id));
+    const gone = new Set<string>();
+    let last: { x: number; y: number } | null = null;
+    const rub = (ev: PointerEvent) => {
+      stage.setPointersPositions(ev);
+      const p = stage.getPointerPosition();
+      if (!p) return;
+      const before = gone.size;
+      for (const q of eraserPoints(last ?? p, p, ERASER_RADIUS / zoomRef.current)) {
+        const id = stage.getIntersection(q)?.findAncestor((n: Konva.Node) => erasable.has(n.id()), true)?.id();
+        if (id) gone.add(id);
+      }
+      last = p;
+      if (gone.size > before) onErase.current?.([...gone], key);
+    };
+    const stop = () => {
+      window.removeEventListener("pointermove", rub);
+      window.removeEventListener("pointerup", stop);
+      window.removeEventListener("pointercancel", stop);
+      stopDraw.current = null;
+    };
+    window.addEventListener("pointermove", rub);
+    window.addEventListener("pointerup", stop);
+    window.addEventListener("pointercancel", stop);
+    stopDraw.current = stop;
+    rub(e);
+  };
+
   const media = selected?.type === "image" || selected?.type === "equation";
   const corners = media || selected?.type === "graph";
   const freeBox = selected?.type === "textbox" || selected?.type === "shape"; // a text box or a shape: every side and corner
@@ -425,6 +505,13 @@ export default function ExamCanvas(props: Props) {
       // text box tool: starts drawing a box, blocks let the mouse through then).
       // A drawing tool starts its stroke on pointer down (a mouse, a pen with its pressure, or a finger).
       onPointerDown={(e) => {
+        if (erasing && e.evt.button === 0) {
+          e.evt.preventDefault(); // (no text selection while rubbing)
+          props.onSelect?.(null);
+          const stage = e.target.getStage();
+          if (stage) startErase(stage, e.evt);
+          return;
+        }
         if (!inking || e.evt.button !== 0 || e.target.name() !== "paper") return;
         const stage = e.target.getStage();
         stage?.setPointersPositions(e.evt);
@@ -461,9 +548,17 @@ export default function ExamCanvas(props: Props) {
           />
         ))}
 
-        {drawOrder.filter((b) => b.id !== props.hiddenId).map((b) => (
+        {/* One list (keys kept), so a block that becomes selected keeps its node: a drag started on it goes on */}
+        {[
+          ...shown.flatMap((b) => (ghostIds.has(b.id) ? (raised ? [] : [{ b, passive: true }]) : [{ b, passive: false }])),
+          ...shown.filter((b) => ghostIds.has(b.id)).map((b) => ({ b, passive: false })),
+        ].map(({ b, passive }) => (
           <BlockNode
-            key={b.id}
+            key={passive ? `passive:${b.id}` : b.id}
+            passive={passive}
+            ghost={!passive && ghostIds.has(b.id) && !raised}
+            hovered={passive && ghostHover}
+            onHover={ghostIds.has(b.id) && !passive ? setGhostHover : undefined}
             block={b}
             x={boxes[pageIndex.get(b.layout.pageId) ?? 0].left + b.layout.x}
             y={boxes[pageIndex.get(b.layout.pageId) ?? 0].top + b.layout.y}
@@ -476,16 +571,20 @@ export default function ExamCanvas(props: Props) {
             selected={b.id === selectedId}
             interactive={interactive}
             textTool={!!props.textTool}
-            drawing={drawing}
+            drawing={drawing || erasing}
+            erasable={erasing && b.type === "shape"}
             typing={b.id === props.typingId}
-            onSelect={() => props.onSelect?.(b.id)}
+            onSelect={(alt) => pick(b, !!alt)}
             onDragStart={() => handleDragStart(b)}
             onEdit={(field) => props.onEdit?.(b.id, field)}
             onPatch={(patch) => props.onPatch?.(b.id, patch)}
             onDragMove={(x, y) => handleDragMove(b, x, y)}
             onDragEnd={(x, y) => handleDragEnd(b, x, y)}
             onResize={(r) => handleResize(b, r)}
-            onResizing={(r) => props.onResizing?.(b.id, r)}
+            onResizing={(r) => {
+              setResizingId(r ? b.id : null);
+              props.onResizing?.(b.id, r);
+            }}
           />
         ))}
 

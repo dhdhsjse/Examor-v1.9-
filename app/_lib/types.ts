@@ -78,6 +78,9 @@ export interface BlockLayout {
   y: number;
   width: number;
   height: number;
+  // Stacking order among the blocks of its layer (higher = drawn over). Set when the block is dragged, so the
+  // last block moved stays on top — on screen and in the PDF alike. Missing = 0 (then the exam's order decides).
+  z?: number;
 }
 
 // Font of a whole block (missing = the exam's default font).
@@ -260,6 +263,21 @@ export interface ImageBlock extends BlockBase {
   drawing?: MoleculeGraph; // a drawing made by hand in the drawing Studio: `src` is its picture, redrawn on edit
   graphStudio?: GraphConfig; // a graph paper from the Graph Studio: `src` is its picture, redrawn on edit
   circuitStudio?: CircuitConfig; // a circuit from the Circuit Studio: `src` is its picture, redrawn on edit
+  // Text printed under the picture (a description, a legend, a source…), rich text. `layout.height` stays the picture's own
+  // height: the caption is added below it (blockHeight).
+  caption?: string;
+  captionStyle?: CaptionStyle; // missing = italic, a bit smaller than the exam font, dark grey, centered
+}
+
+// The look of an image's caption (its own small toolbar in the image properties). Each missing value = the default.
+export interface CaptionStyle {
+  family?: string; // one of FONT_CHOICES (missing = the exam's font)
+  size?: number; // px
+  color?: string;
+  bold?: boolean;
+  italic?: boolean; // missing = true
+  underline?: boolean;
+  align?: "left" | "center" | "right"; // missing = "center"
 }
 
 // A table (Insert → Table, or the Table Studio). `cells` is the text of each cell, as typed (a formula as a formula); everything else about

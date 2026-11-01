@@ -76,6 +76,7 @@ interface Props {
   onPickShape: (shape: string) => void; // the Shapes button of the tool bar: draw this shape
   ink: InkTools; // the Draw button's brush, pencil and highlighter
   onInk: (stroke: DrawnInk) => void; // a stroke drawn on a page with one of them
+  onErase: (ids: readonly string[], key: string) => void; // the eraser rubbed out these drawings / shapes (`key`: one stroke of it)
   onAddPage: () => void;
   onDeletePage: (pageId: string) => void;
   onActivePageChange: (index: number) => void;
@@ -371,6 +372,8 @@ export default function Workspace(props: Props) {
                     onDrawBox={props.onDrawBox}
                     ink={inkInHand}
                     onInk={props.onInk}
+                    eraser={props.tool === "eraser"}
+                    onErase={props.onErase}
                     onHandleDown={() => {
                       handleHeld.current = true;
                       window.addEventListener("mouseup", () => setTimeout(() => (handleHeld.current = false)), { once: true });

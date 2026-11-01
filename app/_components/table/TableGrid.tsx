@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, type ClipboardEvent, type CSSProperties, type KeyboardEvent, type MouseEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ClipboardEvent, type CSSProperties, type KeyboardEvent, type MouseEvent, type ReactNode } from "react";
+import type { TableLayout } from "@/app/_lib/blockLayout";
 import RichEditable, { type RichHandle } from "@/app/_components/rich/RichEditable";
 import { fontStack } from "@/app/_lib/fonts";
 import { plainText } from "@/app/_lib/richText";
@@ -71,7 +72,12 @@ interface Props {
   /** The font of the exam, for the cells that have none of their own and a table without a font */
   examFont?: string;
   testId?: string;
+  /** The Studio: the cells at the sizes the page draws them (its columns, rows and text, scaled to fill the area), with `overlay`
+   *  (what is drawn over the table) on top of them, at the same scale */
+  page?: { layout: TableLayout; width: number; overlay?: (scale: number) => ReactNode };
 }
+
+const PAGE_GUTTER = 32; // px, around the table drawn at the page's sizes
 
 type Edit = { r: number; c: number; draft: string; from: "cell" | "bar" };
 
@@ -79,7 +85,7 @@ type Edit = { r: number; c: number; draft: string; from: "cell" | "bar" };
 // typed in, copied, pasted (also from Excel or Google Sheets), filled by dragging the little square of the selection, merged… The cells show what
 // the page will show (a formula's value, formatted); the cell being typed in shows what was typed. A table with formulas can be
 // pointed at: with "=" typed, a click on a cell writes its name.
-export default function TableGrid({ table, lang, sel, onSelect, onChange, onUndo, onRedo, compact, maxHeight, actions, examFont, testId = "table-grid" }: Props) {
+export default function TableGrid({ table, lang, sel, onSelect, onChange, onUndo, onRedo, compact, maxHeight, actions, examFont, testId = "table-grid", page }: Props) {
   const t = useT();
   const textRtl = lang === "ar"; // the direction of the text (the exam's)
   const rtl = tableMirrored(table, textRtl); // the first column is on the right
@@ -102,6 +108,18 @@ export default function TableGrid({ table, lang, sel, onSelect, onChange, onUndo
   const minH = compact ? 24 : 28;
 
   const raw = table.cells[active.r]?.[active.c] ?? "";
+
+  // At the page's sizes: how much bigger than the page the table is drawn, to fill the width of the area.
+  const [room, setRoom] = useState(0);
+  const atPageSize = !!page;
+  useEffect(() => {
+    const el = grid.current;
+    if (!atPageSize || !el) return;
+    const ro = new ResizeObserver(() => setRoom(el.clientWidth));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [atPageSize]);
+  const scale = page && room > 0 ? clampTo((room - HEAD_W - PAGE_GUTTER) / page.width, 0.5, 2) : 1;
 
   // ---- typing in a cell ----
 
@@ -266,7 +284,8 @@ export default function TableGrid({ table, lang, sel, onSelect, onChange, onUndo
     const height = el.getBoundingClientRect().height;
     const move = (m: globalThis.MouseEvent) => {
       const heights = Array.from({ length: rows }, (_, i) => table.rowHeights?.[i] ?? 0);
-      heights[r] = Math.max(minH, Math.round(height + m.clientY - start));
+      // (at the page's sizes the row is drawn `scale` times bigger than the page's pixels it keeps)
+      heights[r] = page ? Math.max(1, Math.round((height + m.clientY - start) / scale)) : Math.max(minH, Math.round(height + m.clientY - start));
       onChange({ rowHeights: heights }, "rowheights");
     };
     const up = () => {
@@ -388,7 +407,22 @@ export default function TableGrid({ table, lang, sel, onSelect, onChange, onUndo
 
   // ---- what is drawn ----
 
-  const tracks = (table.colWidths?.length === cols ? table.colWidths : Array.from({ length: cols }, () => 1)).map((w) => `minmax(${compact ? 52 : 70}px, ${w}fr)`).join(" ");
+  // At the page's sizes, every column and row is as wide and high as the page draws it (times `scale`), so what is drawn over the
+  // table lands on the same cells as on the page; otherwise the columns share the width and the rows fit their text.
+  const tracks = page
+    ? page.layout.colW.map((w) => `${w * scale}px`).join(" ")
+    : (table.colWidths?.length === cols ? table.colWidths : Array.from({ length: cols }, () => 1)).map((w) => `minmax(${compact ? 52 : 70}px, ${w}fr)`).join(" ");
+  const rowTracks = page ? ` ${page.layout.rows.map((row) => `${row.height * scale}px`).join(" ")}` : "";
+  const body = page?.layout.F.body;
+  // (the page's text: its size, its line spacing and the room around it in a cell, see blockLayout's layoutTableExt)
+  const pageText = (size: number | undefined): CSSProperties =>
+    body
+      ? {
+          fontSize: (size ?? body.font.size) * scale,
+          lineHeight: `${(size && size !== body.font.size ? Math.round(size * (20 / 14)) : body.line) * scale}px`,
+          padding: `${4 * scale}px ${6 * scale}px`,
+        }
+      : {};
   const inRange = (r: number, c: number) => hasSel && r >= range.r0 && r <= range.r1 && c >= range.c0 && c <= range.c1;
   const fillBox: CellRange | null = fill ? { r0: Math.min(range.r0, fill.to.r), r1: Math.max(range.r1, fill.to.r), c0: Math.min(range.c0, fill.to.c), c1: Math.max(range.c1, fill.to.c) } : null;
 
@@ -409,7 +443,7 @@ export default function TableGrid({ table, lang, sel, onSelect, onChange, onUndo
       const style: CSSProperties = {
         gridRow: `${r + 2} / span ${rs}`,
         gridColumn: `${c + 2} / span ${cs}`,
-        minHeight: Math.max(minH, table.rowHeights?.[r] ?? 0),
+        minHeight: page ? undefined : Math.max(minH, table.rowHeights?.[r] ?? 0),
         background: selected && !isActive ? `color-mix(in srgb, ${look.fill ?? "#ffffff"} 80%, ${ACCENT} 20%)` : (look.fill ?? "#ffffff"),
         direction: textRtl ? "rtl" : "ltr",
         color: look.color ?? INK,
@@ -425,6 +459,7 @@ export default function TableGrid({ table, lang, sel, onSelect, onChange, onUndo
         outline: isActive ? `2px solid ${ACCENT}` : inFill ? `1px dashed ${ACCENT}` : undefined,
         outlineOffset: isActive ? -2 : -1,
         zIndex: isActive ? 2 : undefined,
+        ...pageText(look.size),
       };
       // each cell draws the edge after it (its end side) and the first column the edge before it: an edge is drawn once. The grid reads right to left in Arabic.
       const end = edge(vEdgeShown(table, cols, c + cs, r));
@@ -563,7 +598,17 @@ export default function TableGrid({ table, lang, sel, onSelect, onChange, onUndo
         className="min-h-0 flex-1 overflow-auto bg-white outline-none focus-visible:ring-2 focus-visible:ring-indigo-300 focus-visible:ring-inset"
         style={{ maxHeight }}
       >
-        <div className="grid w-full" style={{ gridTemplateColumns: `${HEAD_W}px ${tracks}`, gridTemplateRows: `${HEAD_H}px` }}>
+        <div
+          className={page ? "relative mx-auto grid" : "grid w-full"}
+          style={{ gridTemplateColumns: `${HEAD_W}px ${tracks}`, gridTemplateRows: `${HEAD_H}px${rowTracks}`, width: page ? HEAD_W + page.width * scale : undefined }}
+        >
+          {/* what is drawn over the table (the Studio's drawings and shapes), on the cells: under the letters and numbers that stay
+              in view while scrolling. It lets the mouse through to the cells except where it has something to catch. */}
+          {page?.overlay && (
+            <div className="pointer-events-none absolute z-[5]" style={{ top: HEAD_H, insetInlineStart: HEAD_W }}>
+              {page.overlay(scale)}
+            </div>
+          )}
           <div className="sticky top-0 z-20 cursor-pointer" style={{ ...head(false), gridRow: 1, gridColumn: 1 }} onMouseDown={(e) => pickHeader("all", 0, e)} title={t("Select all")} />
           {Array.from({ length: cols }, (_, c) => {
             const on = hasSel && range.c0 <= c && c <= range.c1 && range.r0 === 0 && range.r1 === rows - 1;
@@ -592,7 +637,7 @@ export default function TableGrid({ table, lang, sel, onSelect, onChange, onUndo
                 key={`n${r}`}
                 data-rowhead={r}
                 className="sticky start-0 z-10 grid cursor-pointer place-items-center select-none"
-                style={{ ...head(on), gridRow: r + 2, gridColumn: 1, minHeight: Math.max(minH, table.rowHeights?.[r] ?? 0) }}
+                style={{ ...head(on), gridRow: r + 2, gridColumn: 1, minHeight: page ? undefined : Math.max(minH, table.rowHeights?.[r] ?? 0) }}
                 onMouseDown={(e) => pickHeader("row", r, e)}
                 onContextMenu={(e) => {
                   e.preventDefault();

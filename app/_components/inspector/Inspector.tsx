@@ -86,6 +86,7 @@ export default function Inspector(props: Props) {
         onLatex={(latex) => props.onLatex(block, latex)}
         onReplaceImage={() => props.onReplaceImage(block.id)}
         examFont={props.meta.fontFamily}
+        meta={props.meta}
         onOpenTableStudio={props.onOpenTableStudio}
       />
       {hasFontControls(block) && <BlockFontControls b={block} meta={props.meta} onChange={(patch, field) => props.onChange(block.id, patch, field)} />}
@@ -174,6 +175,7 @@ function ExamSettings({ meta, hasHeader, onMeta, onChangeTemplate }: Props) {
             <p>{t("Ctrl+wheel or Ctrl +/− — zoom · Ctrl+0 — fit")}</p>
             <p>{t("Space + drag — move around the page")}</p>
             <p>{t("Click a selected block's text — type there")}</p>
+            <p>{t("Alt+click — select the block underneath")}</p>
             <p>{t("T — text tool · V — select tool")}</p>
             <p>{t("B — draw a text box · Esc — stop")}</p>
           </div>
