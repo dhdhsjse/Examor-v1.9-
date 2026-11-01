@@ -8,7 +8,7 @@ import ShapeDrawSurface from "@/app/_components/shapes/ShapeDrawSurface";
 import StudioShapes, { type ShapePatch } from "@/app/_components/shapes/StudioShapes";
 import { fontStack } from "@/app/_lib/fonts";
 import { InkCapture, finishInk, inkToShape, type InkPoint } from "@/app/_lib/ink/engine";
-import { ERASER_CURSOR, ERASER_RADIUS, eraserPoints } from "@/app/_lib/ink/eraser";
+import { eraserCursor, eraserPoints, type EraserSettings } from "@/app/_lib/ink/eraser";
 import type { InkTools } from "@/app/_lib/ink/useInkTools";
 import { DEFAULT_FONT_SIZE, DEFAULT_TEXT_COLOR, FREEHAND_ID, SHAPE_FONT, newShapeId, newShapeItem, type DrawnBox, type ShapeItem, type ShapeStyle } from "@/app/_lib/shapes";
 
@@ -39,8 +39,12 @@ type Props = {
   onSelect: (id: string | null) => void;
   onChange: (id: string, patch: ShapePatch, key: string) => void;
   onAdd: (item: ShapeItem) => void;
-  /** The shapes rubbed out so far by one stroke of the eraser (`gesture` names it: one step of the undo) */
+  /** How the eraser rubs and how big it is */
+  eraser: EraserSettings;
+  /** The shapes rubbed out so far by one stroke of the stroke eraser (`gesture` names it: one step of the undo) */
   onErase: (ids: ReadonlySet<string>, gesture: string) => void;
+  /** The real eraser went along `path` (page px of the table, `radius` around it): the drawings it touches are cut there */
+  onEraseInk: (path: { x: number; y: number }[], radius: number, gesture: string) => void;
   onEdit: (id: string | null) => void;
 };
 
@@ -49,7 +53,7 @@ type Props = {
 // pencil and highlighter of the page, the shapes, text boxes and the eraser. With the Select tool it lets the mouse through to the
 // cells, except over a shape (it is then picked, moved, turned…); with any other tool it takes the mouse everywhere on the table.
 export default function TableDrawingLayer(props: Props) {
-  const { width, rowsHeight, scale: s, shapes, tool, shapeKind, ink, textStyle, selectedId, editingId, onSelect, onChange, onAdd, onErase, onEdit } = props;
+  const { width, rowsHeight, scale: s, shapes, tool, shapeKind, ink, eraser, textStyle, selectedId, editingId, onSelect, onChange, onAdd, onErase, onEraseInk, onEdit } = props;
   const stageRef = useRef<Konva.Stage>(null);
   const layerRef = useRef<Konva.Layer>(null);
   const [over, setOver] = useState(false); // (the Select tool) the mouse is over a shape or a handle
@@ -135,12 +139,18 @@ export default function TableDrawingLayer(props: Props) {
       stage.setPointersPositions(ev);
       const p = stage.getPointerPosition();
       if (!p) return;
+      const from = last ?? p;
+      last = p;
+      if (eraser.mode === "partial") {
+        // the real eraser: the way it went, in the table's page px (the stage is drawn `s` times bigger)
+        onEraseInk([from, p].map((q) => ({ x: q.x / s, y: q.y / s })), eraser.size / 2 / s, gesture);
+        return;
+      }
       const before = gone.size;
-      for (const q of eraserPoints(last ?? p, p, ERASER_RADIUS)) {
+      for (const q of eraserPoints(from, p, eraser.size / 2)) {
         const id = stage.getIntersection(q)?.findAncestor((n: Konva.Node) => n.id().startsWith("shape-"), true)?.id();
         if (id) gone.add(id.slice("shape-".length));
       }
-      last = p;
       if (gone.size > before) onErase(new Set(gone), gesture);
     };
     const release = () => {
@@ -160,7 +170,7 @@ export default function TableDrawingLayer(props: Props) {
   };
 
   const editing = shapes.find((sh) => sh.id === editingId);
-  const cursor = tool === "eraser" ? ERASER_CURSOR : selecting ? undefined : "crosshair";
+  const cursor = tool === "eraser" ? eraserCursor(eraser.size) : selecting ? undefined : "crosshair";
   const box: CSSProperties = { width: width * s, height: height * s, cursor, pointerEvents: selecting && !over ? "none" : "auto" };
 
   return (
@@ -200,7 +210,7 @@ export default function TableDrawingLayer(props: Props) {
             shapes={editing ? shapes.map((sh) => (sh.id === editing.id ? { ...sh, text: undefined } : sh)) : shapes}
             selectedId={selectedId}
             interactive={selecting}
-            hittable={tool === "eraser"}
+            hittable={tool === "eraser" && eraser.mode === "stroke"}
             scale={s}
             onSelect={onSelect}
             onChange={onChange}

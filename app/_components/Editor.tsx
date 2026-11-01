@@ -52,6 +52,7 @@ import type { DrawnBox, DrawnInk } from "./canvas/ExamCanvas";
 import { FREEHAND_ID } from "@/app/_lib/shapes";
 import { inkToShape } from "@/app/_lib/ink/engine";
 import { useInkTools } from "@/app/_lib/ink/useInkTools";
+import { useEraserTool } from "@/app/_lib/ink/useEraserTool";
 import type { CanvasTool } from "./workspace/ToolRail";
 import type { OpenedTarget } from "./math-keyboard/FloatingKeyboard";
 import Workspace, { type Editing } from "./workspace/Workspace";
@@ -132,6 +133,7 @@ export default function Editor() {
   const [tool, setTool] = useState<CanvasTool>("select");
   const [shapeToDraw, setShapeToDraw] = useState<string | null>(null); // (Insert → Shapes: what the Shapes tool draws)
   const ink = useInkTools(); // the Draw tool: its brush, pencil and highlighter and how each draws (kept between sessions)
+  const eraser = useEraserTool(); // the Eraser: how it rubs (parts of the drawings, or whole ones) and how big it is (kept between sessions)
   const [editing, setEditing] = useState<Editing | null>(null);
   const [textEditor, setTextEditor] = useState<TextEditor | null>(null); // Tiptap editor of the text box being typed in
   const [session, setSession] = useState(0); // +1 for each new/opened exam (resets the zoom)
@@ -936,7 +938,9 @@ export default function Editor() {
               onDrawBox={drawOnPage}
               ink={ink}
               onInk={drawInk}
+              eraser={eraser}
               onErase={exam.eraseBlocks}
+              onEraseInk={exam.eraseInk}
               drawShape={tool === "shape" && shapeToDraw ? (shapeDef(shapeToDraw).line ? "line" : "box") : undefined}
               shapeToDraw={shapeToDraw}
               onPickShape={drawShape}

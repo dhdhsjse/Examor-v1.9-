@@ -5,7 +5,7 @@ import { useEffect, useImperativeHandle, useMemo, useRef, useState, type RefObje
 import { Layer, Line, Rect, Stage, Transformer } from "react-konva";
 import { InkStroke } from "@/app/_components/shapes/InkGraphic";
 import { InkCapture, finishInk, type InkPoint, type InkSettings, type InkTool } from "@/app/_lib/ink/engine";
-import { ERASER_CURSOR, ERASER_RADIUS, eraserPoints } from "@/app/_lib/ink/eraser";
+import { eraserCursor, eraserPoints, type EraserSettings } from "@/app/_lib/ink/eraser";
 import { DEFAULT_MARGINS, MAX_MARGIN_MM, MIN_MARGIN_MM, mmToPx, pxToMm } from "@/app/_lib/a4";
 import { questionNumbers, totalPoints as sumPoints } from "@/app/_lib/blocks";
 import type { EditField } from "@/app/_lib/editRegions";
@@ -71,10 +71,12 @@ interface Props {
   // The Draw tool (brush, pencil, highlighter): a drag on a page draws a stroke, over the blocks (they let the mouse through).
   ink?: InkInHand | null;
   onInk?: (stroke: DrawnInk) => void;
-  // The eraser: a drag on a page rubs out the drawings and shapes it goes over (the shape blocks; the others let the mouse through).
-  // `key` names the stroke of the eraser: one step of the undo.
-  eraser?: boolean;
+  // The eraser (its way of rubbing and the width of its tip, screen px): a drag on a page rubs out the parts of the drawings it goes
+  // over (`onEraseInk`: the way it went on that page, page px), or with the stroke eraser the whole drawings and shapes it touches
+  // (`onErase`; the other blocks let the mouse through). `key` names the stroke of the eraser: one step of the undo.
+  eraser?: EraserSettings | null;
   onErase?: (ids: string[], key: string) => void;
+  onEraseInk?: (pageId: string, path: { x: number; y: number }[], radius: number, key: string) => void;
   // A resize handle of the selected block is pressed (the text box editor stays open for it), and where
   // the block is while it is resized (stage = page stack coordinates; null = done).
   onHandleDown?: () => void;
@@ -197,6 +199,7 @@ export default function ExamCanvas(props: Props) {
   const ink = useRef(props.ink);
   const onInk = useRef(props.onInk);
   const onErase = useRef(props.onErase);
+  const onEraseInk = useRef(props.onEraseInk);
   const zoomRef = useRef(zoom);
   useEffect(() => {
     onDrawBox.current = props.onDrawBox;
@@ -204,6 +207,7 @@ export default function ExamCanvas(props: Props) {
     ink.current = props.ink;
     onInk.current = props.onInk;
     onErase.current = props.onErase;
+    onEraseInk.current = props.onEraseInk;
     zoomRef.current = zoom;
   });
   // The stroke being drawn is shown on a layer of its own (only it is redrawn while the mouse moves).
@@ -345,11 +349,11 @@ export default function ExamCanvas(props: Props) {
   useEffect(() => {
     const container = layerRef.current?.getStage()?.container();
     if (container) {
-      container.style.cursor = inking && props.ink ? inkCursor(props.ink, zoom) : erasing ? ERASER_CURSOR : drawing ? "crosshair" : "";
+      container.style.cursor = inking && props.ink ? inkCursor(props.ink, zoom) : props.eraser && erasing ? eraserCursor(props.eraser.size) : drawing ? "crosshair" : "";
       container.style.touchAction = inking || erasing ? "none" : ""; // (a pen or a finger draws / rubs instead of scrolling)
     }
     if (!drawing && !erasing) stopDraw.current?.();
-  }, [drawing, erasing, inking, props.ink, zoom]);
+  }, [drawing, erasing, inking, props.ink, props.eraser, zoom]);
   useEffect(() => () => stopDraw.current?.(), []);
 
   // Mouse down on a page with the text box tool: follow the mouse (even outside the canvas) within that
@@ -460,10 +464,12 @@ export default function ExamCanvas(props: Props) {
     show();
   };
 
-  // The eraser down on a page: every drawing or shape it goes over goes (the shape blocks: the others let the mouse through),
-  // until it is let go (one step of the undo).
-  const startErase = (stage: Konva.Stage, e: PointerEvent) => {
+  // The eraser down on a page, until it is let go (one step of the undo). The real eraser rubs out the parts of the drawings it goes
+  // over: the way it went on the page is handed over at each move. The stroke eraser takes whole drawings and shapes: what is drawn
+  // under it (the shape blocks catch the mouse then, the others let it through).
+  const startErase = (stage: Konva.Stage, e: PointerEvent, how: EraserSettings) => {
     const key = `erase:${Date.now()}`;
+    const radius = how.size / 2 / zoomRef.current; // (page px: the tip keeps its size on the screen)
     const erasable = new Set(blocks.filter((b) => b.type === "shape").map((b) => b.id));
     const gone = new Set<string>();
     let last: { x: number; y: number } | null = null;
@@ -471,12 +477,20 @@ export default function ExamCanvas(props: Props) {
       stage.setPointersPositions(ev);
       const p = stage.getPointerPosition();
       if (!p) return;
+      const from = last ?? p;
+      last = p;
+      if (how.mode === "partial") {
+        const i = pageAt(p.y, boxes);
+        const box = boxes[i];
+        const path = [from, p].map((q) => ({ x: q.x - box.left, y: q.y - box.top }));
+        onEraseInk.current?.(pages[i].id, path, radius, key);
+        return;
+      }
       const before = gone.size;
-      for (const q of eraserPoints(last ?? p, p, ERASER_RADIUS / zoomRef.current)) {
+      for (const q of eraserPoints(from, p, radius)) {
         const id = stage.getIntersection(q)?.findAncestor((n: Konva.Node) => erasable.has(n.id()), true)?.id();
         if (id) gone.add(id);
       }
-      last = p;
       if (gone.size > before) onErase.current?.([...gone], key);
     };
     const stop = () => {
@@ -509,7 +523,7 @@ export default function ExamCanvas(props: Props) {
           e.evt.preventDefault(); // (no text selection while rubbing)
           props.onSelect?.(null);
           const stage = e.target.getStage();
-          if (stage) startErase(stage, e.evt);
+          if (stage && props.eraser) startErase(stage, e.evt, props.eraser);
           return;
         }
         if (!inking || e.evt.button !== 0 || e.target.name() !== "paper") return;
@@ -572,7 +586,7 @@ export default function ExamCanvas(props: Props) {
             interactive={interactive}
             textTool={!!props.textTool}
             drawing={drawing || erasing}
-            erasable={erasing && b.type === "shape"}
+            erasable={erasing && props.eraser?.mode === "stroke" && b.type === "shape"}
             typing={b.id === props.typingId}
             onSelect={(alt) => pick(b, !!alt)}
             onDragStart={() => handleDragStart(b)}

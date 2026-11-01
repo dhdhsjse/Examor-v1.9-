@@ -26,6 +26,7 @@ import TextboxEditor from "./TextboxEditor";
 import type { StyleMark } from "@/app/_lib/textboxEditor";
 import ToolRail, { type CanvasTool } from "./ToolRail";
 import type { InkTools } from "@/app/_lib/ink/useInkTools";
+import type { EraserTool } from "@/app/_lib/ink/useEraserTool";
 import type { DrawnInk, InkInHand } from "../canvas/ExamCanvas";
 import ZoomBar from "./ZoomBar";
 
@@ -76,7 +77,10 @@ interface Props {
   onPickShape: (shape: string) => void; // the Shapes button of the tool bar: draw this shape
   ink: InkTools; // the Draw button's brush, pencil and highlighter
   onInk: (stroke: DrawnInk) => void; // a stroke drawn on a page with one of them
-  onErase: (ids: readonly string[], key: string) => void; // the eraser rubbed out these drawings / shapes (`key`: one stroke of it)
+  eraser: EraserTool; // the Eraser button: how it rubs and how big it is
+  onErase: (ids: readonly string[], key: string) => void; // the stroke eraser rubbed out these drawings / shapes (`key`: one stroke of it)
+  onEraseInk: (pageId: string, path: { x: number; y: number }[], radius: number, key: string) => void; // the eraser went along `path` on a page
+
   onAddPage: () => void;
   onDeletePage: (pageId: string) => void;
   onActivePageChange: (index: number) => void;
@@ -96,6 +100,9 @@ export default function Workspace(props: Props) {
   const inkTool = props.ink.tool;
   const inkSettings = props.ink.settings[inkTool];
   const inkInHand = useMemo<InkInHand | null>(() => (drawing ? { tool: inkTool, ...inkSettings } : null), [drawing, inkTool, inkSettings]);
+  const erasing = props.tool === "eraser";
+  const { mode: eraserMode, size: eraserSize } = props.eraser;
+  const eraserInHand = useMemo(() => (erasing ? { mode: eraserMode, size: eraserSize } : null), [erasing, eraserMode, eraserSize]);
   const { pages } = doc;
   const scrollRef = useRef<HTMLDivElement>(null);
   const stackRef = useRef<HTMLDivElement>(null);
@@ -372,8 +379,9 @@ export default function Workspace(props: Props) {
                     onDrawBox={props.onDrawBox}
                     ink={inkInHand}
                     onInk={props.onInk}
-                    eraser={props.tool === "eraser"}
+                    eraser={eraserInHand}
                     onErase={props.onErase}
+                    onEraseInk={props.onEraseInk}
                     onHandleDown={() => {
                       handleHeld.current = true;
                       window.addEventListener("mouseup", () => setTimeout(() => (handleHeld.current = false)), { once: true });
@@ -564,6 +572,7 @@ export default function Workspace(props: Props) {
             shape={props.shapeToDraw}
             onPickShape={props.onPickShape}
             ink={props.ink}
+            eraser={props.eraser}
             keyboardOpen={props.mathKeyboard} onToggleKeyboard={props.onToggleMathKeyboard} />
           <ZoomBar
             zoom={zoom}

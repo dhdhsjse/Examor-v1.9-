@@ -5,6 +5,7 @@ import { DEFAULT_MARGINS, PAGE_MARGIN } from "./a4";
 import { blockHeight, fitTextboxes } from "./blockLayout";
 import { blockHeights, createBlock, nextFreeY, pageBottom, pushDownOverlaps, type BlockPreset } from "./blocks";
 import { newId } from "./id";
+import { cutStroke, isStroke } from "./ink/eraser";
 import { renderEquation, type RenderedEquation } from "./math";
 import { pageSize } from "./pageFormats";
 import {
@@ -51,6 +52,8 @@ interface History {
   past: ExamDoc[];
   present: ExamDoc;
   future: ExamDoc[];
+  /** The last change that made a step (its key and when): the next one with the same key soon after goes in the same step */
+  last?: { key: string; time: number } | null;
 }
 
 // A new empty page with the same margins as the last one.
@@ -100,26 +103,25 @@ export function useExam(initial: ExamDoc, t?: T) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [activePage, setActivePage] = useState(0); // page currently in view
   const [reveal, setReveal] = useState<RevealRequest | null>(null);
-  const lastEdit = useRef<{ key: string; time: number } | null>(null);
   const [save, setSave] = useState<SaveState>({ status: "saved", at: null });
   const doc = hist.present;
 
   const revealPage = (pageId: string) => setReveal((r) => ({ pageId, n: (r?.n ?? 0) + 1 }));
 
   // Apply a change. Edits with the same `key` within 1s become ONE undo step (typing).
-  // `silent` changes never create an undo step (e.g. equation re-render).
+  // `silent` changes never create an undo step (e.g. equation re-render). A change that changes nothing starts no step: the next one
+  // with its key is a step of its own, not a part of the step before (an eraser that first touches nothing, then cuts a stroke).
   const commit = useCallback((update: (d: ExamDoc) => ExamDoc, opts: { key?: string; silent?: boolean } = {}) => {
     const now = Date.now();
-    const last = lastEdit.current;
-    const merge = opts.silent || (opts.key !== undefined && last?.key === opts.key && now - last.time < 1000);
-    if (!opts.silent) lastEdit.current = opts.key ? { key: opts.key, time: now } : null;
     setHist((h) => {
       // (text boxes with an automatic size follow their text in the same step: typing, a font, a margin…)
       // (and the blocks placed in a text box follow its text)
       const next = settleTextboxes(update(h.present));
       if (next === h.present) return h;
-      if (merge) return { ...h, present: next };
-      return { past: [...h.past.slice(-99), h.present], present: next, future: [] };
+      const merge = opts.silent || (opts.key !== undefined && h.last?.key === opts.key && now - h.last.time < 1000);
+      const last = opts.silent ? h.last : opts.key ? { key: opts.key, time: now } : null;
+      if (merge) return { ...h, present: next, last };
+      return { past: [...h.past.slice(-99), h.present], present: next, future: [], last };
     });
   }, []);
 
@@ -296,6 +298,37 @@ export function useExam(initial: ExamDoc, t?: T) {
     [commit],
   );
 
+  // The real eraser went along `path` on a page (page px, `radius` around it): the strokes of the drawings it touches are cut, what is
+  // left of each stays in its place in the exam (a piece keeps the stroke's id); a stroke rubbed out whole goes.
+  const eraseInk = useCallback(
+    // (nothing is selected meanwhile: the eraser lets go of the selection when it goes down)
+    (pageId: string, path: { x: number; y: number }[], radius: number, key: string) =>
+      commit(
+        (d) => {
+          let changed = false;
+          const blocks = d.blocks.flatMap((b): Block[] => {
+            if (b.type !== "shape" || !isStroke(b) || b.layout.pageId !== pageId) return [b];
+            const { x, y, width: w, height: h } = b.layout;
+            const pieces = cutStroke({ x, y, w, h, flipX: b.flipX, flipY: b.flipY, adj: b.adj, pressure: b.pressure, strokeWidth: b.strokeWidth }, path, radius);
+            if (!pieces) return [b];
+            changed = true;
+            return pieces.map((p, i) => ({
+              ...b,
+              id: i === 0 ? b.id : newId(),
+              adj: p.adj,
+              pressure: p.pressure,
+              flipX: undefined,
+              flipY: undefined,
+              layout: { ...b.layout, x: p.x, y: p.y, width: p.w, height: p.h },
+            }));
+          });
+          return changed ? { ...d, blocks } : d;
+        },
+        { key },
+      ),
+    [commit],
+  );
+
   // Put a copy of a block (taken from the clipboard, maybe from another exam) on its own page, or on the page in view when that one
   // is not here; a little aside when another block already is where it was.
   const pasteBlock = useCallback(
@@ -459,6 +492,7 @@ export function useExam(initial: ExamDoc, t?: T) {
     stepInBox,
     deleteBlock,
     eraseBlocks,
+    eraseInk,
     duplicateBlock,
     pasteBlock,
     addPage,

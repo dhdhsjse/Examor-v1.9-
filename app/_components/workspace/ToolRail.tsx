@@ -1,17 +1,20 @@
 "use client";
 
-import { Check, ChevronDown, Circle, Eraser, Keyboard, Minus, MoveUpRight, Square, Star, Triangle, Type } from "lucide-react";
+import { Check, ChevronDown, Circle, Keyboard, Minus, MoveUpRight, Square, Star, Triangle, Type } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import type { EraserTool } from "@/app/_lib/ink/useEraserTool";
 import type { InkTools } from "@/app/_lib/ink/useInkTools";
 import { useT } from "@/app/_lib/uiLang";
 import DrawTools from "./DrawTools";
+import EraserTools from "./EraserTools";
 
 // "select" = click to select and drag blocks. "text" = like the T tool in Photoshop:
 // click a text to type in it, or click empty paper to write a new text there.
 // "textbox" = drag on a page to draw a text box (Insert → Text box); back to "select" once drawn.
 // "shape" = drag on a page to draw a shape: the one of the Shapes button of this bar, or the one chosen in Insert → Shapes.
 // "draw" = the brush, pencil or highlighter of the Draw button: a drag on a page draws a stroke (it stays in hand: a drawing is many).
-// "eraser" = a drag on a page rubs out the drawings and shapes it goes over (the other blocks stay: they are deleted as blocks).
+// "eraser" = a drag on a page rubs out the parts of the drawings it goes over, or (the stroke eraser) whole drawings and shapes. The
+// other blocks stay: they are deleted as blocks.
 export type CanvasTool = "select" | "text" | "textbox" | "shape" | "draw" | "eraser";
 
 // The shapes of the Shapes button's menu, like Figma's (the whole gallery is in Insert → Shapes). `key` = its shortcut (Editor).
@@ -31,7 +34,7 @@ const toolBtn = (on: boolean) =>
 // Small floating toolbar next to the zoom bar (bottom-right), away from the page labels: Select, Shapes (its arrow opens the menu of
 // shapes), Text box. After a line, the math keyboard: it is not a tool (the tool stays as it is), it shows / hides the keyboard that
 // types in the text being written.
-export default function ToolRail({ tool, onChange, shape, onPickShape, ink, keyboardOpen, onToggleKeyboard }: {
+export default function ToolRail({ tool, onChange, shape, onPickShape, ink, eraser, keyboardOpen, onToggleKeyboard }: {
   tool: CanvasTool;
   onChange: (tool: CanvasTool) => void;
   /** The shape the Shapes tool draws (null: none chosen yet) */
@@ -39,6 +42,8 @@ export default function ToolRail({ tool, onChange, shape, onPickShape, ink, keyb
   onPickShape: (shape: string) => void;
   /** The Draw button's tools (brush, pencil, highlighter) and how each draws */
   ink: InkTools;
+  /** The Eraser button's way of rubbing and size */
+  eraser: EraserTool;
   keyboardOpen: boolean;
   onToggleKeyboard: () => void;
 }) {
@@ -122,15 +127,7 @@ export default function ToolRail({ tool, onChange, shape, onPickShape, ink, keyb
         <Type aria-hidden />
       </button>
 
-      <button
-        onClick={() => onChange(tool === "eraser" ? "select" : "eraser")}
-        aria-pressed={tool === "eraser"}
-        title={tip("Eraser — rub out drawings and shapes", "E")}
-        data-testid="eraser-tool"
-        className={toolBtn(tool === "eraser")}
-      >
-        <Eraser aria-hidden />
-      </button>
+      <EraserTools open={tool === "eraser"} eraser={eraser} onOpen={() => onChange("eraser")} shortcut="E" />
 
       <span aria-hidden className="mx-0.5 h-5 w-px bg-line" />
       <button

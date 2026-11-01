@@ -1,8 +1,10 @@
 "use client";
 
-import { Eraser, Keyboard, Type } from "lucide-react";
+import { Keyboard, Type } from "lucide-react";
 import { toggleStudioKeyboard, useKeyboardStore } from "@/app/_components/math-keyboard/keyboardStore";
 import DrawTools from "@/app/_components/workspace/DrawTools";
+import EraserTools from "@/app/_components/workspace/EraserTools";
+import type { EraserTool } from "@/app/_lib/ink/useEraserTool";
 import type { InkTools } from "@/app/_lib/ink/useInkTools";
 import { useT } from "@/app/_lib/uiLang";
 import type { TableTool } from "./TableDrawingLayer";
@@ -14,12 +16,11 @@ const toolBtn = (on: boolean) =>
 // The floating tool bar of the Table Studio, at the bottom of the table, like the page's: Select, the Draw tool of the page (its
 // brush, pencil and highlighter, with the same bubble of settings), Text box, Eraser; after a line, the math keyboard. What they
 // draw goes on the table itself (TableDrawingLayer).
-export default function TableToolDock({ tool, onTool, ink }: { tool: TableTool; onTool: (tool: TableTool) => void; ink: InkTools }) {
+export default function TableToolDock({ tool, onTool, ink, eraser }: { tool: TableTool; onTool: (tool: TableTool) => void; ink: InkTools; eraser: EraserTool }) {
   const t = useT();
   const { studio: keyboardOpen } = useKeyboardStore();
   const keyboardText = keyboardOpen ? t("Hide math keyboard") : t("Show math keyboard");
   const textbox = t("Text box: drag on the table to draw one, then type");
-  const eraser = t("Eraser: rub out a drawing or a shape");
   return (
     <div className="pointer-events-none absolute inset-x-0 bottom-4 z-20 flex justify-center">
       <div data-testid="table-tool-dock" dir="ltr" className="pointer-events-auto relative flex items-center gap-0.5 rounded-[10px] border border-line bg-surface p-1 shadow-[0_4px_16px_-4px_rgba(0,0,0,0.16)]">
@@ -32,9 +33,7 @@ export default function TableToolDock({ tool, onTool, ink }: { tool: TableTool; 
         <button type="button" onClick={() => onTool(tool === "textbox" ? "select" : "textbox")} aria-pressed={tool === "textbox"} title={textbox} aria-label={textbox} data-testid="tool-textbox" className={toolBtn(tool === "textbox")}>
           <Type aria-hidden />
         </button>
-        <button type="button" onClick={() => onTool(tool === "eraser" ? "select" : "eraser")} aria-pressed={tool === "eraser"} title={eraser} aria-label={eraser} data-testid="tool-eraser" className={toolBtn(tool === "eraser")}>
-          <Eraser aria-hidden />
-        </button>
+        <EraserTools open={tool === "eraser"} eraser={eraser} onOpen={() => onTool("eraser")} />
         <span aria-hidden className="mx-0.5 h-5 w-px bg-line" />
         <button
           type="button"

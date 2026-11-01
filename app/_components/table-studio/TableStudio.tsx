@@ -13,8 +13,10 @@ import { clampSel, selRange, type Sel } from "@/app/_components/table/tableSel";
 import { CONTENT_WIDTH } from "@/app/_lib/a4";
 import { layoutTable } from "@/app/_lib/blockLayout";
 import { DEFAULT_FONT } from "@/app/_lib/fonts";
+import { eraseStrokes } from "@/app/_lib/ink/eraser";
+import { useEraserTool } from "@/app/_lib/ink/useEraserTool";
 import { useInkTools } from "@/app/_lib/ink/useInkTools";
-import { FREEHAND_ID, addShape, duplicateShape, isLine, removeShape, reorderShape, updateShape, type Order, type ShapeItem, type ShapeStyle } from "@/app/_lib/shapes";
+import { FREEHAND_ID, addShape, newShapeId, duplicateShape, isLine, removeShape, reorderShape, updateShape, type Order, type ShapeItem, type ShapeStyle } from "@/app/_lib/shapes";
 import { anchorOf, colsOf, rowsOf, tableMirrored, wholeMerges } from "@/app/_lib/table";
 import type { ExamMeta, TableBlock } from "@/app/_lib/types";
 import { useUi } from "@/app/_lib/uiLang";
@@ -51,6 +53,7 @@ export default function TableStudio({ meta, editing, startShape, onInsert, onUpd
   const studio = useTableStudio(editing ? studioTableOf(editing) : blankStudioTable(CONTENT_WIDTH));
   const { table, apply, undo, redo, canUndo, canRedo, dirty } = studio;
   const ink = useInkTools(); // (the page's Draw tool: the same brush, pencil and highlighter, kept between sessions)
+  const eraser = useEraserTool(); // (the page's Eraser: the same way of rubbing and size)
   const [picked, setSel] = useState<Sel | null>(null);
   const [tool, setTool] = useState<TableTool>(startShape ? (startShape === FREEHAND_ID ? "draw" : "shape") : "select");
   const [shapeKind, setShapeKind] = useState(startShape && startShape !== FREEHAND_ID ? startShape : "rect"); // the shape the Shapes tool draws
@@ -108,6 +111,12 @@ export default function TableStudio({ meta, editing, startShape, onInsert, onUpd
     const left = (table.shapes ?? []).filter((s) => !ids.has(s.id));
     apply({ shapes: left.length ? left : undefined }, gesture);
   };
+  // The real eraser: the drawings it went over are cut there (worked out from the table as it is at each move).
+  const eraseInk = (path: { x: number; y: number }[], radius: number, gesture: string) =>
+    studio.update((t) => {
+      const left = eraseStrokes(t.shapes ?? [], path, radius, newShapeId);
+      return left && { shapes: left.length ? left : undefined };
+    }, gesture);
   const endText = (id: string | null) => {
     const typed = shapes.find((s) => s.id === textId);
     setTextId(id);
@@ -232,14 +241,16 @@ export default function TableStudio({ meta, editing, startShape, onInsert, onUpd
                   onSelect={selectShape}
                   onChange={changeShape}
                   onAdd={addItem}
+                  eraser={eraser}
                   onErase={eraseShapes}
+                  onEraseInk={eraseInk}
                   onEdit={endText}
                 />
               ),
             }}
           />
           {/* the floating tool bar: what it draws goes on the table */}
-          <TableToolDock tool={tool} onTool={pickTool} ink={ink} />
+          <TableToolDock tool={tool} onTool={pickTool} ink={ink} eraser={eraser} />
         </main>
 
         <aside className="flex w-[320px] shrink-0 flex-col gap-4 overflow-y-auto border-line bg-white p-4 ltr:border-l rtl:border-r">
