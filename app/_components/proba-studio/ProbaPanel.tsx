@@ -1,12 +1,12 @@
 "use client";
 
-import { ArrowDown, ArrowRight, ChevronDown, ChevronUp, Copy, Minus, Plus, SendToBack, BringToFront, Trash2, Wand2, TriangleAlert } from "lucide-react";
+import { ArrowDown, ArrowRight, ChevronDown, ChevronUp, Minus, Plus, Trash2, TriangleAlert, X } from "lucide-react";
 import { useId, useState, type ReactNode } from "react";
 import ShapeProperties from "@/app/_components/shapes/ShapeProperties";
 import { badSums, formatRational, numberStyle, treeTexts } from "@/app/_lib/proba/numbers";
 import { vennRegions } from "@/app/_lib/proba/scene";
-import { parentOf } from "@/app/_lib/proba/tree";
-import { MAX_AREA, MIN_AREA, PROBA_COLORS, colorOf, type Cards, type Coin, type Dice, type ProbItem, type ProbTree, type Spinner, type Urn, type Venn } from "@/app/_lib/proba/types";
+import { parentOf, stageCount, stageEvents } from "@/app/_lib/proba/tree";
+import { MAX_AREA, MIN_AREA, PROBA_COLORS, colorOf, type Cards, type Coin, type Dice, type ProbTree, type Spinner, type Urn, type Venn } from "@/app/_lib/proba/types";
 import { useT } from "@/app/_lib/uiLang";
 import type { ProbaStudioState } from "./useProbaStudio";
 
@@ -137,7 +137,69 @@ function SizeField({ label, value, onCommit, testId }: { label: string; value: n
   );
 }
 
-const PROB_CHIPS = ["1/2", "1/3", "2/3", "1/4", "3/4", "1/6", "0,5"];
+/** The stages of a tree, one row each: every event of a stage in one box, so renaming it renames it on all its branches at once;
+ * its bar (Ā), + for another event, × to take one away, and a stage added or taken away. */
+function StagesSection({ studio, tree }: { studio: ProbaStudioState; tree: ProbTree }) {
+  const t = useT();
+  const count = stageCount(tree.root);
+  return (
+    <Section title={t("Stages")} testId="tree-stages">
+      {Array.from({ length: count }, (_, k) => {
+        const depth = k + 1;
+        const events = stageEvents(tree.root, depth);
+        return (
+          <div key={depth} className="flex items-start gap-1.5" data-testid={`stage-${depth}`}>
+            <span className="mt-1.5 w-4 shrink-0 text-center text-xs font-semibold tabular-nums text-faint" title={t("Stage {n}", { n: depth })}>
+              {depth}
+            </span>
+            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1">
+              {events.map((e, j) => (
+                <span key={j} className="group relative flex items-center rounded-lg border border-line bg-white ps-0.5 focus-within:border-accent" data-testid={`stage-event-${depth}-${j}`}>
+                  <input
+                    value={e.label}
+                    onChange={(ev) => studio.renameStage(tree.id, depth, e, { label: ev.target.value })}
+                    aria-label={t("Event")}
+                    dir="auto"
+                    className="w-9 bg-transparent py-1 text-center text-sm font-medium text-ink outline-none"
+                    style={e.bar ? { textDecoration: "overline" } : undefined}
+                  />
+                  <button
+                    onClick={() => studio.renameStage(tree.id, depth, e, { bar: !e.bar })}
+                    aria-pressed={e.bar}
+                    title={t("Complement (a bar over the event)")}
+                    aria-label={t("Complement (a bar over the event)")}
+                    className={`grid h-6 w-5 place-items-center rounded text-[11px] font-semibold ${e.bar ? "bg-accent-soft text-accent-strong" : "text-faint hover:text-ink"}`}
+                  >
+                    <span style={{ textDecoration: "overline" }}>x</span>
+                  </button>
+                  <button
+                    onClick={() => studio.removeEventFromStage(tree.id, depth, e)}
+                    disabled={events.length < 2}
+                    title={t("Remove this event")}
+                    aria-label={t("Remove this event")}
+                    className="absolute -start-1.5 -top-1.5 hidden size-4 place-items-center rounded-full border border-line bg-white text-muted shadow-sm hover:border-red-300 hover:text-red-600 group-focus-within:grid group-hover:grid disabled:!hidden"
+                  >
+                    <X size={10} />
+                  </button>
+                </span>
+              ))}
+              <button onClick={() => studio.addEventToStage(tree.id, depth)} title={t("Add an event")} aria-label={t("Add an event")} data-testid={`stage-add-event-${depth}`} className="grid size-7 place-items-center rounded-lg border border-dashed border-accent/60 text-accent-strong hover:bg-accent-soft">
+                <Plus size={14} />
+              </button>
+            </div>
+            <button onClick={() => studio.removeStageFrom(tree.id, depth)} disabled={count < 2} aria-label={t("Remove this stage")} title={t("Remove this stage")} className="mt-0.5 grid size-7 shrink-0 place-items-center rounded-lg text-muted enabled:hover:bg-subtle enabled:hover:text-red-600 disabled:opacity-30">
+              <Trash2 size={14} />
+            </button>
+          </div>
+        );
+      })}
+      <button onClick={() => studio.addStageTo(tree.id)} disabled={count >= 6} data-testid="add-stage" className="flex items-center justify-center gap-1 rounded-lg border border-dashed border-line px-2 py-1.5 text-xs font-medium text-muted hover:border-accent hover:text-accent-strong disabled:opacity-40">
+        <Plus size={13} />
+        {t("Stage")}
+      </button>
+    </Section>
+  );
+}
 
 // ---- the panels of each kind ----
 
@@ -176,25 +238,12 @@ function TreePanel({ studio, tree }: { studio: ProbaStudioState; tree: ProbTree 
               </button>
             }
           />
-          <Field label={t("Probability of the branch")} value={node.prob} onChange={(prob) => studio.setNode(tree.id, node.id, { prob })} testId="node-prob" placeholder={t("e.g. 0.3 or 1/4")} />
-          <div className="flex flex-wrap gap-1">
-            {PROB_CHIPS.map((p) => (
-              <button key={p} onClick={() => studio.setNode(tree.id, node.id, { prob: p })} className="rounded-md border border-line bg-white px-1.5 py-0.5 text-xs tabular-nums text-ink hover:border-accent hover:bg-accent-soft">
-                {p}
-              </button>
-            ))}
-          </div>
+          <Field label={t("Probability of the branch")} value={node.prob} onChange={(prob) => studio.setNode(tree.id, node.id, { prob })} testId="node-prob" />
           <Check label={t("Hide it for the exercise (……)")} checked={!!node.hideProb} onChange={(hideProb) => studio.setNode(tree.id, node.id, { hideProb })} testId="node-hide" />
-          <div className="grid grid-cols-2 gap-1.5">
-            <button onClick={() => studio.branch(tree.id, node.id)} className={smallBtn} data-testid="add-child" title="Tab">
-              <Plus size={14} />
-              {t("Branch after it")}
-            </button>
-            <button onClick={() => studio.branch(tree.id, node.id, true)} className={smallBtn} data-testid="add-sibling" title="Enter">
-              <Plus size={14} />
-              {t("Branch beside it")}
-            </button>
-          </div>
+          <button onClick={() => studio.branch(tree.id, node.id)} className={smallBtn} data-testid="add-child" title="Tab">
+            <Plus size={14} />
+            {t("Branch after it")}
+          </button>
           <div className="flex items-center gap-1.5">
             <button onClick={() => studio.moveBranch(tree.id, node.id, -1)} disabled={at <= 0} className={iconBtn} aria-label={t("Move up")} title={t("Move up")}>
               <ChevronUp size={15} />
@@ -209,6 +258,8 @@ function TreePanel({ studio, tree }: { studio: ProbaStudioState; tree: ProbTree 
           </div>
         </Section>
       )}
+
+      <StagesSection studio={studio} tree={tree} />
 
       <Section title={t("Probability tree")} testId="tree-properties">
         <Segmented
@@ -225,10 +276,6 @@ function TreePanel({ studio, tree }: { studio: ProbaStudioState; tree: ProbTree 
         <Slider label={t("Text size")} value={tree.fontSize} min={11} max={30} onChange={(v) => set("fontSize", v)} testId="tree-font" />
         <Check label={t("Outcome of each path (A ∩ B)")} checked={!!tree.showOutcomes} onChange={(v) => set("showOutcomes", v || undefined)} testId="tree-outcomes" />
         <Check label={t("Probability of each path")} checked={!!tree.showResults} onChange={(v) => set("showResults", v || undefined)} testId="tree-results" />
-        <button onClick={() => studio.fillTree(tree.id)} className={smallBtn} data-testid="fill-missing" title={t("A branch left empty next to branches with numbers gets 1 minus the others")}>
-          <Wand2 size={14} />
-          {t("Fill in the missing probabilities")}
-        </button>
         {bad.length > 0 && (
           <div role="alert" data-testid="tree-warnings" className="flex flex-col gap-1 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-2 text-xs text-amber-800">
             {bad.map(({ node: n, sum }) => (
@@ -241,7 +288,6 @@ function TreePanel({ studio, tree }: { studio: ProbaStudioState; tree: ProbTree 
             ))}
           </div>
         )}
-        <p className="text-xs text-faint">{t("Double-click an event or a probability to type it (Tab: the next one). The round + of the selected event adds a branch.")}</p>
       </Section>
     </>
   );
@@ -426,37 +472,6 @@ function CardsPanel({ studio, cards }: { studio: ProbaStudioState; cards: Cards 
   );
 }
 
-/** Duplicate, front and back, delete: the same for every item. */
-function ItemActions({ studio, item }: { studio: ProbaStudioState; item: ProbItem }) {
-  const t = useT();
-  return (
-    <Section title={t("Arrange")} testId="item-actions">
-      <div className="grid grid-cols-3 gap-1.5">
-        <button onClick={studio.duplicate} className={smallBtn} title="Ctrl+D" data-testid="duplicate">
-          <Copy size={13} />
-          {t("Duplicate")}
-        </button>
-        <button onClick={() => studio.reorder(true)} className={smallBtn} title={t("Bring to front")}>
-          <BringToFront size={13} />
-          {t("Front")}
-        </button>
-        <button onClick={() => studio.reorder(false)} className={smallBtn} title={t("Send to back")}>
-          <SendToBack size={13} />
-          {t("Back")}
-        </button>
-      </div>
-      <button
-        onClick={() => studio.deleteItem(item.id)}
-        data-testid="delete-item"
-        className="flex items-center justify-center gap-2 rounded-lg border border-line bg-white px-3 py-1.5 text-sm font-medium text-red-600 transition-colors hover:border-red-300 hover:bg-red-50"
-      >
-        <Trash2 size={14} />
-        {item.kind === "tree" ? t("Delete the tree") : t("Delete")}
-      </button>
-    </Section>
-  );
-}
-
 // The right panel of the Probability Studio: the properties of what is selected (a tree and its selected branch, a Venn
 // diagram, an urn…, a drawing), or, with nothing selected, the size of the drawing area.
 export default function ProbaPanel({ studio }: { studio: ProbaStudioState }) {
@@ -471,7 +486,6 @@ export default function ProbaPanel({ studio }: { studio: ProbaStudioState }) {
       {item?.kind === "coin" && <CoinPanel studio={studio} coin={item} />}
       {item?.kind === "spinner" && <SpinnerPanel studio={studio} spinner={item} />}
       {item?.kind === "cards" && <CardsPanel key={item.id} studio={studio} cards={item} />}
-      {item && <ItemActions studio={studio} item={item} />}
 
       {shape && (
         <ShapeProperties
@@ -492,7 +506,6 @@ export default function ProbaPanel({ studio }: { studio: ProbaStudioState }) {
             <SizeField label={t("Height (px)")} value={config.height} onCommit={(h) => studio.setArea(config.width, h)} testId="area-height" />
           </div>
           <p className="text-xs text-muted tabular-nums">{t("{count} items on the drawing", { count: config.items.length })}</p>
-          <p className="text-xs text-faint">{t("Start with the quick tree on the left, or pick a figure and click the drawing. Click something to change it.")}</p>
         </Section>
       )}
     </div>

@@ -73,7 +73,7 @@ export const updateNode = (root: ProbNode, id: string, patch: Partial<Omit<ProbN
 const LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
 /** The event a new branch under `parent` most likely needs: the one a node of the same level already has at that place (B̄ under Ā
- * when A has B, B̄), else the complement of a lone event (Ā after A), else the next letter of its level. */
+ * when A has B, B̄), else the next letter of its level. A complement (Ā) is never made up: only copied from what was written. */
 export function suggestEvent(root: ProbNode, parentId: string): { label: string; bar: boolean } {
   const parent = findNode(root, parentId);
   if (!parent) return { label: "", bar: false };
@@ -81,7 +81,6 @@ export function suggestEvent(root: ProbNode, parentId: string): { label: string;
   const depth = depthOf(root, parentId);
   const model = nodesAt(root, depth).find((n) => n.id !== parentId && n.children.length > at);
   if (model) return { label: model.children[at].label, bar: !!model.children[at].bar };
-  if (at === 1 && !parent.children[0].bar && parent.children[0].label) return { label: parent.children[0].label, bar: true };
   if (at === 0) return { label: LETTERS[depth % LETTERS.length], bar: false };
   const last = parent.children[at - 1].label;
   const i = LETTERS.indexOf(last);
@@ -143,14 +142,61 @@ export function paths(root: ProbNode): ProbNode[][] {
   return out;
 }
 
-/** The stages of a tree written back for the quick builder ("A, !A"), read from its first branch of each level. */
-export function stagesOf(root: ProbNode): string[] {
-  const out: string[] = [];
-  let level = [root];
-  while (level.some((n) => n.children.length)) {
-    const model = level.find((n) => n.children.length)!;
-    out.push(model.children.map((c) => (c.bar ? `!${c.label}` : c.label)).join(", "));
-    level = level.flatMap((n) => n.children);
-  }
+// ---- stages: every node of one level of the tree (depth 1 = the first branches) ----
+
+export type StageEvent = { label: string; bar: boolean };
+const sameEvent = (n: ProbNode, e: StageEvent) => n.label === e.label && !!n.bar === e.bar;
+
+/** How many stages a tree has (the depth of its deepest leaf). */
+export function stageCount(root: ProbNode): number {
+  return root.children.length ? 1 + Math.max(...root.children.map(stageCount)) : 0;
+}
+
+/** The different events of a stage, in the order they first come (A and Ā are two events). */
+export function stageEvents(root: ProbNode, depth: number): StageEvent[] {
+  const out: StageEvent[] = [];
+  for (const n of nodesAt(root, depth)) if (!out.some((e) => sameEvent(n, e))) out.push({ label: n.label, bar: !!n.bar });
   return out;
+}
+
+/** Every node of a level changed by `fn` (the others kept as they are). */
+function mapLevel(root: ProbNode, depth: number, fn: (n: ProbNode) => ProbNode): ProbNode {
+  if (depth === 0) return fn(root);
+  return { ...root, children: root.children.map((c) => mapLevel(c, depth - 1, fn)) };
+}
+
+/** An event of a stage renamed (or barred) everywhere in that stage at once. */
+export const renameStageEvent = (root: ProbNode, depth: number, from: StageEvent, patch: Partial<StageEvent>) =>
+  mapLevel(root, depth, (n) => (sameEvent(n, from) ? { ...n, ...(patch.label !== undefined ? { label: patch.label } : {}), ...(patch.bar !== undefined ? { bar: patch.bar || undefined } : {}) } : n));
+
+/** A copy of a branch's stages below it, for a new branch next to it (same events, no probabilities). */
+const shapeOf = (n: ProbNode): ProbNode[] => n.children.map((c) => ({ ...c, id: newNodeId(), prob: "", hideProb: undefined, children: shapeOf(c) }));
+
+/** A new event in a stage: a branch with it under every node of the stage before (with the stages that follow under it, too). */
+export const addStageEvent = (root: ProbNode, depth: number, e: StageEvent) =>
+  mapLevel(root, depth - 1, (n) => (n.children.length || depth > stageCount(root) ? { ...n, children: [...n.children, newNode(e.label, "", e.bar, n.children.length ? shapeOf(n.children[n.children.length - 1]) : [])] } : n));
+
+/** An event taken out of a stage everywhere (a node keeps at least one branch). */
+export const removeStageEvent = (root: ProbNode, depth: number, e: StageEvent) =>
+  mapLevel(root, depth - 1, (n) => {
+    const left = n.children.filter((c) => !sameEvent(c, e));
+    return left.length ? { ...n, children: left } : n;
+  });
+
+/** A new last stage: the events under every leaf. */
+export function addStage(root: ProbNode, events: StageEvent[]): ProbNode {
+  const grow = (n: ProbNode): ProbNode => (n.children.length ? { ...n, children: n.children.map(grow) } : { ...n, children: events.map((e) => newNode(e.label, "", e.bar)) });
+  return grow(root);
+}
+
+/** A stage taken out: the nodes of the stage before get what came after the stage (from their first branch); the last stage simply goes. */
+export const removeStage = (root: ProbNode, depth: number) =>
+  mapLevel(root, depth - 1, (n) => ({ ...n, children: n.children.length ? shapeOf(n.children[0]).map((c, i) => ({ ...c, prob: n.children[0].children[i]?.prob ?? "" })) : [] }));
+
+/** The next letters a tree does not use yet (for a new stage or event). */
+export function freeLetters(root: ProbNode, count: number): string[] {
+  const used = new Set<string>();
+  const walk = (n: ProbNode) => (used.add(n.label), n.children.forEach(walk));
+  walk(root);
+  return [...LETTERS].filter((l) => !used.has(l)).slice(0, count);
 }

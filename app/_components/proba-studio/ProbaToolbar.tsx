@@ -1,11 +1,9 @@
 "use client";
 
-import { MousePointer2, Plus, Trash2, Wand2 } from "lucide-react";
-import { useState } from "react";
+import { MousePointer2 } from "lucide-react";
 import { ShapesMenuButton } from "@/app/_components/shapes/ShapeGallery";
 import { PLACE_KINDS, newItem, type PlaceKind } from "@/app/_lib/proba/ops";
 import { drawItem, FONT, INK, type Prim } from "@/app/_lib/proba/scene";
-import { stagesOf } from "@/app/_lib/proba/tree";
 import { useT } from "@/app/_lib/uiLang";
 import type { ProbaStudioState } from "./useProbaStudio";
 
@@ -61,86 +59,15 @@ export function PlaceGlyph({ kind }: { kind: PlaceKind }) {
   );
 }
 
-const PRESETS: { name: string; stages: string[] }[] = [
-  { name: "2 × 2", stages: ["A, !A", "B, !B"] },
-  { name: "2 × 2 × 2", stages: ["A, !A", "B, !B", "C, !C"] },
-  { name: "3 × 2", stages: ["U1, U2, U3", "R, !R"] },
-  { name: "Coin ×3", stages: ["P, F", "P, F", "P, F"] },
-];
-
 const tile = (on: boolean) => `flex flex-col items-center justify-center gap-1 rounded-xl border px-1 py-2 text-[11px] font-medium leading-tight transition-colors ${on ? "border-accent bg-accent-soft text-accent-strong ring-1 ring-accent" : "border-line bg-white text-ink hover:border-accent hover:bg-accent-soft"}`;
-const input = "min-w-0 flex-1 rounded-lg border border-line bg-subtle px-2.5 py-1.5 text-sm text-ink outline-none focus:border-accent";
 
-// The left panel of the Probability Studio: the quick builder of a tree (its stages, one line each), the things to put on the
-// sheet, and the shapes.
+// The left panel of the Probability Studio: the things to put on the sheet (a tree, a Venn diagram, an urn…), and the shapes.
 export default function ProbaToolbar({ studio }: { studio: ProbaStudioState }) {
   const t = useT();
-  const { tool, setTool, selectedTree } = studio;
-  const [stages, setStages] = useState<string[]>(["A, !A", "B, !B"]);
-
-  // the builder shows the stages of the tree that is selected
-  // (state adjusted while rendering when another tree is selected, not in an effect)
-  const treeId = selectedTree?.id;
-  const [shownFor, setShownFor] = useState(treeId);
-  if (treeId !== shownFor) {
-    setShownFor(treeId);
-    const s = selectedTree ? stagesOf(selectedTree.root) : [];
-    if (s.length) setStages(s);
-  }
-
-  const setStage = (i: number, text: string) => setStages((s) => s.map((x, j) => (j === i ? text : x)));
+  const { tool, setTool } = studio;
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto p-4">
-      <section className="flex flex-col gap-2" aria-label={t("Quick tree")} data-testid="proba-builder">
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-faint">{t("Quick tree")}</h3>
-        <p className="text-xs text-muted">{t("One line per stage, the events separated by commas. Write !A for Ā.")}</p>
-        <div className="flex flex-col gap-1.5">
-          {stages.map((s, i) => (
-            <div key={i} className="flex items-center gap-1.5">
-              <span className="w-5 shrink-0 text-center text-xs font-semibold tabular-nums text-faint">{i + 1}</span>
-              <input
-                value={s}
-                onChange={(e) => setStage(i, e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    studio.buildFromStages(stages);
-                  }
-                }}
-                aria-label={t("Stage {n}", { n: i + 1 })}
-                placeholder="A, !A"
-                data-testid={`stage-${i}`}
-                className={input}
-              />
-              <button onClick={() => setStages((x) => x.filter((_, j) => j !== i))} disabled={stages.length < 2} aria-label={t("Remove this stage")} title={t("Remove this stage")} className="grid size-7 shrink-0 place-items-center rounded-lg text-muted enabled:hover:bg-subtle enabled:hover:text-red-600 disabled:opacity-30">
-                <Trash2 size={14} />
-              </button>
-            </div>
-          ))}
-        </div>
-        <div className="flex flex-wrap gap-1.5">
-          <button onClick={() => setStages((s) => [...s, s[s.length - 1] ?? "A, !A"])} disabled={stages.length >= 6} data-testid="add-stage" className="flex items-center gap-1 rounded-lg border border-dashed border-line px-2 py-1 text-xs font-medium text-muted hover:border-accent hover:text-accent-strong disabled:opacity-40">
-            <Plus size={13} />
-            {t("Stage")}
-          </button>
-          {PRESETS.map((p) => (
-            <button key={p.name} onClick={() => setStages(p.stages)} className="rounded-lg border border-line bg-white px-2 py-1 text-xs font-medium text-ink hover:border-accent hover:bg-accent-soft">
-              {t(p.name)}
-            </button>
-          ))}
-        </div>
-        <button
-          onClick={() => studio.buildFromStages(stages)}
-          data-testid="build-tree"
-          title={selectedTree ? t("The selected tree is made again from these stages (its probabilities are cleared)") : undefined}
-          className="flex items-center justify-center gap-2 rounded-lg bg-accent px-3 py-2 text-sm font-medium text-white hover:bg-accent-strong"
-        >
-          <Wand2 size={15} />
-          {selectedTree ? t("Rebuild the selected tree") : t("Add this tree")}
-        </button>
-      </section>
-
       <section className="flex flex-col gap-2" aria-label={t("Add to the drawing")} data-testid="proba-tiles">
         <h3 className="text-xs font-semibold uppercase tracking-wide text-faint">{t("Add to the drawing")}</h3>
         <div className="grid grid-cols-2 gap-2">

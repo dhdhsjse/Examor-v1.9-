@@ -3,7 +3,7 @@ import { badSums, fillMissing, formatRational, numberStyle, parseProb, pathProba
 import { addItem, contentBounds, duplicateItem, newItem, newTree, PLACE_KINDS, removeItem } from "../ops";
 import { drawItem, drawTree, regionSpots, vennCircles, vennRegions } from "../scene";
 import { renderProbaSvg } from "../svg";
-import { addChild, addSibling, buildTree, findNode, moveNode, parentOf, parseStage, paths, removeNode, stagesOf, suggestEvent, updateNode } from "../tree";
+import { addChild, addSibling, addStage, addStageEvent, buildTree, findNode, freeLetters, moveNode, parentOf, parseStage, paths, removeNode, removeStage, removeStageEvent, renameStageEvent, stageCount, stageEvents, suggestEvent, updateNode } from "../tree";
 import { DEFAULT_PROBA_CONFIG, type ProbTree } from "../types";
 
 describe("reading the probabilities", () => {
@@ -46,7 +46,7 @@ describe("the edits of a tree", () => {
     expect(root.children.map((c) => [c.label, !!c.bar])).toEqual([["A", false], ["A", true]]);
     expect(root.children[1].children.map((c) => [c.label, !!c.bar])).toEqual([["B", false], ["B", true]]);
     expect(paths(root)).toHaveLength(4);
-    expect(stagesOf(root)).toEqual(["A, !A", "B, !B"]);
+    expect(stageEvents(root, 2)).toEqual([{ label: "B", bar: false }, { label: "B", bar: true }]);
   });
 
   it("suggests the event a new branch most likely needs", () => {
@@ -55,7 +55,7 @@ describe("the edits of a tree", () => {
     // a new branch under Ā when A has B, B̄: copies A's at that place… there are none left: the next letter
     expect(suggestEvent(root, a.id)).toEqual({ label: "C", bar: false });
     const bare = buildTree([parseStage("A")]);
-    expect(suggestEvent(bare, bare.id)).toEqual({ label: "A", bar: true });
+    expect(suggestEvent(bare, bare.id)).toEqual({ label: "B", bar: false }); // (never a made-up complement)
     const { root: grown } = addChild(bare, bare.children[0].id);
     expect(findNode(grown, bare.children[0].id)!.children[0].label).toBe("B");
     // under Ā, the events A has
@@ -63,7 +63,7 @@ describe("the edits of a tree", () => {
     const withB = addChild(addChild(r2, r2.children[0].id).root, r2.children[0].id).root;
     const second = addChild(withB, r2.children[1].id);
     expect([second.node!.label, !!second.node!.bar]).toEqual(["B", false]);
-    expect(suggestEvent(second.root, r2.children[1].id)).toEqual({ label: "B", bar: true });
+    expect(suggestEvent(second.root, r2.children[1].id)).toEqual({ label: "C", bar: false });
   });
 
   it("adds beside, changes, moves and removes branches", () => {
@@ -107,9 +107,10 @@ describe("the scene", () => {
     expect(d.bounds.x).toBeCloseTo(100);
     expect(d.bounds.y).toBeCloseTo(50);
     expect(d.bounds.w).toBeGreaterThan(200);
-    // a hit for each node, and one for each branch's probability
+    // a hit for each node, and one for each branch
     expect(d.hits.filter((h) => h.part === "node")).toHaveLength(7);
-    expect(d.hits.filter((h) => h.part === "prob")).toHaveLength(6);
+    expect(d.hits.filter((h) => h.part === "prob")).toHaveLength(0); // (no probability typed yet: the branches themselves are clicked)
+    expect(d.hits.filter((h) => h.part === "edge")).toHaveLength(6);
     // 6 branches
     expect(d.prims.filter((p) => p.k === "line" && p.pts.length === 4 && p.w > 1).length).toBeGreaterThanOrEqual(6);
   });
@@ -192,5 +193,66 @@ describe("the sheet and its picture", () => {
     const img = renderProbaSvg({ ...DEFAULT_PROBA_CONFIG, shapes: [stroke] })!;
     expect(img.svg).toContain('fill="#ff0000"');
     expect(img.svg).not.toMatch(/NaN/);
+  });
+});
+
+describe("a tree's room and its rebuilding", () => {
+  it("leaves more room between the groups of branches than inside a group (where the probabilities face each other)", () => {
+    const t = newTree(["A, !A", "B, !B"], 0, 0);
+    const d = drawTree(t);
+    const ys = paths(t.root).map((p) => {
+      const h = d.hits.find((x) => x.node === p[p.length - 1].id && x.part === "node")!;
+      return h.box.y + h.box.h / 2;
+    });
+    const inside = ys[1] - ys[0];
+    const between = ys[2] - ys[1];
+    expect(inside).toBeCloseTo(t.leafGap, 0);
+    expect(between).toBeGreaterThan(inside + 10);
+  });
+
+  it("makes every branch clickable, and tags what it draws for the mouse", () => {
+    const t = newTree(["A, !A"], 0, 0);
+    const d = drawTree(t);
+    expect(d.hits.filter((h) => h.part === "edge" && h.pts?.length === 4)).toHaveLength(2);
+    const a = t.root.children[0].id;
+    expect(d.prims.some((p) => p.owner === `${a}:node`)).toBe(true);
+    expect(d.prims.some((p) => p.owner === `${a}:branch`)).toBe(true);
+  });
+
+  it("renames an event on every branch of its stage at once, and bars it", () => {
+    let root = buildTree([parseStage("A, !A"), parseStage("B, !B")]);
+    root = renameStageEvent(root, 2, { label: "B", bar: false }, { label: "R" });
+    expect(stageEvents(root, 2)).toEqual([{ label: "R", bar: false }, { label: "B", bar: true }]);
+    expect(root.children.map((c) => c.children[0].label)).toEqual(["R", "R"]);
+    root = renameStageEvent(root, 2, { label: "B", bar: true }, { label: "V", bar: false });
+    expect(stageEvents(root, 2)).toEqual([{ label: "R", bar: false }, { label: "V", bar: false }]);
+    expect(stageEvents(root, 1)).toEqual([{ label: "A", bar: false }, { label: "A", bar: true }]); // (the other stage is left alone)
+  });
+
+  it("adds and removes an event of a stage under every node, keeping what follows", () => {
+    let root = buildTree([parseStage("A, !A"), parseStage("B, !B")]);
+    root = addStageEvent(root, 1, { label: "C", bar: false });
+    expect(root.children.map((c) => c.label)).toEqual(["A", "A", "C"]);
+    expect(root.children[2].children.map((c) => c.label)).toEqual(["B", "B"]); // (the stage after it comes too)
+    root = addStageEvent(root, 2, { label: "N", bar: false });
+    expect(root.children.every((c) => c.children.length === 3)).toBe(true);
+    root = removeStageEvent(root, 2, { label: "B", bar: true });
+    expect(stageEvents(root, 2).map((e) => e.label)).toEqual(["B", "N"]);
+    expect(removeStageEvent(buildTree([parseStage("A")]), 1, { label: "A", bar: false }).children).toHaveLength(1); // (a node keeps one branch)
+  });
+
+  it("adds a last stage and removes a stage", () => {
+    let root = buildTree([parseStage("A, !A")]);
+    expect(freeLetters(root, 2)).toEqual(["B", "C"]);
+    root = addStage(root, [{ label: "B", bar: false }, { label: "C", bar: false }]);
+    expect(stageCount(root)).toBe(2);
+    expect(paths(root)).toHaveLength(4);
+    root = addStage(root, [{ label: "D", bar: false }, { label: "E", bar: false }]);
+    root = updateNode(root, root.children[0].children[0].children[1].id, { prob: "0.4" });
+    const middle = removeStage(root, 2);
+    expect(stageCount(middle)).toBe(2);
+    expect(stageEvents(middle, 2).map((e) => e.label)).toEqual(["D", "E"]);
+    expect(middle.children[0].children[1].prob).toBe("0.4"); // (what came after the stage keeps its probabilities)
+    expect(stageCount(removeStage(root, 3))).toBe(2);
   });
 });
