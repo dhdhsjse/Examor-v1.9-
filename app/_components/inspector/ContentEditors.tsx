@@ -92,13 +92,23 @@ export function ImageEditor({ b, lang, meta, onChange, onReplace, onOpenChartStu
       {/* eslint-disable-next-line @next/next/no-img-element -- local data URL preview */}
       <img src={b.src} alt="" className="max-h-40 w-full rounded-md border border-line bg-subtle object-contain" />
       {b.figure && <FigureEditor b={b} figure={b.figure} lang={lang} onChange={onChange} />}
-      <Field label={t("Caption")} hint={t("Printed under the picture: a description, a legend, a source…")}>
+      <Field label={t("Position")}>
+        <Segmented
+          value={b.behind ? "behind" : "front"}
+          onChange={(v) => onChange({ behind: v === "behind" }, "behind")}
+          options={[
+            { value: "front", label: t("In front") },
+            { value: "behind", label: t("Behind") },
+          ]}
+        />
+      </Field>
+      <Field label={t("Caption")}>
         <RichInput value={b.caption ?? ""} onChange={(caption) => onChange({ caption }, "caption")} rows={3} multiline placeholder={t("e.g. Figure 1: a plant cell seen under a microscope")} />
       </Field>
       {hasCaption && <CaptionControls b={b} meta={meta} onChange={onChange} />}
       {/* A figure is redrawn from its settings, a molecule or a drawing from its data: replacing it with a picture drops them. */}
-      <SmallButton onClick={onReplace}>{t(b.figure || b.molecule || b.drawing || b.graphStudio || b.circuitStudio || b.chartStudio ? "Replace with an image…" : "Replace image…")}</SmallButton>
-      <Field label={t("Width (px)")} hint={t("Height follows to keep the picture's shape. You can also drag the corner handles.")}>
+      <SmallButton onClick={onReplace}>{t(b.figure || b.molecule || b.drawing || b.graphStudio || b.circuitStudio || b.chartStudio || b.probaStudio ? "Replace with an image…" : "Replace image…")}</SmallButton>
+      <Field label={t("Width (px)")}>
         <NumberInput
           value={Math.round(b.layout.width)}
           min={40}

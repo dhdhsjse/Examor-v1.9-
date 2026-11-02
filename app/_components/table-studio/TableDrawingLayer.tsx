@@ -46,6 +46,8 @@ type Props = {
   /** The real eraser went along `path` (page px of the table, `radius` around it): the drawings it touches are cut there */
   onEraseInk: (path: { x: number; y: number }[], radius: number, gesture: string) => void;
   onEdit: (id: string | null) => void;
+  /** Page px of empty room under the rows while a drawing tool is in hand (by default ROOM_BELOW; 0 for a sheet of a fixed size) */
+  roomBelow?: number;
 };
 
 // What is drawn over the cells of the Table Studio: the drawings and shapes of the table, where the page puts them (in page px of
@@ -53,14 +55,14 @@ type Props = {
 // pencil and highlighter of the page, the shapes, text boxes and the eraser. With the Select tool it lets the mouse through to the
 // cells, except over a shape (it is then picked, moved, turned…); with any other tool it takes the mouse everywhere on the table.
 export default function TableDrawingLayer(props: Props) {
-  const { width, rowsHeight, scale: s, shapes, tool, shapeKind, ink, eraser, textStyle, selectedId, editingId, onSelect, onChange, onAdd, onErase, onEraseInk, onEdit } = props;
+  const { width, rowsHeight, scale: s, shapes, tool, shapeKind, ink, eraser, textStyle, selectedId, editingId, onSelect, onChange, onAdd, onErase, onEraseInk, onEdit, roomBelow = ROOM_BELOW } = props;
   const stageRef = useRef<Konva.Stage>(null);
   const layerRef = useRef<Konva.Layer>(null);
   const [over, setOver] = useState(false); // (the Select tool) the mouse is over a shape or a handle
   const [live, setLive] = useState<{ points: InkPoint[]; tool: InkTools["tool"]; color: string; size: number } | null>(null);
   const selecting = tool === "select";
   const lowest = Math.ceil(Math.max(0, ...shapes.map((sh) => sh.y + sh.h)));
-  const height = Math.max(rowsHeight, lowest) + (selecting ? 0 : ROOM_BELOW);
+  const height = Math.max(rowsHeight, lowest) + (selecting ? 0 : roomBelow);
 
   // With the Select tool, whether the mouse is over something of the drawing decides who gets it: the drawing or the cells.
   useEffect(() => {

@@ -14,6 +14,7 @@ export type ToolAction =
   | { kind: "molecule-lab" } // opens the drawing Studio
   | { kind: "graph-studio" } // opens the Graph Studio
   | { kind: "circuit-studio" } // opens the Circuit Studio
+  | { kind: "proba-studio" } // opens the Probability Studio
   | { kind: "table-studio" } // opens the Table Studio
   | { kind: "math-graph-studio" } // opens the Function Studio (graphs of functions)
   | { kind: "chart-studio" } // opens the Chart Studio (columns, lines, pies, histograms…)

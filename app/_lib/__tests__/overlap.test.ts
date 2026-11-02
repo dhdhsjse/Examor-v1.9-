@@ -30,6 +30,19 @@ describe("dropping a block over another one", () => {
     expect(yOf(out, "photo")).toBe(150);
   });
 
+  it("a photo dropped on a table stays on it (and the table does not move)", () => {
+    const blocks = [at("table", "table", 100, 300), at("image", "photo", 150)];
+    const out = pushDownOverlaps(blocks, "photo", heights(blocks), 1123);
+    expect(yOf(out, "photo")).toBe(150);
+    expect(yOf(out, "table")).toBe(100);
+  });
+
+  it("a table dropped on a photo leaves the photo where it is", () => {
+    const blocks = [at("image", "photo", 150), at("table", "table", 100, 300)];
+    const out = pushDownOverlaps(blocks, "table", heights(blocks), 1123);
+    expect(yOf(out, "photo")).toBe(150);
+  });
+
   it("a photo dropped on a question still goes below it", () => {
     const blocks = [at("open", "q", 100, 200), at("image", "photo", 150)];
     const out = pushDownOverlaps(blocks, "photo", heights(blocks), 1123);

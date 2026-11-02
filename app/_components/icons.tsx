@@ -292,3 +292,12 @@ export const CircuitDrawIcon = () => (
     <path d="M2.5 9V4.5h13V9" />
   </svg>
 );
+
+export const ProbabilityTreeIcon = () => (
+  <svg {...base}>
+    <circle cx="3" cy="9" r="1.2" fill="currentColor" />
+    <path d="M4 8.4 9 4.5M4 9.6 9 13.5" />
+    <path d="M10.5 4.5h0M10.5 13.5h0" strokeWidth={2.6} />
+    <path d="M11.5 4.2 15.5 2.5M11.5 4.8 15.5 6.5M11.5 13.2 15.5 11.5M11.5 13.8 15.5 15.5" strokeWidth={1.2} />
+  </svg>
+);

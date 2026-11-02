@@ -3,6 +3,7 @@ import { exportRendererOverlay } from "@/app/_features/overlays/overlay-export-r
 import { historyOverlay } from "@/app/_features/overlays/overlay-history";
 import { moleculeOverlay } from "@/app/_features/overlays/overlay-molecule";
 import { circuitStudioOverlay } from "@/app/_features/overlays/overlay-circuit-studio";
+import { probaStudioOverlay } from "@/app/_features/overlays/overlay-proba-studio";
 import { tableStudioOverlay } from "@/app/_features/overlays/overlay-table-studio";
 import { graphStudioOverlay } from "@/app/_features/overlays/overlay-graph-studio";
 import { mathGraphStudioOverlay } from "@/app/_features/overlays/overlay-math-graph-studio";
@@ -19,5 +20,5 @@ export const overlayBar: Bar = {
   order: 40,
   className: "contents",
   groups: [],
-  features: [onboardingOverlay, pickerOverlay, previewOverlay, historyOverlay, moleculeOverlay, moleculeLabOverlay, graphStudioOverlay, circuitStudioOverlay, tableStudioOverlay, mathGraphStudioOverlay, chartStudioOverlay, exportRendererOverlay, toastOverlay],
+  features: [onboardingOverlay, pickerOverlay, previewOverlay, historyOverlay, moleculeOverlay, moleculeLabOverlay, graphStudioOverlay, circuitStudioOverlay, probaStudioOverlay, tableStudioOverlay, mathGraphStudioOverlay, chartStudioOverlay, exportRendererOverlay, toastOverlay],
 };

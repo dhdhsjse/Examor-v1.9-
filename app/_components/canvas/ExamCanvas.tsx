@@ -145,7 +145,13 @@ export default function ExamCanvas(props: Props) {
       const rest = list.filter((b) => b !== lifted).sort((a, c) => (a.layout.z ?? 0) - (c.layout.z ?? 0)); // (stable: same z → exam's order)
       return [...rest.flatMap(withOwn), ...(lifted ? withOwn(lifted) : [])];
     };
-    return [...layer(loose.filter((b) => !ON_TOP.has(b.type))), ...layer(loose.filter((b) => ON_TOP.has(b.type)))];
+    // (an image set "behind" goes in a third layer under both: under the text, tables and text boxes of its page)
+    const behind = (b: Block) => b.type === "image" && !!b.behind;
+    return [
+      ...layer(loose.filter(behind)),
+      ...layer(loose.filter((b) => !behind(b) && !ON_TOP.has(b.type))),
+      ...layer(loose.filter((b) => !behind(b) && ON_TOP.has(b.type))),
+    ];
   }, [blocks, inBox, liftedId]);
   const boxes = useMemo(() => pageBoxes(pages), [pages]);
   const { width, height } = stackSize(boxes);

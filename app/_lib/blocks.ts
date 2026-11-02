@@ -428,9 +428,11 @@ export function patchPart(parts: OpenPart[], i: number, patch: Partial<OpenPart>
 }
 
 // Two blocks that may lie over each other. Shapes and pictures are laid freely on the page: over each other, or over a text box (a picture in a frame, a photo on a
-// colored shape…). Nothing is pushed away for them.
+// colored shape…). Nothing is pushed away for them. A picture may also lie on a table (over it or behind it: its "Position").
 const LOOSE = new Set<Block["type"]>(["shape", "image"]);
-const mayOverlap = (a: Block, b: Block) => (LOOSE.has(a.type) && (LOOSE.has(b.type) || b.type === "textbox")) || (LOOSE.has(b.type) && a.type === "textbox");
+const loosePair = (a: Block, b: Block) => LOOSE.has(a.type) && (LOOSE.has(b.type) || b.type === "textbox");
+const mayOverlap = (a: Block, b: Block) =>
+  loosePair(a, b) || loosePair(b, a) || (a.type === "image" && b.type === "table") || (b.type === "image" && a.type === "table");
 
 // After a block is dropped: blocks it covers are pushed down below it (and so on),
 // so nothing overlaps and the reading order (question numbers) matches what you see. Objects placed freely (text boxes, pictures,

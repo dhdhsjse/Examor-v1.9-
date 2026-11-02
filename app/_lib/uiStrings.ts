@@ -3,6 +3,7 @@
 import { STUDIO_AR, STUDIO_FR } from "@/app/_lib/chemistry/strings";
 import { CIRCUIT_AR, CIRCUIT_FR } from "@/app/_lib/circuit/strings";
 import { GRAPH_AR, GRAPH_FR } from "@/app/_lib/graph/strings";
+import { PROBA_AR, PROBA_FR } from "@/app/_lib/proba/strings";
 import { RIBBON_AR, RIBBON_FR } from "@/app/_lib/ribbon/strings";
 import { SHAPES_AR, SHAPES_FR } from "@/app/_lib/shapes/strings";
 import { TABLE_AR, TABLE_FR } from "@/app/_lib/table/strings";
@@ -359,6 +360,9 @@ export const FR: Record<string, string> = {
   "Height follows to keep the picture's shape. You can also drag the corner handles.": "La hauteur suit pour garder la forme de l'image. Vous pouvez aussi tirer les poignées des coins.",
   "Replace image…": "Remplacer l'image…",
   "Caption": "Légende",
+  "Position": "Position",
+  "In front": "Devant",
+  "Behind": "Derrière",
   "Printed under the picture: a description, a legend, a source…": "Imprimée sous l'image : une description, une légende, une source…",
   "e.g. Figure 1: a plant cell seen under a microscope": "ex. Figure 1 : une cellule végétale vue au microscope",
   "Header style": "Style d'en-tête",
@@ -1271,6 +1275,9 @@ export const AR: Record<string, string> = {
   "Height follows to keep the picture's shape. You can also drag the corner handles.": "يتغير الارتفاع للحفاظ على شكل الصورة. يمكنك أيضًا سحب مقابض الزوايا.",
   "Replace image…": "استبدال الصورة…",
   "Caption": "التعليق",
+  "Position": "الموضع",
+  "In front": "في الأمام",
+  "Behind": "في الخلف",
   "Printed under the picture: a description, a legend, a source…": "يُطبع تحت الصورة: وصف، تعليق، مصدر…",
   "e.g. Figure 1: a plant cell seen under a microscope": "مثال: الشكل 1: خلية نباتية تحت المجهر",
   "Header style": "نمط الترويسة",
@@ -1849,6 +1856,10 @@ Object.assign(AR, GRAPH_AR);
 // Circuit Studio (app/_lib/circuit/strings.ts)
 Object.assign(FR, CIRCUIT_FR);
 Object.assign(AR, CIRCUIT_AR);
+
+// Probability Studio (app/_lib/proba/strings.ts)
+Object.assign(FR, PROBA_FR);
+Object.assign(AR, PROBA_AR);
 
 // The Home ribbon (right panel): font, paragraph, clipboard, find and replace, symbols.
 Object.assign(FR, RIBBON_FR);

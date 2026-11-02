@@ -152,6 +152,10 @@ export type Shell = {
   circuitStudio: { open: boolean; blockId: string | null };
   openCircuitStudio: (blockId?: string) => void;
   closeCircuitStudio: () => void;
+  // The Probability Studio (proba-studio/): `blockId` = the probability drawing being edited, null = a new one.
+  probaStudio: { open: boolean; blockId: string | null };
+  openProbaStudio: (blockId?: string) => void;
+  closeProbaStudio: () => void;
   restore: (version: Version) => void;
   exportJob: { doc: ExamDoc; mode: ViewMode; resolve: (stage: Konva.Stage) => void } | null;
   toast: string | null;
