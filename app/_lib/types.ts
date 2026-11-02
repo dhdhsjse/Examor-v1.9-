@@ -267,6 +267,7 @@ export interface ImageBlock extends BlockBase {
   // height: the caption is added below it (blockHeight).
   caption?: string;
   captionStyle?: CaptionStyle; // missing = italic, a bit smaller than the exam font, dark grey, centered
+  behind?: boolean; // drawn under the other blocks (text, tables, text boxes…) instead of over them; missing = in front
 }
 
 // The look of an image's caption (its own small toolbar in the image properties). Each missing value = the default.
