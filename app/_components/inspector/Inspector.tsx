@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import { ANSWER_COLOR, DEFAULT_SIZE } from "@/app/_lib/blockLayout";
 import { BLOCK_TYPE_NAMES } from "@/app/_lib/blocks";
+import type { BlockOrder } from "@/app/_lib/blockOrder";
 import { DEFAULT_FONT } from "@/app/_lib/fonts";
 import { EXAM_LANGS } from "@/app/_lib/i18n";
 import type { Block, ExamMeta } from "@/app/_lib/types";
@@ -10,8 +11,10 @@ import { useT } from "@/app/_lib/uiLang";
 import type { BlockPatch } from "@/app/_lib/useExam";
 import { BookmarkIcon, CopyIcon, TrashIcon } from "../icons";
 import InfoTip from "../InfoTip";
+import BlockOrderButtons from "./BlockOrderButtons";
 import { ContentEditorSwitch } from "./ContentEditorSwitch";
 import { ColorGrid, FontSelect } from "../rich/FormatBar";
+import type { TableStudioStart } from "../table-studio/tablePreset";
 import { BlockFontControls, hasFontControls } from "./FontControls";
 import { MenuSelect, SmallButton, Stepper } from "./fields";
 
@@ -25,9 +28,12 @@ interface Props {
   onLatex: (block: Block, latex: string) => void;
   onDelete: (id: string) => void;
   onDuplicate: (id: string) => void;
+  onOrder: (id: string, order: BlockOrder) => void;
   onSaveToLibrary: (block: Block) => void;
   onReplaceImage: (id: string) => void;
-  onOpenTableStudio: (shape?: string) => void; // a table: back to the Table Studio on it
+  onOpenTableStudio: (start?: TableStudioStart) => void; // a table: back to the Table Studio on it
+  onOpenGraphStudio: () => void; // a graph of functions: the Function Studio on it
+  onOpenChartStudio: () => void; // a chart: the Chart Studio on it
   onMeta: (patch: Partial<ExamMeta>, key?: string) => void;
   onChangeTemplate: () => void;
   keyboardOpen: boolean;
@@ -70,7 +76,10 @@ export default function Inspector(props: Props) {
         onReplaceImage={() => props.onReplaceImage(block.id)}
         examFont={props.meta.fontFamily}
         onOpenTableStudio={props.onOpenTableStudio}
+        onOpenGraphStudio={props.onOpenGraphStudio}
+        onOpenChartStudio={props.onOpenChartStudio}
       />
+      {block.type !== "header" && <BlockOrderButtons onOrder={(order) => props.onOrder(block.id, order)} />}
       {hasFontControls(block) && <BlockFontControls b={block} meta={props.meta} onChange={(patch, field) => props.onChange(block.id, patch, field)} />}
     </div>
   );

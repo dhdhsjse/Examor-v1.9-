@@ -5,9 +5,11 @@ import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { Layer, Line, Rect, Stage, Transformer } from "react-konva";
 import { DEFAULT_MARGINS, MAX_MARGIN_MM, MIN_MARGIN_MM, mmToPx, pxToMm } from "@/app/_lib/a4";
 import { questionNumbers, totalPoints as sumPoints } from "@/app/_lib/blocks";
+import { blocksAt, nextUnder } from "@/app/_lib/blockOrder";
 import type { EditField } from "@/app/_lib/editRegions";
 import { pageAt, pageBoxes, stackSize, type PageBox } from "@/app/_lib/pageStack";
 import { MIN_SHAPE_SIZE, isLine } from "@/app/_lib/shapes";
+import { isFixedTable } from "@/app/_lib/table";
 import { snapBox, type Guide } from "@/app/_lib/snapping";
 import type { Block, BlockLayout, ExamDoc, PageMargins, ViewMode } from "@/app/_lib/types";
 import type { BlockPatch } from "@/app/_lib/useExam";
@@ -145,6 +147,15 @@ export default function ExamCanvas(props: Props) {
     return { x: page.left + pos.x, y: page.top + pos.y };
   };
 
+  // Alt+click: the block under the one selected, where the mouse is (the layers of the page one after the other).
+  const blockUnder = (b: Block) => {
+    const p = layerRef.current?.getStage()?.getPointerPosition();
+    if (!p) return undefined;
+    const page = boxes[pageIndex.get(b.layout.pageId) ?? 0];
+    const stack = blocksAt(blocks, heights, b.layout.pageId, p.x - page.left, p.y - page.top);
+    return nextUnder(stack, selectedId)?.id;
+  };
+
   // Drop: save which page the block landed on and its position on that page.
   const handleDragEnd = (b: Block, x: number, y: number) => {
     const i = pageAt(y + (heights.get(b.id) ?? 0) / 2, boxes);
@@ -239,7 +250,8 @@ export default function ExamCanvas(props: Props) {
     stopDraw.current = stop;
   };
 
-  const media = selected?.type === "image" || selected?.type === "equation";
+  // A table with shapes or pictures is fixed like a picture: corner handles, in its own proportions.
+  const media = selected?.type === "image" || selected?.type === "equation" || (selected?.type === "table" && isFixedTable(selected));
   const corners = media || selected?.type === "graph";
   const freeBox = selected?.type === "textbox" || selected?.type === "shape"; // a text box or a shape: every side and corner
 
@@ -294,7 +306,7 @@ export default function ExamCanvas(props: Props) {
             interactive={interactive}
             textTool={!!props.textTool}
             drawing={drawing}
-            onSelect={() => props.onSelect?.(b.id)}
+            onSelect={(underneath) => props.onSelect?.(underneath ? (blockUnder(b) ?? b.id) : b.id)}
             onDragStart={() => props.onDragging?.(true)}
             onEdit={(field) => props.onEdit?.(b.id, field)}
             onPatch={(patch) => props.onPatch?.(b.id, patch)}

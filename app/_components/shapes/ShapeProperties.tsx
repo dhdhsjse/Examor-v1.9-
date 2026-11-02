@@ -1,9 +1,9 @@
 "use client";
 
-import { AlignCenter, AlignLeft, AlignRight, AlignVerticalJustifyCenter, AlignVerticalJustifyEnd, AlignVerticalJustifyStart, ArrowDown, ArrowUp, Bold, BringToFront, Copy, FlipHorizontal2, FlipVertical2, Italic, SendToBack, Trash2, type LucideIcon } from "lucide-react";
+import { AlignCenter, AlignLeft, AlignRight, AlignVerticalJustifyCenter, AlignVerticalJustifyEnd, AlignVerticalJustifyStart, ArrowDown, ArrowUp, Bold, BringToFront, Copy, FlipHorizontal2, FlipVertical2, Image as ImageIcon, Italic, SendToBack, Trash2, type LucideIcon } from "lucide-react";
 import { useId, useState, type ReactNode } from "react";
 import { FILL_COLORS, TEXT_COLORS } from "@/app/_lib/fonts";
-import { DEFAULT_FONT_SIZE, DEFAULT_STROKE, DEFAULT_TEXT_COLOR, MIN_SHAPE_SIZE, isLine, resolveStyle, shapeDef, type DashKind, type Order, type ShapeStyle, type ShapeTextAlign, type ShapeVAlign } from "@/app/_lib/shapes";
+import { DEFAULT_FONT_SIZE, DEFAULT_STROKE, DEFAULT_TEXT_COLOR, MIN_SHAPE_SIZE, isLine, isPicture, resolveStyle, shapeDef, type DashKind, type Order, type ShapeStyle, type ShapeTextAlign, type ShapeVAlign } from "@/app/_lib/shapes";
 import { useT } from "@/app/_lib/uiLang";
 import { FontSelect } from "@/app/_components/rich/FormatBar";
 import { ShapesMenuButton, ShapeThumb } from "./ShapeGallery";
@@ -126,13 +126,17 @@ type Props = {
   onOrder?: (order: Order) => void;
   onDuplicate?: () => void;
   onDelete?: () => void;
+  /** A picture (Table Studio): choose another image for it */
+  onReplaceImage?: () => void;
 };
 
 // The properties of a selected shape, in the right panel of a Studio and in the page editor's: which shape, its fill and outline,
-// its text, and (in a Studio) where it is and how it is stacked. `onChange` gets only what changed.
-export default function ShapeProperties({ item, onChange, geometry, size, onOrder, onDuplicate, onDelete }: Props) {
+// its text, and (in a Studio) where it is and how it is stacked. `onChange` gets only what changed. A picture has its image and its
+// outline (none unless asked), flips, and the same place, size and stacking.
+export default function ShapeProperties({ item, onChange, geometry, size, onOrder, onDuplicate, onDelete, onReplaceImage }: Props) {
   const t = useT();
   const def = shapeDef(item.shape);
+  const picture = isPicture(item);
   const line = isLine(item);
   const { stroke, strokeWidth } = resolveStyle(item);
   const align: ShapeTextAlign = item.textAlign ?? "center";
@@ -145,24 +149,37 @@ export default function ShapeProperties({ item, onChange, geometry, size, onOrde
 
   return (
     <div data-testid="shape-properties">
-      <Section title={t("Shape")}>
-        <div className="flex items-center gap-2.5">
-          <span className="grid size-10 shrink-0 place-items-center rounded-lg border border-line bg-subtle">
-            <ShapeThumb shape={item.shape} size={30} />
-          </span>
-          <span className="min-w-0 flex-1 truncate text-sm font-medium text-ink">{t(def.label)}</span>
-        </div>
-        <ShapesMenuButton current={item.shape} testId="shape-change" onPick={(shape) => onChange({ shape, adj: undefined })} />
-      </Section>
+      {picture ? (
+        <Section title={t("Image")} testId="picture-section">
+          {/* eslint-disable-next-line @next/next/no-img-element -- local data URL preview */}
+          <img src={item.src} alt="" className="max-h-32 w-full rounded-md border border-line bg-subtle object-contain" />
+          {onReplaceImage && (
+            <button type="button" onClick={onReplaceImage} data-testid="picture-replace" className="flex items-center justify-center gap-1.5 rounded-lg border border-line bg-white px-2.5 py-1.5 text-sm text-ink hover:border-accent">
+              <ImageIcon size={14} />
+              {t("Replace image…")}
+            </button>
+          )}
+        </Section>
+      ) : (
+        <Section title={t("Shape")}>
+          <div className="flex items-center gap-2.5">
+            <span className="grid size-10 shrink-0 place-items-center rounded-lg border border-line bg-subtle">
+              <ShapeThumb shape={item.shape} size={30} />
+            </span>
+            <span className="min-w-0 flex-1 truncate text-sm font-medium text-ink">{t(def.label)}</span>
+          </div>
+          <ShapesMenuButton current={item.shape} testId="shape-change" onPick={(shape) => onChange({ shape, adj: undefined })} />
+        </Section>
+      )}
 
-      {!line && (
+      {!line && !picture && (
         <Section title={t("Fill")}>
           <ColorRow label={t("Fill")} value={item.fill ?? null} none={t("No fill")} onChange={(fill) => onChange({ fill })} testId="shape-fill" />
         </Section>
       )}
 
-      <Section title={t("Shape outline")}>
-        <ColorRow label={t("Shape outline")} value={stroke} none={line ? undefined : t("No outline")} onChange={(c) => onChange({ stroke: c })} testId="shape-stroke" />
+      <Section title={t(picture ? "Image outline" : "Shape outline")}>
+        <ColorRow label={t(picture ? "Image outline" : "Shape outline")} value={stroke} none={line ? undefined : t("No outline")} onChange={(c) => onChange({ stroke: c })} testId="shape-stroke" />
         <div className="flex gap-2.5">
           <NumberInput label={t("Outline width")} value={strokeWidth} min={0.5} max={24} step={0.5} onCommit={(strokeWidth) => onChange({ strokeWidth })} testId="shape-stroke-width" />
           <div className="flex min-w-0 flex-[1.4] flex-col gap-1">
@@ -180,7 +197,7 @@ export default function ShapeProperties({ item, onChange, geometry, size, onOrde
         </div>
       </Section>
 
-      {!line && (
+      {!line && !picture && (
         <Section title={t("Text in the shape")}>
           <textarea
             value={item.text ?? ""}

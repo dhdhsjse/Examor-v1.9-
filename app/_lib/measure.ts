@@ -161,7 +161,27 @@ export function wrapRich(src: string, width: number, base: TextFont, line: numbe
     while (tokens[i + 1]?.kind === "word") word.push(tokens[++i]);
     const w = word.reduce((s, x) => s + measureText(x.text, x.font), 0);
     const sw = spacesW();
-    if (cur.length && curW + sw + w > Math.max(20, width)) {
+    const room = Math.max(20, width);
+    if (w > room) {
+      // A word wider than a whole line (a long code, no spaces) goes on a line of its own and is broken where the line is full, as the
+      // editors on the page do (overflow-wrap: break-word): it never runs out of the box.
+      if (cur.length) finish();
+      else {
+        cur.push(...spaces);
+        curW += sw;
+      }
+      spaces = [];
+      for (const part of word) {
+        for (const ch of Array.from(part.text)) {
+          const cw = measureText(ch, part.font);
+          if (curW + cw > room && cur.some((x) => x.kind === "word")) finish();
+          cur.push({ text: ch, font: part.font, kind: "word" });
+          curW += cw;
+        }
+      }
+      continue;
+    }
+    if (cur.length && curW + sw + w > room) {
       finish();
     } else {
       cur.push(...spaces);

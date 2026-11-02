@@ -92,8 +92,30 @@ describe("plainFromLatex: structures", () => {
   });
 });
 
+describe("plainFromLatex: the text flavour of the page", () => {
+  const text = (latex: string, selection = "") => plainFromLatex(latex, "text", selection);
+
+  it("writes a script in Unicode when every character has one", () => {
+    expect(text("x^{2}")?.text).toBe("x²");
+    expect(text("10^{-4}")?.text).toBe("10⁻⁴");
+    expect(text("\\mathrm{H}_{2}\\mathrm{O}")?.text).toBe("H₂O");
+    expect(text("u_{n+1}")?.text).toBe("uₙ₊₁");
+    expect(text("90^{\\circ}")?.text).toBe("90°");
+  });
+
+  it("falls back to brackets, with the cursor inside, when one has none", () => {
+    expect(text("x^{#?}")).toEqual({ text: "x^()", caret: 3 });
+    expect(text("v_{C}")?.text).toBe("v_(C)");
+    expect(text("e^{a b}")?.text).toBe("e^(ab)");
+  });
+
+  it("keeps the selection in a fraction like the other flavours", () => {
+    expect(text("\\frac{#0}{#?}", "a+b")?.text).toBe("(a+b)/()");
+  });
+});
+
 describe("plainFromLatex: the keys of the keyboard", () => {
-  const flavors: PlainFlavor[] = ["label", "formula"];
+  const flavors: PlainFlavor[] = ["label", "formula", "text"];
   const keys = KEYBOARD_LAYOUTS.flatMap((layout) => keyboardTabsOf(layout).flatMap((tab) => tab.buttons.map((key) => ({ layout, tab: tab.id, key }))));
 
   it.each(flavors)("%s: no key throws, and the text of a key is never empty", (flavor) => {

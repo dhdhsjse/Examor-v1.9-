@@ -1,9 +1,10 @@
-import { tablePatch } from "@/app/_components/table-studio/tablePreset";
+import { tablePatch, tablePreset } from "@/app/_components/table-studio/tablePreset";
 import TableStudio from "@/app/_components/table-studio/TableStudio";
 import type { Feature } from "@/app/_features/core/types";
 
 // The Table Studio, full screen over the app. A new table is inserted as an ordinary table block (one step of the exam's undo history);
-// the Properties panel of a table has a button that reopens the Studio on it, and Update puts the table back in its block.
+// the Properties panel of a table has a button that reopens the Studio on it, and Update puts the table back in its block. A table with
+// shapes or pictures is fixed like a picture on the page: the Studio opens on its shapes and pictures, and goes back to the cells with a button.
 export const tableStudioOverlay: Feature = {
   id: "overlay.table-studio",
   kind: "overlay",
@@ -18,10 +19,10 @@ export const tableStudioOverlay: Feature = {
         key={tableStudio.blockId ?? "new"}
         meta={ctx.doc.meta}
         editing={editing}
-        startShape={tableStudio.shape}
+        start={tableStudio.start}
         onClose={closeTableStudio}
         onInsert={(table) => {
-          runTool({ kind: "block", type: "table", preset: table });
+          runTool({ kind: "block", type: "table", preset: tablePreset(table) });
           closeTableStudio();
         }}
         onUpdate={(table) => {

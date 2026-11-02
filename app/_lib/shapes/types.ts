@@ -37,6 +37,8 @@ export type ShapeStyle = {
   italic?: boolean;
   textAlign?: ShapeTextAlign;
   textVAlign?: ShapeVAlign;
+  /** A picture (a data URL) instead of a drawing: its box is the picture's, its outline (none unless asked) goes round it. Only the Table Studio puts them. */
+  src?: string;
 };
 
 /** A shape in a Studio: where it is (the top-left corner of its box, before it is turned) and how it is turned. */

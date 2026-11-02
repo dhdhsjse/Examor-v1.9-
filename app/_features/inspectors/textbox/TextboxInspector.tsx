@@ -1,6 +1,7 @@
 "use client";
 
 import { PaintBucket, Square } from "lucide-react";
+import BlockOrderButtons from "@/app/_components/inspector/BlockOrderButtons";
 import { SmallButton, Stepper } from "@/app/_components/inspector/fields";
 import { BookmarkIcon, CopyIcon, TrashIcon } from "@/app/_components/icons";
 import type { Ctx } from "@/app/_features/core/types";
@@ -55,6 +56,7 @@ export default function TextboxInspector({ ctx }: { ctx: Ctx }) {
               <ColorMenu title={t("Border color")} icon={<Square size={15} />} value={b.border} initial="#111827" autoLabel={t("No border")} colors={TEXT_COLORS} toggle onChange={(border) => shell.updateBlock(b.id, { border }, "border")} />
             </div>
           </div>
+          <BlockOrderButtons onOrder={(order) => shell.orderBlock(b.id, order)} />
           <p className="text-[10px] leading-snug text-faint">{t("Drag the edge of the box to move it, and its handles to resize it: the text wraps to fit.")}</p>
         </RibbonGroup>
       </TextRibbon>

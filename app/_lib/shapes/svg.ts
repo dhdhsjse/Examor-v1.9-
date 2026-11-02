@@ -1,6 +1,6 @@
 // The SVG of a shape (and of a list of them): what goes into the picture a Studio puts on the page. The same parts, colors and
 // text lines the Konva canvases draw. Pure functions, unit-tested.
-import { SHAPE_FONT, dashArray, paintFill, resolveStyle, shapeParts } from "./geometry";
+import { SHAPE_FONT, dashArray, isPicture, paintFill, resolveStyle, shapeParts } from "./geometry";
 import { num } from "./path";
 import { layoutShapeText } from "./text";
 import type { ShapeItem } from "./types";
@@ -11,9 +11,12 @@ const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replac
 export function shapeSvg(item: ShapeItem): string {
   const { stroke, strokeWidth } = resolveStyle(item);
   const dash = dashArray(item);
+  const picture = isPicture(item);
+  // (a picture is drawn in its box, then its outline, if it has one, round it: the box is a rectangle and has no inside to fill)
+  const image = picture ? `<image href="${esc(item.src as string)}" x="0" y="0" width="${num(item.w)}" height="${num(item.h)}" preserveAspectRatio="none"/>` : "";
   const parts = shapeParts(item, item.w, item.h)
     .map((p) => {
-      const fill = paintFill(p.paint, item);
+      const fill = picture ? null : paintFill(p.paint, item);
       const dashed = dash && p.paint !== "solid" ? ` stroke-dasharray="${dash.map(num).join(" ")}"` : "";
       return `<path d="${p.d}" fill="${fill ? esc(fill) : "none"}"${stroke ? ` stroke="${esc(stroke)}" stroke-width="${num(strokeWidth)}"${dashed} stroke-linejoin="round" stroke-linecap="round"` : ""}/>`;
     })
@@ -27,7 +30,7 @@ export function shapeSvg(item: ShapeItem): string {
         .join("")
     : "";
   const place = `translate(${num(item.x + item.w / 2)} ${num(item.y + item.h / 2)})${item.rotation ? ` rotate(${num(item.rotation)})` : ""} translate(${num(-item.w / 2)} ${num(-item.h / 2)})`;
-  return `<g transform="${place}" font-family="${SHAPE_FONT}" data-shape="${esc(item.id)}" data-kind="${esc(item.shape)}"><g${flip}>${parts}</g>${words}</g>`;
+  return `<g transform="${place}" font-family="${SHAPE_FONT}" data-shape="${esc(item.id)}" data-kind="${esc(item.shape)}"><g${flip}>${image}${parts}</g>${words}</g>`;
 }
 
 export const shapesSvg = (items: readonly ShapeItem[] | undefined) => (items ?? []).map(shapeSvg).join("");

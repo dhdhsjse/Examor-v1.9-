@@ -3,11 +3,11 @@
 import { Fragment } from "react";
 import { Group, Image as KImage, Line, Rect, Shape } from "react-konva";
 import StudioShapes from "@/app/_components/shapes/StudioShapes";
-import { DEFAULT_ACCENT, layoutTable, layoutText, layoutTextbox, type ListMarker, type ParagraphBox } from "@/app/_lib/blockLayout";
+import { DEFAULT_ACCENT, layoutTable, layoutText, layoutTextbox, tableFrame, type ListMarker, type ParagraphBox } from "@/app/_lib/blockLayout";
 import { useImage } from "@/app/_lib/images";
 import { svgUrl } from "@/app/_lib/library";
 import { plainText, serializeRich } from "@/app/_lib/richText";
-import type { EquationBlock, ExamMeta, ImageBlock, TableBlock, TextBlock, TextboxBlock } from "@/app/_lib/types";
+import type { EquationBlock, ExamMeta, ImageBlock, TableBlock, TextBlock, TextboxBlock, ViewMode } from "@/app/_lib/types";
 import { INK, RichText, tint } from "./shared";
 
 // The shading and the border lines behind a paragraph (Home → Paragraph).
@@ -148,16 +148,18 @@ function TableBody({ b, meta }: { b: TableBlock; meta: ExamMeta }) {
   );
 }
 
-// The shapes drawn over a table (the block is what is selected on the page, not them).
+// The shapes and pictures over a table (the block is what is selected on the page, not them).
 const noop = () => {};
 const TableShapes = ({ b }: { b: TableBlock }) => (b.shapes?.length ? <StudioShapes shapes={b.shapes} selectedId={null} interactive={false} scale={1} onSelect={noop} onChange={noop} /> : null);
 
-// A table: its cells and lines, then the shapes drawn over it.
+// A table: its cells and lines, then the shapes and pictures over it. A fixed one (with shapes or pictures) is laid out at the width they
+// were put in and drawn scaled to the block's width, like a picture (see tableFrame).
 export function TableView({ b, meta }: { b: TableBlock; meta: ExamMeta }) {
+  const { block, k } = tableFrame(b);
   return (
-    <Group listening={false}>
-      <TableBody b={b} meta={meta} />
-      <TableShapes b={b} />
+    <Group listening={false} scaleX={k} scaleY={k}>
+      <TableBody b={block} meta={meta} />
+      <TableShapes b={block} />
     </Group>
   );
 }
@@ -174,6 +176,7 @@ export function EquationView({ b }: { b: EquationBlock }) {
   return <Picture src={svgUrl(b.svg)} width={b.layout.width} height={b.layout.height} />;
 }
 
-export function ImageView({ b }: { b: ImageBlock }) {
-  return <Picture src={b.src} width={b.layout.width} height={b.layout.height} />;
+// (a chart that is blank for the students shows the whole chart on the correction sheet)
+export function ImageView({ b, mode }: { b: ImageBlock; mode?: ViewMode }) {
+  return <Picture src={mode === "key" && b.srcAnswer ? b.srcAnswer : b.src} width={b.layout.width} height={b.layout.height} />;
 }

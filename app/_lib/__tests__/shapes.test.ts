@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  PICTURE_MAX,
+  PICTURE_SHAPE,
   SHAPES,
   SHAPE_CATEGORIES,
   addShape,
@@ -8,14 +10,17 @@ import {
   dragHandle,
   duplicateShape,
   handlePoints,
+  isPicture,
   layoutShapeText,
   lineEnds,
   localExtent,
   localToWorld,
   moveLineEnd,
+  newPictureItem,
   newShapeItem,
   paintFill,
   pathPoints,
+  picturesOf,
   pushRecent,
   removeShape,
   reorderShape,
@@ -383,6 +388,76 @@ describe("the picture of a shape", () => {
     const svg = shapeSvg({ id: "t", shape: "rect", x: 0, y: 0, w: 10, h: 10, fill: "#ff0000", stroke: null });
     expect(svg).toContain('fill="#ff0000"');
     expect(svg).not.toContain("stroke=");
+  });
+});
+
+describe("pictures put over a table", () => {
+  const src = "data:image/png;base64,AAAA";
+
+  it("is a picture only when it has a source", () => {
+    expect(isPicture({ shape: PICTURE_SHAPE, src })).toBe(true);
+    expect(isPicture({ shape: PICTURE_SHAPE, src: "" })).toBe(false);
+    expect(isPicture({ shape: "rect" })).toBe(false);
+  });
+
+  it("is put in the middle of the area, in its own proportions, no bigger than the usual size", () => {
+    const wide = newPictureItem({ src, ratio: 2 }, { w: 600, h: 300 });
+    expect(wide.w / wide.h).toBeCloseTo(2);
+    expect(wide.w).toBeLessThanOrEqual(PICTURE_MAX[0]);
+    expect(wide.h).toBeLessThanOrEqual(PICTURE_MAX[1]);
+    expect(wide.x + wide.w / 2).toBeCloseTo(300);
+    expect(wide.y + wide.h / 2).toBeCloseTo(150);
+    const tall = newPictureItem({ src, ratio: 0.5 }, { w: 600, h: 300 });
+    expect(tall.w / tall.h).toBeCloseTo(0.5);
+    expect(tall.h).toBeLessThanOrEqual(PICTURE_MAX[1]);
+  });
+
+  it("is made smaller to fit a small area, and a ratio that means nothing is a square", () => {
+    const small = newPictureItem({ src, ratio: 1 }, { w: 100, h: 60 });
+    expect(small.h).toBeLessThanOrEqual(60);
+    expect(small.w).toBeCloseTo(small.h);
+    expect(small.x).toBeCloseTo((100 - small.w) / 2);
+    for (const ratio of [0, -3, Number.NaN]) {
+      const p = newPictureItem({ src, ratio }, { w: 600, h: 300 });
+      expect(p.w).toBeCloseTo(p.h);
+    }
+  });
+
+  it("has no outline unless it is given one", () => {
+    const p = newPictureItem({ src, ratio: 1.5 }, { w: 400, h: 200 });
+    expect(p.shape).toBe(PICTURE_SHAPE);
+    expect(resolveStyle(p).stroke).toBeNull();
+    expect(resolveStyle({ shape: PICTURE_SHAPE, src }).stroke).toBeNull(); // (a picture with no word about its outline)
+    expect(resolveStyle({ shape: "rect" }).stroke).toBe("#111827"); // (a shape still has its dark one)
+    expect(resolveStyle({ ...p, stroke: "#ff0000" }).stroke).toBe("#ff0000");
+  });
+
+  it("is drawn as an image in its box, the outline (if any) round it", () => {
+    const p = newPictureItem({ src, ratio: 2 }, { w: 400, h: 200 });
+    const plain = shapeSvg(p);
+    expect(plain).toContain(`<image href="${src}"`);
+    expect(plain).toContain('preserveAspectRatio="none"');
+    expect(plain).not.toContain("stroke=");
+    const framed = shapeSvg({ ...p, stroke: "#ff0000", strokeWidth: 3 });
+    expect(framed).toContain('stroke="#ff0000"');
+    expect(framed).toContain('fill="none"');
+    expect(framed.indexOf("<image")).toBeLessThan(framed.indexOf("<path"));
+  });
+
+  it("is flipped with its picture, and its source is escaped", () => {
+    const svg = shapeSvg({ ...newPictureItem({ src: 'data:image/png;base64,A"B', ratio: 1 }, { w: 200, h: 200 }), flipX: true });
+    expect(svg).toContain("scale(-1 1)");
+    expect(svg).toContain("A&quot;B");
+  });
+
+  it("is listed for loading before a page is printed, and a copy keeps it", () => {
+    const p = newPictureItem({ src, ratio: 1 }, { w: 200, h: 200 });
+    const r = newShapeItem("rect", { x: 0, y: 0, w: 20, h: 20 });
+    expect(picturesOf([r, p])).toEqual([src]);
+    expect(picturesOf(undefined)).toEqual([]);
+    const { copy } = duplicateShape([p], p.id);
+    expect(copy?.src).toBe(src);
+    expect(copy?.id).not.toBe(p.id);
   });
 });
 

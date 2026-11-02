@@ -7,8 +7,9 @@ import ShapeDrawSurface from "@/app/_components/shapes/ShapeDrawSurface";
 import StudioShapes, { type ShapePatch } from "@/app/_components/shapes/StudioShapes";
 import { tableHeight } from "@/app/_lib/blockLayout";
 import type { DrawnBox } from "@/app/_lib/shapes";
-import type { ExamMeta, TableBlock } from "@/app/_lib/types";
+import type { ExamMeta } from "@/app/_lib/types";
 import { useT } from "@/app/_lib/uiLang";
+import { studioBlock } from "./tablePreset";
 import type { StudioTable } from "./useTableStudio";
 
 const PADDING = 24;
@@ -40,8 +41,8 @@ export default function TableShapesCanvas({ table, meta, tool, selectedId, onSel
     return () => ro.disconnect();
   }, []);
 
-  const { width, shapes, ...data } = table;
-  const block: TableBlock = { ...data, id: "canvas", type: "table", layout: { pageId: "p", x: 0, y: 0, width, height: 0 } }; // (without its shapes: they are drawn below, to be handled)
+  const { width, shapes } = table;
+  const block = studioBlock(table, "canvas", false); // (without its shapes and pictures: they are drawn below, to be handled)
   const rows = tableHeight(block, meta);
   const lowest = Math.ceil(Math.max(0, ...(shapes ?? []).map((s) => s.y + s.h + 40)));
   const worldH = Math.max(rows + ROOM_BELOW, lowest);
@@ -49,7 +50,7 @@ export default function TableShapesCanvas({ table, meta, tool, selectedId, onSel
 
   return (
     <div ref={box} dir="ltr" data-testid="table-shapes-canvas" className="relative grid min-h-0 flex-1 place-items-start justify-center overflow-auto bg-subtle/60 p-6">
-      <div className="shadow-sm" style={{ width: width * scale, height: worldH * scale, cursor: tool ? "crosshair" : undefined }} aria-label={t("Table with its shapes")} role="img">
+      <div className="shadow-sm" style={{ width: width * scale, height: worldH * scale, cursor: tool ? "crosshair" : undefined }} aria-label={t("Table with its shapes and images")} role="img">
         <Stage width={width * scale} height={worldH * scale} scaleX={scale} scaleY={scale}>
           <Layer>
             <Rect width={width} height={worldH} fill="#ffffff" onClick={() => onSelect(null)} onTap={() => onSelect(null)} />

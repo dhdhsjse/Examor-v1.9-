@@ -259,3 +259,29 @@ describe("the document of a text box and its paragraphs", () => {
     expect(docParagraphs(each).map((p) => p.indent)).toEqual([1, 2]);
   });
 });
+
+describe("a word wider than the box", () => {
+  const long = "zqEWSXDCFYVGHBWECYVUBIOWTCYVUHINOK?ERTYUIOPRCFGHJ";
+
+  it("is broken where the line is full, like the editors on the page do, so nothing runs out of the box", () => {
+    const lines = wrapRich(`short ${long} end`, 200, base, 28);
+    expect(lines.length).toBeGreaterThan(2);
+    for (const l of lines) expect(l.width).toBeLessThanOrEqual(200 + 1);
+    // no character is lost or added, and the words around it keep their places
+    expect(lines.map((l) => l.pieces.map((p) => p.text).join("")).join("").replaceAll(" ", "")).toBe(`short${long}end`);
+    expect(lines[0].pieces.map((p) => p.text).join("").trim()).toBe("short");
+  });
+
+  it("leaves a word that fits, and the other words, as they were", () => {
+    const lines = wrapRich("alpha beta gamma delta epsilon zeta", 150, base, 28);
+    expect(lines.every((l) => !l.pieces.some((p) => /^[a-z]$/.test(p.text)))).toBe(true);
+    expect(lines.map((l) => l.pieces.map((p) => p.text).join("").trim()).join(" ")).toBe("alpha beta gamma delta epsilon zeta");
+  });
+
+  it("keeps the styles of the pieces of a long word", () => {
+    const lines = wrapRich(`⁅b⁆${long.slice(0, 20)}⁅/⁆${long.slice(20)}`, 120, base, 28);
+    expect(lines.length).toBeGreaterThan(2);
+    expect(lines[0].pieces[0].font.bold).toBe(true);
+    expect(lines[lines.length - 1].pieces.at(-1)?.font.bold).toBe(false);
+  });
+});

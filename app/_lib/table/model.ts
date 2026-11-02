@@ -61,8 +61,13 @@ export interface TableExtras {
   firstCol?: boolean;
   /** The columns in the other order: the first one on the side where the last one would be (A B C D… becomes …D C B A). The text keeps the direction of the exam. */
   flip?: boolean;
-  /** Shapes drawn over the table, in px of the table's own box (Shapes in the Table Studio) */
+  /** Shapes and pictures put over the table, in px of the table's own box (Shapes and image in the Table Studio) */
   shapes?: ShapeItem[];
+  /**
+   * The width of the table's box when the shapes and pictures were put over it (px). A table that has some is fixed like a picture: it
+   * is laid out at this width and drawn scaled to the block's width, so what is over it stays where it was put (see isFixedTable).
+   */
+  base?: number;
 }
 
 /** What the operations work on: the table without its place on the page */
@@ -82,6 +87,20 @@ export const isPlainTable = (t: TableExtras) => !EXTRA_FIELDS.some((k) => {
   const v = t[k];
   return v !== undefined && v !== false && !(Array.isArray(v) && v.length === 0) && !(typeof v === "object" && !Array.isArray(v) && Object.keys(v as object).length === 0);
 });
+
+/**
+ * A table with shapes or pictures over it is fixed like a picture: on the page and in the right panel its cells, rows and columns are
+ * not changed (that is done in the Table Studio, which opens on the shapes first and goes back to the cells with a button), and it is
+ * moved and scaled as a whole, so what is over it stays where it was put.
+ */
+export const isFixedTable = (t: Pick<TableExtras, "shapes">) => !!t.shapes?.length;
+
+/** How much a fixed table is drawn bigger (or smaller) than the width it is laid out at: the block's width over `base`. 1 for any other table. */
+export function fixedScale(t: Pick<TableExtras, "shapes" | "base">, width: number): number {
+  if (!isFixedTable(t) || !t.base || t.base <= 0 || !(width > 0)) return 1;
+  const k = width / t.base;
+  return Math.abs(k - 1) < 1e-4 ? 1 : k;
+}
 
 /** Fill of the header row when the table does not choose another */
 export const TABLE_HEADER_FILL = "#f3f4f6";

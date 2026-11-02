@@ -1,5 +1,6 @@
 import type { JSONContent } from "@tiptap/core";
 import type { MoleculeGraph } from "@/app/_lib/chemistry/types";
+import type { ChartConfig } from "@/app/_lib/chart/types";
 import type { CircuitConfig } from "@/app/_lib/circuit/types";
 import type { GraphConfig } from "@/app/_lib/graph/types";
 import type { ListKind } from "@/app/_lib/lists";
@@ -258,6 +259,8 @@ export interface ImageBlock extends BlockBase {
   drawing?: MoleculeGraph; // a drawing made by hand in the drawing Studio: `src` is its picture, redrawn on edit
   graphStudio?: GraphConfig; // a graph paper from the Graph Studio: `src` is its picture, redrawn on edit
   circuitStudio?: CircuitConfig; // a circuit from the Circuit Studio: `src` is its picture, redrawn on edit
+  chartStudio?: ChartConfig; // a chart from the Chart Studio: `src` is its picture, redrawn on edit
+  srcAnswer?: string; // what the correction sheet shows instead of `src` (a chart that is blank for the students)
 }
 
 // A table (Insert → Table, or the Table Studio). `cells` is the text of each cell, as typed (a formula as a formula); everything else about
@@ -271,10 +274,31 @@ export interface TableBlock extends BlockBase, TableExtras {
   rowHeights?: number[]; // minimum height of each row in px (0 or missing = fits the text)
 }
 
-// A function graph drawn from formulas typed by the teacher, e.g. "x^2 - 2".
+/** What a curve of a function graph shows and how (all optional: a graph made before them is drawn as it was) */
+export interface GraphCurveOptions {
+  /** Its color (missing = the one of its place in the list) */
+  color?: string;
+  /** Not drawn (nor what belongs to it), but kept */
+  hidden?: boolean;
+  /** The curve of its derivative f′ too, dashed */
+  derivative?: boolean;
+  /** Its asymptotes (vertical, horizontal, oblique), found from its limits */
+  asymptotes?: boolean;
+  /** The x of the points where its tangent is drawn */
+  tangents?: number[];
+}
+
+/** A straight line drawn on the graph: x = a, y = b, or y = m·x + p */
+export type GraphLine = { kind: "v"; a: number; color?: string } | { kind: "h"; b: number; color?: string } | { kind: "o"; m: number; p: number; color?: string };
+
+// A function graph drawn from formulas typed by the teacher, e.g. "x^2 - 2" (Insert → Function graph: the Function Studio).
 export interface GraphBlock extends BlockBase {
   type: "graph";
-  functions: string[]; // up to 3 curves
+  functions: string[]; // up to 6 curves
+  /** What each curve shows, by the place of its formula in `functions` (see _lib/mathGraph.ts) */
+  curves?: GraphCurveOptions[];
+  /** Lines of the teacher's own (asymptotes, a limit…) */
+  lines?: GraphLine[];
   xMin: number;
   xMax: number;
   yMin: number;

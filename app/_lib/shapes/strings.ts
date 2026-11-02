@@ -144,6 +144,8 @@ export const SHAPES_FR: Record<string, string> = {
   // the properties
   "Fill": "Remplissage",
   "Shape outline": "Contour de la forme",
+  "Image outline": "Contour de l'image",
+  "Image from this computer…": "Image depuis cet ordinateur…",
   "No outline": "Aucun contour",
   "Outline width": "Épaisseur du contour",
   "Line style": "Style du trait",
@@ -304,6 +306,8 @@ export const SHAPES_AR: Record<string, string> = {
   "Callout: bent line": "تعليق بخط منكسر",
   "Fill": "تعبئة",
   "Shape outline": "حدود الشكل",
+  "Image outline": "حدود الصورة",
+  "Image from this computer…": "صورة من هذا الجهاز…",
   "No outline": "بلا حدود",
   "Outline width": "سمك الحدود",
   "Line style": "نمط الخط",

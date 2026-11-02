@@ -4,6 +4,7 @@
 
 import { fieldKey, fieldPatch, fieldValue, type EditField } from "./editRegions";
 import { deleteRange, insertRich, parseRich, plainText, replaceMatches, serializeRich, styleAt } from "./richText";
+import { isFixedTable } from "./table/model";
 import { docFromParagraphs, docParagraphs, richFromDoc, textboxDoc } from "./textboxDoc";
 import type { Block } from "./types";
 import type { BlockPatch } from "./useExam";
@@ -36,7 +37,8 @@ export function textFields(b: Block): EditField[] {
     case "textbox":
       return [{ kind: "text" }];
     case "table":
-      return b.cells.flatMap((row, r) => row.map((_, c): EditField => ({ kind: "cell", r, c })));
+      // (a table with shapes or pictures is fixed like a picture: its cells are changed in the Table Studio, not by replacing)
+      return isFixedTable(b) ? [] : b.cells.flatMap((row, r) => row.map((_, c): EditField => ({ kind: "cell", r, c })));
     default:
       return [];
   }

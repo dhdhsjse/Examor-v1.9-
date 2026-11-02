@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown, Shapes } from "lucide-react";
+import { ChevronDown, Image as ImageIcon, Shapes } from "lucide-react";
 import { useCallback, useRef, useState } from "react";
 import { Popover } from "@/app/_features/inspectors/format/ribbonUi";
 import { SHAPE_CATEGORIES, localExtent, paintFill, resolveStyle, shapeDef, shapeParts, shapesIn, type ShapeStyle } from "@/app/_lib/shapes";
@@ -91,9 +91,13 @@ export function ShapeGallery({ onPick, current }: { onPick: (shape: string) => v
   );
 }
 
-/** A button that opens the gallery under it (the Studios' toolbars). `icon`: a small square button for a ribbon, not a wide one. */
-export function ShapesMenuButton({ onPick, active, current, testId = "shapes-menu", variant = "wide" }: { onPick: (shape: string) => void; active?: boolean; current?: string | null; testId?: string; variant?: "wide" | "icon" }) {
+/**
+ * A button that opens the gallery under it (the Studios' toolbars). `icon`: a small square button for a ribbon, not a wide one.
+ * `onPickImage` puts an "Image from this computer…" entry above the gallery (the Table Studio), and `label` names the button (default: Shapes).
+ */
+export function ShapesMenuButton({ onPick, onPickImage, label, active, current, testId = "shapes-menu", variant = "wide" }: { onPick: (shape: string) => void; onPickImage?: () => void; label?: string; active?: boolean; current?: string | null; testId?: string; variant?: "wide" | "icon" }) {
   const t = useT();
+  const name = label ?? t("Shapes");
   const [open, setOpen] = useState(false);
   const anchor = useRef<HTMLDivElement>(null);
   const close = useCallback(() => setOpen(false), []);
@@ -105,9 +109,9 @@ export function ShapesMenuButton({ onPick, active, current, testId = "shapes-men
           aria-haspopup="dialog"
           aria-expanded={open}
           aria-pressed={active}
-          aria-label={t("Shapes")}
+          aria-label={name}
           data-testid={testId}
-          title={t("Shapes")}
+          title={name}
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => setOpen((o) => !o)}
           className={`inline-flex h-7 flex-none items-center gap-0.5 rounded-md border px-1.5 transition-colors ${active || open ? "border-indigo-300 bg-indigo-50 text-accent" : "border-transparent text-ink hover:bg-subtle"}`}
@@ -122,18 +126,32 @@ export function ShapesMenuButton({ onPick, active, current, testId = "shapes-men
         aria-expanded={open}
         aria-pressed={active}
         data-testid={testId}
-        title={t("Shapes")}
+        title={name}
         onClick={() => setOpen((o) => !o)}
         className={`flex w-full items-center gap-2 rounded-lg border px-2.5 py-2 text-sm font-medium transition-colors ${active ? "border-accent bg-accent-soft text-accent-strong" : "border-line bg-white text-ink hover:border-accent"}`}
       >
         <Shapes size={16} />
-        <span className="flex-1 text-start">{t("Shapes")}</span>
+        <span className="flex-1 text-start">{name}</span>
         <ChevronDown size={14} className="text-muted" />
       </button>
       )}
       {open && (
         <Popover anchor={anchor} onClose={close} width={300}>
           <div className="p-1.5">
+            {onPickImage && (
+              <button
+                type="button"
+                data-testid={`${testId}-image`}
+                onClick={() => {
+                  close();
+                  onPickImage();
+                }}
+                className="mb-2 flex w-full items-center gap-2 rounded-md border border-line bg-white px-2.5 py-1.5 text-sm text-ink transition-colors hover:border-accent hover:bg-accent-soft"
+              >
+                <ImageIcon size={15} />
+                {t("Image from this computer…")}
+              </button>
+            )}
             <ShapeGallery
               current={current}
               onPick={(shape) => {

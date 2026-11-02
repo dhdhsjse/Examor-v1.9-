@@ -1,14 +1,15 @@
 "use client";
 
 import { useMemo } from "react";
-import { Arrow, Group, Line, Rect, Text } from "react-konva";
-import { niceStep, tryCompile } from "@/app/_lib/graphMath";
+import { Arrow, Circle, Group, Line, Rect, Text } from "react-konva";
+import { niceStep, type Fn } from "@/app/_lib/graphMath";
+import { CURVE_PALETTE, FUNCTION_NAMES, colorOf, drawingsOf, lineLabel } from "@/app/_lib/mathGraph";
 import { FONT_FAMILY } from "@/app/_lib/measure";
-import type { GraphBlock } from "@/app/_lib/types";
+import type { GraphBlock, GraphLine } from "@/app/_lib/types";
 import { INK } from "./shared";
 
-export const CURVE_COLORS = ["#1d4ed8", "#dc2626", "#059669"];
-const NAMES = ["f", "g", "h"];
+export const CURVE_COLORS = CURVE_PALETTE;
+const NAMES = FUNCTION_NAMES;
 const SAMPLES = 600;
 
 // Round tick labels nicely: 0.5, 2, -1.5 (no 0.30000000004).
@@ -62,6 +63,72 @@ function curveLabels(curves: number[][][], W: number, H: number) {
   });
 }
 
+type Win = { xMin: number; xMax: number; W: number; H: number; sx: (x: number) => number; sy: (y: number) => number };
+
+// The points of a curve, cut where the function is undefined, jumps (1/x), or leaves the frame (so nothing is drawn outside the graph box).
+function plotPieces(fn: Fn, { xMin, xMax, H, sx, sy }: Win): number[][] {
+  const pieces: number[][] = [];
+  let cur: number[] = [];
+  let prev: { px: number; py: number } | null = null;
+  const end = () => {
+    if (cur.length >= 4) pieces.push(cur);
+    cur = [];
+  };
+  for (let i = 0; i <= SAMPLES; i++) {
+    const x = xMin + ((xMax - xMin) * i) / SAMPLES;
+    const y = fn(x);
+    if (!Number.isFinite(y)) {
+      end();
+      prev = null;
+      continue;
+    }
+    const p = { px: sx(x), py: sy(y) };
+    const inside = p.py >= 0 && p.py <= H;
+    if (prev && Math.abs(p.py - prev.py) > H * 2) {
+      end(); // vertical asymptote: don't join the two sides
+    } else if (prev) {
+      const wasInside = prev.py >= 0 && prev.py <= H;
+      if (inside !== wasInside) {
+        // Crossing the top or bottom edge: add the exact point on the edge.
+        const edge = (inside ? prev.py : p.py) < 0 ? 0 : H;
+        const t = (edge - prev.py) / (p.py - prev.py);
+        cur.push(prev.px + (p.px - prev.px) * t, edge);
+        if (!inside) end();
+      }
+    }
+    if (inside) cur.push(p.px, p.py);
+    prev = p;
+  }
+  end();
+  return pieces;
+}
+
+// The part of a segment inside the frame [0, W] × [0, H] (Liang–Barsky), or null when none of it is. A line is cut here, not only by the
+// clip of the group: the frame round the selected block is as big as everything drawn, clipped or not.
+function clipSegment(x1: number, y1: number, x2: number, y2: number, W: number, H: number): number[] | null {
+  let t0 = 0;
+  let t1 = 1;
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  for (const [p, q] of [[-dx, x1], [dx, W - x1], [-dy, y1], [dy, H - y1]] as const) {
+    if (p === 0) {
+      if (q < 0) return null;
+    } else {
+      const r = q / p;
+      if (p < 0) t0 = Math.max(t0, r);
+      else t1 = Math.min(t1, r);
+    }
+  }
+  return t0 > t1 ? null : [x1 + t0 * dx, y1 + t0 * dy, x1 + t1 * dx, y1 + t1 * dy];
+}
+
+// A straight line of the graph as two points of its frame (null if it does not cross it).
+function linePoints(l: GraphLine, { xMin, xMax, W, H, sx, sy }: Win): number[] | null {
+  if (l.kind === "v") return sx(l.a) < 0 || sx(l.a) > W ? null : [sx(l.a), 0, sx(l.a), H];
+  if (l.kind === "h") return sy(l.b) < 0 || sy(l.b) > H ? null : [0, sy(l.b), W, sy(l.b)];
+  return clipSegment(sx(xMin), sy(l.m * xMin + l.p), sx(xMax), sy(l.m * xMax + l.p), W, H);
+}
+
 // Axes, grid and the curves of the teacher's formulas, drawn in the block's box.
 export function GraphView({ b }: { b: GraphBlock }) {
   const { width: W, height: H } = b.layout;
@@ -73,50 +140,22 @@ export function GraphView({ b }: { b: GraphBlock }) {
   const ax = Math.min(Math.max(sx(0), 3), W - 3); // where the y axis is drawn
   const ay = Math.min(Math.max(sy(0), 3), H - 3); // where the x axis is drawn
 
-  // Points of every curve, cut where the function is undefined, jumps (1/x),
-  // or leaves the frame (so nothing is drawn outside the graph box).
-  const curves = useMemo(
-    () =>
-      b.functions.map((src) => {
-        const { fn } = tryCompile(src);
-        if (!fn) return [];
-        const pieces: number[][] = [];
-        let cur: number[] = [];
-        let prev: { px: number; py: number } | null = null;
-        const end = () => {
-          if (cur.length >= 4) pieces.push(cur);
-          cur = [];
-        };
-        for (let i = 0; i <= SAMPLES; i++) {
-          const x = xMin + ((xMax - xMin) * i) / SAMPLES;
-          const y = fn(x);
-          if (!Number.isFinite(y)) {
-            end();
-            prev = null;
-            continue;
-          }
-          const p = { px: sx(x), py: sy(y) };
-          const inside = p.py >= 0 && p.py <= H;
-          if (prev && Math.abs(p.py - prev.py) > H * 2) {
-            end(); // vertical asymptote: don't join the two sides
-          } else if (prev) {
-            const wasInside = prev.py >= 0 && prev.py <= H;
-            if (inside !== wasInside) {
-              // Crossing the top or bottom edge: add the exact point on the edge.
-              const edge = (inside ? prev.py : p.py) < 0 ? 0 : H;
-              const t = (edge - prev.py) / (p.py - prev.py);
-              cur.push(prev.px + (p.px - prev.px) * t, edge);
-              if (!inside) end();
-            }
-          }
-          if (inside) cur.push(p.px, p.py);
-          prev = p;
-        }
-        end();
-        return pieces;
-      }),
+  // What every curve draws (its function, derivative, tangents, asymptotes) and the points of the curves.
+  const win: Win = { xMin, xMax, W, H, sx, sy };
+  const draws = useMemo(
+    () => drawingsOf(b),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [b.functions, xMin, xMax, yMin, yMax, W, H],
+    [b.functions, b.curves, xMin, xMax],
+  );
+  const curves = useMemo(
+    () => draws.map((d) => (d.fn ? plotPieces(d.fn, win) : [])),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [draws, xMin, xMax, yMin, yMax, W, H],
+  );
+  const derivs = useMemo(
+    () => draws.map((d) => (d.derivative ? plotPieces(d.derivative, win) : [])),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [draws, xMin, xMax, yMin, yMax, W, H],
   );
 
   const ticks = (min: number, max: number, step: number) => {
@@ -155,15 +194,67 @@ export function GraphView({ b }: { b: GraphBlock }) {
         {ax >= 12 && ay <= H - 14 && <Text {...text} x={ax - 12} y={ay + 4} text="O" />}
         <Text {...text} fontSize={12} x={W - 12} y={Math.max(0, ay - 18)} text="x" />
         <Text {...text} fontSize={12} x={ax + 6} y={2} text="y" />
-        {curves.map((pieces, k) =>
-          pieces.map((pts, j) => <Line key={`c${k}-${j}`} points={pts} stroke={CURVE_COLORS[k]} strokeWidth={2} lineJoin="round" lineCap="round" />),
+        {/* The lines of the teacher's own, then the asymptotes of the curves (dashed), under the curves */}
+        {(b.lines ?? []).map((l, i) => {
+          const pts = linePoints(l, win);
+          return pts && <Line key={`l${i}`} points={pts} stroke={l.color ?? "#64748b"} strokeWidth={1.2} dash={[6, 4]} />;
+        })}
+        {draws.map((d, k) =>
+          d.asymptotes.map((l, i) => {
+            const pts = linePoints(l, win);
+            return pts && <Line key={`a${k}-${i}`} points={pts} stroke={colorOf(b, k)} strokeWidth={1.2} dash={[6, 4]} opacity={0.75} />;
+          }),
         )}
-        {/* Curve names (Cf, Cg...) next to their curve, never on top of each other */}
-        {curveLabels(curves, W, H).map((l) =>
-          l ? <Text key={`n${l.k}`} {...text} fontSize={12} fontStyle="bold" fill={CURVE_COLORS[l.k]} x={l.x} y={l.y} text={`C${NAMES[l.k]}`} /> : null,
+        {derivs.map((pieces, k) =>
+          pieces.map((pts, j) => <Line key={`d${k}-${j}`} points={pts} stroke={colorOf(b, k)} strokeWidth={1.6} dash={[7, 4]} lineJoin="round" lineCap="round" />),
+        )}
+        {curves.map((pieces, k) =>
+          pieces.map((pts, j) => <Line key={`c${k}-${j}`} points={pts} stroke={colorOf(b, k)} strokeWidth={2} lineJoin="round" lineCap="round" />),
+        )}
+        {/* The tangents: the line, and a dot where it touches the curve */}
+        {draws.map((d, k) =>
+          d.tangents.map((t, i) => {
+            const pts = clipSegment(sx(xMin), sy(t.m * xMin + t.p), sx(xMax), sy(t.m * xMax + t.p), W, H);
+            const inside = sx(t.a) >= 0 && sx(t.a) <= W && sy(t.y) >= 0 && sy(t.y) <= H;
+            return (
+              <Group key={`t${k}-${i}`}>
+                {pts && <Line points={pts} stroke={colorOf(b, k)} strokeWidth={1.4} />}
+                {inside && <Circle x={sx(t.a)} y={sy(t.y)} radius={3.5} fill="#ffffff" stroke={colorOf(b, k)} strokeWidth={1.6} />}
+              </Group>
+            );
+          }),
+        )}
+        {/* What the lines are (x = 1, y = 2…), over the curves so that nothing hides them */}
+        {draws.map((d, k) => d.asymptotes.map((l, i) => <AsymptoteLabel key={`al${k}-${i}`} line={l} color={colorOf(b, k)} win={win} text={text} />))}
+        {(b.lines ?? []).map((l, i) => (
+          <AsymptoteLabel key={`ll${i}`} line={l} color={l.color ?? "#64748b"} win={win} text={text} />
+        ))}
+        {/* Curve names (Cf, Cg..., and Cf′ for a derivative) next to their curve, never on top of each other */}
+        {curveLabels([...curves, ...derivs], W, H).map((l) =>
+          l ? <Text key={`n${l.k}`} {...text} fontSize={12} fontStyle="bold" fill={colorOf(b, l.k % curves.length)} x={l.x} y={l.y} text={`C${NAMES[l.k % curves.length] ?? ""}${l.k >= curves.length ? "′" : ""}`} /> : null,
         )}
       </Group>
       <Rect width={W} height={H} stroke="#9ca3af" strokeWidth={0.8} />
     </Group>
   );
+}
+
+// The equation of a line, small, near where it enters the frame (nothing if it is out of it).
+function AsymptoteLabel({ line, color, win, text }: { line: GraphLine; color: string; win: Win; text: Record<string, unknown> }) {
+  const { W, H, sx, sy, xMax } = win;
+  let x: number;
+  let y: number;
+  if (line.kind === "v") {
+    x = sx(line.a) + 3;
+    y = 3;
+    if (x > W - 44) x = sx(line.a) - 46;
+  } else if (line.kind === "h") {
+    x = W - 52;
+    y = sy(line.b) - 13;
+  } else {
+    x = W - 70;
+    y = sy(line.m * xMax + line.p) - 15;
+  }
+  if (x < 0 || x > W - 10 || y < 0 || y > H - 12) return null;
+  return <Text {...text} fontSize={10} fill={color} x={x} y={y} text={lineLabel(line)} />;
 }

@@ -1,7 +1,7 @@
 // Making and changing the shapes of a Studio: pure functions on lists of ShapeItem (the order of the list is the order they are
 // stacked in: the last one is on top). Each returns the same list when nothing changes.
 import { shapeDef } from "./catalog";
-import { MIN_SHAPE_SIZE, isLine } from "./geometry";
+import { MIN_SHAPE_SIZE, PICTURE_SHAPE, isLine, isPicture } from "./geometry";
 import type { Pt } from "./path";
 import type { ShapeItem, ShapeStyle } from "./types";
 
@@ -74,6 +74,21 @@ export function newShapeItem(shape: string, box: Pick<DrawnBox, "x" | "y" | "w" 
   return item;
 }
 
+/** The most room a picture takes when it is put (its own proportions are kept): wide, high */
+export const PICTURE_MAX: readonly [number, number] = [260, 200];
+
+/** A new picture, in its own proportions (`ratio` = width / height), as big as PICTURE_MAX and the area `within` allow, in the middle of that area. It has no outline. */
+export function newPictureItem(picture: { src: string; ratio: number }, within: { w: number; h: number }): ShapeItem {
+  const ratio = Number.isFinite(picture.ratio) && picture.ratio > 0 ? picture.ratio : 1;
+  let w = Math.min(PICTURE_MAX[0], PICTURE_MAX[1] * ratio, Math.max(within.w, MIN_SHAPE_SIZE));
+  let h = w / ratio;
+  if (h > within.h && within.h >= MIN_SHAPE_SIZE) {
+    h = within.h;
+    w = h * ratio;
+  }
+  return newShapeItem(PICTURE_SHAPE, { x: Math.max(0, (within.w - w) / 2), y: Math.max(0, (within.h - h) / 2), w, h }, { src: picture.src, stroke: null });
+}
+
 // ---- lists ----
 
 export const addShape = (list: readonly ShapeItem[] | undefined, item: ShapeItem): ShapeItem[] => [...(list ?? []), item];
@@ -93,6 +108,9 @@ export function updateShape(list: readonly ShapeItem[] | undefined, id: string, 
 }
 
 export const removeShape = (list: readonly ShapeItem[] | undefined, id: string): ShapeItem[] => (list ?? []).filter((s) => s.id !== id);
+
+/** The pictures in a list (their data URLs), for loading them before a page is drawn to print */
+export const picturesOf = (list: readonly ShapeItem[] | undefined): string[] => (list ?? []).flatMap((s) => (isPicture(s) ? [s.src as string] : []));
 
 export function moveShape(list: readonly ShapeItem[] | undefined, id: string, dx: number, dy: number): ShapeItem[] {
   return (list ?? []).map((s) => (s.id === id ? { ...s, x: s.x + dx, y: s.y + dy } : s));

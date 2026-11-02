@@ -5,6 +5,7 @@ import { useRef, useState } from "react";
 import { Group, Rect } from "react-konva";
 import { withHints } from "@/app/_lib/blocks";
 import { clickTargets, editRegions, type EditField } from "@/app/_lib/editRegions";
+import { isFixedTable } from "@/app/_lib/table";
 import type { Block, ExamMeta, ViewMode } from "@/app/_lib/types";
 import type { BlockPatch } from "@/app/_lib/useExam";
 import { EquationView, ImageView, TableView, TextboxView, TextView } from "./blocks/ContentViews";
@@ -36,7 +37,7 @@ interface Props {
   interactive: boolean; // false when exporting
   textTool: boolean; // "T" tool: one click starts typing
   drawing: boolean; // a box is being drawn on the page (text box tool): blocks ignore the mouse
-  onSelect: () => void;
+  onSelect: (underneath: boolean) => void; // underneath (Alt held): the block under this one, where the mouse is
   onDragStart: () => void;
   onDragMove: (x: number, y: number) => { x: number; y: number };
   onDragEnd: (x: number, y: number) => void;
@@ -75,7 +76,7 @@ function Content({ block: real, number, meta, mode, interactive, totalPoints }: 
       // An empty equation is only a hint on screen: it is not printed.
       return interactive || block.latex.trim() ? <EquationView b={block} /> : null;
     case "image":
-      return <ImageView b={block} />;
+      return <ImageView b={block} mode={mode} />;
     case "graph":
       return <GraphView b={block} />;
     case "shape":
@@ -96,6 +97,7 @@ export default function BlockNode(props: Props) {
   const [hover, setHover] = useState(false);
   // Was the block already selected when the mouse went down? Then one click on a text types in it.
   const wasSelected = useRef(false);
+  const underneath = useRef(false); // Alt+click picks the block beneath: this press is not a drag of this one
   const width = block.layout.width;
   const media = block.type === "image" || block.type === "equation" || block.type === "shape";
   const moveCursor = textTool ? "text" : "move";
@@ -118,18 +120,22 @@ export default function BlockNode(props: Props) {
       y={y}
       draggable={interactive && !textTool && !drawing}
       listening={interactive && !drawing}
-      onMouseDown={() => {
+      onMouseDown={(e) => {
         wasSelected.current = selected;
-        onSelect();
+        underneath.current = e.evt.altKey;
+        onSelect(e.evt.altKey);
       }}
-      onTap={onSelect}
+      onTap={() => onSelect(false)}
       onDblClick={() => onEdit(null)}
       onDragStart={(e) => {
-        e.target.moveToTop();
+        if (underneath.current) return e.target.stopDrag();
         props.onDragStart();
       }}
       onDragMove={(e) => e.target.position(onDragMove(e.target.x(), e.target.y()))}
-      onDragEnd={(e) => onDragEnd(e.target.x(), e.target.y())}
+      onDragEnd={(e) => {
+        if (underneath.current) return; // (the drag was stopped at once)
+        onDragEnd(e.target.x(), e.target.y());
+      }}
       onTransform={(e) => props.onResizing?.({ x: e.target.x(), y: e.target.y(), width: width * e.target.scaleX(), height: height * e.target.scaleY() })}
       onTransformEnd={handleTransformEnd}
       onMouseEnter={(e) => {
@@ -141,11 +147,11 @@ export default function BlockNode(props: Props) {
         setCursor(e, "default");
       }}
     >
-      {/* Background: also the area you can click and drag */}
+      {/* Background: also the area you can click and drag. Never opaque: the blocks may lie on top of each other (the paper is white) */}
       <Rect
         width={width}
         height={height}
-        fill={media ? "transparent" : selected && interactive ? "#f7f7ff" : "#ffffff"}
+        fill={!media && selected && interactive ? "rgba(99,102,241,0.05)" : "transparent"}
         stroke={interactive && hover && !selected ? "#c7d2fe" : undefined}
         strokeWidth={1}
         dash={[4, 3]}
@@ -167,12 +173,13 @@ export default function BlockNode(props: Props) {
             onMouseEnter={(e) => setCursor(e, textTool || selected || r.direct ? "text" : moveCursor)}
             onMouseLeave={(e) => setCursor(e, moveCursor)}
             onClick={(e) => {
-              if (!textTool && !wasSelected.current && !r.direct) return;
+              if (underneath.current || (!textTool && !wasSelected.current && !r.direct)) return;
               e.cancelBubble = true;
               onEdit(r.field);
             }}
             onDblClick={(e) => {
               e.cancelBubble = true;
+              if (underneath.current) return;
               onEdit(r.field);
             }}
           />
@@ -194,8 +201,8 @@ export default function BlockNode(props: Props) {
           />
         ))}
 
-      {/* Drag the lines of the selected table to resize its columns and rows */}
-      {interactive && selected && !textTool && block.type === "table" && (
+      {/* Drag the lines of the selected table to resize its columns and rows (not a fixed one: it is scaled as a whole, like a picture) */}
+      {interactive && selected && !textTool && block.type === "table" && !isFixedTable(block) && (
         <TableHandles b={block} meta={props.meta} zoom={props.zoom} onPatch={props.onPatch} />
       )}
     </Group>

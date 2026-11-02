@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, Redo2, Undo2, X } from "lucide-react";
+import { ArrowLeft, Redo2, Trash2, TriangleAlert, Undo2, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import DiscardDialog from "@/app/_components/molecule-studio/DiscardDialog";
 import { ShapesMenuButton } from "@/app/_components/shapes/ShapeGallery";
@@ -11,12 +11,14 @@ import TableSettings from "@/app/_components/table/TableSettings";
 import { makeActions } from "@/app/_components/table/tableActions";
 import { clampSel, selRange, type Sel } from "@/app/_components/table/tableSel";
 import { CONTENT_WIDTH } from "@/app/_lib/a4";
+import { tableHeight } from "@/app/_lib/blockLayout";
 import { DEFAULT_FONT } from "@/app/_lib/fonts";
-import { addShape, duplicateShape, isLine, newShapeItem, removeShape, reorderShape, updateShape, type DrawnBox, type Order } from "@/app/_lib/shapes";
-import { anchorOf, colsOf, rowsOf, tableMirrored, wholeMerges } from "@/app/_lib/table";
+import { pickImage } from "@/app/_lib/images";
+import { addShape, duplicateShape, isLine, isPicture, newPictureItem, newShapeItem, removeShape, reorderShape, updateShape, type DrawnBox, type Order } from "@/app/_lib/shapes";
+import { anchorOf, colsOf, isFixedTable, rowsOf, tableMirrored, wholeMerges } from "@/app/_lib/table";
 import type { ExamMeta, TableBlock } from "@/app/_lib/types";
 import { useUi } from "@/app/_lib/uiLang";
-import { blankStudioTable, studioTableOf } from "./tablePreset";
+import { blankStudioTable, studioBlock, studioTableOf, type TableStudioStart } from "./tablePreset";
 import TablePreview from "./TablePreview";
 import TableShapesCanvas from "./TableShapesCanvas";
 import { useTableStudio, type StudioTable } from "./useTableStudio";
@@ -25,8 +27,8 @@ interface Props {
   meta: ExamMeta;
   /** The table block being edited (null = a new table) */
   editing: TableBlock | null;
-  /** Open on the shapes, with this shape ready to draw (from the Shapes button of the right panel) */
-  startShape?: string;
+  /** How it opens: on the shapes and pictures (a table that has some always does), with a shape ready to draw or a picture to put */
+  start?: TableStudioStart;
   /** Put the table on the page (a new table block, with everything the Studio made) */
   onInsert: (table: StudioTable) => void;
   /** Put the table back in the block it came from */
@@ -35,18 +37,29 @@ interface Props {
 }
 
 // The Table Studio: a full-screen spreadsheet for the table of an exam: cells to type in, select, copy and paste (also from Excel),
-// merge and fill; looks, lines, fonts, number formats and formulas; shapes drawn over the table; and what is true of the whole table on the
-// right, under a preview of how the page will draw it. What is inserted is an ordinary table block, so it can be changed again from the right
-// panel, with the same tools, or here (the block's panel has a button back to the Studio).
-export default function TableStudio({ meta, editing, startShape, onInsert, onUpdate, onClose }: Props) {
+// merge and fill; looks, lines, fonts, number formats and formulas; shapes and pictures put over the table ("Shapes and image"); and what is
+// true of the whole table on the right, under a preview of how the page will draw it. What is inserted is an ordinary table block, so it can
+// be changed again from the right panel, with the same tools, or here (the block's panel has a button back to the Studio).
+// A table with shapes or pictures is fixed like a picture once it is on the page (see isFixedTable): the Studio says so as soon as the first
+// is put, opens such a table on its shapes and pictures first, and has a button back to the cells, so the data can still be changed.
+export default function TableStudio({ meta, editing, start, onInsert, onUpdate, onClose }: Props) {
   const { t, rtl } = useUi();
   const lang = meta.lang;
-  const studio = useTableStudio(editing ? studioTableOf(editing) : blankStudioTable(CONTENT_WIDTH));
+  // (what the Studio starts from: the table, and the picture chosen in the right panel put on it as the first step)
+  const [seed] = useState(() => {
+    const initial = editing ? studioTableOf(editing) : blankStudioTable(CONTENT_WIDTH);
+    const picture = start?.picture;
+    if (!picture) return { initial, first: undefined, pictureId: null };
+    const item = newPictureItem(picture, { w: initial.width, h: Math.max(tableHeight(studioBlock(initial, "studio", false), meta), 60) });
+    return { initial, first: { patch: { shapes: addShape(initial.shapes, item) }, key: `add:${item.id}` }, pictureId: item.id };
+  });
+  const studio = useTableStudio(seed.initial, seed.first);
   const { table, apply, undo, redo, canUndo, canRedo, dirty } = studio;
   const [picked, setSel] = useState<Sel | null>(null);
-  const [mode, setMode] = useState<"cells" | "shapes">(startShape ? "shapes" : "cells");
-  const [shapeTool, setShapeTool] = useState<string | null>(startShape ?? null); // the shape the next drag draws
-  const [shapeId, setShapeId] = useState<string | null>(null);
+  const opensOnShapes = start?.view ? start.view === "shapes" : !!start?.shape || !!start?.picture || (!!editing && isFixedTable(editing));
+  const [mode, setMode] = useState<"cells" | "shapes">(opensOnShapes ? "shapes" : "cells");
+  const [shapeTool, setShapeTool] = useState<string | null>(start?.shape ?? null); // the shape the next drag draws
+  const [shapeId, setShapeId] = useState<string | null>(seed.pictureId);
   const [confirmClose, setConfirmClose] = useState(false);
   const sel = clampSel(picked, rowsOf(table), colsOf(table));
   const range = sel ? wholeMerges(table, selRange(sel)) : null;
@@ -57,7 +70,7 @@ export default function TableStudio({ meta, editing, startShape, onInsert, onUpd
 
   const requestClose = () => (dirty ? setConfirmClose(true) : onClose());
 
-  // ---- shapes ----
+  // ---- shapes and pictures ----
 
   const pickShape = (kind: string) => {
     setMode("shapes");
@@ -72,9 +85,30 @@ export default function TableStudio({ meta, editing, startShape, onInsert, onUpd
     setShapeId(item.id);
     setShapeTool(null); // (like PowerPoint: one shape, then the Select tool is back)
   };
+  // An image from the computer goes in the middle of the table, in its own proportions, selected to be moved and resized.
+  const chooseImage = async () => {
+    const picture = await pickImage();
+    if (!picture) return;
+    const rows = tableHeight(studioBlock(table, "studio", false), meta);
+    const item = newPictureItem(picture, { w: table.width, h: Math.max(rows, 60) });
+    apply({ shapes: addShape(shapes, item) }, `add:${item.id}`);
+    setMode("shapes");
+    setShapeTool(null);
+    setShapeId(item.id);
+  };
+  // Another image for a picture: it keeps its place and width, and takes the proportions of the new one.
+  const replaceImage = async (id: string, width: number) => {
+    const picture = await pickImage();
+    if (picture) changeShape(id, { src: picture.src, h: Math.max(6, width / picture.ratio) }, `shape-image:${id}:${Date.now()}`);
+  };
   const deleteShape = (id: string) => {
     apply({ shapes: removeShape(shapes, id).length ? removeShape(shapes, id) : undefined }, `remove:${id}`);
     setShapeId(null);
+  };
+  const removeAll = () => {
+    apply({ shapes: undefined }, `remove-all:${Date.now()}`);
+    setShapeId(null);
+    setShapeTool(null);
   };
   const orderShape = (id: string, order: Order) => apply({ shapes: reorderShape(shapes, id, order) }, `order:${id}:${Date.now()}`);
   const copyShape = (id: string) => {
@@ -152,6 +186,21 @@ export default function TableStudio({ meta, editing, startShape, onInsert, onUpd
         </button>
       </header>
 
+      {/* With shapes or pictures the table is fixed like a picture once it is on the page: said as soon as the first one is put */}
+      {shapes.length > 0 && (
+        <div role="alert" data-testid="table-fixed-notice" className="flex items-start gap-3 border-b border-amber-300 bg-amber-50 px-4 py-2 text-[12.5px] leading-snug text-amber-900">
+          <TriangleAlert size={16} className="mt-0.5 shrink-0 text-amber-600" />
+          <div className="min-w-0 flex-1">
+            <p className="font-semibold">{t("The table will be fixed")}</p>
+            <p>{t("With shapes or images, the table is fixed like a picture once it is inserted: it can no longer be changed from the page or the right panel, only here in the Table Studio. After changing the data, check that the shapes still fit.")}</p>
+          </div>
+          <button type="button" onClick={removeAll} data-testid="remove-all-shapes" className="flex shrink-0 items-center gap-1.5 rounded-md border border-amber-300 bg-white px-2.5 py-1 text-xs font-medium text-amber-900 hover:border-amber-500">
+            <Trash2 size={13} />
+            {t("Remove all shapes and images")}
+          </button>
+        </div>
+      )}
+
       <div className="flex min-h-0 flex-1">
         <main className="flex min-w-0 flex-1 flex-col">
           {shapesMode ? (
@@ -159,18 +208,19 @@ export default function TableStudio({ meta, editing, startShape, onInsert, onUpd
               <div data-testid="table-shapes-bar" className="flex items-center gap-2 border-b border-line bg-white px-2 py-1.5">
                 <button type="button" onClick={backToCells} data-testid="back-to-cells" className="flex h-7 items-center gap-1.5 rounded-md border border-line px-2.5 text-xs font-medium text-ink hover:border-accent hover:bg-accent-soft">
                   <ArrowLeft size={14} className="rtl:rotate-180" />
-                  {t("Back to the cells")}
+                  {t("Back to the Table Studio")}
                 </button>
-                <ShapesMenuButton variant="icon" active={!!shapeTool} current={shapeTool} onPick={pickShape} testId="table-shapes" />
+                <span className="shrink-0 text-xs font-semibold text-ink">{t("Shapes and image")}</span>
+                <ShapesMenuButton variant="icon" label={t("Shapes and image")} active={!!shapeTool} current={shapeTool} onPick={pickShape} onPickImage={chooseImage} testId="table-shapes" />
                 <p className="min-w-0 flex-1 truncate text-xs text-muted">
-                  {shapeTool ? t("Drag on the table to draw the shape (Shift: a square or a 45° line, Alt: from the centre), or click to put it at its usual size · Esc to stop") : t("Click a shape to change it · choose another one with the Shapes button")}
+                  {shapeTool ? t("Drag on the table to draw the shape (Shift: a square or a 45° line, Alt: from the centre), or click to put it at its usual size · Esc to stop") : t("Click a shape or an image to change it · add another one with the Shapes and image button")}
                 </p>
               </div>
               <TableShapesCanvas table={table} meta={meta} tool={shapeTool} selectedId={shapeId} onSelect={setShapeId} onChange={changeShape} onDraw={drawShape} />
             </>
           ) : (
             <>
-              <TableFormatBar table={table} range={range} active={active} actions={actions} examFont={meta.fontFamily ?? DEFAULT_FONT} onPickShape={pickShape} />
+              <TableFormatBar table={table} range={range} active={active} actions={actions} examFont={meta.fontFamily ?? DEFAULT_FONT} onPickShape={pickShape} onPickImage={chooseImage} />
               <TableGrid table={table} lang={lang} sel={sel} onSelect={setSel} onChange={apply} onUndo={undo} onRedo={redo} actions={actions} examFont={meta.fontFamily} />
             </>
           )}
@@ -181,18 +231,25 @@ export default function TableStudio({ meta, editing, startShape, onInsert, onUpd
             <h3 className="text-xs font-semibold uppercase tracking-wide text-faint">{t("How it will look on the page")}</h3>
             <TablePreview table={table} meta={meta} boxWidth={280} />
           </section>
-          {shapesMode && shape ? (
-            <section className="-mx-4 border-t border-line">
-              <ShapeProperties
-                key={shape.id}
-                item={shape}
-                geometry
-                onChange={(patch) => changeShape(shape.id, patch, `shape:${shape.id}:${Object.keys(patch).sort().join(",")}`)}
-                onOrder={(order) => orderShape(shape.id, order)}
-                onDuplicate={() => copyShape(shape.id)}
-                onDelete={() => deleteShape(shape.id)}
-              />
-            </section>
+          {shapesMode ? (
+            shape ? (
+              <section className="-mx-4 border-t border-line">
+                <ShapeProperties
+                  key={shape.id}
+                  item={shape}
+                  geometry
+                  onChange={(patch) => changeShape(shape.id, patch, `shape:${shape.id}:${Object.keys(patch).sort().join(",")}`)}
+                  onOrder={(order) => orderShape(shape.id, order)}
+                  onDuplicate={() => copyShape(shape.id)}
+                  onDelete={() => deleteShape(shape.id)}
+                  onReplaceImage={isPicture(shape) ? () => replaceImage(shape.id, shape.w) : undefined}
+                />
+              </section>
+            ) : (
+              <p data-testid="table-shapes-hint" className="rounded-md bg-indigo-50/70 px-2.5 py-2 text-[11px] leading-snug text-indigo-900">
+                {t("Select a shape or an image on the table to change it. The table itself is changed in the Table Studio: press Back to the Table Studio.")}
+              </p>
+            )
           ) : (
             <section className="flex flex-col gap-2">
               <h3 className="text-xs font-semibold uppercase tracking-wide text-faint">{t("Table")}</h3>

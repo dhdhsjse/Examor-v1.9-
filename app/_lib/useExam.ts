@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { DEFAULT_MARGINS, PAGE_MARGIN } from "./a4";
 import { blockHeight } from "./blockLayout";
+import { reorderBlock, type BlockOrder } from "./blockOrder";
 import { blockHeights, createBlock, nextFreeY, pageBottom, pushDownOverlaps, type BlockPreset } from "./blocks";
 import { newId } from "./id";
 import { renderEquation, type RenderedEquation } from "./math";
@@ -233,6 +234,16 @@ export function useExam(initial: ExamDoc, t?: T) {
     [commit],
   );
 
+  // Bring a block to the front, send it to the back, or one layer up or down (it is drawn over the blocks before it in the document).
+  const orderBlock = useCallback(
+    (id: string, order: BlockOrder) =>
+      commit((d) => {
+        const blocks = reorderBlock(d.blocks, id, order, blockHeights(d));
+        return blocks === d.blocks ? d : { ...d, blocks };
+      }),
+    [commit],
+  );
+
   const deleteBlock = useCallback(
     (id: string) => {
       // A header/footer goes from its settings: the page's own, or the document's (see deleteChrome).
@@ -400,6 +411,7 @@ export function useExam(initial: ExamDoc, t?: T) {
     revealPage,
     refreshEquation,
     moveBlock,
+    orderBlock,
     deleteBlock,
     duplicateBlock,
     pasteBlock,

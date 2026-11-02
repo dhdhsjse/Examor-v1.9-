@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { pickFile } from "./storage";
 
 // Shared cache of loaded <img> elements (used by the canvas and the PDF export).
 const cache = new Map<string, HTMLImageElement>();
@@ -62,4 +63,36 @@ export async function readImageFile(file: File): Promise<{ src: string; ratio: n
   });
   const img = await loadImage(src);
   return { src, ratio: img.naturalWidth / Math.max(1, img.naturalHeight) };
+}
+
+const MAX_SIDE = 1600;
+
+// A picture more than MAX_SIDE px across is drawn again smaller, in its own format and proportions: it is kept inside the exam (and its
+// autosave), and a photo can be several megabytes. A vector picture is left as it is.
+async function fitImage(src: string): Promise<string> {
+  if (/^data:image\/svg/i.test(src)) return src;
+  const img = await loadImage(src);
+  const side = Math.max(img.naturalWidth, img.naturalHeight);
+  if (side <= MAX_SIDE) return src;
+  const k = MAX_SIDE / side;
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(img.naturalWidth * k));
+  canvas.height = Math.max(1, Math.round(img.naturalHeight * k));
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return src;
+  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+  return /^data:image\/jpe?g/i.test(src) ? canvas.toDataURL("image/jpeg", 0.9) : canvas.toDataURL("image/png");
+}
+
+// Let the user pick an image file: the picture (a data URL, made smaller if it is very big) and its proportions (null = none chosen, or a
+// file that is not an image).
+export async function pickImage(): Promise<{ src: string; ratio: number } | null> {
+  const file = await pickFile("image/*");
+  if (!file) return null;
+  try {
+    const { src, ratio } = await readImageFile(file);
+    return { src: await fitImage(src), ratio };
+  } catch {
+    return null;
+  }
 }

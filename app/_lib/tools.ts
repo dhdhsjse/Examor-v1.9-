@@ -15,6 +15,8 @@ export type ToolAction =
   | { kind: "graph-studio" } // opens the Graph Studio
   | { kind: "circuit-studio" } // opens the Circuit Studio
   | { kind: "table-studio" } // opens the Table Studio
+  | { kind: "math-graph-studio" } // opens the Function Studio (graphs of functions)
+  | { kind: "chart-studio" } // opens the Chart Studio (columns, lines, pies, histograms…)
   | { kind: "blocks"; items: { type: BlockType; preset?: BlockPreset }[] }; // several blocks, one under the other
 
 // Data type used for HTML drag & drop onto the page.

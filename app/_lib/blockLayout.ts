@@ -8,7 +8,7 @@ import { INDENT_PX, MAX_INDENT } from "./tiptap-indent";
 import { fixOrder, shuffled } from "./shuffle";
 import { shapesBounds } from "./shapes/geometry";
 import { shownText, tableSheet } from "./table/display";
-import { TABLE_HEADER_FILL, cellLook, hEdgeShown, isCovered, isPlainTable, mergeAt, tableMirrored, vEdgeShown, type CellLook } from "./table/model";
+import { TABLE_HEADER_FILL, cellLook, fixedScale, hEdgeShown, isCovered, isPlainTable, mergeAt, tableMirrored, vEdgeShown, type CellLook } from "./table/model";
 import type {
   BlankBlock,
   Block,
@@ -789,11 +789,22 @@ function layoutTableExt(b: TableBlock, F: Fonts, mirror: boolean, colW: number[]
   return { F, colX, colW, rows, height, cellBoxes, ext: true, mirror, lines };
 }
 
-// A table is as high as its rows, or lower if a shape drawn over it goes below them.
+/**
+ * How a table is laid out and drawn. A fixed one (shapes or pictures over it, see isFixedTable) is laid out at the width they were put
+ * in and drawn scaled to the block's width, like a picture: `block` is what to lay out, `k` the scale to draw it at. Any other table is
+ * laid out at the block's own width (k = 1).
+ */
+export function tableFrame(b: TableBlock): { block: TableBlock; k: number } {
+  const k = fixedScale(b, b.layout.width);
+  return k === 1 || !b.base ? { block: b, k: 1 } : { block: { ...b, layout: { ...b.layout, width: b.base } }, k };
+}
+
+// A table is as high as its rows, or lower if a shape drawn over it goes below them (a fixed one: as high as it is drawn, scaled).
 export function tableHeight(b: TableBlock, meta: ExamMeta): number {
-  const rows = layoutTable(b, meta).height;
-  const shapes = shapesBounds(b.shapes);
-  return shapes ? Math.max(rows, Math.ceil(shapes.maxY)) : rows;
+  const { block, k } = tableFrame(b);
+  const rows = layoutTable(block, meta).height;
+  const shapes = shapesBounds(block.shapes);
+  return (shapes ? Math.max(rows, Math.ceil(shapes.maxY)) : rows) * k;
 }
 
 // Height of any block (used for stacking, snapping and thumbnails).

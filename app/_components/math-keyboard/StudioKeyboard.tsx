@@ -2,6 +2,7 @@
 
 import { Keyboard } from "lucide-react";
 import { useEffect } from "react";
+import type { PlainFlavor } from "@/app/_lib/keyboard/plainText";
 import { useT } from "@/app/_lib/uiLang";
 import { trackTextFields } from "./fieldTarget";
 import FloatingKeyboard from "./FloatingKeyboard";
@@ -9,16 +10,17 @@ import { setStudioKeyboard, toggleStudioKeyboard, useKeyboardStore } from "./key
 
 // The math keyboard inside a studio (Graph, Circuit, Molecule drawing…). Put it once in the studio, next to its dialogs: it follows the
 // text fields the teacher clicks in, shows the keyboard window while the button of the header is on, and puts it away when the
-// studio closes, so every studio opens without it.
-export function StudioKeyboard() {
+// studio closes, so every studio opens without it. `flavor` is the kind of text a field takes unless it says otherwise (data-keyboard): the labels of
+// the graph studios read their scripts as markup (the default), the texts of a chart are plain ("text": x², H₂O).
+export function StudioKeyboard({ flavor }: { flavor?: PlainFlavor }) {
   const { studio } = useKeyboardStore();
   useEffect(() => {
-    const stop = trackTextFields();
+    const stop = trackTextFields(flavor);
     return () => {
       stop();
       setStudioKeyboard(false);
     };
-  }, []);
+  }, [flavor]);
   return studio ? <FloatingKeyboard target="field" onClose={() => setStudioKeyboard(false)} /> : null;
 }
 

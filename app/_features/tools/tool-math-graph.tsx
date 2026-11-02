@@ -2,7 +2,7 @@ import { GraphIcon } from "@/app/_components/icons";
 import type { Feature } from "@/app/_features/core/types";
 import type { ToolAction } from "@/app/_lib/tools";
 
-const action: ToolAction = { kind: "block", type: "graph" };
+const action: ToolAction = { kind: "math-graph-studio" };
 
 export const toolMathGraph: Feature = {
   id: "tool.math.graph",

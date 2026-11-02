@@ -1,6 +1,7 @@
 import { CONTENT_WIDTH, PAGE_MARGIN } from "./a4";
 import { pageSize } from "./pageFormats";
 import { blockHeight } from "./blockLayout";
+import { isFloating } from "./blockOrder";
 import { newId } from "./id";
 import { defaultSize } from "./shapes";
 import { EX_PX } from "./math";
@@ -376,14 +377,15 @@ export function patchPart(parts: OpenPart[], i: number, patch: Partial<OpenPart>
 }
 
 // After a block is dropped: blocks it covers are pushed down below it (and so on),
-// so nothing overlaps and the reading order (question numbers) matches what you see.
+// so nothing overlaps and the reading order (question numbers) matches what you see. Objects placed freely (text boxes, pictures,
+// shapes, graphs, tables, equations) are left out: they may lie on top of each other and on the text.
 export function pushDownOverlaps(blocks: Block[], movedId: string, heights: Map<string, number>, pageHeight: number): Block[] {
   const gap = 14;
   const moved = blocks.find((b) => b.id === movedId);
-  if (!moved) return blocks;
+  if (!moved || isFloating(moved)) return blocks;
   const h = (b: Block) => heights.get(b.id) ?? 0;
   const sideBySide = (a: Block, b: Block) => a.layout.x + a.layout.width <= b.layout.x || b.layout.x + b.layout.width <= a.layout.x;
-  const samePage = blocks.filter((b) => b.layout.pageId === moved.layout.pageId && !sideBySide(b, moved) && b.id !== movedId);
+  const samePage = blocks.filter((b) => b.layout.pageId === moved.layout.pageId && !sideBySide(b, moved) && b.id !== movedId && !isFloating(b));
 
   // A block that starts higher but reaches into the dropped one: the dropped one goes below it.
   let y = moved.layout.y;

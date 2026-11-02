@@ -3,7 +3,7 @@
 import type Konva from "konva";
 import { useEffect, useRef, useState } from "react";
 import { Circle, Group, Rect, Transformer } from "react-konva";
-import { MIN_SHAPE_SIZE, dragHandle, handlePoints, isLine, lineEnds, localToWorld, moveLineEnd, worldToLocal, type ShapeItem } from "@/app/_lib/shapes";
+import { MIN_SHAPE_SIZE, dragHandle, handlePoints, isLine, isPicture, lineEnds, localToWorld, moveLineEnd, worldToLocal, type ShapeItem } from "@/app/_lib/shapes";
 import { ShapeGraphic } from "./ShapeGraphic";
 
 const ACCENT = "#4f46e5";
@@ -107,7 +107,7 @@ export default function StudioShapes({ shapes, selectedId, interactive, scale, o
           rotateEnabled
           rotationSnaps={[0, 45, 90, 135, 180, 225, 270, 315]}
           rotationSnapTolerance={4}
-          keepRatio={false}
+          keepRatio={isPicture(boxed)}
           ignoreStroke
           anchorSize={9}
           anchorCornerRadius={2}

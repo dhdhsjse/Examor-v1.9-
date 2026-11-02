@@ -7,11 +7,20 @@ import type { TableData, TablePatch } from "@/app/_lib/table";
 /** What the Studio holds: the table, and how wide it is on the page */
 export type StudioTable = TableData & { width: number };
 
+/** A first change made as the Studio opens (a picture chosen in the right panel): it is the first step of the undo, and the Studio is changed from the start */
+export interface FirstEdit {
+  patch: TablePatch;
+  key: string;
+}
+
 // The state of the Table Studio: the table, with its own undo and redo (the exam's undo history gets one step when the table is
 // inserted). A change is a patch of the table (see _lib/table/ops.ts); `key` names what changed, so that typing in a cell or dragging a
 // column is one step of the undo, not one per key or per pixel.
-export function useTableStudio(initial: StudioTable) {
-  const [history, setHistory] = useState<StudioHistory<StudioTable>>(() => startStudioHistory(initial));
+export function useTableStudio(initial: StudioTable, first?: FirstEdit) {
+  const [history, setHistory] = useState<StudioHistory<StudioTable>>(() => {
+    const start = startStudioHistory(initial);
+    return first ? editStudioHistory(start, { ...initial, ...first.patch }, first.key, Date.now()) : start;
+  });
   const table = history.present;
 
   const apply = useCallback((patch: TablePatch, key: string) => setHistory((h) => editStudioHistory(h, { ...h.present, ...patch }, key, Date.now())), []);

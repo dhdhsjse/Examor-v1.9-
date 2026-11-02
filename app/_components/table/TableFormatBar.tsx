@@ -49,14 +49,16 @@ interface Props {
   actions: TableActions;
   /** The exam's font, named in the font list as the one the cells have until they choose another */
   examFont?: string;
-  /** The Shapes button: what to do with the shape chosen in the gallery (none = no button) */
+  /** The Shapes and image button: what to do with the shape chosen in the gallery (none = no button) */
   onPickShape?: (shape: string) => void;
+  /** …and with the "Image from this computer…" entry of its menu (none = no such entry) */
+  onPickImage?: () => void;
   shapesActive?: boolean;
 }
 
 // The format bar of a table, for the Studio and for the right panel: what is done to the selected cells. Pressing a button never
 // takes the focus from the grid (or from the cell being typed in).
-export default function TableFormatBar({ table, range, active, actions, examFont, onPickShape, shapesActive }: Props) {
+export default function TableFormatBar({ table, range, active, actions, examFont, onPickShape, onPickImage, shapesActive }: Props) {
   const t = useT();
   const none = !actions.hasSelection || !range || !active; // (what needs cells: rows, columns, sorting)
   const at = active ?? { r: 0, c: 0 };
@@ -256,7 +258,7 @@ export default function TableFormatBar({ table, range, active, actions, examFont
         {onPickShape && (
           <>
             <Divider />
-            <ShapesMenuButton variant="icon" active={shapesActive} onPick={onPickShape} testId="table-shapes" />
+            <ShapesMenuButton variant="icon" label={t("Shapes and image")} active={shapesActive} onPick={onPickShape} onPickImage={onPickImage} testId="table-shapes" />
           </>
         )}
       </RibbonRow>

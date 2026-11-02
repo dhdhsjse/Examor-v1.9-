@@ -22,9 +22,12 @@ export const inspectorPanel: Feature = {
         onLatex={shell.onLatex}
         onDelete={shell.deleteBlock}
         onDuplicate={shell.duplicateBlock}
+        onOrder={shell.orderBlock}
         onSaveToLibrary={shell.saveToLibrary}
         onReplaceImage={shell.replaceImage}
-        onOpenTableStudio={(shape) => block && shell.openTableStudio(block.id, shape)}
+        onOpenTableStudio={(start) => block && shell.openTableStudio(block.id, start)}
+        onOpenGraphStudio={() => block && shell.openMathGraphStudio(block.id)}
+        onOpenChartStudio={() => block && shell.openChartStudio(block.id)}
         onMeta={shell.setMeta}
         onChangeTemplate={shell.openPicker}
       />

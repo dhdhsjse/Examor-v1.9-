@@ -4,6 +4,7 @@ import type Konva from 'konva';
 import type { Block, BlockType, ExamDoc, ExamMeta, HeaderFooterConfig, PageFormat, PageMargins, ViewMode } from '@/app/_lib/types';
 import type { ChromeKind } from '@/app/_lib/pageChrome';
 import type { BlockPreset } from '@/app/_lib/blocks';
+import type { BlockOrder } from '@/app/_lib/blockOrder';
 import type { ToolAction } from '@/app/_lib/tools';
 import type { Subject } from '@/app/_lib/subjects';
 import type { T, UiLang } from '@/app/_lib/uiLang';
@@ -13,6 +14,7 @@ import type { Asset, AssetKind } from '@/app/_lib/library';
 import type { Template } from '@/app/_lib/templates';
 import type { Version } from '@/app/_lib/versions';
 import type { Tone } from '@/app/_components/ToolTile';
+import type { TableStudioStart } from '@/app/_components/table-studio/tablePreset';
 import type { CanvasTool } from '@/app/_components/workspace/ToolRail';
 
 export type RightTab = 'properties' | 'library';
@@ -58,6 +60,7 @@ export type Shell = {
   onLatex: (block: Block, latex: string) => void;
   deleteBlock: (id: string) => void;
   duplicateBlock: (id: string) => void;
+  orderBlock: (id: string, order: BlockOrder) => void; // in front of / behind the blocks it overlaps
   // Page layout → Margins. While its panel is open (`marginEdit` not null) the canvas draws the margins
   // being edited on every page, shades the area outside them and shows handles to drag them.
   marginEdit: MarginEdit | null;
@@ -122,10 +125,21 @@ export type Shell = {
   openGraphStudio: (blockId?: string) => void;
   closeGraphStudio: () => void;
   // The Table Studio (table-studio/): a spreadsheet that puts a table block on the page. `blockId` = the table block being edited, null = a
-  // new table; `shape` = the Studio opens on the shapes with this one ready to draw.
-  tableStudio: { open: boolean; blockId: string | null; shape?: string };
-  openTableStudio: (blockId?: string, shape?: string) => void;
+  // new table; `start` = the Studio opens on the shapes and pictures (a table that has some always does), with a shape ready to draw or a
+  // picture to put.
+  tableStudio: { open: boolean; blockId: string | null; start?: TableStudioStart };
+  openTableStudio: (blockId?: string, start?: TableStudioStart) => void;
   closeTableStudio: () => void;
+  // The Function Studio (math-graph-studio/): the simple graph of one or more functions, with derivatives, tangents and asymptotes. `blockId` =
+  // the graph block being edited, null = a new graph.
+  mathGraphStudio: { open: boolean; blockId: string | null };
+  openMathGraphStudio: (blockId?: string) => void;
+  closeMathGraphStudio: () => void;
+  // The Chart Studio (chart-studio/): columns, bars, lines, pies, histograms, boxes… made from a table. `blockId` = the image block of the chart being
+  // edited, null = a new chart.
+  chartStudio: { open: boolean; blockId: string | null };
+  openChartStudio: (blockId?: string) => void;
+  closeChartStudio: () => void;
   // The Circuit Studio (circuit-studio/): `blockId` = the circuit block being edited, null = a new circuit.
   circuitStudio: { open: boolean; blockId: string | null };
   openCircuitStudio: (blockId?: string) => void;

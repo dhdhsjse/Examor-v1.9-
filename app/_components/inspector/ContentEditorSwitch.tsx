@@ -2,6 +2,7 @@
 
 import type { Block, Lang } from "@/app/_lib/types";
 import TablePanel from "@/app/_components/table/TablePanel";
+import type { TableStudioStart } from "@/app/_components/table-studio/tablePreset";
 import { HeaderEditor, ImageEditor, TextboxEditor, TextEditor } from "./ContentEditors";
 import EquationEditor from "./EquationEditor";
 import { GraphEditor } from "./GraphEditor";
@@ -17,13 +18,15 @@ interface Props {
   onLatex: (latex: string) => void;
   onReplaceImage: () => void;
   examFont?: string;
-  onOpenTableStudio: (shape?: string) => void;
+  onOpenTableStudio: (start?: TableStudioStart) => void;
+  onOpenGraphStudio: () => void;
+  onOpenChartStudio: () => void;
   keyboardOpen: boolean;
   onToggleKeyboard: () => void;
 }
 
 // Picks the right editor for the selected block type.
-export function ContentEditorSwitch({ block, number, lang, totalPoints, onChange, onLatex, onReplaceImage, examFont, onOpenTableStudio, keyboardOpen, onToggleKeyboard }: Props) {
+export function ContentEditorSwitch({ block, number, lang, totalPoints, onChange, onLatex, onReplaceImage, examFont, onOpenTableStudio, onOpenGraphStudio, onOpenChartStudio, keyboardOpen, onToggleKeyboard }: Props) {
   switch (block.type) {
     case "mcq":
       return <McqEditor b={block} onChange={onChange} />;
@@ -48,9 +51,9 @@ export function ContentEditorSwitch({ block, number, lang, totalPoints, onChange
     case "equation":
       return <EquationEditor b={block} onLatex={onLatex} keyboardOpen={keyboardOpen} onToggleKeyboard={onToggleKeyboard} />;
     case "image":
-      return <ImageEditor b={block} lang={lang} onChange={onChange} onReplace={onReplaceImage} />;
+      return <ImageEditor b={block} lang={lang} onChange={onChange} onReplace={onReplaceImage} onOpenChartStudio={onOpenChartStudio} />;
     case "graph":
-      return <GraphEditor b={block} onChange={onChange} />;
+      return <GraphEditor b={block} onChange={onChange} onOpenStudio={onOpenGraphStudio} />;
     case "header":
       return <HeaderEditor b={block} totalPoints={totalPoints} onChange={onChange} />;
   }

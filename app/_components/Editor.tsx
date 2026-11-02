@@ -41,7 +41,7 @@ import { appLayout } from "@/app/_features/app";
 import BarRenderer from "@/app/_features/core/BarRenderer";
 import type { BarPosition, Ctx, MarginEdit, RightTab, Shell } from "@/app/_features/core/types";
 import { blockInspectorFor, findSectionFeature } from "@/app/_features/sections";
-import { defaultSize, shapeDef } from "@/app/_lib/shapes";
+import { defaultSize, picturesOf, shapeDef } from "@/app/_lib/shapes";
 import type { DrawnBox } from "./canvas/ExamCanvas";
 import type { CanvasTool } from "./workspace/ToolRail";
 import Workspace, { type Editing } from "./workspace/Workspace";
@@ -115,6 +115,8 @@ export default function Editor() {
   const [graphStudio, setGraphStudio] = useState<Shell["graphStudio"]>({ open: false, blockId: null }); // the Graph Studio
   const [circuitStudio, setCircuitStudio] = useState<Shell["circuitStudio"]>({ open: false, blockId: null }); // the Circuit Studio
   const [tableStudio, setTableStudio] = useState<Shell["tableStudio"]>({ open: false, blockId: null }); // the Table Studio
+  const [mathGraphStudio, setMathGraphStudio] = useState<Shell["mathGraphStudio"]>({ open: false, blockId: null }); // the Function Studio
+  const [chartStudio, setChartStudio] = useState<Shell["chartStudio"]>({ open: false, blockId: null }); // the Chart Studio
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -270,7 +272,7 @@ export default function Editor() {
     if (!file || !block) return;
     const { src, ratio } = await readImageFile(file);
     // A picture that was drawn in a Studio is no longer that drawing: double-click must not reopen the old one.
-    exam.updateBlock(id, { src, ratio, drawing: undefined, molecule: undefined, graphStudio: undefined, circuitStudio: undefined, layout: { height: block.layout.width / ratio } });
+    exam.updateBlock(id, { src, ratio, drawing: undefined, molecule: undefined, graphStudio: undefined, circuitStudio: undefined, chartStudio: undefined, srcAnswer: undefined, layout: { height: block.layout.width / ratio } });
   };
 
   // Keep a copy of a block in "My blocks" (without its place on the page or its header/footer role).
@@ -365,6 +367,12 @@ export default function Editor() {
       case "table-studio":
         setTableStudio({ open: true, blockId: null });
         break;
+      case "math-graph-studio":
+        setMathGraphStudio({ open: true, blockId: null });
+        break;
+      case "chart-studio":
+        setChartStudio({ open: true, blockId: null });
+        break;
       case "library":
         setTab("library");
         setLibrary((l) => ({ kind: "diagram", n: l.n + 1 }));
@@ -391,6 +399,10 @@ export default function Editor() {
     if (block?.type === "image" && block.drawing) return setMoleculeLab({ open: true, blockId: id });
     // A graph paper reopens in the Graph Studio, with its limits, labels and grid.
     if (block?.type === "image" && block.graphStudio) return setGraphStudio({ open: true, blockId: id });
+    // A chart reopens in the Chart Studio, with its table and everything it shows.
+    if (block?.type === "image" && block.chartStudio) return setChartStudio({ open: true, blockId: id });
+    // A graph of functions reopens in the Function Studio, with its functions, derivatives, tangents and asymptotes.
+    if (block?.type === "graph") return setMathGraphStudio({ open: true, blockId: id });
     // A circuit reopens in the Circuit Studio, with its components and wires.
     if (block?.type === "image" && block.circuitStudio) return setCircuitStudio({ open: true, blockId: id });
     if (field) setEditing({ id, field });
@@ -536,7 +548,7 @@ export default function Editor() {
 
   // Draw a clean copy off-screen (fonts and pictures loaded first) and return its pages as images.
   const renderPages = async (m: ViewMode, pixelRatio: number, quality: number) => {
-    const srcs = doc.blocks.flatMap((b) => (b.type === "image" ? [b.src] : b.type === "equation" && b.svg ? [svgUrl(b.svg)] : []));
+    const srcs = doc.blocks.flatMap((b) => (b.type === "image" ? [b.src, ...(b.srcAnswer ? [b.srcAnswer] : [])] : b.type === "equation" && b.svg ? [svgUrl(b.svg)] : b.type === "table" ? picturesOf(b.shapes) : []));
     await Promise.all([preloadImages(srcs), document.fonts.ready]);
     const stage = await new Promise<Konva.Stage>((resolve) => setExportJob({ doc, mode: m, resolve }));
     try {
@@ -607,7 +619,7 @@ export default function Editor() {
         setBarOpen(bar.id);
         return;
       }
-      if (typing || picker.open || preview || history || molecule.open || moleculeLab.open || graphStudio.open || circuitStudio.open || tableStudio.open) return;
+      if (typing || picker.open || preview || history || molecule.open || moleculeLab.open || graphStudio.open || circuitStudio.open || tableStudio.open || mathGraphStudio.open || chartStudio.open) return;
 
       if (mod && key === "z") {
         e.preventDefault();
@@ -651,7 +663,7 @@ export default function Editor() {
   // Copy, cut and paste of whole blocks (when no text is being typed in).
   const clipboard = useBlockClipboard({
     selected,
-    active: !(picker.open || preview || history || molecule.open || moleculeLab.open || graphStudio.open || circuitStudio.open || tableStudio.open),
+    active: !(picker.open || preview || history || molecule.open || moleculeLab.open || graphStudio.open || circuitStudio.open || tableStudio.open || mathGraphStudio.open || chartStudio.open),
     deleteBlock: exam.deleteBlock,
     pasteBlock: exam.pasteBlock,
     addText: (text) => exam.addBlock("text", { text, style: "body" }),
@@ -693,6 +705,7 @@ export default function Editor() {
     onLatex,
     deleteBlock: exam.deleteBlock,
     duplicateBlock: exam.duplicateBlock,
+    orderBlock: exam.orderBlock,
     marginEdit,
     openMarginEdit,
     draftMargins: (m) => draftMargins(m),
@@ -755,7 +768,13 @@ export default function Editor() {
     openGraphStudio: (blockId) => setGraphStudio({ open: true, blockId: blockId ?? null }),
     closeGraphStudio: () => setGraphStudio({ open: false, blockId: null }),
     tableStudio,
-    openTableStudio: (blockId, shape) => setTableStudio({ open: true, blockId: blockId ?? null, shape }),
+    mathGraphStudio,
+    openMathGraphStudio: (blockId) => setMathGraphStudio({ open: true, blockId: blockId ?? null }),
+    closeMathGraphStudio: () => setMathGraphStudio({ open: false, blockId: null }),
+    chartStudio,
+    openChartStudio: (blockId) => setChartStudio({ open: true, blockId: blockId ?? null }),
+    closeChartStudio: () => setChartStudio({ open: false, blockId: null }),
+    openTableStudio: (blockId, start) => setTableStudio({ open: true, blockId: blockId ?? null, start }),
     closeTableStudio: () => setTableStudio({ open: false, blockId: null }),
     circuitStudio,
     openCircuitStudio: (blockId) => setCircuitStudio({ open: true, blockId: blockId ?? null }),

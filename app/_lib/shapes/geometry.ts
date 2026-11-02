@@ -15,16 +15,22 @@ export const MIN_SHAPE_SIZE = 6;
 
 export const isLine = (style: ShapeStyle) => !!shapeDef(style.shape).line;
 
+/** The key of a picture put where a shape goes (it is not in the catalog: its box is a rectangle) */
+export const PICTURE_SHAPE = "picture";
+
+/** A picture (an image put over a table) rather than a drawn shape */
+export const isPicture = (style: ShapeStyle) => typeof style.src === "string" && style.src !== "";
+
 export type ResolvedStyle = {
   fill: string | null;
   stroke: string | null;
   strokeWidth: number;
 };
 
-/** The colors and width a shape is drawn with: what is missing is the default (no fill, a dark outline 2 px wide); a line always has its outline. */
+/** The colors and width a shape is drawn with: what is missing is the default (no fill, a dark outline 2 px wide; a picture has no outline); a line always has its outline. */
 export function resolveStyle(style: ShapeStyle): ResolvedStyle {
   const line = isLine(style);
-  const stroke = style.stroke === undefined ? DEFAULT_STROKE : style.stroke;
+  const stroke = style.stroke === undefined ? (isPicture(style) ? null : DEFAULT_STROKE) : style.stroke;
   return {
     fill: line ? null : (style.fill ?? null),
     stroke: line ? (stroke ?? DEFAULT_STROKE) : stroke,

@@ -1,5 +1,6 @@
 "use client";
 
+import { ChartColumn } from "lucide-react";
 import type { ReactNode } from "react";
 import { DEFAULT_ACCENT } from "@/app/_lib/blockLayout";
 import { docFromRich } from "@/app/_lib/textboxDoc";
@@ -70,10 +71,21 @@ export function TextEditor({ b, onChange }: { b: TextBlock; onChange: OnChange }
   );
 }
 
-export function ImageEditor({ b, lang, onChange, onReplace }: { b: ImageBlock; lang: Lang; onChange: OnChange; onReplace: () => void }) {
+export function ImageEditor({ b, lang, onChange, onReplace, onOpenChartStudio }: { b: ImageBlock; lang: Lang; onChange: OnChange; onReplace: () => void; onOpenChartStudio: () => void }) {
   const t = useT();
   return (
     <>
+      {b.chartStudio && (
+        <button
+          type="button"
+          onClick={onOpenChartStudio}
+          data-testid="open-chart-studio"
+          className="flex items-center justify-center gap-2 rounded-lg border border-accent bg-accent-soft px-3 py-2 text-sm font-medium text-accent-strong transition-colors hover:bg-white"
+        >
+          <ChartColumn size={16} />
+          {t("Open in Chart Studio")}
+        </button>
+      )}
       {/* eslint-disable-next-line @next/next/no-img-element -- local data URL preview */}
       <img src={b.src} alt="" className="max-h-40 w-full rounded-md border border-line bg-subtle object-contain" />
       {b.figure && <FigureEditor b={b} figure={b.figure} lang={lang} onChange={onChange} />}
@@ -86,7 +98,7 @@ export function ImageEditor({ b, lang, onChange, onReplace }: { b: ImageBlock; l
         />
       </Field>
       {/* A figure is redrawn from its settings, a molecule or a drawing from its data: replacing it with a picture drops them. */}
-      <SmallButton onClick={onReplace}>{t(b.figure || b.molecule || b.drawing || b.graphStudio || b.circuitStudio ? "Replace with an image…" : "Replace image…")}</SmallButton>
+      <SmallButton onClick={onReplace}>{t(b.figure || b.molecule || b.drawing || b.graphStudio || b.circuitStudio || b.chartStudio ? "Replace with an image…" : "Replace image…")}</SmallButton>
     </>
   );
 }

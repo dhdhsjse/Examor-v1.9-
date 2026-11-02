@@ -6,6 +6,8 @@ import { GRAPH_AR, GRAPH_FR } from "@/app/_lib/graph/strings";
 import { RIBBON_AR, RIBBON_FR } from "@/app/_lib/ribbon/strings";
 import { SHAPES_AR, SHAPES_FR } from "@/app/_lib/shapes/strings";
 import { TABLE_AR, TABLE_FR } from "@/app/_lib/table/strings";
+import { MATHGRAPH_AR, MATHGRAPH_FR } from "@/app/_lib/mathGraphStrings";
+import { CHART_AR, CHART_FR } from "@/app/_lib/chart/strings";
 import { MOLECULE_AR, MOLECULE_FR } from "@/app/_molecule/strings";
 
 export const FR: Record<string, string> = {
@@ -199,6 +201,7 @@ export const FR: Record<string, string> = {
   "Drag to move · double-click to put it back": "Glisser pour déplacer · double-clic pour le remettre en place",
   "Show the Properties panel to type in this equation.": "Affichez le panneau Propriétés pour écrire dans cette équation.",
   "Select an equation to use the math keyboard.": "Sélectionnez une équation pour utiliser le clavier mathématique.",
+  "Click where you want to type: a text, a box of the panel or an equation.": "Cliquez où vous voulez écrire : un texte, une case du panneau ou une équation.",
   "Ready formulas": "Formules prêtes",
   "Keyboard keys": "Touches du clavier",
   "Math keys: fractions, trigonometry, limits, sets…": "Touches de maths : fractions, trigonométrie, limites, ensembles…",
@@ -211,6 +214,7 @@ export const FR: Record<string, string> = {
   "Properties": "Propriétés",
   "Library": "Bibliothèque",
   "Duplicate": "Dupliquer",
+  "Blocks can lie on top of each other. Alt+click on the page selects the one underneath.": "Les blocs peuvent se superposer. Alt+clic sur la page sélectionne celui du dessous.",
   "Delete": "Supprimer",
   "Remove": "Retirer",
   "Fill in the blank": "Texte à trous",
@@ -1023,6 +1027,7 @@ export const AR: Record<string, string> = {
   "Drag to move · double-click to put it back": "اسحب للتحريك · انقر مرتين لإعادتها إلى مكانها",
   "Show the Properties panel to type in this equation.": "أظهر لوحة الخصائص للكتابة في هذه المعادلة.",
   "Select an equation to use the math keyboard.": "حدّد معادلة لاستعمال لوحة المفاتيح الرياضية.",
+  "Click where you want to type: a text, a box of the panel or an equation.": "انقر حيث تريد الكتابة : نص أو خانة في اللوحة أو معادلة.",
   "Ready formulas": "صيغ جاهزة",
   "Keyboard keys": "مفاتيح لوحة المفاتيح",
   "Math keys: fractions, trigonometry, limits, sets…": "مفاتيح الرياضيات: الكسور وحساب المثلثات والنهايات والمجموعات…",
@@ -1035,6 +1040,7 @@ export const AR: Record<string, string> = {
   "Properties": "الخصائص",
   "Library": "المكتبة",
   "Duplicate": "تكرار",
+  "Blocks can lie on top of each other. Alt+click on the page selects the one underneath.": "يمكن تراكب العناصر فوق بعضها. النقر مع Alt على الصفحة يحدد العنصر الذي تحته.",
   "Delete": "حذف",
   "Remove": "إزالة",
   "Fill in the blank": "ملء الفراغ",
@@ -1683,3 +1689,11 @@ Object.assign(AR, SHAPES_AR);
 // The Table Studio and the table editor of the right panel.
 Object.assign(FR, TABLE_FR);
 Object.assign(AR, TABLE_AR);
+
+// The Function Studio (graphs of functions).
+Object.assign(FR, MATHGRAPH_FR);
+Object.assign(AR, MATHGRAPH_AR);
+
+// The Chart Studio (Insert → Chart Studio).
+Object.assign(FR, CHART_FR);
+Object.assign(AR, CHART_AR);

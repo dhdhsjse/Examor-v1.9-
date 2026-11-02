@@ -1,26 +1,26 @@
 "use client";
 
+import { ChartLine } from "lucide-react";
 import { tryCompile } from "@/app/_lib/graphMath";
+import { MAX_FUNCTIONS, addFunction, colorOf, nameOf, removeFunction, setFormula } from "@/app/_lib/mathGraph";
 import type { GraphBlock } from "@/app/_lib/types";
 import { useT } from "@/app/_lib/uiLang";
-import { CURVE_COLORS } from "../canvas/blocks/GraphView";
 import { AddRowButton, Field, NumberInput, RemoveButton } from "./fields";
 import type { OnChange } from "./QuestionEditors";
-
-const NAMES = ["f", "g", "h"];
 
 // Common functions the teacher can start from.
 const EXAMPLES = ["2x + 1", "x^2 - 2", "x^3 - 3x", "1/x", "sqrt(x)", "sin(x)", "e^x", "ln(x)", "|x|"];
 
 // Formulas of the curves + the visible window (x and y ranges).
-export function GraphEditor({ b, onChange }: { b: GraphBlock; onChange: OnChange }) {
+// The Function Studio has the derivative, the tangents, the asymptotes and the colors of the curves.
+export function GraphEditor({ b, onChange, onOpenStudio }: { b: GraphBlock; onChange: OnChange; onOpenStudio: () => void }) {
   const t = useT();
   // Formula errors, in the app language ("Unexpected “)”" → key "Unexpected “{v}”").
   const errorText = (e: string) => {
     const m = /^(Unknown name|Unexpected|Missing) “(.*)”$/.exec(e);
     return m ? t(`${m[1]} “{v}”`, { v: m[2] }) : t(e);
   };
-  const setFn = (i: number, v: string) => onChange({ functions: b.functions.map((f, k) => (k === i ? v : f)) }, `fn${i}`);
+  const setFn = (i: number, v: string) => onChange(setFormula(b, i, v), `fn${i}`);
   const range = (key: "xMin" | "xMax" | "yMin" | "yMax", v: number) => {
     const next = { ...b, [key]: v };
     // Keep min < max.
@@ -29,6 +29,15 @@ export function GraphEditor({ b, onChange }: { b: GraphBlock; onChange: OnChange
 
   return (
     <>
+      <button
+        type="button"
+        onClick={onOpenStudio}
+        data-testid="open-graph-studio"
+        className="flex items-center justify-center gap-2 rounded-lg border border-accent bg-accent-soft px-3 py-2 text-sm font-medium text-accent-strong transition-colors hover:bg-white"
+      >
+        <ChartLine size={16} />
+        {t("Open in Function Studio")}
+      </button>
       <Field label={t("Functions")} hint={t("Write the formula with x — e.g. 2x+1, x^2-3, 1/x, sqrt(x), sin(x), e^x, ln(x).")}>
         <div className="flex flex-col gap-1.5">
           {b.functions.map((fn, i) => {
@@ -36,11 +45,12 @@ export function GraphEditor({ b, onChange }: { b: GraphBlock; onChange: OnChange
             return (
               <div key={i}>
                 <div className="flex items-center gap-1.5">
-                  <span className="w-11 shrink-0 text-xs font-semibold" dir="ltr" style={{ color: CURVE_COLORS[i] }}>
-                    {NAMES[i]}(x) =
+                  <span className="w-11 shrink-0 text-xs font-semibold" dir="ltr" style={{ color: colorOf(b, i) }}>
+                    {nameOf(i)}(x) =
                   </span>
                   <input
                     dir="ltr"
+                    data-keyboard="formula"
                     value={fn}
                     spellCheck={false}
                     onChange={(e) => setFn(i, e.target.value)}
@@ -48,15 +58,13 @@ export function GraphEditor({ b, onChange }: { b: GraphBlock; onChange: OnChange
                       error ? "border-red-300 focus:ring-red-100" : "border-line focus:border-indigo-400 focus:ring-indigo-100"
                     }`}
                   />
-                  {b.functions.length > 1 && <RemoveButton title={t("Remove")} onClick={() => onChange({ functions: b.functions.filter((_, k) => k !== i) }, "functions")} />}
+                  {b.functions.length > 1 && <RemoveButton title={t("Remove")} onClick={() => onChange(removeFunction(b, i), "functions")} />}
                 </div>
                 {error && <p className="mt-0.5 ps-12 text-[10px] text-red-600">{errorText(error)}</p>}
               </div>
             );
           })}
-          {b.functions.length < 3 && (
-            <AddRowButton onClick={() => onChange({ functions: [...b.functions, "x"] }, "functions")}>{t("Add a curve")}</AddRowButton>
-          )}
+          {b.functions.length < MAX_FUNCTIONS && <AddRowButton onClick={() => onChange(addFunction(b, "x") ?? {}, "functions")}>{t("Add a curve")}</AddRowButton>}
         </div>
       </Field>
 

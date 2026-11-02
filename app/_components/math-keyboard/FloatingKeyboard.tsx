@@ -8,7 +8,7 @@ import { plainFromLatex } from "@/app/_lib/keyboard/plainText";
 import { svgUrl } from "@/app/_lib/library";
 import { renderEquation } from "@/app/_lib/math";
 import { useT } from "@/app/_lib/uiLang";
-import { commandInField, fieldFlavor, fieldSelection, moveInField, typeInField, useFieldFlavor } from "./fieldTarget";
+import { commandInField, fieldFlavor, fieldSelection, moveInField, refreshFields, typeInField, useFieldFlavor } from "./fieldTarget";
 import { chooseKeyboardLayout, setKeyboardPos, useKeyboardStore, type Point } from "./keyboardStore";
 
 const TAB_KEY = "examBuilder.mathTab";
@@ -45,14 +45,17 @@ function KeyFace({ latex }: { latex: string }) {
 }
 
 interface Props {
-  /** Where the keys type: the equation open in the Properties panel (the page), or the text field last clicked in a studio. */
-  target: "equation" | "field";
+  /**
+   * Where the keys type: the text field last clicked in a studio ("field"), or on the page ("page") the equation field of the Properties
+   * panel if that was clicked last, else the text field (a question, a text box, a cell, a box of the panel) clicked last.
+   */
+  target: "page" | "field";
   onClose: () => void;
 }
 
 // The math keyboard, a window over the page or over a studio: drag it by its title bar anywhere on the screen (double-click the bar to
 // dock it again), pick Math or Physics keys by hand, "×" closes it. Its keys are the LaTeX of the layout; they type that in the equation
-// field, or its text form (plainText.ts) in the text field of a studio.
+// field, or its text form (plainText.ts) in the text field being typed in.
 export default function FloatingKeyboard({ target, onClose }: Props) {
   const t = useT();
   const { layout, pos: savedPos } = useKeyboardStore();
@@ -61,7 +64,19 @@ export default function FloatingKeyboard({ target, onClose }: Props) {
   // the studio has been clicked yet. A key would do nothing.
   const mathOpen = useSyncExternalStore(subscribeActiveMathfield, hasActiveMathfield, () => false);
   const flavor = useFieldFlavor();
-  const typing = target === "equation" ? mathOpen : flavor !== null;
+  // Whatever was clicked last decides, so look again at every click and focus (the page itself may have missed one).
+  useEffect(() => {
+    const look = () => window.setTimeout(refreshFields, 0);
+    document.addEventListener("focusin", look);
+    document.addEventListener("pointerup", look);
+    return () => {
+      document.removeEventListener("focusin", look);
+      document.removeEventListener("pointerup", look);
+    };
+  }, []);
+  // On the page the last place clicked decides: an equation field (which empties `flavor`, see fieldTarget.ts) or a text field.
+  const equation = target === "page" && mathOpen && flavor === null;
+  const typing = equation || flavor !== null;
 
   const [tabId, setTabId] = useState(() => {
     try {
@@ -84,19 +99,19 @@ export default function FloatingKeyboard({ target, onClose }: Props) {
   const keep = (e: React.MouseEvent) => e.preventDefault();
 
   // In a text field a key may have no text form (a matrix…): it is greyed out there.
-  const textForms = useMemo(() => (target === "field" && flavor ? tab.buttons.map((key) => plainFromLatex(key.latex, flavor)) : null), [target, flavor, tab]);
+  const textForms = useMemo(() => (!equation && flavor ? tab.buttons.map((key) => plainFromLatex(key.latex, flavor)) : null), [equation, flavor, tab]);
 
   const press = (key: KeyButton) => {
-    if (target === "equation") return mathCommand(["insert", key.latex, { selectionMode: "placeholder" }]);
+    if (equation) return mathCommand(["insert", key.latex, { selectionMode: "placeholder" }]);
     const kind = fieldFlavor();
     const text = kind && plainFromLatex(key.latex, kind, fieldSelection());
     if (text) typeInField(text.text, text.caret);
   };
   const edit = {
-    left: () => (target === "equation" ? mathCommand("moveToPreviousChar") : moveInField(-1)),
-    right: () => (target === "equation" ? mathCommand("moveToNextChar") : moveInField(1)),
-    delete: () => (target === "equation" ? mathCommand("deleteBackward") : commandInField("delete")),
-    undo: () => (target === "equation" ? mathCommand("undo") : commandInField("undo")),
+    left: () => (equation ? mathCommand("moveToPreviousChar") : moveInField(-1)),
+    right: () => (equation ? mathCommand("moveToNextChar") : moveInField(1)),
+    delete: () => (equation ? mathCommand("deleteBackward") : commandInField("delete")),
+    undo: () => (equation ? mathCommand("undo") : commandInField("undo")),
   };
 
   // ---- Moving the window ----
@@ -154,6 +169,8 @@ export default function FloatingKeyboard({ target, onClose }: Props) {
       ref={boxRef}
       // The keyboard window is not a field of the studio: clicking in it does not change where the keys type (fieldTarget.ts).
       data-math-keyboard=""
+      // A press in here keeps the text being typed in open on the sheet (like the formatting ribbon: see InlineEditor, TextboxEditor).
+      data-text-format=""
       className="pointer-events-auto fixed z-40 w-[min(720px,calc(100vw-8rem))]"
       style={pos ? { left: pos.x, top: pos.y } : { left: "50%", bottom: "4rem", transform: "translateX(-50%)" }}
       onMouseDown={keep}
@@ -248,13 +265,13 @@ export default function FloatingKeyboard({ target, onClose }: Props) {
           <EditKey title={t("Delete")} onClick={edit.delete}>⌫ {t("Delete")}</EditKey>
           <EditKey title={t("Undo")} onClick={edit.undo}>↶ {t("Undo")}</EditKey>
           <span className={`ms-auto text-[11px] ${typing ? "text-faint" : "font-medium text-amber-700"}`}>
-            {target === "equation"
-              ? typing
-                ? t("Tip: you can also type — x^2, sqrt, pi, lim…")
-                : t("Show the Properties panel to type in this equation.")
+            {equation
+              ? t("Tip: you can also type — x^2, sqrt, pi, lim…")
               : typing
                 ? t("The keys type in the field you last clicked.")
-                : t("Click a text field to type in it.")}
+                : target === "page"
+                  ? t("Click where you want to type: a text, a box of the panel or an equation.")
+                  : t("Click a text field to type in it.")}
           </span>
         </div>
       </div>

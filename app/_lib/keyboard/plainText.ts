@@ -4,10 +4,12 @@
 // Studio's labels already read ("u_{C}", "10^{-4}"). A key with no text form (a matrix, a limit in a formula…) gives null: the
 // keyboard greys it out in that field. Pure functions (no React, no DOM).
 //
-// Two flavours, since two kinds of field exist: "label" (free text, scripts as markup) and "formula" (the Graph Studio's
+// Two flavours of the studios, since two kinds of field exist: "label" (free text, scripts as markup) and "formula" (the Graph Studio's
 // y = f(x) field, read by graphMath.ts: "x^2", "√(x)", "π", no subscripts).
 
-export type PlainFlavor = "label" | "formula";
+// A third flavour is for the prose of the page (a question, a text box, a cell): "text", where scripts are Unicode (x², H₂O) when every
+// character of them has one, and (…) otherwise.
+export type PlainFlavor = "label" | "formula" | "text";
 
 export interface PlainInsert {
   text: string;
@@ -40,6 +42,29 @@ const NAMES = new Set(["sin", "cos", "tan", "cot", "arcsin", "arccos", "arctan",
 const ACCENTS: Record<string, string> = { vec: "⃗", overrightarrow: "⃗", dot: "̇", ddot: "̈", overline: "̄", widehat: "̂" };
 
 const BLACKBOARD: Record<string, string> = { R: "ℝ", N: "ℕ", Z: "ℤ", Q: "ℚ", C: "ℂ" };
+
+const SUPERSCRIPT: Record<string, string> = {
+  "0": "⁰", "1": "¹", "2": "²", "3": "³", "4": "⁴", "5": "⁵", "6": "⁶", "7": "⁷", "8": "⁸", "9": "⁹",
+  "+": "⁺", "-": "⁻", "−": "⁻", "=": "⁼", "(": "⁽", ")": "⁾", n: "ⁿ", i: "ⁱ",
+};
+const SUBSCRIPT: Record<string, string> = {
+  "0": "₀", "1": "₁", "2": "₂", "3": "₃", "4": "₄", "5": "₅", "6": "₆", "7": "₇", "8": "₈", "9": "₉",
+  "+": "₊", "-": "₋", "−": "₋", "=": "₌", "(": "₍", ")": "₎",
+  a: "ₐ", e: "ₑ", o: "ₒ", x: "ₓ", h: "ₕ", k: "ₖ", l: "ₗ", m: "ₘ", n: "ₙ", p: "ₚ", s: "ₛ", t: "ₜ", i: "ᵢ", j: "ⱼ", r: "ᵣ", u: "ᵤ", v: "ᵥ",
+};
+
+/** A script written in Unicode (x², H₂O), or null when one of its characters has no such form. */
+export function unicodeScript(kind: "sup" | "sub", inner: string): string | null {
+  if (!inner || inner.includes(CARET)) return null;
+  const table = kind === "sup" ? SUPERSCRIPT : SUBSCRIPT;
+  let out = "";
+  for (const ch of inner) {
+    const mapped = table[ch];
+    if (!mapped) return null;
+    out += mapped;
+  }
+  return out;
+}
 
 class Unsupported extends Error {}
 const no = (): never => {
@@ -144,8 +169,9 @@ class Reader {
 
   private script(kind: "sup" | "sub"): string {
     const inner = this.arg();
+    if (kind === "sup" && inner === "°") return "°"; // 90^{\circ} is just 90°
+    if (this.flavor === "text") return unicodeScript(kind, inner) ?? (kind === "sub" ? `_(${inner})` : `^(${inner})`);
     if (kind === "sub") return this.flavor === "formula" ? no() : `_{${inner}}`;
-    if (inner === "°") return "°"; // 90^{\circ} is just 90°
     if (this.flavor === "label") return `^{${inner}}`;
     return FORMULA_ATOM.test(inner) ? `^${inner}` : `^(${inner})`;
   }

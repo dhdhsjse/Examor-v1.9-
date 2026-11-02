@@ -18,7 +18,7 @@ export default function ShapeInspector({ ctx }: { ctx: Ctx }) {
   };
   return (
     <div data-testid="shape-inspector">
-      <ShapeProperties key={b.id} item={{ ...b, w: b.layout.width, h: b.layout.height }} size onChange={change} onDuplicate={() => shell.duplicateBlock(b.id)} onDelete={() => shell.deleteBlock(b.id)} />
+      <ShapeProperties key={b.id} item={{ ...b, w: b.layout.width, h: b.layout.height }} size onChange={change} onOrder={(order) => shell.orderBlock(b.id, order)} onDuplicate={() => shell.duplicateBlock(b.id)} onDelete={() => shell.deleteBlock(b.id)} />
     </div>
   );
 }

@@ -23,6 +23,7 @@ import { headerRegions } from "@/app/_components/canvas/blocks/headerParts";
 import { toggleMcq } from "./blocks";
 import { chromeTextField } from "./onboarding/headerFooterLibrary";
 import { isRtl } from "./i18n";
+import { isFixedTable } from "./table/model";
 import type { Block, ExamMeta, HeaderFields, OpenPart, ViewMode } from "./types";
 import type { BlockPatch } from "./useExam";
 
@@ -173,6 +174,7 @@ export function editRegions(b: Block, n: number, meta: ExamMeta, mode: ViewMode 
       return [{ field: { kind: "text" }, x: L.x, y: L.y, width: L.width, height: L.content, spec: L.spec, multiline: true, align: L.align, hit, direct: true }];
     }
     case "table": {
+      if (isFixedTable(b)) return []; // (fixed like a picture: its cells are typed in the Table Studio)
       const L = layoutTable(b, meta);
       return L.cellBoxes.map((cell) => ({
         field: { kind: "cell", r: cell.r, c: cell.c } as EditField,
