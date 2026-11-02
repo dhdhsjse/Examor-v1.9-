@@ -31,7 +31,7 @@ export function newItem(kind: PlaceKind, x: number, y: number, coin: [string, st
   const id = newItemId();
   switch (kind) {
     case "tree":
-      return newTree(["A, !A", "B, !B"], x, y);
+      return newTree(["A, B", "C, D"], x, y);
     case "venn2":
     case "venn3":
       return { id, kind: "venn", x, y, sets: kind === "venn2" ? 2 : 3, labels: ["A", "B", "C"], universe: "Ω", showUniverse: true, values: {}, shaded: [] };

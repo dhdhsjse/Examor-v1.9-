@@ -12,17 +12,22 @@ export const SHADE = "#cbd5e1";
 export type Circ = { cx: number; cy: number; r: number };
 export type Box = { x: number; y: number; w: number; h: number };
 
-export type Prim =
+export type Prim = (
   | { k: "line"; pts: number[]; w: number; color?: string; dash?: number[]; closed?: boolean; fill?: string }
   | { k: "circle"; cx: number; cy: number; r: number; fill?: string; stroke?: string; w?: number }
   | { k: "rect"; x: number; y: number; w: number; h: number; radius?: number; fill?: string; stroke?: string; sw?: number }
   | { k: "path"; d: string; fill?: string; stroke?: string; w?: number }
   | { k: "text"; x: number; y: number; text: string; size: number; anchor: "start" | "middle" | "end"; bold?: boolean; italic?: boolean; color?: string }
   /** A region of a Venn diagram shaded: inside every circle of `inside`, outside every circle of `outside`, within `frame` */
-  | { k: "region"; id: string; inside: Circ[]; outside: Circ[]; frame: Box; fill: string };
+  | { k: "region"; id: string; inside: Circ[]; outside: Circ[]; frame: Box; fill: string }
+) & {
+  /** What part of a tree it draws ("<node id>:node", or "<node id>:branch" for the branch to it and its probability): the
+   * canvas colors it when the mouse is over that part */
+  owner?: string;
+};
 
 /** Something of a tree that can be clicked: a node (its event), or the probability on the branch leading to it. */
-export type Hit = { node: string; part: "node" | "prob"; box: Box; depth: number };
+export type Hit = { node: string; part: "node" | "prob" | "edge"; box: Box; depth: number; /** an edge: the line of the branch */ pts?: number[] };
 
 export type DrawnItem = { id: string; prims: Prim[]; bounds: Box; hits: Hit[] };
 
@@ -179,12 +184,25 @@ type Placed = { node: ProbNode; depth: number; x: number; y: number; piece: Piec
 /** Where every node of a tree goes (before the tree is moved to its place): the leaves one after the other, each node in the middle of its own. */
 function placeNodes(t: ProbTree): Placed[] {
   const out: Placed[] = [];
-  let leaf = 0;
-  const walk = (n: ProbNode, depth: number): number => {
+  // Between two leaves that are not under the same node, more room: there the probability under the last branch of one group
+  // and the one over the first branch of the next face each other (a fraction is tall). The farther apart their families, the more.
+  const fractions = treeTexts(t.root).some(isFraction);
+  const groupGap = Math.max(t.leafGap * 0.35, t.fontSize * (fractions ? 1.5 : 0.8));
+  let next = 0;
+  let lastPath: string[] | null = null;
+  const walk = (n: ProbNode, depth: number, path: string[]): number => {
     let cross: number;
-    if (!n.children.length) cross = leaf++ * t.leafGap;
-    else {
-      const crosses = n.children.map((c) => walk(c, depth + 1));
+    if (!n.children.length) {
+      if (lastPath) {
+        let common = 0;
+        while (common < path.length && common < lastPath.length && path[common] === lastPath[common]) common++;
+        next += Math.max(0, path.length - 1 - common) * groupGap;
+      }
+      cross = next;
+      next += t.leafGap;
+      lastPath = path;
+    } else {
+      const crosses = n.children.map((c) => walk(c, depth + 1, [...path, c.id]));
       cross = (crosses[0] + crosses[crosses.length - 1]) / 2;
     }
     const piece = eventPiece(n.label, !!n.bar, t.fontSize);
@@ -195,8 +213,30 @@ function placeNodes(t: ProbTree): Placed[] {
     out.push({ node: n, depth, x: t.direction === "right" ? along : cross, y: t.direction === "right" ? cross : along, piece, hw, hh });
     return cross;
   };
-  walk(t.root, 0);
+  walk(t.root, 0, [t.root.id]);
   return out;
+}
+
+/** Whether a segment [x1, y1, x2, y2] crosses a box (or lies in it). */
+function segmentHitsBox(pts: number[], b: Box): boolean {
+  const [x1, y1, x2, y2] = pts;
+  // (Liang–Barsky: the part of the segment inside the box, if any)
+  let t0 = 0;
+  let t1 = 1;
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  const edges: [number, number][] = [[-dx, x1 - b.x], [dx, b.x + b.w - x1], [-dy, y1 - b.y], [dy, b.y + b.h - y1]];
+  for (const [p, q] of edges) {
+    if (p === 0) {
+      if (q < 0) return false;
+    } else {
+      const r = q / p;
+      if (p < 0) t0 = Math.max(t0, r);
+      else t1 = Math.min(t1, r);
+      if (t0 > t1) return false;
+    }
+  }
+  return true;
 }
 
 export function drawTree(t: ProbTree): DrawnItem {
@@ -207,11 +247,23 @@ export function drawTree(t: ProbTree): DrawnItem {
   const right = t.direction === "right";
   const size = t.fontSize;
   const sw = Math.max(1.2, size / 11);
+  // what the probabilities must not cover: the events, then each probability put so far
+  const taken: Box[] = placed.map((p) => ({ x: p.x - p.hw - 2, y: p.y - p.hh - 2, w: 2 * p.hw + 4, h: 2 * p.hh + 4 }));
+  // and the branches themselves (all of them, known before any probability is put)
+  const segments: { id: string; pts: number[] }[] = [];
+  for (const p of placed)
+    for (const c of p.node.children) {
+      const q = at.get(c.id)!;
+      segments.push({ id: c.id, pts: right ? [p.x + p.hw + NODE_PAD, p.y, q.x - q.hw - NODE_PAD, q.y] : [p.x, p.y + p.hh + NODE_PAD, q.x, q.y - q.hh - NODE_PAD] });
+    }
+  const free = (b: Box, own: string) =>
+    !taken.some((o) => b.x < o.x + o.w && o.x < b.x + b.w && b.y < o.y + o.h && o.y < b.y + b.h) && !segments.some((g) => g.id !== own && segmentHitsBox(g.pts, b));
 
   for (const p of placed) {
     // the event (or a dot for a root with no name)
-    if (p.depth === 0 && !p.node.label) prims.push({ k: "circle", cx: p.x, cy: p.y, r: 3, fill: INK });
-    else for (const q of p.piece.prims) prims.push(shift(q, p.x, p.y));
+    const own = `${p.node.id}:node`;
+    if (p.depth === 0 && !p.node.label) prims.push({ k: "circle", cx: p.x, cy: p.y, r: 3, fill: INK, owner: own });
+    else for (const q of p.piece.prims) prims.push({ ...shift(q, p.x, p.y), owner: own });
     const hw = Math.max(p.hw, 10);
     const hh = Math.max(p.hh, 10);
     hits.push({ node: p.node.id, part: "node", depth: p.depth, box: { x: p.x - hw - 2, y: p.y - hh - 2, w: 2 * hw + 4, h: 2 * hh + 4 } });
@@ -221,7 +273,9 @@ export function drawTree(t: ProbTree): DrawnItem {
       const q = at.get(c.id)!;
       const a = right ? { x: p.x + p.hw + NODE_PAD, y: p.y } : { x: p.x, y: p.y + p.hh + NODE_PAD };
       const b = right ? { x: q.x - q.hw - NODE_PAD, y: q.y } : { x: q.x, y: q.y - q.hh - NODE_PAD };
-      prims.push({ k: "line", pts: [a.x, a.y, b.x, b.y], w: sw });
+      const branch = `${c.id}:branch`;
+      prims.push({ k: "line", pts: [a.x, a.y, b.x, b.y], w: sw, owner: branch });
+      hits.push({ node: c.id, part: "edge", depth: q.depth, box: { x: Math.min(a.x, b.x), y: Math.min(a.y, b.y), w: Math.abs(b.x - a.x), h: Math.abs(b.y - a.y) }, pts: [a.x, a.y, b.x, b.y] });
       const dx = b.x - a.x;
       const dy = b.y - a.y;
       const len = Math.hypot(dx, dy) || 1;
@@ -233,10 +287,22 @@ export function drawTree(t: ProbTree): DrawnItem {
       const pw = Math.max(piece.w, 14);
       const ph = Math.max(piece.h, size);
       const off = 4 + Math.abs(nx) * (pw / 2) + Math.abs(ny) * (ph / 2);
-      const mx = (a.x + b.x) / 2 + nx * off;
-      const my = (a.y + b.y) / 2 + ny * off;
-      for (const r of piece.prims) prims.push(shift(r, mx, my));
-      hits.push({ node: c.id, part: "prob", depth: q.depth, box: { x: mx - pw / 2 - 3, y: my - ph / 2 - 3, w: pw + 6, h: ph + 6 } });
+      // beside the middle of the branch, or a bit further along it (or back) when another probability is already there
+      const along = (f: number) => ({ x: a.x + dx * f + nx * off, y: a.y + dy * f + ny * off });
+      const boxAt = (m: { x: number; y: number }): Box => ({ x: m.x - pw / 2 - 1, y: m.y - ph / 2 - 1, w: pw + 2, h: ph + 2 });
+      // with no free place beside it (the middle one of three close branches…), on the branch itself, over a white patch
+      let spot = piece.prims.length ? [0.5, 0.62, 0.38, 0.74, 0.84].map(along).find((m) => free(boxAt(m), c.id)) : along(0.5);
+      if (!spot) {
+        const onLine = (f: number) => ({ x: a.x + dx * f, y: a.y + dy * f });
+        spot = [0.5, 0.62, 0.38, 0.72].map(onLine).find((m) => free(boxAt(m), c.id)) ?? onLine(0.5);
+        prims.push({ k: "rect", x: spot.x - pw / 2 - 2, y: spot.y - ph / 2 - 1, w: pw + 4, h: ph + 2, fill: "#ffffff", owner: `${c.id}:patch` });
+      }
+      if (piece.prims.length) taken.push(boxAt(spot));
+      const mx = spot.x;
+      const my = spot.y;
+      for (const r of piece.prims) prims.push({ ...shift(r, mx, my), owner: branch });
+      // (a blank probability has nothing to click: the branch itself is clickable, and an empty box would cover the next branch)
+      if (piece.prims.length) hits.push({ node: c.id, part: "prob", depth: q.depth, box: { x: mx - pw / 2 - 3, y: my - ph / 2 - 3, w: pw + 6, h: ph + 6 } });
     }
   }
 
@@ -278,7 +344,7 @@ export function drawTree(t: ProbTree): DrawnItem {
     id: t.id,
     prims: prims.map((p) => shift(p, dx, dy)),
     bounds: { x: t.x, y: t.y, w: b.w, h: b.h },
-    hits: hits.map((h) => ({ ...h, box: { ...h.box, x: h.box.x + dx, y: h.box.y + dy } })),
+    hits: hits.map((h) => ({ ...h, box: { ...h.box, x: h.box.x + dx, y: h.box.y + dy }, ...(h.pts ? { pts: h.pts.map((v, i) => v + (i % 2 ? dy : dx)) } : {}) })),
   };
 }
 

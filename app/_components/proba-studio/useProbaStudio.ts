@@ -3,10 +3,9 @@
 import { useCallback, useState } from "react";
 import type { ShapePatch } from "@/app/_components/shapes/StudioShapes";
 import { eraseStrokes } from "@/app/_lib/ink/eraser";
-import { fillMissing } from "@/app/_lib/proba/numbers";
-import { addItem, duplicateItem, moveItemTo, newItem, newTree, removeItem, reorderItem, resizeArea, updateItem, type PlaceKind } from "@/app/_lib/proba/ops";
+import { addItem, duplicateItem, moveItemTo, newItem, removeItem, resizeArea, updateItem, type PlaceKind } from "@/app/_lib/proba/ops";
 import { drawItem } from "@/app/_lib/proba/scene";
-import { addChild, addSibling, buildTree, findNode, moveNode, parentOf, parseStage, removeNode, updateNode } from "@/app/_lib/proba/tree";
+import { addChild, addSibling, addStage, addStageEvent, findNode, freeLetters, moveNode, parentOf, removeNode, removeStage, removeStageEvent, renameStageEvent, updateNode, type StageEvent } from "@/app/_lib/proba/tree";
 import { DEFAULT_PROBA_CONFIG, type ProbaConfig, type ProbItem, type ProbNode, type ProbTree } from "@/app/_lib/proba/types";
 import { FREEHAND_ID, addShape, duplicateShape, newShapeId, removeShape, reorderShape, updateShape, type Order, type ShapeItem } from "@/app/_lib/shapes";
 import { canRedoStudio, canUndoStudio, editStudioHistory, isStudioDirty, redoStudioHistory, startStudioHistory, undoStudioHistory, type StudioHistory } from "@/app/_lib/studioHistory";
@@ -91,10 +90,6 @@ export function useProbaStudio(initial: ProbaConfig = DEFAULT_PROBA_CONFIG, coin
     setSelection({ kind: "item", id: copy.id });
   }, [selection, config, change]);
 
-  const reorder = useCallback((front: boolean) => {
-    if (selection?.kind === "item") change((c) => reorderItem(c, selection.id, front), `order:${Date.now()}`);
-  }, [selection, change]);
-
   // ---- trees ----
 
   const changeTree = useCallback((id: string, fn: (t: ProbTree) => ProbTree, key: string) => changeItem<ProbTree>(id, fn, key), [changeItem]);
@@ -105,7 +100,7 @@ export function useProbaStudio(initial: ProbaConfig = DEFAULT_PROBA_CONFIG, coin
     [changeTree],
   );
 
-  /** A new branch under a node (or next to it): it is selected, so its event and probability can be typed at once. */
+  /** A new branch under a node (or next to it). The node stays selected, so its + (or Tab) adds the next one at once. */
   const branch = useCallback(
     (treeId: string, nodeId: string, sibling = false) => {
       const tree = config.items.find((i) => i.id === treeId);
@@ -113,7 +108,7 @@ export function useProbaStudio(initial: ProbaConfig = DEFAULT_PROBA_CONFIG, coin
       const { root, node } = sibling ? addSibling(tree.root, nodeId) : addChild(tree.root, nodeId);
       if (!node) return null;
       change((c) => updateItem<ProbTree>(c, treeId, (t) => ({ ...t, root })), `branch:${node.id}`);
-      setSelection({ kind: "item", id: treeId, node: node.id });
+      setSelection({ kind: "item", id: treeId, node: nodeId });
       return node;
     },
     [config.items, change],
@@ -121,28 +116,34 @@ export function useProbaStudio(initial: ProbaConfig = DEFAULT_PROBA_CONFIG, coin
 
   const moveBranch = useCallback((treeId: string, nodeId: string, by: -1 | 1) => changeTree(treeId, (t) => ({ ...t, root: moveNode(t.root, nodeId, by) }), `order:${nodeId}:${Date.now()}`), [changeTree]);
 
-  const fillTree = useCallback((treeId: string) => changeTree(treeId, (t) => ({ ...t, root: fillMissing(t.root) }), `fill:${Date.now()}`), [changeTree]);
+  // ---- the stages of a tree (every node of one level at once) ----
 
-  /** The quick builder: the selected tree is made again from the stages (where it is), or a new tree is put on the sheet. */
-  const buildFromStages = useCallback(
-    (stages: string[]) => {
-      const parsed = stages.map(parseStage).filter((s) => s.length);
-      if (!parsed.length) return;
-      if (selectedTree) {
-        changeTree(selectedTree.id, (t) => ({ ...t, root: buildTree(parsed, t.root.label) }), `build:${Date.now()}`);
-        setSelection({ kind: "item", id: selectedTree.id });
-        return;
-      }
-      const tree = newTree(stages, 40, 40);
-      // (put lower down if something is already there)
-      const used = config.items.map((i) => drawItem(i).bounds);
-      const y = used.length ? Math.max(...used.map((b) => b.y + b.h)) + 30 : 40;
-      const placed = { ...tree, y: Math.min(y, Math.max(40, config.height - 200)) };
-      change((c) => addItem(c, placed), `add:${placed.id}`);
-      setSelection({ kind: "item", id: placed.id });
-      setToolState("select");
+  /** An event renamed (or barred) everywhere in its stage. */
+  const renameStage = useCallback(
+    (treeId: string, depth: number, from: StageEvent, patch: Partial<StageEvent>) =>
+      changeTree(treeId, (t) => ({ ...t, root: renameStageEvent(t.root, depth, from, patch) }), `stage:${treeId}:${depth}:${from.bar ? "!" : ""}:${Object.keys(patch).join(",")}`),
+    [changeTree],
+  );
+  /** A new event in a stage (a letter the tree does not use yet), under every node of the stage before. */
+  const addEventToStage = useCallback(
+    (treeId: string, depth: number) => changeTree(treeId, (t) => ({ ...t, root: addStageEvent(t.root, depth, { label: freeLetters(t.root, 1)[0] ?? "", bar: false }) }), `stage-add:${Date.now()}`),
+    [changeTree],
+  );
+  const removeEventFromStage = useCallback(
+    (treeId: string, depth: number, e: StageEvent) => changeTree(treeId, (t) => ({ ...t, root: removeStageEvent(t.root, depth, e) }), `stage-remove:${Date.now()}`),
+    [changeTree],
+  );
+  /** A new last stage: two events the tree does not use yet, under every leaf. */
+  const addStageTo = useCallback(
+    (treeId: string) => changeTree(treeId, (t) => ({ ...t, root: addStage(t.root, freeLetters(t.root, 2).map((label) => ({ label, bar: false }))) }), `stage-new:${Date.now()}`),
+    [changeTree],
+  );
+  const removeStageFrom = useCallback(
+    (treeId: string, depth: number) => {
+      changeTree(treeId, (t) => ({ ...t, root: removeStage(t.root, depth) }), `stage-drop:${Date.now()}`);
+      setSelection({ kind: "item", id: treeId });
     },
-    [selectedTree, changeTree, config.items, config.height, change],
+    [changeTree],
   );
 
   // ---- drawings of the floating bar ----
@@ -233,13 +234,15 @@ export function useProbaStudio(initial: ProbaConfig = DEFAULT_PROBA_CONFIG, coin
     nudgeItem,
     changeItem,
     duplicate,
-    reorder,
     changeTree,
     setNode,
     branch,
     moveBranch,
-    fillTree,
-    buildFromStages,
+    renameStage,
+    addEventToStage,
+    removeEventFromStage,
+    addStageTo,
+    removeStageFrom,
     textId,
     editText,
     addDrawing,

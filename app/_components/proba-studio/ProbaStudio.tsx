@@ -1,6 +1,6 @@
 "use client";
 
-import { Redo2, Undo2, X } from "lucide-react";
+import { Copy, Redo2, Undo2, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { StudioKeyboard } from "@/app/_components/math-keyboard/StudioKeyboard";
 import DiscardDialog from "@/app/_components/molecule-studio/DiscardDialog";
@@ -27,7 +27,7 @@ interface Props {
   onClose: () => void;
 }
 
-type Inline = { tree: string; node: string; part: "node" | "prob" };
+type Inline = { tree: string; node: string };
 
 // The Probability Studio: a full-screen modal laid out like the Circuit Studio, with the quick tree builder and the figures on
 // the left, the sheet in the middle (with the floating tool bar of the page: select, draw, text box, eraser, math keyboard) and
@@ -45,7 +45,7 @@ export default function ProbaStudio({ editing, onInsert, onUpdate, onClose }: Pr
   const requestClose = () => (dirty ? setConfirmClose(true) : onClose());
 
   // Esc backs out one level at a time: puts the tool down, lets go of the selection, closes. Delete removes what is selected (a
-  // branch with what follows it). With an event of a tree selected: Tab adds a branch after it, Enter one beside it, F2 types it.
+  // branch with what follows it). With an event of a tree selected: Tab adds a branch after it (it stays selected), F2 renames it.
   // The arrows move the selected item (Shift: by ten). Ctrl+D duplicates; Ctrl+Z undoes, Ctrl+Y and Ctrl+Shift+Z redo.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -71,14 +71,12 @@ export default function ProbaStudio({ editing, onInsert, onUpdate, onClose }: Pr
       } else if ((e.key === "Delete" || e.key === "Backspace") && selection) {
         e.preventDefault();
         studio.deleteSelected();
-      } else if (selectedTree && selectedNode && (e.key === "Tab" || e.key === "Enter")) {
+      } else if (selectedTree && selectedNode && e.key === "Tab") {
         e.preventDefault();
-        const sibling = e.key === "Enter" && selectedNode.id !== selectedTree.root.id;
-        const added = studio.branch(selectedTree.id, selectedNode.id, sibling);
-        if (added) setInline({ tree: selectedTree.id, node: added.id, part: "prob" });
+        studio.branch(selectedTree.id, selectedNode.id); // (the event stays selected: Tab again adds the next one)
       } else if (selectedTree && selectedNode && e.key === "F2") {
         e.preventDefault();
-        setInline({ tree: selectedTree.id, node: selectedNode.id, part: "node" });
+        setInline({ tree: selectedTree.id, node: selectedNode.id });
       } else if (e.key.startsWith("Arrow") && tool === "select" && (selectedItem || selectedShape)) {
         e.preventDefault();
         const step = e.shiftKey ? 10 : 1;
@@ -108,7 +106,7 @@ export default function ProbaStudio({ editing, onInsert, onUpdate, onClose }: Pr
             : isPlaceTool(tool)
               ? t("Click the drawing to put it there · Esc to stop")
               : selectedTree
-                ? t("Double-click a text to type it · Tab: a branch after the selected event · Enter: a branch beside it · Delete: remove it")
+                ? t("Double-click an event to rename it · Tab: a branch after the selected event · Delete: remove it")
                 : t("Click something to select it, drag it to move it");
 
   const iconButton = "grid size-8 place-items-center rounded-lg text-muted enabled:hover:bg-subtle enabled:hover:text-ink disabled:opacity-40";
@@ -157,7 +155,15 @@ export default function ProbaStudio({ editing, onInsert, onUpdate, onClose }: Pr
         </main>
 
         <aside className="flex w-[300px] shrink-0 flex-col border-line bg-white ltr:border-l rtl:border-r">
-          <h3 className="border-b border-line px-4 py-3 text-sm font-semibold text-ink">{t("Properties")}</h3>
+          <div className="flex items-center justify-between gap-2 border-b border-line px-4 py-2">
+            <h3 className="py-1 text-sm font-semibold text-ink">{t("Properties")}</h3>
+            {selectedItem && (
+              <button onClick={studio.duplicate} title={`${t("Duplicate")} (Ctrl+D)`} data-testid="duplicate" className="flex items-center gap-1.5 rounded-lg border border-line bg-white px-2.5 py-1 text-xs font-medium text-ink transition-colors hover:border-accent hover:bg-accent-soft">
+                <Copy size={13} />
+                {t("Duplicate")}
+              </button>
+            )}
+          </div>
           <ProbaPanel studio={studio} />
         </aside>
       </div>
