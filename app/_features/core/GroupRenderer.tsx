@@ -40,8 +40,8 @@ export default function GroupRenderer({ group, ctx }: { group: Group; ctx: Ctx }
   const list = <div className={group.className}>{features.map((f) => <FeatureRenderer key={f.id} feature={f} ctx={ctx} />)}</div>;
   if (!label) return list;
   return (
-    <section aria-label={label} className="px-3.5">
-      <h3 className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-faint">{label}</h3>
+    <section aria-label={label} className="border-b border-line p-2">
+      <h3 className="flex h-7 items-center px-1.5 text-[11px] font-semibold text-ink">{label}</h3>
       {list}
     </section>
   );

@@ -4,10 +4,12 @@ import { ChartColumn } from "lucide-react";
 import type { ReactNode } from "react";
 import { DEFAULT_ACCENT } from "@/app/_lib/blockLayout";
 import { docFromRich } from "@/app/_lib/textboxDoc";
-import type { HeaderBlock, HeaderFields, HeaderStyle, HeadingDecor, ImageBlock, Lang, TextBlock, TextboxBlock } from "@/app/_lib/types";
+import { plainText } from "@/app/_lib/richText";
+import type { ExamMeta, HeaderBlock, HeaderFields, HeaderStyle, HeadingDecor, ImageBlock, Lang, TextBlock, TextboxBlock } from "@/app/_lib/types";
 import { useT } from "@/app/_lib/uiLang";
 import { HEADER_STYLE_OPTIONS, HeaderSketch } from "../HeaderSketch";
 import { ColorGrid } from "../rich/FormatBar";
+import { CaptionControls } from "./CaptionControls";
 import { FigureEditor } from "./FigureEditor";
 import { ChoiceGrid, Field, NumberInput, RichInput, Segmented, SmallButton, TextInput } from "./fields";
 import type { OnChange } from "./QuestionEditors";
@@ -71,8 +73,9 @@ export function TextEditor({ b, onChange }: { b: TextBlock; onChange: OnChange }
   );
 }
 
-export function ImageEditor({ b, lang, onChange, onReplace, onOpenChartStudio }: { b: ImageBlock; lang: Lang; onChange: OnChange; onReplace: () => void; onOpenChartStudio: () => void }) {
+export function ImageEditor({ b, lang, meta, onChange, onReplace, onOpenChartStudio }: { b: ImageBlock; lang: Lang; meta?: ExamMeta; onChange: OnChange; onReplace: () => void; onOpenChartStudio: () => void }) {
   const t = useT();
+  const hasCaption = !!b.caption && !!plainText(b.caption).trim();
   return (
     <>
       {b.chartStudio && (
@@ -89,6 +92,12 @@ export function ImageEditor({ b, lang, onChange, onReplace, onOpenChartStudio }:
       {/* eslint-disable-next-line @next/next/no-img-element -- local data URL preview */}
       <img src={b.src} alt="" className="max-h-40 w-full rounded-md border border-line bg-subtle object-contain" />
       {b.figure && <FigureEditor b={b} figure={b.figure} lang={lang} onChange={onChange} />}
+      <Field label={t("Caption")} hint={t("Printed under the picture: a description, a legend, a source…")}>
+        <RichInput value={b.caption ?? ""} onChange={(caption) => onChange({ caption }, "caption")} rows={3} multiline placeholder={t("e.g. Figure 1: a plant cell seen under a microscope")} />
+      </Field>
+      {hasCaption && <CaptionControls b={b} meta={meta} onChange={onChange} />}
+      {/* A figure is redrawn from its settings, a molecule or a drawing from its data: replacing it with a picture drops them. */}
+      <SmallButton onClick={onReplace}>{t(b.figure || b.molecule || b.drawing || b.graphStudio || b.circuitStudio || b.chartStudio ? "Replace with an image…" : "Replace image…")}</SmallButton>
       <Field label={t("Width (px)")} hint={t("Height follows to keep the picture's shape. You can also drag the corner handles.")}>
         <NumberInput
           value={Math.round(b.layout.width)}
@@ -97,8 +106,6 @@ export function ImageEditor({ b, lang, onChange, onReplace, onOpenChartStudio }:
           onChange={(width) => onChange({ layout: { width, height: width / b.ratio } }, "width")}
         />
       </Field>
-      {/* A figure is redrawn from its settings, a molecule or a drawing from its data: replacing it with a picture drops them. */}
-      <SmallButton onClick={onReplace}>{t(b.figure || b.molecule || b.drawing || b.graphStudio || b.circuitStudio || b.chartStudio ? "Replace with an image…" : "Replace image…")}</SmallButton>
     </>
   );
 }

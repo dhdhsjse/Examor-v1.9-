@@ -24,11 +24,21 @@ export function useTableStudio(initial: StudioTable, first?: FirstEdit) {
   const table = history.present;
 
   const apply = useCallback((patch: TablePatch, key: string) => setHistory((h) => editStudioHistory(h, { ...h.present, ...patch }, key, Date.now())), []);
+  // A change worked out from the table as it is when it is made (null: nothing changes), for changes that come quickly one after
+  // the other (the eraser going along).
+  const update = useCallback(
+    (change: (t: StudioTable) => TablePatch | null, key: string) =>
+      setHistory((h) => {
+        const patch = change(h.present);
+        return patch ? editStudioHistory(h, { ...h.present, ...patch }, key, Date.now()) : h;
+      }),
+    [],
+  );
   const setWidth = useCallback((width: number) => setHistory((h) => editStudioHistory(h, { ...h.present, width }, "width", Date.now())), []);
   // Another table to start from (one step of the undo): its width stays.
   const load = useCallback((next: TableData) => setHistory((h) => editStudioHistory(h, { ...next, width: h.present.width }, `start:${Date.now()}`, Date.now())), []);
   const undo = useCallback(() => setHistory(undoStudioHistory), []);
   const redo = useCallback(() => setHistory(redoStudioHistory), []);
 
-  return { table, apply, setWidth, load, undo, redo, canUndo: canUndoStudio(history), canRedo: canRedoStudio(history), dirty: isStudioDirty(history) };
+  return { table, apply, update, setWidth, load, undo, redo, canUndo: canUndoStudio(history), canRedo: canRedoStudio(history), dirty: isStudioDirty(history) };
 }

@@ -4,7 +4,7 @@
 import { tryCompile, type Fn } from "./graphMath";
 import type { GraphBlock, GraphCurveOptions, GraphLine } from "./types";
 
-export const MAX_FUNCTIONS = 6;
+export const MAX_FUNCTIONS = Number.POSITIVE_INFINITY; // (curves are unlimited: colors and letters cycle)
 export const FUNCTION_NAMES = ["f", "g", "h", "k", "p", "q"];
 // The first three are the ones the graph always had.
 export const CURVE_PALETTE = ["#1d4ed8", "#dc2626", "#059669", "#7c3aed", "#d97706", "#0891b2"];

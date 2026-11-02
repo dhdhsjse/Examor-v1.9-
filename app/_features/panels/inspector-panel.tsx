@@ -1,4 +1,5 @@
 import Inspector from "@/app/_components/inspector/Inspector";
+import { canStepSlot } from "@/app/_lib/textboxSlots";
 import type { Feature } from "@/app/_features/core/types";
 
 // Properties of the selected block (the Properties tab).
@@ -15,6 +16,9 @@ export const inspectorPanel: Feature = {
         number={block ? (shell.numbers.get(block.id) ?? 1) : 1}
         keyboardOpen={shell.mathKeyboard}
         onToggleKeyboard={() => shell.toggleMathKeyboard()}
+        onInsertBelow={shell.insertBelow}
+        inBox={block?.meta?.slot ? { up: canStepSlot(doc, block.id, -1), down: canStepSlot(doc, block.id, 1) } : undefined}
+        onStepInBox={(dir) => block && shell.stepInBox(block.id, dir)}
         meta={doc.meta}
         stats={shell.stats}
         hasHeader={doc.blocks.some((b) => b.type === "header")}

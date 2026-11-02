@@ -1,17 +1,19 @@
 "use client";
 
-import { Check, ChevronDown } from "lucide-react";
+import { Check, ChevronDown, Minus, Plus, X } from "lucide-react";
 import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode, type Ref } from "react";
+import { useT } from "@/app/_lib/uiLang";
 import RichEditable, { type RichHandle } from "../rich/RichEditable";
 
 // Small form pieces used by every block editor. `dir="auto"` lets Arabic flow right-to-left.
+// Figma-like: 28px controls on a grey fill, a border on hover, the accent border on focus; 11px labels.
 
 // `group`: for a row of buttons (a <label> would press its first button when its text is clicked).
 export function Field({ label, hint, children, group }: { label: string; hint?: string; children: ReactNode; group?: boolean }) {
   const Tag = group ? "div" : "label";
   return (
     <Tag className="flex flex-col gap-1" role={group ? "group" : undefined} aria-label={group ? label : undefined}>
-      <span className="text-[11px] font-semibold text-muted">{label}</span>
+      <span className="text-[11px] text-muted">{label}</span>
       {children}
       {hint && <span className="text-[11px] leading-snug text-faint">{hint}</span>}
     </Tag>
@@ -22,7 +24,7 @@ export function Field({ label, hint, children, group }: { label: string; hint?: 
 export function Toggle({ checked, onChange, label, hint }: { checked: boolean; onChange: (v: boolean) => void; label: string; hint?: string }) {
   return (
     <label className="flex items-start gap-2 text-xs text-ink">
-      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className="mt-0.5 accent-indigo-600" />
+      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className="mt-0.5 accent-accent" />
       <span className="flex flex-col gap-0.5">
         {label}
         {hint && <span className="text-[11px] leading-snug text-faint">{hint}</span>}
@@ -86,13 +88,13 @@ export function MenuSelect<T extends string>({ value, options, onChange, label }
             setOpen(true);
           }
         }}
-        className={`flex h-7 items-center gap-1 rounded-md border bg-white ps-2.5 pe-1.5 text-xs font-medium text-ink transition-colors hover:border-indigo-300 focus-visible:border-indigo-400 focus-visible:ring-2 focus-visible:ring-indigo-100 focus-visible:outline-none ${open ? "border-indigo-400" : "border-line"}`}
+        className={`flex h-7 items-center gap-1 rounded-[5px] border bg-subtle ps-2 pe-1 text-xs text-ink transition-colors hover:border-line focus-visible:border-accent focus-visible:outline-none ${open ? "border-accent" : "border-transparent"}`}
       >
         <span dir="auto">{current?.label}</span>
-        <ChevronDown size={14} strokeWidth={2} className="text-muted" aria-hidden />
+        <ChevronDown size={12} strokeWidth={2} className="text-muted" aria-hidden />
       </button>
       {open && (
-        <div role="listbox" aria-label={label} onKeyDown={onListKey} className="absolute end-0 top-full z-30 mt-1 min-w-36 rounded-lg border border-line bg-white p-1 shadow-lg">
+        <div role="listbox" aria-label={label} onKeyDown={onListKey} className="absolute end-0 top-full z-30 mt-1 min-w-36 rounded-md bg-neutral-900 p-1 text-white shadow-lg">
           {options.map((o) => (
             <button
               key={o.value}
@@ -100,10 +102,10 @@ export function MenuSelect<T extends string>({ value, options, onChange, label }
               role="option"
               aria-selected={o.value === value}
               onClick={() => pick(o.value)}
-              className={`flex w-full items-center justify-between gap-3 rounded-md px-2.5 py-1.5 text-start text-[13px] outline-none hover:bg-subtle focus-visible:bg-subtle ${o.value === value ? "font-semibold text-indigo-600" : "text-ink"}`}
+              className={`flex h-7 w-full items-center justify-between gap-3 rounded-[5px] px-2 text-start text-xs outline-none hover:bg-accent focus-visible:bg-accent ${o.value === value ? "font-semibold" : ""}`}
             >
               <span dir="auto">{o.label}</span>
-              {o.value === value && <Check size={14} strokeWidth={2.2} aria-hidden />}
+              {o.value === value && <Check size={12} strokeWidth={2.5} aria-hidden />}
             </button>
           ))}
         </div>
@@ -112,8 +114,8 @@ export function MenuSelect<T extends string>({ value, options, onChange, label }
   );
 }
 
-const inputCls =
-  "w-full rounded-md border border-line bg-white px-2.5 py-1.5 text-[13px] text-ink outline-none transition-colors placeholder:text-faint focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100";
+export const inputCls =
+  "w-full rounded-[5px] border border-transparent bg-subtle px-2 py-1 text-xs leading-5 text-ink outline-none transition-colors placeholder:text-faint hover:border-line focus:border-accent focus:bg-white";
 
 export function TextInput(props: { value: string; onChange: (v: string) => void; placeholder?: string }) {
   return (
@@ -161,14 +163,15 @@ export function NumberInput(props: { value: number; onChange: (v: number) => voi
 // Row of buttons where one is active.
 export function Segmented<T extends string>(props: { value: T; options: { value: T; label: string }[]; onChange: (v: T) => void }) {
   return (
-    <div className="flex rounded-md bg-subtle p-0.5 ring-1 ring-line">
+    <div className="flex rounded-[6px] bg-subtle p-0.5">
       {props.options.map((o) => (
         <button
           key={o.value}
           type="button"
           onClick={() => props.onChange(o.value)}
-          className={`flex-1 rounded px-2 py-1 text-xs transition-colors ${
-            o.value === props.value ? "bg-white font-semibold text-indigo-600 shadow-sm" : "text-muted hover:text-ink"
+          aria-pressed={o.value === props.value}
+          className={`h-6 flex-1 rounded-[4px] px-2 text-[11px] transition-colors outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+            o.value === props.value ? "bg-white font-semibold text-ink shadow-sm" : "text-muted hover:text-ink"
           }`}
         >
           {o.label}
@@ -184,10 +187,8 @@ export function SmallButton({ children, onClick, danger, title }: { children: Re
       type="button"
       title={title}
       onClick={onClick}
-      className={`flex items-center justify-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs font-medium transition-colors ${
-        danger
-          ? "border-red-200 text-red-600 hover:bg-red-50"
-          : "border-line text-ink hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-700"
+      className={`flex h-7 items-center justify-center gap-1.5 rounded-[5px] px-2 text-xs font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+        danger ? "text-red-700 hover:bg-red-50" : "bg-subtle text-ink hover:bg-hover"
       }`}
     >
       {children}
@@ -202,11 +203,10 @@ export function RemoveButton({ onClick, title = "Remove" }: { onClick: () => voi
       type="button"
       title={title}
       onClick={onClick}
-      className="grid size-7 shrink-0 place-items-center rounded-md text-faint hover:bg-red-50 hover:text-red-600"
+      aria-label={title}
+      className="grid size-7 shrink-0 place-items-center rounded-[5px] text-faint outline-none hover:bg-red-50 hover:text-red-700 focus-visible:ring-2 focus-visible:ring-accent"
     >
-      <svg width="10" height="10" viewBox="0 0 10 10" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
-        <path d="M2 2l6 6M8 2L2 8" />
-      </svg>
+      <X size={12} strokeWidth={2} aria-hidden />
     </button>
   );
 }
@@ -216,9 +216,9 @@ export function AddRowButton({ children, onClick }: { children: ReactNode; onCli
     <button
       type="button"
       onClick={onClick}
-      className="flex w-full items-center justify-center gap-1 rounded-md border border-dashed border-slate-300 py-1.5 text-xs font-medium text-muted hover:border-indigo-400 hover:bg-indigo-50 hover:text-indigo-600"
+      className="flex h-7 w-full items-center gap-1.5 rounded-[5px] px-2 text-xs text-muted outline-none hover:bg-hover hover:text-ink focus-visible:ring-2 focus-visible:ring-accent"
     >
-      <span className="text-sm leading-none">+</span> {children}
+      <Plus size={12} strokeWidth={2} aria-hidden /> {children}
     </button>
   );
 }
@@ -239,7 +239,7 @@ export function RichInput({ value, onChange, multiline, rows = 1, placeholder, r
       onChange={onChange}
       multiline={multiline}
       placeholder={placeholder}
-      className={`${inputCls} rich-input relative leading-snug focus:border-indigo-400`}
+      className={`${inputCls} rich-input relative leading-snug`}
       style={{ minHeight: rows > 1 ? `${rows * 1.4 + 0.8}em` : undefined }}
     />
   );
@@ -254,8 +254,9 @@ export function ChoiceGrid<T extends string>(props: { value: T; options: { value
           key={o.value}
           type="button"
           onClick={() => props.onChange(o.value)}
-          className={`flex flex-col items-stretch gap-1 rounded-md border p-1.5 text-[10px] transition-colors ${
-            o.value === props.value ? "border-indigo-500 bg-indigo-50/60 font-semibold text-indigo-700 ring-1 ring-indigo-200" : "border-line text-muted hover:border-indigo-300 hover:text-ink"
+          aria-pressed={o.value === props.value}
+          className={`flex flex-col items-stretch gap-1 rounded-[5px] border p-1.5 text-[11px] transition-colors outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+            o.value === props.value ? "border-accent font-semibold text-ink ring-1 ring-accent" : "border-line text-muted hover:border-faint hover:text-ink"
           }`}
         >
           <span className="pointer-events-none flex h-8 items-center justify-center overflow-hidden rounded bg-white">{o.preview}</span>
@@ -268,15 +269,16 @@ export function ChoiceGrid<T extends string>(props: { value: T; options: { value
 
 // − 14 + : a small number stepper.
 export function Stepper({ value, onChange, min, max, title }: { value: number; onChange: (v: number) => void; min: number; max: number; title?: string }) {
-  const b = "grid size-7 place-items-center rounded-md text-xs font-semibold text-ink hover:bg-white";
+  const t = useT();
+  const b = "grid size-7 place-items-center rounded-[5px] text-muted outline-none hover:bg-hover hover:text-ink focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-35 disabled:hover:bg-transparent";
   return (
-    <div className="flex items-center rounded-md bg-subtle ring-1 ring-line" title={title}>
-      <button type="button" className={b} onClick={() => onChange(Math.max(min, value - 1))}>
-        −
+    <div className="flex items-center rounded-[5px] bg-subtle" title={title}>
+      <button type="button" className={b} aria-label={t("Decrease")} disabled={value <= min} onClick={() => onChange(Math.max(min, value - 1))}>
+        <Minus size={12} strokeWidth={2} aria-hidden />
       </button>
-      <span className="w-7 text-center text-xs font-semibold tabular-nums">{value}</span>
-      <button type="button" className={b} onClick={() => onChange(Math.min(max, value + 1))}>
-        +
+      <span className="w-7 text-center text-xs tabular-nums text-ink">{value}</span>
+      <button type="button" className={b} aria-label={t("Increase")} disabled={value >= max} onClick={() => onChange(Math.min(max, value + 1))}>
+        <Plus size={12} strokeWidth={2} aria-hidden />
       </button>
     </div>
   );

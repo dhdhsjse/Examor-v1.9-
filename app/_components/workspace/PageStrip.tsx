@@ -53,7 +53,7 @@ export default function PageStrip({ pages, blocks, heights, activeIndex, onJump,
     <div
       onClick={(e) => collapsed && e.target === e.currentTarget && toggle()}
       title={collapsed ? t("Show pages") : undefined}
-      className={`relative flex shrink-0 flex-col border-e border-line bg-surface transition-[width] duration-200 ease-out motion-reduce:transition-none ${
+      className={`group/edge relative flex shrink-0 flex-col border-e border-line bg-surface transition-[width] duration-200 ease-out motion-reduce:transition-none ${
         collapsed ? "w-3 cursor-pointer" : "w-16"
       }`}
     >
@@ -92,8 +92,8 @@ export default function PageStrip({ pages, blocks, heights, activeIndex, onJump,
               </button>
               <span className={`text-[10px] font-medium ${active ? "text-indigo-600" : "text-muted"}`}>{i + 1}</span>
 
-              {/* Delete page (shown on hover; the first page always stays). Asks first (Workspace). */}
-              {i > 0 && (
+              {/* Delete page (shown on hover; the last page left always stays). Asks first (Workspace). */}
+              {pages.length > 1 && (
                 <button
                   onClick={() => onDeletePage(page.id)}
                   title={t("Delete page")}

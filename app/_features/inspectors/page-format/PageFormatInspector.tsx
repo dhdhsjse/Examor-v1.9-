@@ -163,7 +163,7 @@ export default function PageFormatInspector({ ctx }: { ctx: Ctx }) {
 }
 
 function Heading({ children }: { children: ReactNode }) {
-  return <h3 className="mb-2 text-[11px] font-semibold tracking-wide text-muted uppercase">{children}</h3>;
+  return <h3 className="mb-2 text-[11px] font-semibold text-muted">{children}</h3>;
 }
 
 // The shape of a sheet, to scale with the others (A3 fills the preview).

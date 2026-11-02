@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { compileFunction } from "../graphMath";
 import {
-  MAX_FUNCTIONS,
   addFunction,
   addTangent,
   colorOf,
@@ -139,7 +138,7 @@ describe("asymptotes", () => {
 });
 
 describe("the lists of a graph", () => {
-  it("adds and removes functions with their options, up to six", () => {
+  it("adds and removes functions with their options, without a limit", () => {
     let g = graph({ functions: ["x", "x^2"], curves: [{}, { color: "#000000", derivative: true }] });
     const added = addFunction(g, "sin(x)")!;
     expect(added.functions).toEqual(["x", "x^2", "sin(x)"]);
@@ -147,7 +146,7 @@ describe("the lists of a graph", () => {
     g = { ...g, ...removeFunction(g, 0) };
     expect(g.functions).toEqual(["x^2"]);
     expect(g.curves).toEqual([{ color: "#000000", derivative: true }]); // (the options followed their curve)
-    expect(addFunction(graph({ functions: Array(MAX_FUNCTIONS).fill("x") }))).toBeNull();
+    expect(addFunction(graph({ functions: Array(20).fill("x") }), "x")!.functions).toHaveLength(21);
   });
 
   it("keeps no empty option lists", () => {

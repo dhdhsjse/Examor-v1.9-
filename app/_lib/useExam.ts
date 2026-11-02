@@ -2,10 +2,11 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { DEFAULT_MARGINS, PAGE_MARGIN } from "./a4";
-import { blockHeight } from "./blockLayout";
+import { blockHeight, fitTextboxes } from "./blockLayout";
 import { reorderBlock, type BlockOrder } from "./blockOrder";
 import { blockHeights, createBlock, nextFreeY, pageBottom, pushDownOverlaps, type BlockPreset } from "./blocks";
 import { newId } from "./id";
+import { cutStroke, isStroke } from "./ink/eraser";
 import { renderEquation, type RenderedEquation } from "./math";
 import { pageSize } from "./pageFormats";
 import {
@@ -18,10 +19,12 @@ import {
   editChromeData,
   pageChromeBlocks,
   setChrome as setPageChrome,
+  stretchHeaders,
   syncChrome,
   type ChromeKind,
 } from "./pageChrome";
 import { saveAutosave } from "./storage";
+import { moveSlotTo, removeBlock, stepSlot, syncEmbedded } from "./textboxSlots";
 import { buildDoc, type Template } from "./templates";
 import type { Block, BlockData, BlockLayout, BlockType, EquationBlock, ExamDoc, ExamMeta, HeaderBlock, HeaderFooterConfig, Page, PageFormat, PageMargins } from "./types";
 import type { T } from "./uiLang";
@@ -50,6 +53,8 @@ interface History {
   past: ExamDoc[];
   present: ExamDoc;
   future: ExamDoc[];
+  /** The last change that made a step (its key and when): the next one with the same key soon after goes in the same step */
+  last?: { key: string; time: number } | null;
 }
 
 // A new empty page with the same margins as the last one.
@@ -60,6 +65,26 @@ const newPageLike = (pages: Page[]): Page => {
 };
 
 const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(v, max));
+
+// The meta of a copy of a block: a copy of a block that sits in a text box is a block of the page, no longer in that box.
+const looseMeta = (b: Block): Block["meta"] => {
+  if (!b.meta?.slot) return b.meta;
+  const { slot: _slot, ...rest } = b.meta;
+  return Object.keys(rest).length ? rest : undefined;
+};
+
+// Text boxes and the blocks in their text depend on each other: a box's size follows its text (whose rooms are as tall as its blocks),
+// and its blocks follow the box's place and width. Repeated until nothing moves (in practice 1–2 rounds), so a block is never left
+// where the box was a moment before (an auto-sized box that grew or shrank after its blocks were placed).
+function settleTextboxes(d: ExamDoc): ExamDoc {
+  let cur = d;
+  for (let i = 0; i < 4; i++) {
+    const next = fitTextboxes(syncEmbedded(cur));
+    if (next === cur) break;
+    cur = next;
+  }
+  return cur;
+}
 
 // New svg + size for an equation, keeping its current zoom (pixels per "ex").
 export function equationPatch(b: EquationBlock, r: RenderedEquation): BlockPatch {
@@ -79,24 +104,25 @@ export function useExam(initial: ExamDoc, t?: T) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [activePage, setActivePage] = useState(0); // page currently in view
   const [reveal, setReveal] = useState<RevealRequest | null>(null);
-  const lastEdit = useRef<{ key: string; time: number } | null>(null);
   const [save, setSave] = useState<SaveState>({ status: "saved", at: null });
   const doc = hist.present;
 
   const revealPage = (pageId: string) => setReveal((r) => ({ pageId, n: (r?.n ?? 0) + 1 }));
 
   // Apply a change. Edits with the same `key` within 1s become ONE undo step (typing).
-  // `silent` changes never create an undo step (e.g. equation re-render).
+  // `silent` changes never create an undo step (e.g. equation re-render). A change that changes nothing starts no step: the next one
+  // with its key is a step of its own, not a part of the step before (an eraser that first touches nothing, then cuts a stroke).
   const commit = useCallback((update: (d: ExamDoc) => ExamDoc, opts: { key?: string; silent?: boolean } = {}) => {
     const now = Date.now();
-    const last = lastEdit.current;
-    const merge = opts.silent || (opts.key !== undefined && last?.key === opts.key && now - last.time < 1000);
-    if (!opts.silent) lastEdit.current = opts.key ? { key: opts.key, time: now } : null;
     setHist((h) => {
-      const next = update(h.present);
+      // (text boxes with an automatic size follow their text in the same step: typing, a font, a margin…)
+      // (and the blocks placed in a text box follow its text)
+      const next = settleTextboxes(update(h.present));
       if (next === h.present) return h;
-      if (merge) return { ...h, present: next };
-      return { past: [...h.past.slice(-99), h.present], present: next, future: [] };
+      const merge = opts.silent || (opts.key !== undefined && h.last?.key === opts.key && now - h.last.time < 1000);
+      const last = opts.silent ? h.last : opts.key ? { key: opts.key, time: now } : null;
+      if (merge) return { ...h, present: next, last };
+      return { past: [...h.past.slice(-99), h.present], present: next, future: [], last };
     });
   }, []);
 
@@ -160,7 +186,8 @@ export function useExam(initial: ExamDoc, t?: T) {
   // Add a block. With `at`: dropped at that spot. Without: stacked on the page in view,
   // or the next page with room, or a new page.
   const addBlock = useCallback(
-    (type: BlockType, preset: BlockPreset = {}, at?: DropPoint) => {
+    // `quiet`: the new block is neither selected nor scrolled to (a stroke of the drawing tools).
+    (type: BlockType, preset: BlockPreset = {}, at?: DropPoint, opts: { quiet?: boolean } = {}) => {
       const lang = doc.meta.lang;
       const block = createBlock(type, lang, "", preset);
       const h = blockHeight(block, 1, doc.meta);
@@ -173,10 +200,15 @@ export function useExam(initial: ExamDoc, t?: T) {
       if (at) {
         const page = pages[clamp(at.pageIndex, 0, pages.length - 1)];
         const size = pageSize(page);
+        // Wider than the page's text (a free question): from one margin to the other.
+        const left = page.margins?.left ?? PAGE_MARGIN;
+        const room = size.width - left - (page.margins?.right ?? PAGE_MARGIN);
+        const fit = w > room;
         block.layout = {
           ...block.layout,
           pageId: page.id,
-          x: clamp(at.corner ? at.x : at.x - w / 2, 0, size.width - w),
+          ...(fit ? { width: room } : {}),
+          x: fit ? left : clamp(at.corner ? at.x : at.x - w / 2, 0, size.width - w),
           y: clamp(at.corner ? at.y : at.y - Math.min(h, 40) / 2, 0, size.height - h),
         };
       } else {
@@ -215,41 +247,99 @@ export function useExam(initial: ExamDoc, t?: T) {
         // An exam header on a page without one becomes that page's header.
         return block.type === "header" ? adoptHeaders(next) : next;
       });
-      setSelectedId(block.id);
-      revealPage(block.layout.pageId);
+      if (!opts.quiet) {
+        setSelectedId(block.id);
+        revealPage(block.layout.pageId);
+      }
       if (block.type === "equation") refreshEquation(block);
       return block;
     },
     [doc, activePage, commit, refreshEquation],
   );
 
-  // Drop a block somewhere; blocks it lands on are pushed down below it.
+  // Drop a block somewhere; blocks it lands on are pushed down below it. A block in a text box's text stays in it: it takes its place
+  // among the box's paragraphs and blocks where it was dropped (above or below the others).
   const moveBlock = useCallback(
     (id: string, pageId: string, x: number, y: number) =>
       commit((d) => {
-        const moved = { ...d, blocks: d.blocks.map((b) => (b.id === id ? ({ ...b, layout: { ...b.layout, pageId, x, y } } as Block) : b)) };
+        const cur = d.blocks.find((b) => b.id === id);
+        if (cur?.meta?.slot && d.blocks.some((b) => b.id === cur.meta?.slot)) {
+          const h = blockHeights(d).get(id) ?? 0;
+          return moveSlotTo(d, id, y + h / 2);
+        }
+        // The block moved goes over the others (saved, so the PDF draws it on top too, as the page shows it).
+        const others = d.blocks.filter((b) => b.id !== id).map((b) => b.layout.z ?? 0);
+        const top = Math.max(0, ...others);
+        const z = (cur?.layout.z ?? 0) > top ? cur!.layout.z : top + 1;
+        const moved = { ...d, blocks: d.blocks.map((b) => (b.id === id ? ({ ...b, layout: { ...b.layout, pageId, x, y, z } } as Block) : b)) };
         const pageHeight = pageSize(d.pages.find((p) => p.id === pageId)).height;
         return { ...moved, blocks: pushDownOverlaps(moved.blocks, id, blockHeights(moved), pageHeight) };
       }),
     [commit],
   );
 
-  // Bring a block to the front, send it to the back, or one layer up or down (it is drawn over the blocks before it in the document).
+  // Bring a block to the front, send it to the back, or one layer up or down. The layers are what the page draws: the saved `layout.z`, the
+  // exam's order for equal ones; the new order is saved as the z of every block (the order of the exam itself, which numbers the questions, stays).
   const orderBlock = useCallback(
     (id: string, order: BlockOrder) =>
       commit((d) => {
-        const blocks = reorderBlock(d.blocks, id, order, blockHeights(d));
-        return blocks === d.blocks ? d : { ...d, blocks };
+        const stacked = d.blocks.map((b, i) => ({ b, i })).sort((a, c) => (a.b.layout.z ?? 0) - (c.b.layout.z ?? 0) || a.i - c.i).map((x) => x.b);
+        const next = reorderBlock(stacked, id, order, blockHeights(d));
+        if (next === stacked) return d;
+        const z = new Map(next.map((b, i) => [b.id, i + 1]));
+        return { ...d, blocks: d.blocks.map((b) => ({ ...b, layout: { ...b.layout, z: z.get(b.id) } }) as Block) };
       }),
     [commit],
   );
+  // A block of a text box one place up (−1) or down (+1) among the blocks of its text.
+  const stepInBox = useCallback((id: string, dir: -1 | 1) => commit((d) => stepSlot(d, id, dir)), [commit]);
 
   const deleteBlock = useCallback(
     (id: string) => {
       // A header/footer goes from its settings: the page's own, or the document's (see deleteChrome).
-      commit((d) => (tRef.current && deleteChrome(d, id, tRef.current)) || { ...d, blocks: d.blocks.filter((b) => b.id !== id) });
+      commit((d) => (tRef.current && deleteChrome(d, id, tRef.current)) || removeBlock(d, id));
       setSelectedId((cur) => (cur === id ? null : cur));
     },
+    [commit],
+  );
+
+  // The eraser of the tool bar: the drawings and shapes it rubs go; `key` names the stroke of the eraser (one step of the undo).
+  const eraseBlocks = useCallback(
+    (ids: readonly string[], key: string) => {
+      commit((d) => ids.reduce((acc, id) => (acc.blocks.some((b) => b.id === id) ? removeBlock(acc, id) : acc), d), { key });
+      setSelectedId((cur) => (cur && ids.includes(cur) ? null : cur));
+    },
+    [commit],
+  );
+
+  // The real eraser went along `path` on a page (page px, `radius` around it): the strokes of the drawings it touches are cut, what is
+  // left of each stays in its place in the exam (a piece keeps the stroke's id); a stroke rubbed out whole goes.
+  const eraseInk = useCallback(
+    // (nothing is selected meanwhile: the eraser lets go of the selection when it goes down)
+    (pageId: string, path: { x: number; y: number }[], radius: number, key: string) =>
+      commit(
+        (d) => {
+          let changed = false;
+          const blocks = d.blocks.flatMap((b): Block[] => {
+            if (b.type !== "shape" || !isStroke(b) || b.layout.pageId !== pageId) return [b];
+            const { x, y, width: w, height: h } = b.layout;
+            const pieces = cutStroke({ x, y, w, h, flipX: b.flipX, flipY: b.flipY, adj: b.adj, pressure: b.pressure, strokeWidth: b.strokeWidth }, path, radius);
+            if (!pieces) return [b];
+            changed = true;
+            return pieces.map((p, i) => ({
+              ...b,
+              id: i === 0 ? b.id : newId(),
+              adj: p.adj,
+              pressure: p.pressure,
+              flipX: undefined,
+              flipY: undefined,
+              layout: { ...b.layout, x: p.x, y: p.y, width: p.w, height: p.h },
+            }));
+          });
+          return changed ? { ...d, blocks } : d;
+        },
+        { key },
+      ),
     [commit],
   );
 
@@ -264,6 +354,7 @@ export function useExam(initial: ExamDoc, t?: T) {
       const copy = {
         ...structuredClone(src),
         id: newId(),
+        meta: looseMeta(src),
         layout: { ...src.layout, pageId: page.id, x: clamp(src.layout.x + (taken ? 12 : 0), 0, size.width - src.layout.width), y: clamp(src.layout.y + (taken ? 24 : 0), 0, size.height - src.layout.height) },
       } as Block;
       commit((d) => ({ ...d, blocks: [...d.blocks, copy] }));
@@ -281,6 +372,7 @@ export function useExam(initial: ExamDoc, t?: T) {
       const copy = {
         ...structuredClone(src),
         id: newId(),
+        meta: looseMeta(src),
         layout: { ...src.layout, y: clamp(src.layout.y + 24, 0, size.height - h), x: clamp(src.layout.x + 12, 0, size.width - src.layout.width) },
       } as Block;
       commit((d) => ({ ...d, blocks: [...d.blocks, copy] }));
@@ -302,11 +394,11 @@ export function useExam(initial: ExamDoc, t?: T) {
     revealPage(page.id);
   }, [commit, doc.pages]);
 
-  // Remove a page and everything on it (the first page, the main one, can't be removed).
+  // Remove a page and everything on it (any page, as long as one is left).
   const deletePage = useCallback(
     (pageId: string) => {
       commit((d) => {
-        if (d.pages.length <= 1 || d.pages[0].id === pageId) return d;
+        if (d.pages.length <= 1) return d;
         const next = { ...d, pages: d.pages.filter((p) => p.id !== pageId), blocks: d.blocks.filter((b) => b.layout.pageId !== pageId) };
         return tRef.current ? syncChrome(d, next, tRef.current, { pageCount: true }) : next;
       });
@@ -368,7 +460,7 @@ export function useExam(initial: ExamDoc, t?: T) {
           const o = p.margins ?? DEFAULT_MARGINS;
           return o.top === m.top && o.right === m.right && o.bottom === m.bottom && o.left === m.left;
         };
-        return d.pages.every(same) ? d : { ...d, pages: d.pages.map((p) => ({ ...p, margins: { ...m } })) };
+        return d.pages.every(same) ? d : stretchHeaders({ ...d, pages: d.pages.map((p) => ({ ...p, margins: { ...m } })) });
       }),
     [commit],
   );
@@ -412,7 +504,10 @@ export function useExam(initial: ExamDoc, t?: T) {
     refreshEquation,
     moveBlock,
     orderBlock,
+    stepInBox,
     deleteBlock,
+    eraseBlocks,
+    eraseInk,
     duplicateBlock,
     pasteBlock,
     addPage,

@@ -2,7 +2,7 @@
 
 import type Konva from "konva";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Circle, Group, Layer, Line, Rect, Shape, Stage, Text } from "react-konva";
+import { Circle, Group, Layer, Line, Path, Rect, Shape, Stage, Text } from "react-konva";
 import { GRID, routeNext, snapTarget, type P } from "@/app/_lib/circuit/geometry";
 import { JUNCTION_RADIUS, WIRE_STROKE, buildCircuitScene } from "@/app/_lib/circuit/scene";
 import { SYMBOL_STROKE, drawComponent, type SymbolShape } from "@/app/_lib/circuit/symbols";
@@ -22,6 +22,8 @@ const ACCENT = "#4f46e5";
 const HIT_WIDTH = 12;
 const TERMINAL_RADIUS = 4;
 const TERMINAL_COLOR = "#dc2626"; // the places a wire can end, with the wire tool
+const TURN_HANDLE = 10; // the radius of the round handle that turns the selected component
+const TURN_ICON = "M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8M21 3v5h-5"; // (lucide's rotate-cw, in a 24 box)
 
 const setCursor = (value: string) => (e: { target: { getStage: () => { container: () => HTMLElement } | null } }) => {
   const box = e.target.getStage()?.container();
@@ -105,6 +107,8 @@ export default function CircuitCanvas({ studio }: { studio: CircuitStudioState }
   };
 
   const selecting = tool === "select";
+  // The components can be taken (selected, dragged, turned) with the Select tool and with a component tool in hand alike.
+  const handling = selecting || !!placing;
 
   return (
     <div ref={box} dir="ltr" data-testid="circuit-canvas" className="relative grid min-h-0 flex-1 place-items-center overflow-auto bg-subtle/60 p-4">
@@ -163,6 +167,7 @@ export default function CircuitCanvas({ studio }: { studio: CircuitStudioState }
             {/* the components: the symbol, its texts, and a box to click and drag */}
             {scene.components.map((c) => {
               const isSelected = c.id === selectedComponent?.id;
+              const turn = (by: number) => studio.rotateComponentBy(c.id, by);
               return (
                 <Group key={c.id}>
                   {isSelected && <Rect x={c.bounds.x} y={c.bounds.y} width={c.bounds.width} height={c.bounds.height} stroke={ACCENT} strokeWidth={1.5} dash={[5, 4]} cornerRadius={4} listening={false} />}
@@ -192,11 +197,17 @@ export default function CircuitCanvas({ studio }: { studio: CircuitStudioState }
                     width={c.bounds.width}
                     height={c.bounds.height}
                     fill="transparent"
-                    listening={selecting}
-                    draggable={selecting}
+                    listening={handling}
+                    draggable={handling}
                     onClick={(e) => {
                       e.cancelBubble = true;
-                      studio.selectComponent(c.id);
+                      if (e.evt.button === 0) studio.selectComponent(c.id);
+                    }}
+                    // a right-click turns it a quarter (Shift: the other way)
+                    onContextMenu={(e) => {
+                      e.evt.preventDefault();
+                      e.cancelBubble = true;
+                      turn(e.evt.shiftKey ? -90 : 90);
                     }}
                     onDragStart={() => studio.selectComponent(c.id)}
                     onDragMove={(e) => studio.moveComponentTo(c.id, e.target.x() + c.bounds.width / 2, e.target.y() + c.bounds.height / 2)}
@@ -204,6 +215,22 @@ export default function CircuitCanvas({ studio }: { studio: CircuitStudioState }
                     onMouseEnter={(e) => setCursor("move")(e)}
                     onMouseLeave={(e) => setCursor("")(e)}
                   />
+                  {/* the turn handle, at the corner of the selected component (Shift: the other way) */}
+                  {isSelected && handling && (
+                    <Group
+                      x={c.bounds.x + c.bounds.width + 4}
+                      y={c.bounds.y - 4}
+                      onClick={(e) => {
+                        e.cancelBubble = true;
+                        if (e.evt.button === 0) turn(e.evt.shiftKey ? -90 : 90);
+                      }}
+                      onMouseEnter={(e) => setCursor("pointer")(e)}
+                      onMouseLeave={(e) => setCursor("")(e)}
+                    >
+                      <Circle radius={TURN_HANDLE} fill="#ffffff" stroke={ACCENT} strokeWidth={1.5} shadowColor="#000000" shadowOpacity={0.15} shadowBlur={3} />
+                      <Path data={TURN_ICON} x={-6} y={-6} scaleX={0.5} scaleY={0.5} stroke={ACCENT} strokeWidth={2.5} lineCap="round" lineJoin="round" listening={false} />
+                    </Group>
+                  )}
                 </Group>
               );
             })}

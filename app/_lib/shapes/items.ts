@@ -57,6 +57,24 @@ export function boxFromDrag(shape: string, from: Pt, to: Pt, opts: { square?: bo
   };
 }
 
+/**
+ * A stroke of the pencil (its points, in the drawing's pixels) as the box of a freehand shape and its `adj` (the points as fractions
+ * of the box). A stroke that is a straight line across or down still gets a box a few pixels thick. Null: a click, not a stroke.
+ */
+export function freehandFrom(points: readonly Pt[]): { box: DrawnBox; adj: number[] } | null {
+  if (points.length < 2) return null;
+  const xs = points.map((p) => p[0]);
+  const ys = points.map((p) => p[1]);
+  const [x0, x1, y0, y1] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
+  if (Math.hypot(x1 - x0, y1 - y0) < 3) return null;
+  const w = Math.max(x1 - x0, MIN_SHAPE_SIZE);
+  const h = Math.max(y1 - y0, MIN_SHAPE_SIZE);
+  const x = (x0 + x1 - w) / 2;
+  const y = (y0 + y1 - h) / 2;
+  const frac = (v: number) => Math.round(v * 10000) / 10000;
+  return { box: { x, y, w, h, flipX: false, flipY: false }, adj: points.flatMap(([px, py]) => [frac((px - x) / w), frac((py - y) / h)]) };
+}
+
 /** A new shape in a box, with the style it is given (the rest is the default). */
 export function newShapeItem(shape: string, box: Pick<DrawnBox, "x" | "y" | "w" | "h"> & Partial<Pick<DrawnBox, "flipX" | "flipY">>, style: Partial<ShapeStyle> = {}): ShapeItem {
   const line = !!shapeDef(shape).line;

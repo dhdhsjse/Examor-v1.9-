@@ -13,7 +13,7 @@ export const outilsGenerauxBar: Bar = {
   position: "left",
   order: 10,
   collapse: { width: 248, minWidth: 200, maxWidth: 440, label: "Toolbox", hide: "Hide toolbox", show: "Show toolbox", hotkey: "Ctrl+[" },
-  className: "flex flex-col gap-3 overflow-y-auto",
+  className: "flex flex-col overflow-y-auto",
   groups: [
     toolboxSearchGroup,
     mathGroup,

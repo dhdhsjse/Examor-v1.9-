@@ -1,5 +1,6 @@
 "use client";
 
+import { Check } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useT } from "@/app/_lib/uiLang";
 import { ZOOM_MAX, ZOOM_MIN, ZOOM_PRESETS, clampZoom, type FitMode } from "@/app/_lib/useZoom";
@@ -15,7 +16,7 @@ interface Props {
 }
 
 const iconBtn =
-  "grid size-7 place-items-center rounded-md text-muted transition-colors hover:bg-black/5 hover:text-ink";
+  "grid size-8 place-items-center rounded-[5px] text-muted transition-colors outline-none hover:bg-hover hover:text-ink focus-visible:ring-2 focus-visible:ring-accent";
 
 // The slider is logarithmic: 10% → 100% takes the same room as 100% → 400%... roughly.
 const LOG_MIN = Math.log(ZOOM_MIN);
@@ -54,21 +55,23 @@ export default function ZoomBar({ zoom, fitMode, showGuides, onZoom, onFitPage, 
   };
 
   return (
-    <div className="group pointer-events-auto flex items-center gap-0.5 rounded-lg border border-white/70 bg-white/80 p-1 shadow-[0_6px_20px_-6px_rgba(16,24,40,0.25)] backdrop-blur-md">
+    <div className="group pointer-events-auto flex items-center gap-0.5 rounded-[10px] border border-line bg-surface p-1 shadow-[0_4px_16px_-4px_rgba(0,0,0,0.16)]">
       <button
         onClick={onToggleGuides}
         title={t("Guides and snapping")}
-        className={`grid size-7 place-items-center rounded-md transition-colors ${
-          showGuides ? "bg-indigo-50 text-indigo-600" : "text-muted hover:bg-black/5"
+        aria-label={t("Guides and snapping")}
+        aria-pressed={showGuides}
+        className={`grid size-8 place-items-center rounded-[5px] transition-colors outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+          showGuides ? "bg-hover text-ink" : "text-muted hover:bg-hover hover:text-ink"
         }`}
       >
-        <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+        <svg width="16" height="16" aria-hidden viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
           <rect x="2.5" y="2.5" width="11" height="11" rx="1" strokeDasharray="2 2" />
           <path d="M8 1v14" />
         </svg>
       </button>
 
-      <div className="mx-1 h-4 w-px bg-line" />
+      <div className="mx-0.5 h-5 w-px bg-line" />
 
       {/* Only shown while the mouse is on the bar (or the slider is in use), to save room */}
       <div
@@ -119,16 +122,17 @@ export default function ZoomBar({ zoom, fitMode, showGuides, onZoom, onFitPage, 
             }
           }}
           title={t("Type a zoom level")}
-          className="h-7 w-12 rounded-md bg-transparent text-center text-xs font-semibold tabular-nums text-ink outline-none hover:bg-black/5 focus:bg-white focus:ring-2 focus:ring-indigo-200"
+          aria-label={t("Zoom")}
+          className="h-8 w-12 rounded-[5px] bg-transparent text-center text-xs font-semibold tabular-nums text-ink outline-none hover:bg-hover focus:bg-white focus:ring-2 focus:ring-accent"
         />
-        <button onClick={() => setOpen(!open)} className="grid h-7 w-4 place-items-center rounded-md text-faint hover:bg-black/5" title={t("Zoom presets")}>
+        <button onClick={() => setOpen(!open)} className="grid h-8 w-4 place-items-center rounded-[5px] text-muted outline-none hover:bg-hover focus-visible:ring-2 focus-visible:ring-accent" title={t("Zoom presets")} aria-label={t("Zoom presets")} aria-expanded={open}>
           <svg width="8" height="8" viewBox="0 0 8 8" fill="currentColor">
             <path d="M1 2.5h6L4 6z" />
           </svg>
         </button>
 
         {open && (
-          <div className="absolute end-0 bottom-full mb-2 w-36 rounded-lg border border-line bg-white p-1 text-xs shadow-lg">
+          <div className="absolute end-0 bottom-full mb-2 w-36 rounded-md bg-neutral-900 p-1 text-xs text-white shadow-lg">
             <MenuItem active={fitMode === "page"} onClick={() => pick(onFitPage)} hint="Ctrl 0">
               {t("Fit page")}
             </MenuItem>
@@ -152,12 +156,10 @@ function MenuItem({ active, onClick, hint, children }: { active: boolean; onClic
   return (
     <button
       onClick={onClick}
-      className={`flex w-full items-center justify-between rounded-md px-2.5 py-1.5 text-start hover:bg-subtle ${
-        active ? "font-semibold text-indigo-600" : "text-ink"
-      }`}
+      className={`flex h-7 w-full items-center justify-between rounded-[5px] px-2 text-start outline-none hover:bg-accent focus-visible:bg-accent ${active ? "font-semibold" : ""}`}
     >
       {children}
-      {active ? <span>✓</span> : hint && <span className="text-[10px] text-faint">{hint}</span>}
+      {active ? <Check size={12} strokeWidth={2.5} aria-hidden /> : hint && <span className="text-[11px] text-white/60">{hint}</span>}
     </button>
   );
 }

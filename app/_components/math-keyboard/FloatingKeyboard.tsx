@@ -1,17 +1,43 @@
 "use client";
 
+import { ClipboardList, Pin, PinOff, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type PointerEvent } from "react";
-import { hasActiveMathfield, mathCommand, subscribeActiveMathfield } from "@/app/_lib/activeMathfield";
+import {
+  clearRecentEquations,
+  clipboardSnapshot,
+  pinEquation,
+  removeEquation,
+  serverClipboard,
+  subscribeClipboard,
+  unpinEquation,
+} from "@/app/_lib/keyboard/equationClipboard";
+import { hasActiveMathfield, mathCommand, subscribeActiveMathfield, whenMathfield } from "@/app/_lib/activeMathfield";
 import { keyboardTabsOf, KEYBOARD_LAYOUTS } from "@/app/_lib/keyboard/layouts";
 import { keyLabel, type KeyButton } from "@/app/_lib/keyboard/keys";
 import { plainFromLatex } from "@/app/_lib/keyboard/plainText";
 import { svgUrl } from "@/app/_lib/library";
 import { renderEquation } from "@/app/_lib/math";
 import { useT } from "@/app/_lib/uiLang";
-import { commandInField, fieldFlavor, fieldSelection, moveInField, refreshFields, typeInField, useFieldFlavor } from "./fieldTarget";
+import {
+  caretToEnd,
+  commandInField,
+  fieldFlavor,
+  fieldIsRtl,
+  fieldSelection,
+  insertFormulaInField,
+  moveInField,
+  typeInField,
+  useFieldFlavor,
+  useFieldTakesFormulas,
+  whenField,
+} from "./fieldTarget";
 import { chooseKeyboardLayout, setKeyboardPos, useKeyboardStore, type Point } from "./keyboardStore";
 
 const TAB_KEY = "examBuilder.mathTab";
+const CLIPBOARD_TAB = "clipboard";
+const GROUP_KEY = "examBuilder.mathGroup";
+const LRI = "⁦"; // left-to-right isolate…
+const PDI = "⁩"; // …and its end
 const labelCache = new Map<string, string>();
 
 const EDGE = 8; // the window stays this far from the edge of the screen...
@@ -24,7 +50,7 @@ const keepOnScreen = (p: Point, width: number, height: number): Point => ({
 });
 
 // The key's formula drawn by MathJax (same look as on the page).
-function KeyFace({ latex }: { latex: string }) {
+function KeyFace({ latex, className = "max-h-7" }: { latex: string; className?: string }) {
   const [src, setSrc] = useState(() => labelCache.get(latex) ?? null);
   useEffect(() => {
     if (src) return;
@@ -41,42 +67,38 @@ function KeyFace({ latex }: { latex: string }) {
     };
   }, [latex, src]);
   // eslint-disable-next-line @next/next/no-img-element -- small local svg
-  return src ? <img src={src} alt="" className="pointer-events-none max-h-7 max-w-full object-contain" draggable={false} /> : <span className="text-faint">…</span>;
+  return src ? <img src={src} alt="" className={`pointer-events-none max-w-full object-contain ${className}`} draggable={false} /> : <span className="text-faint">…</span>;
 }
 
 interface Props {
-  /**
-   * Where the keys type: the text field last clicked in a studio ("field"), or on the page ("page") the equation field of the Properties
-   * panel if that was clicked last, else the text field (a question, a text box, a cell, a box of the panel) clicked last.
-   */
-  target: "page" | "field";
+  /** Where the keys type: on the page, the text field last clicked in (a text box, a question…) or else the equation open in the
+   *  Properties panel; in a studio, the text field last clicked in. */
+  where: "page" | "studio";
   onClose: () => void;
+  /** A key pressed with nowhere to type: open somewhere (the selected text or equation, or a new equation) and say what opens. The key
+   *  is typed there as soon as it is ready. Without it (a studio), such a key does nothing. */
+  openTarget?: () => OpenedTarget;
 }
 
+/** What `openTarget` opened: a text field, the selected equation, a new equation (whose starting formula the key replaces), or nothing. */
+export type OpenedTarget = "field" | "equation" | "new-equation" | null;
+
+/** The height of the keyboard while it is docked at the bottom of the screen (0 otherwise): the tool bar of the page sits on it. */
+export const DOCKED_HEIGHT_VAR = "--math-keyboard-docked";
+
 // The math keyboard, a window over the page or over a studio: drag it by its title bar anywhere on the screen (double-click the bar to
-// dock it again), pick Math or Physics keys by hand, "×" closes it. Its keys are the LaTeX of the layout; they type that in the equation
-// field, or its text form (plainText.ts) in the text field being typed in.
-export default function FloatingKeyboard({ target, onClose }: Props) {
+// dock it again at the bottom), pick Math or Physics keys by hand, "×" closes it. Its keys are the LaTeX of the layout; they type that in
+// the equation field, or its text form (plainText.ts) in any other text field.
+export default function FloatingKeyboard({ where, onClose, openTarget }: Props) {
   const t = useT();
   const { layout, pos: savedPos } = useKeyboardStore();
   const tabs = keyboardTabsOf(layout);
-  // False when there is nowhere to type: the equation field is not open (the Properties panel shows another tab), or no text field of
-  // the studio has been clicked yet. A key would do nothing.
   const mathOpen = useSyncExternalStore(subscribeActiveMathfield, hasActiveMathfield, () => false);
   const flavor = useFieldFlavor();
-  // Whatever was clicked last decides, so look again at every click and focus (the page itself may have missed one).
-  useEffect(() => {
-    const look = () => window.setTimeout(refreshFields, 0);
-    document.addEventListener("focusin", look);
-    document.addEventListener("pointerup", look);
-    return () => {
-      document.removeEventListener("focusin", look);
-      document.removeEventListener("pointerup", look);
-    };
-  }, []);
-  // On the page the last place clicked decides: an equation field (which empties `flavor`, see fieldTarget.ts) or a text field.
-  const equation = target === "page" && mathOpen && flavor === null;
-  const typing = equation || flavor !== null;
+  // A text field clicked in comes first; with none, the equation field (on the page only).
+  const target: "equation" | "field" = where === "page" && flavor === null ? "equation" : "field";
+  // False when there is nowhere to type: no text field clicked yet, and no equation field open. A key would do nothing.
+  const typing = target === "equation" ? mathOpen : flavor !== null;
 
   const [tabId, setTabId] = useState(() => {
     try {
@@ -86,7 +108,20 @@ export default function FloatingKeyboard({ target, onClose }: Props) {
     }
   });
   // The tab picked before may not exist in the other layout: the first one is shown then.
+  const onClipboard = tabId === CLIPBOARD_TAB;
   const tab = tabs.find((x) => x.id === tabId) ?? tabs[0];
+  const clipboard = useSyncExternalStore(subscribeClipboard, clipboardSnapshot, serverClipboard);
+  const saved = clipboard.pinned.length + clipboard.recent.length;
+  // A tab cut into groups (Formulas: Mechanics, Electricity…) shows one group at a time, picked by the chips under the tabs.
+  const [groupId, setGroupId] = useState(() => {
+    try {
+      return localStorage.getItem(GROUP_KEY);
+    } catch {
+      return null;
+    }
+  });
+  const group = tab.groups ? (tab.groups.find((g) => g.id === groupId) ?? tab.groups[0]) : null;
+  const keys = group ? group.buttons : tab.buttons;
 
   const pickTab = (id: string) => {
     setTabId(id);
@@ -94,24 +129,62 @@ export default function FloatingKeyboard({ target, onClose }: Props) {
       localStorage.setItem(TAB_KEY, id);
     } catch {}
   };
+  const pickGroup = (id: string) => {
+    setGroupId(id);
+    try {
+      localStorage.setItem(GROUP_KEY, id);
+    } catch {}
+  };
 
   // Buttons never take the focus away from the field being typed in.
   const keep = (e: React.MouseEvent) => e.preventDefault();
 
   // In a text field a key may have no text form (a matrix…): it is greyed out there.
-  const textForms = useMemo(() => (!equation && flavor ? tab.buttons.map((key) => plainFromLatex(key.latex, flavor)) : null), [equation, flavor, tab]);
+  // (Not in a text box: it takes the key as a formula, whatever it is.)
+  const formulas = useFieldTakesFormulas();
+  const textForms = useMemo(
+    () => (target === "field" && flavor && !formulas ? keys.map((key) => plainFromLatex(key.latex, flavor)) : null),
+    [target, flavor, formulas, keys],
+  );
+  const hasNoText = (latex: string) => target === "field" && !!flavor && !formulas && plainFromLatex(latex, flavor) === null;
 
-  const press = (key: KeyButton) => {
-    if (equation) return mathCommand(["insert", key.latex, { selectionMode: "placeholder" }]);
+  const typeKey = (key: KeyButton, into: "equation" | "field") => {
+    if (into === "equation") return mathCommand(["insert", key.latex, { selectionMode: "placeholder" }]);
+    // A text box: a real formula with the key in it.
+    if (insertFormulaInField(key.latex)) return;
     const kind = fieldFlavor();
     const text = kind && plainFromLatex(key.latex, kind, fieldSelection());
-    if (text) typeInField(text.text, text.caret);
+    if (!text) return;
+    // In a right-to-left text the math stays left to right (between the invisible marks LRI … PDI): else ∈ shows as ∋, ⊂ as ⊃,
+    // "x<3" as "3>x".
+    if (kind !== "formula" && fieldIsRtl()) typeInField(`${LRI}${text.text}${PDI}`, text.caret + 1);
+    else typeInField(text.text, text.caret);
   };
+  const press = (key: KeyButton) => {
+    if (typing) return typeKey(key, target);
+    // Nowhere to type yet: the page opens somewhere, and the key goes there once it is ready.
+    const opened = openTarget?.();
+    if (opened === "field")
+      whenField(() => {
+        caretToEnd();
+        // A text box's editor (ProseMirror) takes in a moved cursor on the next "selectionchange": typed after it, the key and the ones
+        // after it go where the cursor shows.
+        requestAnimationFrame(() => typeKey(key, "field"));
+      });
+    else if (opened === "equation") whenMathfield(() => typeKey(key, "equation"));
+    else if (opened === "new-equation")
+      whenMathfield(() => {
+        mathCommand("selectAll"); // the starting formula of a new equation is replaced by the key
+        typeKey(key, "equation");
+      });
+  };
+  // On the page a key always does something (it opens a text or an equation when none is open), so it never looks off there.
+  const keysOn = typing || !!openTarget;
   const edit = {
-    left: () => (equation ? mathCommand("moveToPreviousChar") : moveInField(-1)),
-    right: () => (equation ? mathCommand("moveToNextChar") : moveInField(1)),
-    delete: () => (equation ? mathCommand("deleteBackward") : commandInField("delete")),
-    undo: () => (equation ? mathCommand("undo") : commandInField("undo")),
+    left: () => (target === "equation" ? mathCommand("moveToPreviousChar") : moveInField(-1)),
+    right: () => (target === "equation" ? mathCommand("moveToNextChar") : moveInField(1)),
+    delete: () => (target === "equation" ? mathCommand("deleteBackward") : commandInField("delete")),
+    undo: () => (target === "equation" ? mathCommand("undo") : commandInField("undo")),
   };
 
   // ---- Moving the window ----
@@ -164,22 +237,41 @@ export default function FloatingKeyboard({ target, onClose }: Props) {
     setKeyboardPos(null);
   };
 
+  // Docked, it says how tall it is, so the tool bar of the page sits right on it instead of under it.
+  const docked = pos === null;
+  useEffect(() => {
+    const box = boxRef.current;
+    const root = document.documentElement.style;
+    if (!box || !docked) return root.setProperty(DOCKED_HEIGHT_VAR, "0px");
+    const tell = () => root.setProperty(DOCKED_HEIGHT_VAR, `${box.getBoundingClientRect().height}px`);
+    tell();
+    const watch = new ResizeObserver(tell);
+    watch.observe(box);
+    return () => {
+      watch.disconnect();
+      root.setProperty(DOCKED_HEIGHT_VAR, "0px");
+    };
+  }, [docked]);
+
   return (
     <div
       ref={boxRef}
-      // The keyboard window is not a field of the studio: clicking in it does not change where the keys type (fieldTarget.ts).
+      // The keyboard window is not a field: clicking in it does not change where the keys type (fieldTarget.ts), and it keeps the
+      // text being typed in on the page open (data-text-format).
       data-math-keyboard=""
-      // A press in here keeps the text being typed in open on the sheet (like the formatting ribbon: see InlineEditor, TextboxEditor).
       data-text-format=""
       className="pointer-events-auto fixed z-40 w-[min(720px,calc(100vw-8rem))]"
-      style={pos ? { left: pos.x, top: pos.y } : { left: "50%", bottom: "4rem", transform: "translateX(-50%)" }}
+      // Docked: on the bottom edge of the screen, no gap under it.
+      style={pos ? { left: pos.x, top: pos.y } : { left: "50%", bottom: 0, transform: "translateX(-50%)" }}
       onMouseDown={keep}
     >
       <div
         role="group"
         aria-label={t("Math keyboard")}
         data-testid="math-keyboard"
-        className="keyboard-rise flex max-h-[46vh] flex-col overflow-hidden rounded-xl border border-line bg-white/95 shadow-[0_18px_50px_-12px_rgba(16,24,40,0.35)] backdrop-blur-md"
+        className={`keyboard-rise flex max-h-[46vh] flex-col overflow-hidden border border-line bg-white/95 shadow-[0_18px_50px_-12px_rgba(16,24,40,0.35)] backdrop-blur-md ${
+          docked ? "rounded-t-xl border-b-0" : "rounded-xl"
+        }`}
       >
         {/* Title bar: drag it to move the window. Math / Physics and close. */}
         <div
@@ -205,7 +297,7 @@ export default function FloatingKeyboard({ target, onClose }: Props) {
                 aria-pressed={l === layout}
                 data-layout={l}
                 onClick={() => chooseKeyboardLayout(l)}
-                title={l === "math" ? t("Math keys: fractions, trigonometry, limits, sets…") : t("Physics keys: vectors, units, constants, formulas…")}
+                title={l === "math" ? t("Math keys: fractions, trigonometry, limits, sets…") : t("Physics keys: vectors, units, constants, chemistry…")}
                 className={`cursor-pointer rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${l === layout ? "bg-indigo-600 text-white shadow-sm" : "text-muted hover:text-ink"}`}
               >
                 {l === "math" ? t("Math") : t("Physics")}
@@ -221,13 +313,27 @@ export default function FloatingKeyboard({ target, onClose }: Props) {
 
         {/* The tabs wrap onto a second row rather than scroll: a tab hidden off to the side would not be found. */}
         <div className="flex flex-wrap gap-1 border-b border-line px-2 py-1.5">
+          <button
+            aria-pressed={onClipboard}
+            data-testid="keyboard-clipboard-tab"
+            onClick={() => pickTab(CLIPBOARD_TAB)}
+            title={t("Your recent and pinned equations")}
+            className={`flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors ${
+              onClipboard ? "bg-white text-indigo-600 shadow-sm ring-1 ring-line" : "text-muted hover:text-ink"
+            }`}
+          >
+            <ClipboardList size={13} strokeWidth={2} aria-hidden />
+            {t("Clipboard")}
+            {saved > 0 && <span className="rounded-full bg-indigo-100 px-1.5 text-[10px] font-semibold leading-4 text-indigo-700">{saved}</span>}
+          </button>
+          <span className="mx-0.5 my-1 w-px bg-line" aria-hidden />
           {tabs.map((x) => (
             <button
               key={x.id}
-              aria-pressed={x.id === tab.id}
+              aria-pressed={!onClipboard && x.id === tab.id}
               onClick={() => pickTab(x.id)}
               className={`rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors ${
-                x.id === tab.id ? "bg-white text-indigo-600 shadow-sm ring-1 ring-line" : "text-muted hover:text-ink"
+                !onClipboard && x.id === tab.id ? "bg-white text-indigo-600 shadow-sm ring-1 ring-line" : "text-muted hover:text-ink"
               }`}
             >
               {t(x.label)}
@@ -235,11 +341,38 @@ export default function FloatingKeyboard({ target, onClose }: Props) {
           ))}
         </div>
 
-        {/* Keys */}
-        <div key={`${layout}-${tab.id}`} className="grid min-h-0 grid-cols-[repeat(auto-fill,minmax(58px,1fr))] gap-1.5 overflow-y-auto p-2.5" dir="ltr">
-          {tab.buttons.map((key, i) => {
+        {/* Keys, or the saved equations */}
+        {onClipboard ? (
+          <ClipboardPanel
+            pinned={clipboard.pinned}
+            recent={clipboard.recent}
+            off={!keysOn}
+            noText={hasNoText}
+            onPick={(latex) => press({ latex, title: t("Saved equation") })}
+          />
+        ) : (
+        <>
+        {group && tab.groups && (
+          <div role="group" aria-label={t(tab.label)} data-testid="keyboard-groups" className="flex flex-wrap gap-1 border-b border-line bg-subtle/40 px-2.5 py-1.5">
+            {tab.groups.map((g) => (
+              <button
+                key={g.id}
+                aria-pressed={g.id === group.id}
+                onClick={() => pickGroup(g.id)}
+                className={`rounded-full px-3 py-1 text-[11px] font-medium transition-colors ${
+                  g.id === group.id ? "bg-indigo-600 text-white shadow-sm" : "bg-white text-muted ring-1 ring-line hover:text-ink"
+                }`}
+              >
+                {t(g.label)}
+                <span className={`ms-1.5 ${g.id === group.id ? "text-indigo-200" : "text-faint"}`}>{g.buttons.length}</span>
+              </button>
+            ))}
+          </div>
+        )}
+        <div key={`${layout}-${tab.id}-${group?.id ?? ""}`} className="grid min-h-0 grid-cols-[repeat(auto-fill,minmax(58px,1fr))] gap-1.5 overflow-y-auto p-2.5" dir="ltr">
+          {keys.map((key, i) => {
             const noText = textForms !== null && textForms[i] === null;
-            const off = !typing || noText;
+            const off = !keysOn || noText;
             return (
               <button
                 key={key.latex + key.title}
@@ -248,15 +381,19 @@ export default function FloatingKeyboard({ target, onClose }: Props) {
                 aria-disabled={off}
                 onMouseDown={keep}
                 onClick={() => !noText && press(key)}
-                className={`flex h-11 items-center justify-center rounded-lg border border-line bg-white px-1.5 transition hover:-translate-y-px hover:border-indigo-300 hover:bg-indigo-50/60 hover:shadow-sm active:translate-y-0 ${
-                  key.wide ? "col-span-3" : ""
-                } ${noText ? "opacity-30" : typing ? "" : "opacity-60"}`}
+                className={`flex flex-col items-center justify-center gap-0.5 rounded-lg border border-line bg-white px-1.5 transition hover:-translate-y-px hover:border-indigo-300 hover:bg-indigo-50/60 hover:shadow-sm active:translate-y-0 ${
+                  key.wide ? "col-span-3 h-16" : "h-11"
+                } ${noText ? "opacity-30" : keysOn ? "" : "opacity-60"}`}
               >
                 <KeyFace latex={keyLabel(key)} />
+                {/* A formula says what it is: easier to find than by its letters. */}
+                {key.wide && <span className="max-w-full truncate text-[10px] leading-3 text-faint">{t(key.title)}</span>}
               </button>
             );
           })}
         </div>
+        </>
+        )}
 
         {/* Editing keys */}
         <div className="flex items-center gap-1.5 border-t border-line px-2.5 py-1.5 text-xs">
@@ -264,14 +401,14 @@ export default function FloatingKeyboard({ target, onClose }: Props) {
           <EditKey title={t("Move right")} onClick={edit.right}>▶</EditKey>
           <EditKey title={t("Delete")} onClick={edit.delete}>⌫ {t("Delete")}</EditKey>
           <EditKey title={t("Undo")} onClick={edit.undo}>↶ {t("Undo")}</EditKey>
-          <span className={`ms-auto text-[11px] ${typing ? "text-faint" : "font-medium text-amber-700"}`}>
-            {equation
-              ? t("Tip: you can also type — x^2, sqrt, pi, lim…")
+          <span className={`ms-auto text-[11px] ${keysOn ? "text-faint" : "font-medium text-amber-700"}`}>
+            {target === "equation"
+              ? typing
+                ? t("Tip: you can also type — x^2, sqrt, pi, lim…")
+                : t("Press a key: it types in the selected text, or in a new equation.")
               : typing
                 ? t("The keys type in the field you last clicked.")
-                : target === "page"
-                  ? t("Click where you want to type: a text, a box of the panel or an equation.")
-                  : t("Click a text field to type in it.")}
+                : t("Click a text field to type in it.")}
           </span>
         </div>
       </div>
@@ -286,6 +423,127 @@ function EditKey({ title, onClick, children }: { title: string; onClick: () => v
       onMouseDown={(e) => e.preventDefault()}
       onClick={onClick}
       className="rounded-md border border-line bg-white px-2.5 py-1 font-medium text-ink hover:border-indigo-300 hover:bg-indigo-50"
+    >
+      {children}
+    </button>
+  );
+}
+
+// The keyboard's clipboard: the equations pinned for good, then the last ones finished (equationClipboard.ts). A click puts one in
+// where the keys type; the small buttons on each pin, unpin or forget it.
+function ClipboardPanel({
+  pinned,
+  recent,
+  off,
+  noText,
+  onPick,
+}: {
+  pinned: string[];
+  recent: string[];
+  off: boolean;
+  noText: (latex: string) => boolean;
+  onPick: (latex: string) => void;
+}) {
+  const t = useT();
+  if (!pinned.length && !recent.length)
+    return (
+      <div data-testid="keyboard-clipboard" className="flex flex-col items-center gap-1.5 px-6 py-7 text-center">
+        <ClipboardList size={22} strokeWidth={1.5} className="text-faint" aria-hidden />
+        <p className="text-xs font-medium text-ink">{t("No saved equations yet")}</p>
+        <p className="max-w-sm text-[11px] text-muted">
+          {t("Every equation you finish writing shows up here, ready to use again. Pin the ones you want to keep for good.")}
+        </p>
+      </div>
+    );
+  const item = (latex: string, isPinned: boolean) => {
+    const blocked = noText(latex);
+    return (
+      <div key={latex} className="group relative">
+        <button
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => !blocked && onPick(latex)}
+          aria-disabled={off || blocked}
+          title={blocked ? t("no text form in this field") : t("Put this equation in")}
+          className={`flex h-14 w-full items-center justify-center rounded-lg border bg-white px-3 transition hover:-translate-y-px hover:border-indigo-300 hover:bg-indigo-50/60 hover:shadow-sm active:translate-y-0 ${
+            isPinned ? "border-indigo-200" : "border-line"
+          } ${blocked ? "opacity-30" : off ? "opacity-60" : ""}`}
+        >
+          <KeyFace latex={latex} className="max-h-10" />
+        </button>
+        <div className="absolute end-1 top-1 flex gap-0.5 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100">
+          <MiniButton
+            label={isPinned ? t("Unpin") : t("Pin (keep for good)")}
+            onClick={() => (isPinned ? unpinEquation(latex) : pinEquation(latex))}
+            active={isPinned}
+          >
+            {isPinned ? <PinOff size={11} aria-hidden /> : <Pin size={11} aria-hidden />}
+          </MiniButton>
+          <MiniButton label={t("Remove")} onClick={() => removeEquation(latex)} danger>
+            <X size={11} aria-hidden />
+          </MiniButton>
+        </div>
+        {isPinned && (
+          <Pin size={10} className="pointer-events-none absolute start-1.5 top-1.5 fill-indigo-500 text-indigo-500 group-hover:opacity-0" aria-hidden />
+        )}
+      </div>
+    );
+  };
+  return (
+    <div data-testid="keyboard-clipboard" className="min-h-0 space-y-2.5 overflow-y-auto p-2.5" dir="ltr">
+      {pinned.length > 0 && (
+        <section>
+          <h3 className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-faint">{t("Pinned")}</h3>
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-1.5">{pinned.map((l) => item(l, true))}</div>
+        </section>
+      )}
+      {recent.length > 0 && (
+        <section>
+          <div className="mb-1.5 flex items-center">
+            <h3 className="text-[11px] font-semibold uppercase tracking-wide text-faint">{t("Recent")}</h3>
+            <button
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={clearRecentEquations}
+              className="ms-auto rounded px-1.5 py-0.5 text-[11px] font-medium text-muted hover:bg-red-50 hover:text-red-600"
+            >
+              {t("Clear recent")}
+            </button>
+          </div>
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-1.5">{recent.map((l) => item(l, false))}</div>
+        </section>
+      )}
+    </div>
+  );
+}
+
+function MiniButton({
+  label,
+  onClick,
+  active,
+  danger,
+  children,
+}: {
+  label: string;
+  onClick: () => void;
+  active?: boolean;
+  danger?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      title={label}
+      aria-label={label}
+      onMouseDown={(e) => e.preventDefault()}
+      onClick={(e) => {
+        e.stopPropagation();
+        onClick();
+      }}
+      className={`grid size-5 place-items-center rounded border bg-white shadow-sm ${
+        danger
+          ? "border-line text-muted hover:border-red-200 hover:bg-red-50 hover:text-red-600"
+          : active
+            ? "border-indigo-200 text-indigo-600 hover:bg-indigo-50"
+            : "border-line text-muted hover:border-indigo-200 hover:text-indigo-600"
+      }`}
     >
       {children}
     </button>

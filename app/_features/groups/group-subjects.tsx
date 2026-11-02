@@ -17,7 +17,7 @@ export const subjectsGroup: Group = {
     <span className="flex items-center gap-1">
       <span className="font-normal text-muted">{ctx.t("Subject:")}</span>
       {ctx.t(ctx.shell.subject)}
-      <ChevronDown size={14} strokeWidth={2} className="text-muted" aria-hidden />
+      <ChevronDown size={12} strokeWidth={2} className="text-muted" aria-hidden />
     </span>
   ),
   features: [subjectGeneral, subjectMath, subjectPhysics, subjectSciences, subjectArabic, subjectFrench],

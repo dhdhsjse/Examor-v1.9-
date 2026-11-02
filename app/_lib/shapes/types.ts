@@ -39,6 +39,10 @@ export type ShapeStyle = {
   textVAlign?: ShapeVAlign;
   /** A picture (a data URL) instead of a drawing: its box is the picture's, its outline (none unless asked) goes round it. Only the Table Studio puts them. */
   src?: string;
+  /** A stroke of the page's drawing tools (a freehand shape): which tool drew it. `stroke` is its color, `strokeWidth` its size. */
+  ink?: "brush" | "pencil" | "highlighter";
+  /** How hard each point of an ink stroke was pressed (0..1), one per point of `adj` */
+  pressure?: number[];
 };
 
 /** A shape in a Studio: where it is (the top-left corner of its box, before it is turned) and how it is turned. */
@@ -83,6 +87,8 @@ export type ShapeDef = {
   adjust?: Adjust;
   /** A line: no inside, drawn from one corner to the opposite one, with two end handles instead of eight */
   line?: boolean;
+  /** A stroke of the pencil: `adj` holds its points (x, y pairs, as fractions of the box) instead of the values of handles */
+  freehand?: boolean;
   /** The room for the text inside the shape, as fractions of the box: left, top, right, bottom (default: all of it) */
   textInset?: readonly [number, number, number, number];
   /** The size of a shape put with a click instead of a drag (default 120×90) */

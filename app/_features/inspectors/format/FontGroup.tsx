@@ -1,7 +1,7 @@
 "use client";
 
 import { AArrowDown, AArrowUp, Baseline, Bold, CaseSensitive, ChevronDown, Eraser, Highlighter, Italic, Sparkles, Strikethrough, Subscript, Superscript, Underline } from "lucide-react";
-import { useCallback, useRef, useState, type CSSProperties } from "react";
+import { useCallback, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { FontSelect } from "@/app/_components/rich/FormatBar";
 import type { Ctx } from "@/app/_features/core/types";
 import { DEFAULT_FONT, FILL_COLORS } from "@/app/_lib/fonts";
@@ -11,7 +11,6 @@ import type { CaseMode } from "@/app/_lib/textCase";
 import type { T } from "@/app/_lib/uiLang";
 import type { FormatTarget, StyleKey } from "./formatTarget";
 import { ColorMenu, Divider, Menu, MenuButton, MenuItem, MenuSeparator, Popover, RibbonButton, RibbonGroup, RibbonRow, fieldCls, keepFocus } from "./ribbonUi";
-
 
 const CASES: { mode: CaseMode; label: string }[] = [
   { mode: "sentence", label: "Sentence case" },
@@ -125,7 +124,7 @@ function SizeCombo({ t, target }: { t: T; target: FormatTarget }) {
     if (Number.isFinite(v) && v > 0) target.setSize(Math.max(MIN_SIZE, Math.min(Math.round(v), MAX_SIZE)));
   };
   return (
-    <div ref={anchor} className="flex h-7 flex-none items-center rounded-md border border-line bg-white focus-within:border-indigo-400">
+    <div ref={anchor} className="flex h-7 flex-none items-center rounded-md border border-transparent bg-subtle hover:border-line focus-within:border-indigo-400 focus-within:bg-white">
       <input
         type="text"
         inputMode="numeric"
@@ -143,7 +142,7 @@ function SizeCombo({ t, target }: { t: T; target: FormatTarget }) {
             set(size + (e.key === "ArrowUp" ? 1 : -1));
           }
         }}
-        className="h-full w-9 rounded-s-md bg-transparent text-center text-[12.5px] text-ink tabular-nums outline-none"
+        className="h-full w-8 rounded-s-md bg-transparent text-center text-[12px] text-ink tabular-nums outline-none"
       />
       <button type="button" tabIndex={-1} aria-label={t("Font size")} aria-haspopup="listbox" aria-expanded={open} onMouseDown={keepFocus} onClick={() => setOpen((o) => !o)} className="grid h-full w-5 place-items-center rounded-e-md text-muted hover:bg-subtle">
         <ChevronDown size={12} />
@@ -173,19 +172,16 @@ function SizeCombo({ t, target }: { t: T; target: FormatTarget }) {
   );
 }
 
-// Font, size, style, color: the "Font" group of the Word ribbon.
-export default function FontGroup({ ctx, target }: { ctx: Ctx; target: FormatTarget }) {
+// Font, size, style, color: what is used every time, in two lines (the rest is in FontExtras, under "More options").
+export default function FontGroup({ ctx, target, aside }: { ctx: Ctx; target: FormatTarget; aside?: ReactNode }) {
   const { t, doc } = ctx;
   return (
-    <RibbonGroup title={t("Font")}>
-      <RibbonRow className="gap-1">
-        {/* (the font has a line of its own when the panel is narrow) */}
-        <div className="min-w-0 flex-1 basis-[7.5rem]">
+    <RibbonGroup title={t("Text")} aside={aside}>
+      <RibbonRow className="flex-nowrap gap-1">
+        <div className="min-w-0 flex-1">
           <FontSelect value={target.family} onChange={target.setFamily} defaultLabel={`${t("Exam font")} (${doc.meta.fontFamily ?? DEFAULT_FONT})`} className={fieldCls} />
         </div>
         <SizeCombo t={t} target={target} />
-        <RibbonButton title={t("Bigger")} shortcut="Ctrl+Shift+>" icon={<AArrowUp size={16} />} disabled={target.size >= MAX_SIZE} onClick={() => target.setSize(stepSize(target.size, true))} />
-        <RibbonButton title={t("Smaller")} shortcut="Ctrl+Shift+<" icon={<AArrowDown size={16} />} disabled={target.size <= MIN_SIZE} onClick={() => target.setSize(stepSize(target.size, false))} />
       </RibbonRow>
 
       <RibbonRow>
@@ -197,29 +193,7 @@ export default function FontGroup({ ctx, target }: { ctx: Ctx; target: FormatTar
           <RibbonButton key={key} title={t(label)} shortcut={shortcut} icon={<Icon size={15} />} pressed={target.style[key]} onClick={() => target.toggle(key)} />
         ))}
         <Divider />
-        <RibbonButton title={t("Subscript")} shortcut="Ctrl+," icon={<Subscript size={15} />} pressed={target.script === "sub"} disabled={!target.canScript} onClick={() => target.toggleScript("sub")} />
-        <RibbonButton title={t("Superscript")} shortcut="Ctrl+." icon={<Superscript size={15} />} pressed={target.script === "sup"} disabled={!target.canScript} onClick={() => target.toggleScript("sup")} />
-      </RibbonRow>
-
-      <RibbonRow>
-        <MenuButton title={t("Change case")} shortcut="Shift+F3" icon={<CaseSensitive size={17} />} disabled={!target.canChangeCase}>
-          {(close) => (
-            <Menu label={t("Change case")}>
-              {CASES.map(({ mode, label }) => (
-                <MenuItem
-                  key={mode}
-                  label={t(label)}
-                  onSelect={() => {
-                    target.changeCase(mode);
-                    close();
-                  }}
-                />
-              ))}
-            </Menu>
-          )}
-        </MenuButton>
-        <RibbonButton title={t("Clear all formatting")} shortcut="Ctrl+Space" icon={<Eraser size={15} />} onClick={target.clearFormatting} />
-        <Divider />
+        <ColorMenu title={t("Text color")} icon={<Baseline size={15} />} value={target.colorSet} initial="#dc2626" autoLabel={t("Auto")} onChange={target.setColor} />
         <ColorMenu
           title={t("Highlight color")}
           icon={<Highlighter size={15} />}
@@ -231,10 +205,38 @@ export default function FontGroup({ ctx, target }: { ctx: Ctx; target: FormatTar
           toggle
           onChange={target.setHighlight}
         />
-        <ColorMenu title={t("Text color")} icon={<Baseline size={15} />} value={target.colorSet} initial="#dc2626" autoLabel={t("Auto")} onChange={target.setColor} />
-        <Divider />
-        <EffectsMenu t={t} target={target} />
       </RibbonRow>
     </RibbonGroup>
+  );
+}
+
+// The font tools used less often: size steps, sub/superscript, case, effects, clearing the formatting.
+export function FontExtras({ ctx, target }: { ctx: Ctx; target: FormatTarget }) {
+  const { t } = ctx;
+  return (
+    <>
+      <RibbonButton title={t("Bigger")} shortcut="Ctrl+Shift+>" icon={<AArrowUp size={16} />} disabled={target.size >= MAX_SIZE} onClick={() => target.setSize(stepSize(target.size, true))} />
+      <RibbonButton title={t("Smaller")} shortcut="Ctrl+Shift+<" icon={<AArrowDown size={16} />} disabled={target.size <= MIN_SIZE} onClick={() => target.setSize(stepSize(target.size, false))} />
+      <RibbonButton title={t("Subscript")} shortcut="Ctrl+," icon={<Subscript size={15} />} pressed={target.script === "sub"} disabled={!target.canScript} onClick={() => target.toggleScript("sub")} />
+      <RibbonButton title={t("Superscript")} shortcut="Ctrl+." icon={<Superscript size={15} />} pressed={target.script === "sup"} disabled={!target.canScript} onClick={() => target.toggleScript("sup")} />
+      <MenuButton title={t("Change case")} shortcut="Shift+F3" icon={<CaseSensitive size={17} />} disabled={!target.canChangeCase}>
+        {(close) => (
+          <Menu label={t("Change case")}>
+            {CASES.map(({ mode, label }) => (
+              <MenuItem
+                key={mode}
+                label={t(label)}
+                onSelect={() => {
+                  target.changeCase(mode);
+                  close();
+                }}
+              />
+            ))}
+          </Menu>
+        )}
+      </MenuButton>
+      <EffectsMenu t={t} target={target} />
+      <RibbonButton title={t("Clear all formatting")} shortcut="Ctrl+Space" icon={<Eraser size={15} />} onClick={target.clearFormatting} />
+    </>
   );
 }

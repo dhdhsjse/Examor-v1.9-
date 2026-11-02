@@ -57,6 +57,13 @@ export const OrderIcon = () => (
   </svg>
 );
 
+export const DividerIcon = () => (
+  <svg {...base}>
+    <path d="M2 9h14" />
+    <path d="M4 5h10M4 13h10" strokeDasharray="2 2" opacity=".5" />
+  </svg>
+);
+
 export const ClassifyIcon = () => (
   <svg {...base}>
     <rect x="2.5" y="2.5" width="13" height="13" rx="1.5" />
@@ -208,7 +215,8 @@ export const PenLinesIcon = () => (
 
 export const HeadingIcon = () => (
   <svg {...base}>
-    <path d="M4 3.5v11M14 3.5v11M4 9h10" />
+    <path d="M3 5h7.5M6.75 5v6" strokeWidth={2} />
+    <path d="M3 14h12M12.5 8.5H15" />
   </svg>
 );
 

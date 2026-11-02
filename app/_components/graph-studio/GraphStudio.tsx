@@ -10,6 +10,7 @@ import GraphCanvas from "./GraphCanvas";
 import GraphPanel from "./GraphPanel";
 import GraphToolbar from "./GraphToolbar";
 import { useGraphStudio, type GraphView } from "./useGraphStudio";
+import { studioHeaderProps } from "@/app/_lib/desktopWindow";
 
 interface Props {
   /** The graph of the block being edited; null = a new graph. */
@@ -78,7 +79,7 @@ export default function GraphStudio({ editing, onInsert, onUpdate, onClose }: Pr
 
   return (
     <div data-testid="graph-studio" dir={rtl ? "rtl" : "ltr"} className="fixed inset-0 z-50 flex flex-col bg-white">
-      <header className="flex items-center gap-3 border-b border-line px-4 py-2.5">
+      <header {...studioHeaderProps()}>
         <h2 className="shrink-0 text-base font-semibold text-ink">{t("Graph Studio")}</h2>
         <span className="shrink-0 rounded-full bg-accent-soft px-2.5 py-0.5 text-xs font-medium text-accent-strong">{t("Graph lab")}</span>
 

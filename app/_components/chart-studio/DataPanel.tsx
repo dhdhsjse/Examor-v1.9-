@@ -98,7 +98,7 @@ export default function DataPanel({ c, edit, meta, undo, redo }: Props) {
         </div>
       </div>
       <p className="border-b border-line bg-indigo-50/50 px-3 py-1 text-[11px] text-indigo-900">{hint}</p>
-      <TableGrid table={table} lang={meta.lang} sel={sel} onSelect={setSel} onChange={apply} onUndo={undo} onRedo={redo} actions={actions} examFont={meta.fontFamily ?? DEFAULT_FONT} testId="chart-grid" compact />
+      <TableGrid table={table} lang={meta.lang} sel={sel} onSelect={setSel} onChange={apply} onUndo={undo} onRedo={redo} actions={actions} examFont={meta.fontFamily ?? DEFAULT_FONT} testId="chart-grid" compact singleLine />
     </div>
   );
 }

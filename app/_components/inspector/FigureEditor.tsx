@@ -35,10 +35,10 @@ export function FigureEditor({ b, figure, lang, onChange }: { b: ImageBlock; fig
   }
 
   return (
-    <div className="flex flex-col gap-2.5 rounded-lg border border-indigo-100 bg-indigo-50/40 p-2.5">
+    <div className="flex flex-col gap-2.5 rounded-[5px] border border-line p-2.5">
       <div className="flex items-center justify-between gap-2">
-        <span className="flex items-center gap-1.5 text-[11px] font-semibold text-indigo-900">
-          <SlidersHorizontal size={13} aria-hidden />
+        <span className="flex items-center gap-1.5 text-[11px] font-semibold text-ink">
+          <SlidersHorizontal size={12} strokeWidth={2} aria-hidden className="text-muted" />
           {t(def.name)}
         </span>
         <button

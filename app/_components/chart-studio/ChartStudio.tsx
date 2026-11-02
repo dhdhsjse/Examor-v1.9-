@@ -145,7 +145,7 @@ export default function ChartStudio({ meta, editing, onInsert, onUpdate, onClose
         </aside>
       </div>
 
-      <StudioKeyboard flavor="text" />
+      <StudioKeyboard />
       {gallery && (
         <ChartGallery
           current={fresh ? null : config}

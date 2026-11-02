@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { addOrderItem, addPair, removeOrderItem, removePair, reshuffle, setSentence } from "@/app/_lib/blocks";
 import { plainText } from "@/app/_lib/richText";
 import { fixOrder } from "@/app/_lib/shuffle";
@@ -138,6 +138,7 @@ export function ClassifyEditor({ b, onChange }: { b: ClassifyBlock; onChange: On
     <>
       <QuestionBasics b={b} onChange={onChange} />
       <Toggle checked={!b.hideBank} onChange={(show) => onChange({ hideBank: !show }, "hideBank")} label={t("Give the words in a box")} hint={t("Off: the student finds the words (e.g. in a text).")} />
+      {!b.hideBank && <BankPreview words={b.groups.flatMap((g) => g.items)} />}
       <Field group label={t("Categories")} hint={t("One word per line. The correction sheet fills the table.")}>
         <div className="grid grid-cols-[repeat(auto-fill,minmax(130px,1fr))] gap-2">
           {b.groups.map((g, i) => (
@@ -157,7 +158,7 @@ export function ClassifyEditor({ b, onChange }: { b: ClassifyBlock; onChange: On
               <TextArea
                 rows={4}
                 value={lines(lists[i] ?? "").join("\n") === g.items.join("\n") ? lists[i] : g.items.join("\n")}
-                placeholder={t("One word per line")}
+                placeholder={`${t("One word per line")}\n…\n…`}
                 onChange={(v) => {
                   setLists((l) => b.groups.map((_, k) => (k === i ? v : (l[k] ?? ""))));
                   setGroup(i, { items: lines(v) }, "items");
@@ -178,5 +179,40 @@ export function ClassifyEditor({ b, onChange }: { b: ClassifyBlock; onChange: On
         </AddRowButton>
       )}
     </>
+  );
+}
+
+// The box of words as the page shows it, above the categories: the words typed in the categories go up into it, mixed up. Empty, a
+// ghost types "… / … / …" in it, so it is clear where the words will go.
+function BankPreview({ words }: { words: string[] }) {
+  const t = useT();
+  const clean = words.map((w) => plainText(w).trim()).filter(Boolean);
+  return (
+    <div className="flex flex-col gap-1">
+      <span className="text-[11px] text-muted">{t("Box of words on the page")}</span>
+      <div className="min-h-8 rounded-md border border-dashed border-line bg-white px-2 py-1.5 text-center text-[12px] leading-snug text-ink" aria-live="polite">
+        {clean.length ? clean.join(" / ") : <GhostTyping text={`${t("word")} … / ${t("word")} … / ${t("word")} … / ${t("word")} …`} />}
+      </div>
+      {!clean.length && <span className="text-[10px] leading-snug text-faint">{t("Fill the categories below: their words are gathered here, mixed up.")}</span>}
+    </div>
+  );
+}
+
+// A grey text typed letter by letter, again and again (all at once when the system asks for less motion).
+function GhostTyping({ text }: { text: string }) {
+  const [n, setN] = useState(0);
+  useEffect(() => {
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
+      const id = window.setTimeout(() => setN(text.length), 0);
+      return () => window.clearTimeout(id);
+    }
+    const id = window.setInterval(() => setN((k) => (k >= text.length + 12 ? 0 : k + 1)), 70); // (a pause at the end, then again)
+    return () => window.clearInterval(id);
+  }, [text]);
+  return (
+    <span className="text-faint italic" aria-label={text}>
+      {text.slice(0, Math.min(n, text.length))}
+      <span className="ms-px inline-block w-px animate-pulse bg-current align-middle" style={{ height: "1em" }} aria-hidden />
+    </span>
   );
 }

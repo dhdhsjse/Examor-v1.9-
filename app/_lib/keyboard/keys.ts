@@ -13,13 +13,32 @@ export interface KeyButton {
   wide?: boolean;
 }
 
-export interface KeyboardTab {
-  id: string; // unique in its layout
+/** A part of a tab, picked by a chip under the tabs (the Formulas tab: Mechanics, Electricity…). */
+export interface KeyGroup {
+  id: string; // unique in its tab
   label: string; // English, translated by the keyboard
   buttons: KeyButton[];
 }
 
+export interface KeyboardTab {
+  id: string; // unique in its layout
+  label: string; // English, translated by the keyboard
+  buttons: KeyButton[]; // every key of the tab (all its groups, when it has some)
+  groups?: KeyGroup[];
+}
+
 export const k = (latex: string, title: string, extra: Partial<KeyButton> = {}): KeyButton => ({ latex, title, ...extra });
+
+/** A tab cut into groups: its keys are those of all its groups. */
+export const groupedTab = (id: string, label: string, groups: KeyGroup[]): KeyboardTab => ({
+  id,
+  label,
+  groups,
+  buttons: groups.flatMap((g) => g.buttons),
+});
+
+/** A whole formula: drawn on a wide key. */
+export const f = (latex: string, title: string, extra: Partial<KeyButton> = {}): KeyButton => k(latex, title, { wide: true, ...extra });
 
 // LaTeX drawn on a key: boxes to fill are shown as small squares.
 export const keyLabel = (key: KeyButton) => (key.label ?? key.latex).replace(/#\?|#0|#@/g, "\\square");

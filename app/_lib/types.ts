@@ -67,6 +67,7 @@ export interface BlockMeta {
   role?: "header" | "footer";
   templateId?: string;
   field?: string; // a header/footer text block: the text of its settings it shows (HeaderFooterConfig.data key)
+  slot?: string; // a block inside a text box (textboxSlots.ts): the id of that box; the box places it and sizes it
 }
 
 // Where a block sits (page pixels, relative to its own page).
@@ -78,6 +79,9 @@ export interface BlockLayout {
   y: number;
   width: number;
   height: number;
+  // Stacking order among the blocks of its layer (higher = drawn over). Set when the block is dragged, so the
+  // last block moved stays on top — on screen and in the PDF alike. Missing = 0 (then the exam's order decides).
+  z?: number;
 }
 
 // Font of a whole block (missing = the exam's default font).
@@ -178,6 +182,7 @@ export interface ClassifyBlock extends BlockBase {
   groups: ClassifyGroup[];
   points: number;
   hideBank?: boolean; // don't print the box of words (the student finds them, e.g. in a text)
+  bankHint?: string; // on screen only (withHints, never saved): the ghost of the empty box of words, "… / … / …"
 }
 
 // A sub-question of an open question: "1a)", "1b)"...
@@ -261,6 +266,21 @@ export interface ImageBlock extends BlockBase {
   circuitStudio?: CircuitConfig; // a circuit from the Circuit Studio: `src` is its picture, redrawn on edit
   chartStudio?: ChartConfig; // a chart from the Chart Studio: `src` is its picture, redrawn on edit
   srcAnswer?: string; // what the correction sheet shows instead of `src` (a chart that is blank for the students)
+  // Text printed under the picture (a description, a legend, a source…), rich text. `layout.height` stays the picture's own
+  // height: the caption is added below it (blockHeight).
+  caption?: string;
+  captionStyle?: CaptionStyle; // missing = italic, a bit smaller than the exam font, dark grey, centered
+}
+
+// The look of an image's caption (its own small toolbar in the image properties). Each missing value = the default.
+export interface CaptionStyle {
+  family?: string; // one of FONT_CHOICES (missing = the exam's font)
+  size?: number; // px
+  color?: string;
+  bold?: boolean;
+  italic?: boolean; // missing = true
+  underline?: boolean;
+  align?: "left" | "center" | "right"; // missing = "center"
 }
 
 // A table (Insert → Table, or the Table Studio). `cells` is the text of each cell, as typed (a formula as a formula); everything else about
@@ -294,7 +314,7 @@ export type GraphLine = { kind: "v"; a: number; color?: string } | { kind: "h"; 
 // A function graph drawn from formulas typed by the teacher, e.g. "x^2 - 2" (Insert → Function graph: the Function Studio).
 export interface GraphBlock extends BlockBase {
   type: "graph";
-  functions: string[]; // up to 6 curves
+  functions: string[]; // any number of curves
   /** What each curve shows, by the place of its formula in `functions` (see _lib/mathGraph.ts) */
   curves?: GraphCurveOptions[];
   /** Lines of the teacher's own (asymptotes, a limit…) */
@@ -352,6 +372,9 @@ export interface HeaderBlock extends BlockBase {
   fields: HeaderFields;
   accent?: string; // main color of the colored styles (missing = each style's own color)
   aligns?: Partial<Record<string, TextAlign>>; // alignment chosen for a text of the header, by field key
+  // A page header spans the paper: its texts and boxes stay this far from each edge (the page margins);
+  // only its bands and rules run to the edges. Missing = everything inside the block's width.
+  inset?: { left: number; right: number };
 }
 
 export type TextAlign = "left" | "center" | "right";
@@ -370,7 +393,13 @@ export interface TextboxBlock extends BlockBase {
   background?: string; // fill color of the box, printed (missing = none)
   border?: string; // color of a line around the box, printed (missing = none)
   padding?: number; // room between the box's edge and its text, px (missing = TEXTBOX_PAD)
+  // How the box follows its text (Figma's "Resizing"): "auto-width" = as wide and as tall as the text, on one line per paragraph;
+  // "auto-height" = the width it was given, as tall as the text (no empty room under it); missing = "fixed": the size it was given,
+  // taller only when the text needs it.
+  sizing?: TextboxSizing;
 }
+
+export type TextboxSizing = "auto-width" | "auto-height" | "fixed";
 
 // A shape (Insert → Shapes): a line, an arrow, a box, a callout… drawn on the page in the block's box, with its own fill, outline and
 // text (ShapeStyle). A line runs from one corner of the box to the opposite one, so its height can be 0.
@@ -378,7 +407,20 @@ export interface ShapeBlock extends BlockBase, ShapeStyle {
   type: "shape";
 }
 
-export type Block = QuestionBlock | TextBlock | TextboxBlock | ShapeBlock | EquationBlock | ImageBlock | TableBlock | GraphBlock | HeaderBlock;
+// A separating line between parts of the exam (Insert → Questions → Separator), in one of several looks. As wide as the block;
+// its height is the line's own and the room above and below it.
+export type DividerStyle = "solid" | "dashed" | "dotted" | "double" | "thick" | "thickThin" | "fade" | "dots" | "wave" | "ornament" | "label" | "scissors";
+
+export interface DividerBlock extends BlockBase {
+  type: "divider";
+  style: DividerStyle;
+  color?: string; // missing = dark grey
+  thickness?: number; // px of the line (missing = the style's own)
+  space?: number; // room above and below the line, px (missing = DIVIDER_SPACE)
+  label?: string; // the text in the middle of the "label" style
+}
+
+export type Block = QuestionBlock | TextBlock | TextboxBlock | ShapeBlock | EquationBlock | ImageBlock | TableBlock | GraphBlock | HeaderBlock | DividerBlock;
 export type BlockType = Block["type"];
 
 // The editable fields of any one block type, all optional (used for changes and presets).

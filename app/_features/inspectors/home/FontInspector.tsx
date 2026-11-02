@@ -59,7 +59,7 @@ export default function FontInspector({ ctx }: { ctx: Ctx }) {
         if (!fonts.length) return null;
         return (
           <section key={cat.id} className="flex flex-col gap-1.5">
-            <h3 className="text-[11px] font-semibold tracking-wide text-muted uppercase">{t(cat.label)}</h3>
+            <h3 className="text-[11px] font-semibold text-muted">{t(cat.label)}</h3>
             {fonts.map((f) => {
               const on = current === f.value;
               const missing = !!installed && !installed.has(f.value);

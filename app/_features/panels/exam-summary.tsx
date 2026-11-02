@@ -1,3 +1,4 @@
+import { TriangleAlert } from "lucide-react";
 import type { Feature } from "@/app/_features/core/types";
 import { fullMark } from "@/app/_lib/blocks";
 
@@ -16,15 +17,15 @@ export const examSummaryPanel: Feature = {
     const over = points > full;
     const tone = over ? "text-red-700" : points === full ? "text-emerald-700" : "text-ink";
     return (
-      <div className="flex h-9 items-center justify-between gap-2 border-t border-line bg-surface px-3.5 text-[11px] whitespace-nowrap text-muted">
+      <div className="flex h-8 items-center justify-between gap-2 border-t border-line bg-surface px-3 text-[11px] whitespace-nowrap text-muted">
         <span>
           <b className="font-semibold text-ink">{questions}</b> {questions === 1 ? t("question") : t("questions")}
         </span>
         <span
-          className={over ? "rounded bg-red-50 px-1 ring-1 ring-red-200" : undefined}
+          className={over ? "flex items-center gap-1 rounded bg-red-50 px-1 ring-1 ring-red-200" : undefined}
           title={over ? t("The questions add up to more than the full mark!") : t("Points of all the questions / full mark")}
         >
-          {over && <span aria-hidden>⚠ </span>}
+          {over && <TriangleAlert size={11} strokeWidth={2} className="text-red-700" aria-hidden />}
           <b className={`font-semibold tabular-nums ${tone}`}>
             {round(points)}/{round(full)}
           </b>{" "}

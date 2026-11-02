@@ -14,8 +14,8 @@ import type { Asset, AssetKind } from '@/app/_lib/library';
 import type { Template } from '@/app/_lib/templates';
 import type { Version } from '@/app/_lib/versions';
 import type { Tone } from '@/app/_components/ToolTile';
-import type { TableStudioStart } from '@/app/_components/table-studio/tablePreset';
 import type { CanvasTool } from '@/app/_components/workspace/ToolRail';
+import type { OpenedTarget } from '@/app/_components/math-keyboard/FloatingKeyboard';
 
 export type RightTab = 'properties' | 'library';
 
@@ -36,6 +36,11 @@ export type Shell = {
   redo: () => void;
   busy: boolean;
   runTool: (action: ToolAction) => void;
+  // A new block put on the page right under the block `sourceId` (under its text box when it is in one), then selected: the graph or
+  // the table of variations of an equation's function.
+  insertBelow: (sourceId: string, type: BlockType, preset: BlockPreset) => void;
+  // A block in a text box's text one place up (−1) or down (+1) among the box's blocks.
+  stepInBox: (id: string, dir: -1 | 1) => void;
   // What a mouse drag on the page does (the tools of the bar under the page). "textbox" draws a text box
   // (Insert → Text box); Escape, the select arrow or drawing one goes back to "select".
   canvasTool: CanvasTool;
@@ -101,6 +106,9 @@ export type Shell = {
   replaceImage: (id: string) => void;
   mathKeyboard: boolean;
   toggleMathKeyboard: (open?: boolean) => void;
+  // A math keyboard key pressed with no text open: opens the selected block's text, or its equation field (Properties panel shown), or
+  // adds a new equation when nothing that takes text is selected. Says what was opened (see FloatingKeyboard).
+  openForTyping: () => OpenedTarget;
   // overlays
   picker: { open: boolean; mustPick: boolean };
   openPicker: () => void;
@@ -127,8 +135,8 @@ export type Shell = {
   // The Table Studio (table-studio/): a spreadsheet that puts a table block on the page. `blockId` = the table block being edited, null = a
   // new table; `start` = the Studio opens on the shapes and pictures (a table that has some always does), with a shape ready to draw or a
   // picture to put.
-  tableStudio: { open: boolean; blockId: string | null; start?: TableStudioStart };
-  openTableStudio: (blockId?: string, start?: TableStudioStart) => void;
+  tableStudio: { open: boolean; blockId: string | null; shape?: string };
+  openTableStudio: (blockId?: string, shape?: string) => void;
   closeTableStudio: () => void;
   // The Function Studio (math-graph-studio/): the simple graph of one or more functions, with derivatives, tangents and asymptotes. `blockId` =
   // the graph block being edited, null = a new graph.

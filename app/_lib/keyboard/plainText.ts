@@ -4,11 +4,10 @@
 // Studio's labels already read ("u_{C}", "10^{-4}"). A key with no text form (a matrix, a limit in a formula…) gives null: the
 // keyboard greys it out in that field. Pure functions (no React, no DOM).
 //
-// Two flavours of the studios, since two kinds of field exist: "label" (free text, scripts as markup) and "formula" (the Graph Studio's
-// y = f(x) field, read by graphMath.ts: "x^2", "√(x)", "π", no subscripts).
+// Three flavours, since three kinds of field exist: "label" (free text, scripts as markup), "formula" (the Graph Studio's
+// y = f(x) field, read by graphMath.ts: "x^2", "√(x)", "π", no subscripts) and "text" (a text written on the page, which reads no
+// markup: scripts as the Unicode small digits and letters, "x²", "uₙ", or "^(…)" when a character has none).
 
-// A third flavour is for the prose of the page (a question, a text box, a cell): "text", where scripts are Unicode (x², H₂O) when every
-// character of them has one, and (…) otherwise.
 export type PlainFlavor = "label" | "formula" | "text";
 
 export interface PlainInsert {
@@ -18,6 +17,7 @@ export interface PlainInsert {
 }
 
 const CARET = "\u0001"; // stands for a box to fill while the text is built
+const BEFORE = "\u0002"; // stands for "the thing just before the cursor" (#@): already in the field
 
 const SYMBOLS: Record<string, string> = {
   // Greek
@@ -43,27 +43,14 @@ const ACCENTS: Record<string, string> = { vec: "⃗", overrightarrow: "⃗", dot
 
 const BLACKBOARD: Record<string, string> = { R: "ℝ", N: "ℕ", Z: "ℤ", Q: "ℚ", C: "ℂ" };
 
-const SUPERSCRIPT: Record<string, string> = {
-  "0": "⁰", "1": "¹", "2": "²", "3": "³", "4": "⁴", "5": "⁵", "6": "⁶", "7": "⁷", "8": "⁸", "9": "⁹",
-  "+": "⁺", "-": "⁻", "−": "⁻", "=": "⁼", "(": "⁽", ")": "⁾", n: "ⁿ", i: "ⁱ",
-};
-const SUBSCRIPT: Record<string, string> = {
-  "0": "₀", "1": "₁", "2": "₂", "3": "₃", "4": "₄", "5": "₅", "6": "₆", "7": "₇", "8": "₈", "9": "₉",
-  "+": "₊", "-": "₋", "−": "₋", "=": "₌", "(": "₍", ")": "₎",
-  a: "ₐ", e: "ₑ", o: "ₒ", x: "ₓ", h: "ₕ", k: "ₖ", l: "ₗ", m: "ₘ", n: "ₙ", p: "ₚ", s: "ₛ", t: "ₜ", i: "ᵢ", j: "ⱼ", r: "ᵣ", u: "ᵤ", v: "ᵥ",
-};
-
-/** A script written in Unicode (x², H₂O), or null when one of its characters has no such form. */
-export function unicodeScript(kind: "sup" | "sub", inner: string): string | null {
-  if (!inner || inner.includes(CARET)) return null;
+// The small characters a "text" field writes a script with (every character of the script must have one).
+const zip = (from: string, to: string) => new Map([...from].map((c, i) => [c, [...to][i]]));
+const SUPERSCRIPT = zip("0123456789+-−=()nix*", "⁰¹²³⁴⁵⁶⁷⁸⁹⁺⁻⁻⁼⁽⁾ⁿⁱˣ*");
+const SUBSCRIPT = zip("0123456789+-−=()aeoxhklmnpstij", "₀₁₂₃₄₅₆₇₈₉₊₋₋₌₍₎ₐₑₒₓₕₖₗₘₙₚₛₜᵢⱼ");
+function small(inner: string, kind: "sup" | "sub"): string | null {
   const table = kind === "sup" ? SUPERSCRIPT : SUBSCRIPT;
-  let out = "";
-  for (const ch of inner) {
-    const mapped = table[ch];
-    if (!mapped) return null;
-    out += mapped;
-  }
-  return out;
+  const chars = [...inner];
+  return chars.length && chars.every((c) => table.has(c)) ? chars.map((c) => table.get(c)).join("") : null;
 }
 
 class Unsupported extends Error {}
@@ -78,6 +65,7 @@ const wrap = (s: string) => (s.includes(CARET) || !ATOM.test(s) ? `(${s})` : s);
 const FORMULA_ATOM = /^(?:\d+\.?\d*|\p{L})$/u;
 
 function accent(arg: string, mark: string): string {
+  if (arg === BEFORE) return mark; // on the letter just typed: the sign alone joins it
   if (arg.includes(CARET) || !arg.trim()) return no(); // nothing to put the sign on
   return arg + mark;
 }
@@ -125,7 +113,7 @@ class Reader {
         const kind = this.src[this.i++];
         if (kind === "?") return CARET; // a box to fill
         if (kind === "0") return this.selection || CARET; // the selected part
-        if (kind === "@") return ""; // the thing before the cursor: it is already there
+        if (kind === "@") return BEFORE; // the thing before the cursor: it is already there
         return no();
       }
       case "&":
@@ -169,8 +157,8 @@ class Reader {
 
   private script(kind: "sup" | "sub"): string {
     const inner = this.arg();
-    if (kind === "sup" && inner === "°") return "°"; // 90^{\circ} is just 90°
-    if (this.flavor === "text") return unicodeScript(kind, inner) ?? (kind === "sub" ? `_(${inner})` : `^(${inner})`);
+    if (inner === "°" && kind === "sup") return "°"; // 90^{\circ} is just 90°
+    if (this.flavor === "text") return small(inner, kind) ?? `${kind === "sup" ? "^" : "_"}(${inner})`;
     if (kind === "sub") return this.flavor === "formula" ? no() : `_{${inner}}`;
     if (this.flavor === "label") return `^{${inner}}`;
     return FORMULA_ATOM.test(inner) ? `^${inner}` : `^(${inner})`;
@@ -251,7 +239,7 @@ class Reader {
  */
 export function plainFromLatex(latex: string, flavor: PlainFlavor = "label", selection = ""): PlainInsert | null {
   try {
-    const built = new Reader(latex, flavor, selection).seq();
+    const built = new Reader(latex, flavor, selection).seq().replaceAll(BEFORE, "");
     const text = built.replaceAll(CARET, "");
     if (!text) return null;
     const caret = built.indexOf(CARET);

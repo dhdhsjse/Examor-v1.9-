@@ -2,6 +2,7 @@
 // keyboard (elsewhere on screen) knows where to type.
 
 import type { MathfieldElement } from "mathlive";
+import { recordEquation } from "./keyboard/equationClipboard";
 
 interface Active {
   field: MathfieldElement;
@@ -10,10 +11,44 @@ interface Active {
 
 let active: Active | null = null;
 const listeners = new Set<() => void>();
+// A key pressed before the field was there (an equation just added, or the Properties panel just shown): typed when it comes.
+let waiting: (() => void) | null = null;
+
+// An equation is finished when the teacher leaves its field: clicks out of it, opens another one, or closes the page. It goes in the
+// keyboard's clipboard then (a field left again later replaces what it gave before, so only its final version stays).
+const finish = (field: MathfieldElement) => recordEquation(field, field.value);
+const watched = new WeakSet<MathfieldElement>();
+if (typeof window !== "undefined") window.addEventListener("pagehide", () => active && finish(active.field));
 
 export function setActiveMathfield(a: Active | null) {
+  if (active && active.field !== a?.field) finish(active.field);
+  if (a && !watched.has(a.field)) {
+    watched.add(a.field);
+    a.field.addEventListener("blur", () => finish(a.field));
+  }
   active = a;
   listeners.forEach((listen) => listen());
+  if (a && waiting) {
+    const run = waiting;
+    waiting = null;
+    run();
+  }
+}
+
+/** `field` stops being where the keyboard types (it lost the focus, or went away); another field that took over stays. */
+export function clearActiveMathfield(field: MathfieldElement) {
+  if (active?.field === field) setActiveMathfield(null);
+}
+
+/** Run `fn` in the equation field: now if one is open, else as soon as one opens (only the last such call is kept). */
+export function whenMathfield(fn: () => void) {
+  if (active) fn();
+  else waiting = fn;
+}
+
+/** Run `fn` in the next equation field that opens (a formula just put in a text), not in the one open now. */
+export function onNextMathfield(fn: () => void) {
+  waiting = fn;
 }
 
 // For useSyncExternalStore: lets the keyboard show whether there is a field to type in.

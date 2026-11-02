@@ -157,7 +157,7 @@ export default function FindReplaceInspector({ ctx }: { ctx: Ctx }) {
                   onClick={() => go(i)}
                   className={`flex w-full flex-col gap-0.5 rounded-md border px-2 py-1.5 text-start transition-colors ${i === current ? "border-indigo-300 bg-indigo-50" : "border-line bg-white hover:border-indigo-200"}`}
                 >
-                  <span className="text-[10px] font-semibold tracking-wide text-muted uppercase">
+                  <span className="text-[11px] font-semibold text-muted">
                     {b ? t(BLOCK_TYPE_NAMES[b.type]) : ""}
                     {n ? ` ${n}` : ""} · {fieldLabel(t, m.field)}
                   </span>

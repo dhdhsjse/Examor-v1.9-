@@ -1,6 +1,8 @@
+import { Check, CloudAlert } from "lucide-react";
 import type { Feature } from "@/app/_features/core/types";
 
-// "Saving…" while the last change is being written, then "Saved ✓" (click: version history).
+// "Saving…" while the last change is being written, then a quiet "Saved" (click: version history).
+// Only a failed save stands out.
 export const statusIndicatorPanel: Feature = {
   id: "panel.status",
   kind: "panel",
@@ -14,20 +16,22 @@ export const statusIndicatorPanel: Feature = {
       : null;
     const look =
       save.status === "error"
-        ? { text: t("Not saved!"), cls: "bg-red-50 text-red-700 ring-red-200", tip: t("This computer's storage is full. Save the exam to a file (Ctrl+S) to keep your work.") }
+        ? { text: t("Not saved!"), icon: <CloudAlert size={12} strokeWidth={2} aria-hidden />, cls: "bg-red-50 text-red-700 ring-1 ring-red-200", tip: t("This computer's storage is full. Save the exam to a file (Ctrl+S) to keep your work.") }
         : save.status === "saving"
-          ? { text: t("Saving…"), cls: "text-faint ring-transparent", tip: t("Saving your changes on this computer…") }
+          ? { text: t("Saving…"), icon: null, cls: "text-faint", tip: t("Saving your changes on this computer…") }
           : {
-              text: `${t("Saved")} ✓`,
-              cls: "text-emerald-700 ring-transparent hover:bg-emerald-50",
+              text: t("Saved"),
+              icon: <Check size={12} strokeWidth={2} aria-hidden />,
+              cls: "text-faint hover:bg-hover hover:text-ink",
               tip: time ? t("Saved on this computer at {time}. Click to see the version history.", { time }) : t("Everything is saved on this computer. Click to see the version history."),
             };
     return (
       <button
         onClick={ctx.shell.showHistory}
         title={look.tip}
-        className={`shrink-0 rounded-md px-1.5 py-0.5 text-[11px] font-medium whitespace-nowrap ring-1 transition-colors ${look.cls}`}
+        className={`flex h-6 shrink-0 items-center gap-1 rounded-[5px] px-1.5 text-[11px] whitespace-nowrap transition-colors outline-none focus-visible:ring-2 focus-visible:ring-accent ${look.cls}`}
       >
+        {look.icon}
         {look.text}
       </button>
     );

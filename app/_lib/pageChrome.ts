@@ -1,6 +1,6 @@
 import { DEFAULT_MARGINS } from "./a4";
 import { blockHeight } from "./blockLayout";
-import { chromeTextField, defaultFooterId, defaultHeaderId, footerById, headerById, headerTemplateForStyle } from "./onboarding/headerFooterLibrary";
+import { chromeTextField, headerInset, defaultFooterId, defaultHeaderId, footerById, headerById, headerTemplateForStyle } from "./onboarding/headerFooterLibrary";
 import { encodeStyle, parseRich, plainText } from "./richText";
 import { scopePages } from "./onboarding/pageScope";
 import { pageSize } from "./pageFormats";
@@ -177,7 +177,24 @@ export function adoptHeaders(doc: ExamDoc): ExamDoc {
     if (i < 0 || chromeConfig(d, i, "header")?.enabled || d.blocks.some((o) => o.layout.pageId === b.layout.pageId && o.meta?.role === "header")) continue;
     d = adoptHeader(d, b.id);
   }
-  return d;
+  return stretchHeaders(d);
+}
+
+// Page headers go from one edge of the paper to the other, their texts at the page margins (older
+// files had them between the margins). Also after the margins change.
+export function stretchHeaders(doc: ExamDoc): ExamDoc {
+  let changed = false;
+  const blocks = doc.blocks.map((b) => {
+    if (b.type !== "header" || b.meta?.role !== "header") return b;
+    const page = doc.pages.find((p) => p.id === b.layout.pageId);
+    if (!page) return b;
+    const width = pageSize(page).width;
+    const inset = headerInset(page.margins ?? DEFAULT_MARGINS);
+    if (b.layout.x === 0 && b.layout.width === width && b.inset?.left === inset.left && b.inset.right === inset.right) return b;
+    changed = true;
+    return { ...b, inset, layout: { ...b.layout, x: 0, width } };
+  });
+  return changed ? { ...doc, blocks } : doc;
 }
 
 // This exam header block becomes its page's header (any other header blocks of the page go).

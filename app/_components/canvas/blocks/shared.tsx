@@ -1,9 +1,11 @@
 "use client";
 
-import { Fragment } from "react";
-import { Line, Rect, Text } from "react-konva";
-import { FONT_FAMILY, konvaFontStyle, measureText, wrapRich, type RichLine, type TextFont } from "@/app/_lib/measure";
-import { SUB_DROP, SUP_RISE, isRich, type UnderlineStyle } from "@/app/_lib/richText";
+import { Fragment, useEffect, useState } from "react";
+import { Image as KImage, Line, Rect, Text } from "react-konva";
+import { useImage } from "@/app/_lib/images";
+import { drawInlineMath, inlineMathUrl, mathBox } from "@/app/_lib/inlineMath";
+import { FONT_FAMILY, baselineBelowMiddle, konvaFontStyle, measureText, pieceTop, pieceWidth, rtlPlacement, wrapRich, type RichLine, type TextFont } from "@/app/_lib/measure";
+import { isRich, type UnderlineStyle } from "@/app/_lib/richText";
 
 export { INK } from "@/app/_lib/blockLayout";
 export const MUTED = "#4b5563";
@@ -11,10 +13,6 @@ export const MUTED = "#4b5563";
 // Konva's text decoration for a font: "underline", "line-through", both, or none. (An underline of another kind than the single line
 // is not Konva's: see StyledUnderline.)
 const decoration = (f: TextFont) => [f.underline && !f.underlineStyle && "underline", f.strike && "line-through"].filter(Boolean).join(" ");
-
-// Where a piece of a line is drawn, below the top of the line: pieces of different sizes line up on one baseline,
-// and a subscript is lowered / a superscript raised by a part of the size of the text around it.
-const pieceTop = (lineSize: number, f: TextFont) => (lineSize - f.size) * 0.38 + (f.script === "sup" ? -SUP_RISE * (f.scriptBase ?? f.size) : f.script === "sub" ? SUB_DROP * (f.scriptBase ?? f.size) : 0);
 
 // Light version of a color, e.g. for the inside of a box ("#4f46e5" → "#4f46e514").
 export const tint = (hex: string, alpha = "14") => (/^#[0-9a-f]{6}$/i.test(hex) ? `${hex}${alpha}` : hex);
@@ -79,8 +77,9 @@ interface PieceProps {
   rtl: boolean;
 }
 
-// One styled piece of a line: its text and, when it has one, its own kind of underline.
+// One styled piece of a line: its text and, when it has one, its own kind of underline. A formula's piece is its picture.
 function PieceDraw({ x, y, width, text, font, lineH, fill, rtl }: PieceProps) {
+  if (font.math) return <MathPiece x={x} y={y} font={font} lineH={lineH} />;
   return (
     <>
       <Text
@@ -103,6 +102,29 @@ function PieceDraw({ x, y, width, text, font, lineH, fill, rtl }: PieceProps) {
       {font.underline && font.underlineStyle && <StyledUnderline x={x} y={y} width={width} size={font.size} line={lineH} color={fill} kind={font.underlineStyle} />}
     </>
   );
+}
+
+// A formula in a line (inlineMath.ts), its baseline on the baseline of the text: the drawing it keeps, or MathJax's, made the first
+// time it is shown (a formula of an older text).
+function MathPiece({ x, y, font, lineH }: { x: number; y: number; font: TextFont; lineH: number }) {
+  const math = font.math!;
+  const kept = inlineMathUrl(math);
+  const [drawn, setDrawn] = useState<string>();
+  useEffect(() => {
+    if (kept) return;
+    let alive = true;
+    drawInlineMath(math.latex)
+      .then((d) => alive && setDrawn(d.url))
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [kept, math.latex]);
+  const img = useImage(kept ?? drawn ?? "");
+  const { width, height, depth } = mathBox(math, font.size);
+  const baseline = y + lineH / 2 + baselineBelowMiddle(font);
+  if (!img) return null;
+  return <KImage image={img} x={x} y={baseline + depth - height} width={width} height={height} listening={false} />;
 }
 
 interface RichTextProps {
@@ -145,14 +167,16 @@ export function RichText({ lines, x, y, width, rtl, align, step, recolor }: Rich
         // Justified text: the last line (and a line without spaces) starts on the writing side.
         const side = a === "justify" ? (rtl ? "right" : "left") : a;
         const start = side === "left" ? x : side === "right" ? x + width - l.width : x + (width - l.width) / 2;
+        // Right-to-left: the first piece is on the right, but French words and the formulas between them keep their order.
+        const placed = rtl ? rtlPlacement(l.pieces) : null;
         return l.pieces.map((p, j) => {
-          // Right-to-left: the first piece is on the right.
-          const px = rtl ? start + l.width - p.x - p.width : start + p.x;
+          const px = placed ? start + placed.x[j] : start + p.x;
+          const pieceRtl = placed ? !placed.ltr[j] : false;
           return (
             <Fragment key={`${k}-${j}`}>
               {/* Highlighted words: their color behind them, over the whole line height */}
               {p.font.highlight && <Rect x={px} y={lineTop} width={p.width} height={lineH} fill={p.font.highlight} listening={false} />}
-              <PieceDraw x={px} y={lineTop + pieceTop(l.size, p.font)} width={p.width} text={p.text} font={p.font} lineH={lineH} fill={fillOf(p.font)} rtl={rtl} />
+              <PieceDraw x={px} y={lineTop + pieceTop(l.size, p.font)} width={p.width} text={p.text} font={p.font} lineH={lineH} fill={fillOf(p.font)} rtl={pieceRtl} />
             </Fragment>
           );
         });
@@ -169,6 +193,10 @@ function justified(l: RichLine, width: number) {
   const out: { text: string; x: number; width: number; font: RichLine["pieces"][number]["font"] }[] = [];
   let shift = 0;
   for (const p of l.pieces) {
+    if (p.font.math) {
+      out.push({ text: p.text, x: p.x + shift, width: pieceWidth(p.text, p.font), font: p.font });
+      continue;
+    }
     let offset = 0;
     for (const part of p.text.split(/( +)/)) {
       const w = measureText(part, p.font);

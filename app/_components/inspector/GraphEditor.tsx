@@ -9,7 +9,7 @@ import { AddRowButton, Field, NumberInput, RemoveButton } from "./fields";
 import type { OnChange } from "./QuestionEditors";
 
 // Common functions the teacher can start from.
-const EXAMPLES = ["2x + 1", "x^2 - 2", "x^3 - 3x", "1/x", "sqrt(x)", "sin(x)", "e^x", "ln(x)", "|x|"];
+const EXAMPLES = ["e^x", "ln(x)", "sqrt(x)", "|x|"];
 
 // Formulas of the curves + the visible window (x and y ranges).
 // The Function Studio has the derivative, the tangents, the asymptotes and the colors of the curves.

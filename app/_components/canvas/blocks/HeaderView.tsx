@@ -25,7 +25,14 @@ const ltr = (s: string) => `⁦${s}⁩`;
 export default function HeaderView({ b, meta, mode, totalPoints }: Props) {
   const lang = meta.lang;
   const family = fontStack(b.font?.family || meta.fontFamily);
-  const W = b.layout.width;
+  // Drawn between the insets (headerParts moves it there); bands and rules run from x0 to x1, the
+  // edges of the paper.
+  const inset = b.inset ?? { left: 0, right: 0 };
+  const W = b.layout.width - inset.left - inset.right;
+  const x0 = -inset.left;
+  const x1 = W + inset.right;
+  // Top edge of the paper (≤ 0): colored bands start there.
+  const y0 = b.inset ? -b.layout.y : 0;
   const H = HEADER_HEIGHT[b.style] ?? HEADER_HEIGHT.classic;
   const rtl = isRtl(lang);
   const t = words(lang);
@@ -40,7 +47,7 @@ export default function HeaderView({ b, meta, mode, totalPoints }: Props) {
   const outOf = f.autoOutOf && totalPoints > 0 ? totalPoints : f.outOf;
   const accent = b.accent;
 
-  const ctx = { W, H, rtl, family, t, f, title, sub, outOf, accent, at };
+  const ctx = { W, H, rtl, family, t, f, title, sub, outOf, accent, at, x0, x1, y0 };
   if (MORE_HEADER_STYLES.includes(b.style)) return <MoreHeaderView style={b.style} c={ctx} />;
   if (MODERN_HEADER_STYLES.includes(b.style)) return <ModernHeaderView style={b.style} c={ctx} />;
 
@@ -50,7 +57,7 @@ export default function HeaderView({ b, meta, mode, totalPoints }: Props) {
     const cardX = at(W - card - 12, card);
     return (
       <>
-        <Rect width={W} height={80} fill={accent ?? "#1e293b"} cornerRadius={8} listening={false} />
+        <Rect x={x0} y={y0} width={x1 - x0} height={80 - y0} fill={accent ?? "#1e293b"} listening={false} />
         <OneLine family={family} text={title} x={at(20, W - card - 52)} y={15} width={W - card - 52} size={22} bold color="#ffffff" rtl={rtl} />
         <OneLine family={family} text={sub} x={at(20, W - card - 52)} y={49} width={W - card - 52} size={13} color="#cbd5e1" rtl={rtl} />
         <Rect x={cardX} y={11} width={card} height={58} fill="#ffffff" cornerRadius={6} listening={false} />
@@ -68,14 +75,14 @@ export default function HeaderView({ b, meta, mode, totalPoints }: Props) {
     const color = accent ?? "#4338ca";
     return (
       <>
-        <Line points={[0, 1, W, 1]} stroke={INK} strokeWidth={1.6} listening={false} />
-        <Line points={[0, 5, W, 5]} stroke={INK} strokeWidth={0.6} listening={false} />
+        <Line points={[x0, 1, x1, 1]} stroke={INK} strokeWidth={1.6} listening={false} />
+        <Line points={[x0, 5, x1, 5]} stroke={INK} strokeWidth={0.6} listening={false} />
         <OneLine family={family} text={f.school} x={at(0, W / 2)} y={13} width={W / 2} size={11} color={MUTED} rtl={rtl} align={start} />
         <OneLine family={family} text={`${t.year} : ${f.year}`} x={at(W / 2, W / 2)} y={13} width={W / 2} size={11} color={MUTED} rtl={rtl} align={end} />
         <OneLine family={family} text={title} x={0} y={32} width={W} size={23} bold rtl={rtl} align="center" />
         <OneLine family={family} text={sub} x={0} y={64} width={W} size={12} color={color} rtl={rtl} align="center" />
-        <Line points={[0, 86, W, 86]} stroke={INK} strokeWidth={0.6} listening={false} />
-        <Line points={[0, 90, W, 90]} stroke={INK} strokeWidth={1.6} listening={false} />
+        <Line points={[x0, 86, x1, 86]} stroke={INK} strokeWidth={0.6} listening={false} />
+        <Line points={[x0, 90, x1, 90]} stroke={INK} strokeWidth={1.6} listening={false} />
         <OneLine family={family} text={`${t.name} : ${DOTS}${DOTS}`} x={at(0, W * 0.62)} y={106} width={W * 0.62} size={13} rtl={rtl} align={start} />
         <OneLine family={family} text={`${t.score} : ${ltr(`........ / ${outOf}`)}`} x={at(W * 0.62, W * 0.38)} y={106} width={W * 0.38} size={13} bold rtl={rtl} align={end} />
       </>
@@ -86,7 +93,7 @@ export default function HeaderView({ b, meta, mode, totalPoints }: Props) {
     const cx = rtl ? 56 : W - 56; // center of the score circle
     return (
       <>
-        <Rect width={W} height={84} fill={accent ? tint(accent, "1a") : "#eef2ff"} cornerRadius={10} listening={false} />
+        <Rect x={x0} y={y0} width={x1 - x0} height={84 - y0} fill={accent ? tint(accent, "1a") : "#eef2ff"} listening={false} />
         <OneLine family={family} text={title} x={at(18, W - 150)} y={14} width={W - 150} size={21} bold color={accent ?? "#312e81"} rtl={rtl} />
         <OneLine family={family} text={sub} x={at(18, W - 150)} y={46} width={W - 150} size={13} color={accent ?? "#4338ca"} rtl={rtl} />
         <OneLine family={family} text={[f.school, f.year].filter(Boolean).join("  —  ")} x={at(18, W - 150)} y={65} width={W - 150} size={11} color={accent ?? "#6366f1"} rtl={rtl} />
@@ -107,7 +114,7 @@ export default function HeaderView({ b, meta, mode, totalPoints }: Props) {
         <OneLine family={family} text={`${t.year} : ${f.year}`} x={at(W / 2, W / 2)} y={0} width={W / 2} size={12} color={MUTED} rtl={rtl} align={end} />
         <OneLine family={family} text={title} x={0} y={22} width={W} size={20} bold rtl={rtl} align="center" />
         <OneLine family={family} text={sub} x={0} y={50} width={W} size={12} color={MUTED} rtl={rtl} align="center" />
-        <Line points={[0, 74, W, 74]} stroke={INK} strokeWidth={1} listening={false} />
+        <Line points={[x0, 74, x1, 74]} stroke={INK} strokeWidth={1} listening={false} />
         <OneLine family={family} text={`${t.name} : ${DOTS}${DOTS}`} x={at(0, W * 0.62)} y={88} width={W * 0.62} size={13} rtl={rtl} align={start} />
         <OneLine family={family} text={`${t.score} : ${ltr(`........ / ${outOf}`)}`} x={at(W * 0.62, W * 0.38)} y={88} width={W * 0.38} size={13} bold rtl={rtl} align={end} />
       </>
@@ -118,10 +125,13 @@ export default function HeaderView({ b, meta, mode, totalPoints }: Props) {
   const r1 = 92;
   return (
     <>
-      <Rect width={W} height={H} stroke={INK} strokeWidth={1.2} fill="#ffffff" listening={false} />
+      {/* An open table: its rules run across the paper, its columns stay between the margins */}
+      <Line points={[x0, 0.6, x1, 0.6]} stroke={INK} strokeWidth={1.2} listening={false} />
       <Line points={[W * 0.3, 0, W * 0.3, r1]} stroke={INK} strokeWidth={1} listening={false} />
       <Line points={[W * 0.7, 0, W * 0.7, r1]} stroke={INK} strokeWidth={1} listening={false} />
-      <Line points={[0, r1, W, r1]} stroke={INK} strokeWidth={1} listening={false} />
+      <Line points={[x0, r1, x1, r1]} stroke={INK} strokeWidth={1} listening={false} />
+      <Line points={[x0, H - 0.6, x1, H - 0.6]} stroke={INK} strokeWidth={1.2} listening={false} />
+      {!b.inset && <Rect width={W} height={H} stroke={INK} strokeWidth={1.2} listening={false} />}
       <Line points={[rtl ? W * 0.25 : W * 0.75, r1, rtl ? W * 0.25 : W * 0.75, H]} stroke={INK} strokeWidth={1} listening={false} />
 
       <OneLine family={family} text={f.school} x={at(10, W * 0.3 - 20)} y={22} width={W * 0.3 - 20} size={13} bold rtl={rtl} />

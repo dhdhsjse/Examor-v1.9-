@@ -1,9 +1,10 @@
 "use client";
 
-import type { Block, Lang } from "@/app/_lib/types";
+import type { BlockPreset } from "@/app/_lib/blocks";
+import type { Block, BlockType, ExamMeta, Lang } from "@/app/_lib/types";
 import TablePanel from "@/app/_components/table/TablePanel";
-import type { TableStudioStart } from "@/app/_components/table-studio/tablePreset";
 import { HeaderEditor, ImageEditor, TextboxEditor, TextEditor } from "./ContentEditors";
+import { DividerEditor } from "./DividerEditor";
 import EquationEditor from "./EquationEditor";
 import { GraphEditor } from "./GraphEditor";
 import { ClassifyEditor, MatchEditor, OrderEditor } from "./MoreQuestionEditors";
@@ -18,15 +19,17 @@ interface Props {
   onLatex: (latex: string) => void;
   onReplaceImage: () => void;
   examFont?: string;
-  onOpenTableStudio: (start?: TableStudioStart) => void;
+  meta?: ExamMeta; // the exam settings (an image caption's default font and size)
+  onOpenTableStudio: (shape?: string) => void;
   onOpenGraphStudio: () => void;
   onOpenChartStudio: () => void;
   keyboardOpen: boolean;
   onToggleKeyboard: () => void;
+  onInsertBelow: (type: BlockType, preset: BlockPreset) => void; // a new block under this one (an equation's graph or table)
 }
 
 // Picks the right editor for the selected block type.
-export function ContentEditorSwitch({ block, number, lang, totalPoints, onChange, onLatex, onReplaceImage, examFont, onOpenTableStudio, onOpenGraphStudio, onOpenChartStudio, keyboardOpen, onToggleKeyboard }: Props) {
+export function ContentEditorSwitch({ block, number, lang, totalPoints, onChange, onLatex, onReplaceImage, examFont, meta, onOpenTableStudio, onOpenGraphStudio, onOpenChartStudio, keyboardOpen, onToggleKeyboard, onInsertBelow }: Props) {
   switch (block.type) {
     case "mcq":
       return <McqEditor b={block} onChange={onChange} />;
@@ -49,11 +52,13 @@ export function ContentEditorSwitch({ block, number, lang, totalPoints, onChange
     case "table":
       return <TablePanel b={block} lang={lang} onChange={onChange} examFont={examFont} onOpenStudio={onOpenTableStudio} />;
     case "equation":
-      return <EquationEditor b={block} onLatex={onLatex} keyboardOpen={keyboardOpen} onToggleKeyboard={onToggleKeyboard} />;
+      return <EquationEditor b={block} onLatex={onLatex} keyboardOpen={keyboardOpen} onToggleKeyboard={onToggleKeyboard} lang={lang} onInsert={onInsertBelow} />;
     case "image":
-      return <ImageEditor b={block} lang={lang} onChange={onChange} onReplace={onReplaceImage} onOpenChartStudio={onOpenChartStudio} />;
+      return <ImageEditor b={block} lang={lang} meta={meta} onChange={onChange} onReplace={onReplaceImage} onOpenChartStudio={onOpenChartStudio} />;
     case "graph":
       return <GraphEditor b={block} onChange={onChange} onOpenStudio={onOpenGraphStudio} />;
+    case "divider":
+      return <DividerEditor b={block} onChange={onChange} />;
     case "header":
       return <HeaderEditor b={block} totalPoints={totalPoints} onChange={onChange} />;
   }

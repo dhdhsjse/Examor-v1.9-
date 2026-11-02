@@ -1,3 +1,4 @@
+import { dividerHeight } from "./divider";
 import { fontStack } from "./fonts";
 import { isRtl, optionLabel, words } from "./i18n";
 import { LIST_GAP, listMarkers } from "./lists";
@@ -13,9 +14,11 @@ import type {
   BlankBlock,
   Block,
   ClassifyBlock,
+  ExamDoc,
   ExamMeta,
   HeaderStyle,
   HeadingDecor,
+  ImageBlock,
   Lang,
   MatchBlock,
   McqBlock,
@@ -28,6 +31,7 @@ import type {
   TableBlock,
   TextBlock,
   TextboxBlock,
+  TextboxSizing,
   TextStyle,
   TrueFalseBlock,
 } from "./types";
@@ -199,6 +203,7 @@ export interface WordBank {
   y: number;
   width: number;
   height: number;
+  ghost?: boolean; // on screen only: the place of the words to come (an empty "sort into groups" selected)
 }
 
 const BANK_PAD = 7;
@@ -209,6 +214,12 @@ function wordBank(words: string[], seed: string, b: Block, F: Fonts, y: number):
   // Items stay whole on a line; " / " between them.
   const text = box(shuffled(clean, seed).join(" / "), inner(b) - BANK_PAD * 2 - 4, F.body, y + BANK_PAD);
   return { text, x: PAD, y, width: inner(b), height: text.height + BANK_PAD * 2 };
+}
+
+// On screen, the empty box of words of a selected "sort into groups": a ghost of the words to come (withHints).
+function ghostBank(hint: string, b: Block, F: Fonts, y: number): WordBank {
+  const text = box(`⁅c=#b4b9c3⁆${hint}⁅/⁆`, inner(b) - BANK_PAD * 2 - 4, F.body, y + BANK_PAD);
+  return { text, x: PAD, y, width: inner(b), height: text.height + BANK_PAD * 2, ghost: true };
 }
 
 // Blanks: "[answer]" becomes "________" on the exam, "« answer »" (answer color) on the key.
@@ -370,7 +381,7 @@ export function layoutClassify(b: ClassifyBlock, n: number, meta: ExamMeta) {
   const F = blockFonts(b, meta);
   const title = box(questionTitle(b, n, F), inner(b), F.title, PAD);
   let y = PAD + title.height + GAP;
-  const bank = b.hideBank ? null : wordBank(b.groups.flatMap((g) => g.items), b.id, b, F, y);
+  const bank = b.hideBank ? null : (wordBank(b.groups.flatMap((g) => g.items), b.id, b, F, y) ?? (b.bankHint ? ghostBank(b.bankHint, b, F, y) : null));
   if (bank) y += bank.height + GAP + 2;
 
   const cols = Math.max(1, b.groups.length);
@@ -408,7 +419,9 @@ export function textboxSpec(b: TextboxBlock, meta: ExamMeta): Spec {
 }
 
 // Room between a text box's edge and its text (kept small enough to leave the text some width).
-export const textboxPad = (b: TextboxBlock) => Math.max(0, Math.min(b.padding ?? TEXTBOX_PAD, TEXTBOX_MAX_PAD, (b.layout.width - 20) / 2));
+// (A narrow box keeps some room for its text; an auto-width box grows around its margin instead.)
+export const textboxPad = (b: TextboxBlock) =>
+  Math.max(0, Math.min(b.padding ?? TEXTBOX_PAD, TEXTBOX_MAX_PAD, b.sizing === "auto-width" ? Infinity : (b.layout.width - 20) / 2));
 
 // The writing direction of a text or text box: its own, else the exam's.
 export const blockRtl = (b: { dir?: "ltr" | "rtl" }, meta: ExamMeta) => (b.dir ? b.dir === "rtl" : isRtl(meta.lang));
@@ -457,18 +470,62 @@ export interface TextboxParagraph {
   rtl: boolean;
   marker?: ListMarker;
   box?: ParagraphBox;
+  slot?: { id: string; height: number }; // no text: the room of a block placed here (textboxSlots.ts)
 }
 
 const BOX_PAD = 3; // how far a shading or a border goes beyond the text (px)
 
 // A text box: its paragraphs (textboxDoc.ts) wrapped inside the box, each with its own alignment, direction,
 // spacing, list marker and shading (else the box's), the text placed at the top / middle / bottom. The box is
-// as tall as it was made, or taller when the text needs it. `hint`: drawn instead while the box is empty (one
-// styled paragraph).
+// as tall as it was made, or taller when the text needs it; with an automatic size (`sizing`) it is just as tall as its text, and
+// as wide as its longest line for "auto-width". `hint`: drawn instead while the box is empty (one styled paragraph).
 export function layoutTextbox(b: TextboxBlock, meta: ExamMeta, hint?: string) {
+  if (b.sizing !== "auto-width") return layoutTextboxIn(b, meta, Math.max(20, b.layout.width - textboxPad(b) * 2), hint);
+  // As wide as the longest line: laid out with no limit first, then in that width (so the alignments and the right-to-left lines fit it).
+  const natural = layoutTextboxIn(b, meta, NO_WRAP, hint).natural;
+  return layoutTextboxIn(b, meta, Math.max(MIN_AUTO_WIDTH, Math.ceil(natural) + 1), hint);
+}
+
+const NO_WRAP = 100_000;
+const MIN_AUTO_WIDTH = 8; // an empty auto-width box keeps room for the cursor
+
+/** The size a text box takes from its text (`sizing`), where it differs from the one stored in its layout; null when it has none. */
+export function textboxFit(b: TextboxBlock, meta: ExamMeta): { width?: number; height?: number } | null {
+  if (!b.sizing || b.sizing === "fixed") return null;
+  const L = layoutTextbox(b, meta);
+  const width = Math.round(L.width + L.x * 2);
+  const height = Math.round(L.height);
+  const fit: { width?: number; height?: number } = {};
+  if (b.sizing === "auto-width" && width !== b.layout.width) fit.width = width;
+  if (height !== b.layout.height) fit.height = height;
+  return fit.width === undefined && fit.height === undefined ? null : fit;
+}
+
+/** The document with every auto-sized text box at the size of its text (the same document when none has to change). */
+export function fitTextboxes(d: ExamDoc): ExamDoc {
+  let changed = false;
+  const blocks = d.blocks.map((b) => {
+    if (b.type !== "textbox") return b;
+    const fit = textboxFit(b, d.meta);
+    if (!fit) return b;
+    changed = true;
+    return { ...b, layout: { ...b.layout, ...fit } };
+  });
+  return changed ? { ...d, blocks } : d;
+}
+
+// What a drag of the box's edge does to its automatic size, as in Figma: a new height makes it "fixed", a new width makes an
+// "auto-width" box "auto-height" (the text wraps in the width given).
+export function sizingAfterResize(b: TextboxBlock, meta: ExamMeta, size: { width?: number; height?: number }): TextboxSizing | undefined {
+  if (!b.sizing || b.sizing === "fixed") return b.sizing;
+  if (size.height !== undefined && Math.abs(size.height - layoutTextbox(b, meta).height) > 1) return "fixed";
+  if (b.sizing === "auto-width" && size.width !== undefined && Math.abs(size.width - b.layout.width) > 1) return "auto-height";
+  return b.sizing;
+}
+
+function layoutTextboxIn(b: TextboxBlock, meta: ExamMeta, width: number, hint?: string) {
   const s = textboxSpec(b, meta);
   const pad = textboxPad(b);
-  const width = Math.max(20, b.layout.width - pad * 2);
   const boxRtl = blockRtl(b, meta);
   const empty: DocParagraph = { runs: [], indent: 0, spaceBefore: 0, spaceAfter: 0 };
   const source: DocParagraph[] = hint ? [{ ...empty, runs: parseRich(hint) }] : docParagraphs(textboxDoc(b));
@@ -476,8 +533,15 @@ export function layoutTextbox(b: TextboxBlock, meta: ExamMeta, hint?: string) {
   const rtls = items.map((p) => (p.dir ? p.dir === "rtl" : boxRtl));
   const markers = listMarkers(items.map((p, i) => ({ list: p.list, level: p.indent, arabic: rtls[i] })));
   let top = 0;
+  let natural = 0; // the width the longest line takes, with its indent and list marker
   const paragraphs: TextboxParagraph[] = items.map((p, i) => {
     const rtl = rtls[i];
+    // A block placed in the text: its room, the full width of the text.
+    if (p.slot) {
+      const room: TextboxParagraph = { lines: [], x: pad, y: top, width, rtl, slot: { id: p.slot.id, height: p.slot.h } };
+      top += p.slot.h;
+      return room;
+    }
     // Indented from the start side, keeping some room for the text.
     const indent = Math.min(Math.min(p.indent, MAX_INDENT) * INDENT_PX, Math.max(0, width - 20));
     top += p.spaceBefore;
@@ -489,6 +553,7 @@ export function layoutTextbox(b: TextboxBlock, meta: ExamMeta, hint?: string) {
     const line = p.lineHeight ? Math.round(s.font.size * (20 / 14) * p.lineHeight) : s.line;
     const textWidth = width - indent - gap;
     const lines = wrapRich(serializeRich(p.runs) || " ", textWidth, s.font, line);
+    natural = Math.max(natural, indent + gap + Math.max(0, ...lines.map((l) => l.width)));
     const out: TextboxParagraph = { lines, x: pad + (rtl ? 0 : indent + gap), y: top, width: textWidth, align: p.align ?? b.align, rtl };
     if (markerText) {
       const placed = markerLine(markerText, p.runs, s.font, lines[0]);
@@ -509,11 +574,12 @@ export function layoutTextbox(b: TextboxBlock, meta: ExamMeta, hint?: string) {
     return out;
   });
   const content = Math.max(top, s.line);
-  const height = Math.max(b.layout.height, content + pad * 2);
+  // An automatic size has no room under the text; a fixed one keeps the height it was given.
+  const height = b.sizing === "auto-width" || b.sizing === "auto-height" ? content + pad * 2 : Math.max(b.layout.height, content + pad * 2);
   const free = height - content - pad * 2;
   const y = pad + (b.valign === "middle" ? free / 2 : b.valign === "bottom" ? free : 0);
   const align: ParagraphAlign | undefined = b.align;
-  return { spec: s, paragraphs, x: pad, y, width, content, height, align };
+  return { spec: s, paragraphs, x: pad, y, width, content, height, align, natural };
 }
 
 export interface Decoration {
@@ -807,6 +873,34 @@ export function tableHeight(b: TableBlock, meta: ExamMeta): number {
   return (shapes ? Math.max(rows, Math.ceil(shapes.maxY)) : rows) * k;
 }
 
+// ---- Picture caption: a description printed under an image ----
+
+export const CAPTION_GAP = 6; // room between the picture and its caption
+export const CAPTION_COLOR = "#374151";
+export const CAPTION_MIN_SIZE = 8;
+export const CAPTION_MAX_SIZE = 40;
+
+// Size of a caption that keeps the default: a bit smaller than the exam's text.
+export const defaultCaptionSize = (meta: ExamMeta) => Math.max(9, (meta.fontSize ?? DEFAULT_SIZE) - 2);
+
+// The caption's wrapped lines, under the picture (block coordinates); null when the image has none.
+export function layoutImageCaption(b: ImageBlock, meta: ExamMeta): (PlacedBox & { align: "left" | "center" | "right" }) | null {
+  if (!b.caption || !plainText(b.caption).trim()) return null;
+  const c = b.captionStyle ?? {};
+  const size = c.size ?? defaultCaptionSize(meta);
+  const s = spec(fontStack(c.family || meta.fontFamily), size, c.bold ?? false, c.color ?? CAPTION_COLOR, 20 / 14, {
+    italic: c.italic ?? true,
+    underline: c.underline,
+  });
+  return { ...placed(b.caption, 0, b.layout.width, s, b.layout.height + CAPTION_GAP), align: c.align ?? "center" };
+}
+
+// The picture and its caption.
+export function imageHeight(b: ImageBlock, meta: ExamMeta): number {
+  const c = layoutImageCaption(b, meta);
+  return c ? c.y + c.height : b.layout.height;
+}
+
 // Height of any block (used for stacking, snapping and thumbnails).
 export function blockHeight(b: Block, n: number, meta: ExamMeta): number {
   switch (b.type) {
@@ -832,8 +926,11 @@ export function blockHeight(b: Block, n: number, meta: ExamMeta): number {
       return tableHeight(b, meta);
     case "header":
       return HEADER_HEIGHT[b.style] ?? HEADER_HEIGHT.classic;
-    case "equation":
+    case "divider":
+      return dividerHeight(b);
     case "image":
+      return imageHeight(b, meta);
+    case "equation":
     case "graph":
     case "shape":
       return b.layout.height;

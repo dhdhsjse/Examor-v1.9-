@@ -28,7 +28,11 @@ export const MODERN_HEADER_STYLES: HeaderStyle[] = [
 
 // Modern header styles. Every one mirrors itself for Arabic: `at` places boxes, `mx` mirrors points.
 export function ModernHeaderView({ style, c }: { style: HeaderStyle; c: HeaderCtx }) {
-  const { W, H, rtl, family, t, f, title, sub, outOf, at } = c;
+  const { W, H, rtl, family, t, f, title, sub, outOf, at, x0, x1, y0 } = c;
+  // The edges of the paper on the start and end sides (bands and corner shapes run to them).
+  const startEdge = rtl ? x1 : x0;
+  const endEdge = rtl ? x0 : x1;
+  const dir = rtl ? -1 : 1;
   const start = rtl ? "right" : "left";
   const end = rtl ? "left" : "right";
   const mx = (x: number) => (rtl ? W - x : x);
@@ -69,7 +73,7 @@ export function ModernHeaderView({ style, c }: { style: HeaderStyle; c: HeaderCt
           {L({ text: `${t.year} : ${f.year}`, x: at(20, textW), y: 70, width: textW, size: 11, color: MUTED, align: start })}
           <Rect x={at(W - card, card)} y={4} width={card} height={76} fill={tint(accent, "0f")} stroke={accent} strokeWidth={1.4} cornerRadius={10} listening={false} />
           {scoreBox(at(W - card, card), 4, card, 76, accent)}
-          <Line points={[0, 96, W, 96]} stroke={SOFT_LINE} strokeWidth={1} listening={false} />
+          <Line points={[x0, 96, x1, 96]} stroke={SOFT_LINE} strokeWidth={1} listening={false} />
           {nameLine(106)}
         </>
       );
@@ -82,8 +86,8 @@ export function ModernHeaderView({ style, c }: { style: HeaderStyle; c: HeaderCt
       const textW = W - bw - 40;
       return (
         <>
-          <Rect x={0} y={0} width={W} height={5} fill={accent} cornerRadius={2} listening={false} />
-          <Line closed points={[left, 0, left + bw, 0, left + bw, 82, left + bw / 2, 68, left, 82]} fill={tint(accent, "14")} stroke={accent} strokeWidth={1.4} listening={false} />
+          <Rect x={x0} y={y0} width={x1 - x0} height={5} fill={accent} listening={false} />
+          <Line closed points={[left, y0, left + bw, y0, left + bw, 82, left + bw / 2, 68, left, 82]} fill={tint(accent, "14")} stroke={accent} strokeWidth={1.4} listening={false} />
           {L({ text: t.score, x: left, y: 16, width: bw, size: 10, bold: true, color: accent, align: "center" })}
           {L({ text: `..... / ${outOf}`, x: left, y: 38, width: bw, size: 15, bold: true, align: "center", dir: false })}
           {L({ text: [f.school, `${t.year} : ${f.year}`].filter(Boolean).join("   ·   "), x: at(0, textW), y: 16, width: textW, size: 11, color: MUTED, align: start })}
@@ -102,11 +106,12 @@ export function ModernHeaderView({ style, c }: { style: HeaderStyle; c: HeaderCt
       return (
         <>
           <Rect
-            width={W}
-            height={band}
-            cornerRadius={12}
-            fillLinearGradientStartPoint={{ x: rtl ? W : 0, y: 0 }}
-            fillLinearGradientEndPoint={{ x: rtl ? 0 : W, y: band }}
+            x={x0}
+            y={y0}
+            width={x1 - x0}
+            height={band - y0}
+            fillLinearGradientStartPoint={{ x: rtl ? x1 - x0 : 0, y: 0 }}
+            fillLinearGradientEndPoint={{ x: rtl ? 0 : x1 - x0, y: band - y0 }}
             fillLinearGradientColorStops={[0, accent, 1, tint(accent, "b8")]}
             listening={false}
           />
@@ -128,9 +133,9 @@ export function ModernHeaderView({ style, c }: { style: HeaderStyle; c: HeaderCt
       const textW = W - textX - box - 16;
       return (
         <>
-          <Line closed points={[mx(0), 0, mx(150), 0, mx(0), 96]} fill={tint(accent, "2e")} listening={false} />
-          <Line closed points={[mx(0), 0, mx(108), 0, mx(0), 68]} fill={accent} listening={false} />
-          <Line closed points={[mx(W), H, mx(W - 44), H, mx(W), H - 28]} fill={accent} listening={false} />
+          <Line closed points={[startEdge, y0, startEdge + dir * 150, y0, startEdge, 96]} fill={tint(accent, "2e")} listening={false} />
+          <Line closed points={[startEdge, y0, startEdge + dir * 108, y0, startEdge, 68]} fill={accent} listening={false} />
+          <Line closed points={[endEdge, H, endEdge - dir * 44, H, endEdge, H - 28]} fill={accent} listening={false} />
           {L({ text: f.school, x: at(textX, textW), y: 6, width: textW, size: 11, bold: true, color: accent, align: start })}
           {L({ text: title, x: at(textX, textW), y: 24, width: textW, size: 22, bold: true, align: start })}
           {L({ text: sub, x: at(textX, textW), y: 56, width: textW, size: 12, color: MUTED, align: start })}
@@ -172,7 +177,7 @@ export function ModernHeaderView({ style, c }: { style: HeaderStyle; c: HeaderCt
           <Rect x={cardX} y={0} width={card} height={22} fill={accent} cornerRadius={[12, 12, 0, 0]} listening={false} />
           {L({ text: t.score, x: cardX, y: 5, width: card, size: 11, bold: true, color: "#ffffff", align: "center" })}
           {L({ text: `...... / ${outOf}`, x: cardX, y: 42, width: card, size: 16, bold: true, align: "center", dir: false })}
-          <Line points={[0, 92, W, 92]} stroke={SOFT_LINE} strokeWidth={1} listening={false} />
+          <Line points={[x0, 92, x1, 92]} stroke={SOFT_LINE} strokeWidth={1} listening={false} />
           {nameLine(102)}
         </>
       );
@@ -191,7 +196,7 @@ export function ModernHeaderView({ style, c }: { style: HeaderStyle; c: HeaderCt
           <Circle x={cx} y={42} radius={40} stroke={accent} strokeWidth={1} dash={[3, 3]} listening={false} />
           <Circle x={cx} y={42} radius={34} stroke={accent} strokeWidth={1.6} listening={false} />
           {scoreCircle(cx, 42, 32, accent)}
-          <Line points={[0, 96, W, 96]} stroke={INK} strokeWidth={0.8} listening={false} />
+          <Line points={[x0, 96, x1, 96]} stroke={INK} strokeWidth={0.8} listening={false} />
           {L({ text: `${t.name} : ${DOTS}${DOTS}`, x: at(0, W * 0.64), y: 106, width: W * 0.64, size: 13, align: start })}
           {L({ text: `${t.class} : ${DOTS_S}`, x: at(W * 0.64, W * 0.36), y: 106, width: W * 0.36, size: 13, align: end })}
         </>
@@ -260,8 +265,9 @@ export function ModernHeaderView({ style, c }: { style: HeaderStyle; c: HeaderCt
       const sx = at(mainW, sw);
       return (
         <>
-          <Rect x={at(0, mainW)} y={0} width={mainW} height={band} fill={tint(accent, "14")} cornerRadius={corners(12, 0)} listening={false} />
-          <Rect x={sx} y={0} width={sw} height={band} fill={accent} cornerRadius={corners(0, 12)} listening={false} />
+          {/* Each panel runs to the edge of the paper on its side */}
+          <Rect x={rtl ? sw : x0} y={y0} width={rtl ? x1 - sw : mainW - x0} height={band - y0} fill={tint(accent, "14")} listening={false} />
+          <Rect x={rtl ? x0 : mainW} y={y0} width={rtl ? sw - x0 : x1 - mainW} height={band - y0} fill={accent} listening={false} />
           {L({ text: [f.school, f.year].filter(Boolean).join("   ·   "), x: at(18, mainW - 36), y: 12, width: mainW - 36, size: 11, bold: true, color: accent, align: start })}
           {L({ text: title, x: at(18, mainW - 36), y: 30, width: mainW - 36, size: 22, bold: true, align: start })}
           {L({ text: sub, x: at(18, mainW - 36), y: 62, width: mainW - 36, size: 12, color: MUTED, align: start })}
@@ -291,7 +297,7 @@ export function ModernHeaderView({ style, c }: { style: HeaderStyle; c: HeaderCt
           {L({ text: [f.school, f.year].filter(Boolean).join("  —  "), x: at(textX, textW), y: 62, width: textW, size: 11, color: MUTED, align: start })}
           <Rect x={at(W - card, card)} y={6} width={card} height={72} stroke={accent} strokeWidth={1.4} cornerRadius={16} listening={false} />
           {scoreBox(at(W - card, card), 6, card, 72, accent)}
-          <Line points={[0, 96, W, 96]} stroke={tint(accent, "55")} strokeWidth={1} listening={false} />
+          <Line points={[x0, 96, x1, 96]} stroke={tint(accent, "55")} strokeWidth={1} listening={false} />
           {nameLine(106)}
         </>
       );

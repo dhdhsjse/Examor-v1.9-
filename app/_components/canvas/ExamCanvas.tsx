@@ -1,16 +1,19 @@
 "use client";
 
 import type Konva from "konva";
-import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
+import { useEffect, useImperativeHandle, useMemo, useRef, useState, type RefObject } from "react";
 import { Layer, Line, Rect, Stage, Transformer } from "react-konva";
+import { InkStroke } from "@/app/_components/shapes/InkGraphic";
+import { InkCapture, finishInk, type InkPoint, type InkSettings, type InkTool } from "@/app/_lib/ink/engine";
+import { eraserCursor, eraserPoints, type EraserSettings } from "@/app/_lib/ink/eraser";
 import { DEFAULT_MARGINS, MAX_MARGIN_MM, MIN_MARGIN_MM, mmToPx, pxToMm } from "@/app/_lib/a4";
 import { questionNumbers, totalPoints as sumPoints } from "@/app/_lib/blocks";
-import { blocksAt, nextUnder } from "@/app/_lib/blockOrder";
 import type { EditField } from "@/app/_lib/editRegions";
 import { pageAt, pageBoxes, stackSize, type PageBox } from "@/app/_lib/pageStack";
 import { MIN_SHAPE_SIZE, isLine } from "@/app/_lib/shapes";
 import { isFixedTable } from "@/app/_lib/table";
 import { snapBox, type Guide } from "@/app/_lib/snapping";
+import { slotDrop } from "@/app/_lib/textboxSlots";
 import type { Block, BlockLayout, ExamDoc, PageMargins, ViewMode } from "@/app/_lib/types";
 import type { BlockPatch } from "@/app/_lib/useExam";
 import BlockNode, { type ResizeResult } from "./BlockNode";
@@ -22,6 +25,11 @@ const SHADE = "rgba(0,0,0,0.05)"; // outside the margins, while they are being e
 const GLIDE_SECONDS = 0.15; // margin guides move to new values instead of jumping
 const HANDLE_LONG = 24; // margin handles, in screen pixels (the same at every zoom)
 const HANDLE_SHORT = 6;
+
+// A stroke of the drawing tools, done: its points in the pixels of the page it was drawn on.
+export type DrawnInk = { pageIndex: number; tool: InkTool; settings: InkSettings; points: InkPoint[] };
+/** The drawing tool in hand and how it draws */
+export type InkInHand = InkSettings & { tool: InkTool };
 
 // Margins being edited (Page layout → Margins) and whether a handle is being dragged.
 export type MarginEditView = { margins: PageMargins; dragging: boolean };
@@ -61,11 +69,31 @@ interface Props {
   // With the Shapes tool: what is drawn is a shape (a box, or a line from one corner to the other): a click is allowed, and Shift keeps it square / at 45°.
   drawShape?: "box" | "line";
   onDrawBox?: (box: DrawnBox) => void;
+  // The Draw tool (brush, pencil, highlighter): a drag on a page draws a stroke, over the blocks (they let the mouse through).
+  ink?: InkInHand | null;
+  onInk?: (stroke: DrawnInk) => void;
+  // The eraser (its way of rubbing and the width of its tip, screen px): a drag on a page rubs out the parts of the drawings it goes
+  // over (`onEraseInk`: the way it went on that page, page px), or with the stroke eraser the whole drawings and shapes it touches
+  // (`onErase`; the other blocks let the mouse through). `key` names the stroke of the eraser: one step of the undo.
+  eraser?: EraserSettings | null;
+  onErase?: (ids: string[], key: string) => void;
+  onEraseInk?: (pageId: string, path: { x: number; y: number }[], radius: number, key: string) => void;
   // A resize handle of the selected block is pressed (the text box editor stays open for it), and where
   // the block is while it is resized (stage = page stack coordinates; null = done).
   onHandleDown?: () => void;
   onResizing?: (id: string, r: ResizeResult | null) => void;
+  // A block moved from outside the stage (the text box being typed in, dragged by its edge): it is not drawn here
+  // meanwhile (`hiddenId`), and `mover` snaps it and drops it like a block dragged on the canvas.
+  hiddenId?: string | null;
+  typingId?: string | null; // the text box being typed in: the page draws only its fill and border (its editor is see-through)
+  mover?: RefObject<BlockMover | null>;
 }
+
+// Moving a block from outside (page stack pixels): `move` gives where it goes (snapped, inside its page), `end` drops it there.
+export type BlockMover = { move: (id: string, x: number, y: number) => { x: number; y: number }; end: (id: string, x: number, y: number) => void };
+
+// Blocks drawn over all the others (see drawOrder).
+const ON_TOP = new Set<Block["type"]>(["shape", "image", "graph", "equation"]);
 
 const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(v, max));
 
@@ -93,23 +121,105 @@ export default function ExamCanvas(props: Props) {
     const moved = blocks.map((b) => (b.id === dragAt.id ? { ...b, layout: { ...b.layout, pageId: dragAt.pageId, y: dragAt.y } } : b));
     return questionNumbers(moved, pages);
   }, [dragAt, props.numbers, blocks, pages]);
+  // The order blocks are drawn in, decided here (not by moving Konva nodes, which React would not know about): the exam's
+  // order, each text box followed by the blocks of its text (over the box's background, in the order of its text), and the
+  // last block dragged with its blocks over the others.
+  const [liftedId, setLiftedId] = useState<string | null>(null);
+  // A block of a text box being dragged in it: where it would go (a line across the box's text, stage px).
+  const [slotLine, setSlotLine] = useState<{ left: number; top: number; width: number } | null>(null);
+  const inBox = useMemo(() => {
+    const m = new Map<string, Block[]>();
+    for (const b of blocks) if (b.meta?.slot) m.set(b.meta.slot, [...(m.get(b.meta.slot) ?? []), b]);
+    for (const list of m.values()) list.sort((a, c) => a.layout.y - c.layout.y);
+    return m;
+  }, [blocks]);
+  const drawOrder = useMemo(() => {
+    const ids = new Set(blocks.map((b) => b.id));
+    const withOwn = (b: Block) => [b, ...(inBox.get(b.id) ?? [])];
+    const loose = blocks.filter((b) => !b.meta?.slot || !ids.has(b.meta.slot)); // (a block whose box is gone is drawn on its own)
+    // Two layers: text, questions, tables, text boxes… below; shapes, images, graphs and equations always over them
+    // (drawn on a page, they are never hidden by a text box). In each, the saved stacking order (layout.z, raised when a block is
+    // dropped — so the PDF stacks them as the page does), then the block being dragged right now over all of them.
+    const layer = (list: Block[]) => {
+      const lifted = list.find((b) => b.id === liftedId);
+      const rest = list.filter((b) => b !== lifted).sort((a, c) => (a.layout.z ?? 0) - (c.layout.z ?? 0)); // (stable: same z → exam's order)
+      return [...rest.flatMap(withOwn), ...(lifted ? withOwn(lifted) : [])];
+    };
+    return [...layer(loose.filter((b) => !ON_TOP.has(b.type))), ...layer(loose.filter((b) => ON_TOP.has(b.type)))];
+  }, [blocks, inBox, liftedId]);
   const boxes = useMemo(() => pageBoxes(pages), [pages]);
   const { width, height } = stackSize(boxes);
   const pageIndex = new Map(pages.map((p, i) => [p.id, i]));
   const selected = interactive ? blocks.find((b) => b.id === selectedId) : undefined;
+
+  // Blocks over each other (a text under a photo…): the selected block takes the clicks even where another block is drawn over
+  // it, so it can be moved and typed in there. Its node goes over all the others, unseen ("ghost"), and a copy of it that lets
+  // the mouse through ("passive") is drawn in its place in the stack, so the page looks the same. While it is dragged or resized
+  // the node itself is shown (over the others, as a dragged block already is). A text box comes up with the blocks of its text.
+  const [resizingId, setResizingId] = useState<string | null>(null);
+  const [ghostHover, setGhostHover] = useState(false);
+  const raised = !!selected && (liftedId === selected.id || resizingId === selected.id);
+  const ghostIds = useMemo(() => {
+    if (!selected) return new Set<string>();
+    const inABox = !!selected.meta?.slot && blocks.some((o) => o.id === selected.meta?.slot);
+    return new Set([selected.id, ...(inABox ? [] : (inBox.get(selected.id) ?? []).map((o) => o.id))]);
+  }, [selected, blocks, inBox]);
+  const shown = drawOrder.filter((b) => b.id !== props.hiddenId);
+
+  // Alt+click: the block under the one clicked (again: the next one down, then back to the top one), as the page stacks them.
+  const pick = (b: Block, alt: boolean) => {
+    let id = b.id;
+    const p = alt ? layerRef.current?.getStage()?.getPointerPosition() : null;
+    if (p) {
+      const under = shown
+        .filter((o) => {
+          const page = boxes[pageIndex.get(o.layout.pageId) ?? 0];
+          const x0 = page.left + o.layout.x;
+          const y0 = page.top + o.layout.y;
+          return p.x >= x0 && p.x <= x0 + o.layout.width && p.y >= y0 && p.y <= y0 + (heights.get(o.id) ?? 0);
+        })
+        .reverse(); // top first
+      const at = under.findIndex((o) => o.id === selectedId);
+      const from = at >= 0 ? at : under.findIndex((o) => o.id === b.id);
+      if (under.length > 1) id = under[(from + 1) % under.length].id;
+    }
+    props.onSelect?.(id);
+    return id === b.id;
+  };
   const guidesOn = showGuides && interactive;
   const edit = interactive ? props.marginEdit : null;
   const preview = edit?.margins;
   const totalPoints = useMemo(() => sumPoints(blocks), [blocks]);
-  const drawing = interactive && !!props.drawBox;
+  const inking = interactive && !!props.ink;
+  const drawing = interactive && (!!props.drawBox || inking);
+  const erasing = interactive && !!props.eraser;
   const [draft, setDraft] = useState<DrawDraft | null>(null);
   const stopDraw = useRef<(() => void) | null>(null);
   const onDrawBox = useRef(props.onDrawBox); // the latest one, for the release of a box drawn meanwhile
   const drawShape = useRef(props.drawShape);
+  const ink = useRef(props.ink);
+  const onInk = useRef(props.onInk);
+  const onErase = useRef(props.onErase);
+  const onEraseInk = useRef(props.onEraseInk);
+  const zoomRef = useRef(zoom);
   useEffect(() => {
     onDrawBox.current = props.onDrawBox;
     drawShape.current = props.drawShape;
+    ink.current = props.ink;
+    onInk.current = props.onInk;
+    onErase.current = props.onErase;
+    onEraseInk.current = props.onEraseInk;
+    zoomRef.current = zoom;
   });
+  // The stroke being drawn is shown on a layer of its own (only it is redrawn while the mouse moves).
+  const liveInk = useRef<((s: LiveInk | null) => void) | null>(null);
+  const inkLayerRef = useRef<Konva.Layer>(null);
+  useEffect(() => {
+    const layer = inkLayerRef.current;
+    if (!layer) return;
+    layer.getCanvas().setPixelRatio(Math.min((window.devicePixelRatio || 1) * Math.max(1, zoom), 30000 / height));
+    layer.batchDraw();
+  }, [zoom, height, inking]);
 
   // Draw at a higher resolution when zoomed in, so text stays sharp.
   useEffect(() => {
@@ -124,19 +234,55 @@ export default function ExamCanvas(props: Props) {
   useEffect(() => {
     const tr = trRef.current;
     if (!tr) return;
-    const node = selected && !drawing ? tr.getStage()?.findOne(`#${selected.id}`) : undefined;
+    const node = selected && !drawing && !erasing ? tr.getStage()?.findOne(`#${selected.id}`) : undefined;
     tr.nodes(node ? [node] : []);
     tr.forceUpdate();
     tr.getLayer()?.batchDraw();
   });
 
+  // The blocks placed in a text box (questions, tables… in its text, textboxSlots.ts) go with it while it is dragged.
+  const embeddedNodes = (b: Block) => {
+    const layer = layerRef.current;
+    if (!layer || b.type !== "textbox") return [];
+    return (inBox.get(b.id) ?? []).flatMap((o) => {
+      const node = layer.findOne(`#${o.id}`);
+      return node ? [{ node, dx: o.layout.x - b.layout.x, dy: o.layout.y - b.layout.y }] : [];
+    });
+  };
+  const handleDragStart = (b: Block) => {
+    setLiftedId(b.id);
+    props.onDragging?.(true);
+  };
+  const followBox = (b: Block, pos: { x: number; y: number }) => {
+    embeddedNodes(b).forEach(({ node, dx, dy }) => node.position({ x: pos.x + dx, y: pos.y + dy }));
+  };
+
   // While dragging: pick the closest page, snap to guides, keep the block inside that page.
   const handleDragMove = (b: Block, x: number, y: number) => {
+    const at = placeDragged(b, x, y);
+    followBox(b, at);
+    return at;
+  };
+  const placeDragged = (b: Block, x: number, y: number) => {
     const h = heights.get(b.id) ?? 0;
+    // A block in a text box's text moves up and down in its box only: it goes above or below the box's other blocks and paragraphs
+    // (where it would land is shown by a line).
+    const owner = b.meta?.slot ? blocks.find((o) => o.id === b.meta?.slot) : undefined;
+    if (owner) {
+      const i = pageIndex.get(owner.layout.pageId) ?? 0;
+      const page = boxes[i];
+      const top = owner.layout.y - h / 2;
+      const bottom = owner.layout.y + (heights.get(owner.id) ?? 0) - h / 2;
+      const py = clamp(y - page.top, top, Math.max(top, bottom));
+      const drop = slotDrop(doc, b.id, py + h / 2);
+      setSlotLine(drop && !drop.same ? { left: page.left + drop.x, top: page.top + drop.y, width: drop.width } : null);
+      return { x: page.left + b.layout.x, y: page.top + py };
+    }
     const i = pageAt(y + h / 2, boxes);
     const page = boxes[i];
     const others = blocks
-      .filter((o) => o.id !== b.id && o.layout.pageId === pages[i].id)
+      // (not to the blocks in its own text, which move with it)
+      .filter((o) => o.id !== b.id && o.meta?.slot !== b.id && o.layout.pageId === pages[i].id)
       .map((o) => ({ ...o.layout, height: heights.get(o.id) ?? 0 }));
 
     const box = { x: x - page.left, y: y - page.top, width: b.layout.width, height: h };
@@ -147,23 +293,37 @@ export default function ExamCanvas(props: Props) {
     return { x: page.left + pos.x, y: page.top + pos.y };
   };
 
-  // Alt+click: the block under the one selected, where the mouse is (the layers of the page one after the other).
-  const blockUnder = (b: Block) => {
-    const p = layerRef.current?.getStage()?.getPointerPosition();
-    if (!p) return undefined;
-    const page = boxes[pageIndex.get(b.layout.pageId) ?? 0];
-    const stack = blocksAt(blocks, heights, b.layout.pageId, p.x - page.left, p.y - page.top);
-    return nextUnder(stack, selectedId)?.id;
-  };
-
   // Drop: save which page the block landed on and its position on that page.
   const handleDragEnd = (b: Block, x: number, y: number) => {
+    setLiftedId(null); // from now on its saved place in the stack (layout.z, raised by the move) keeps it on top
+    const owner = b.meta?.slot ? blocks.find((o) => o.id === b.meta?.slot) : undefined;
+    if (owner) {
+      // In its box: it takes its new place in the text (or none), and the node goes back to its room until the page draws it there.
+      const i = pageIndex.get(owner.layout.pageId) ?? 0;
+      setSlotLine(null);
+      props.onDragging?.(false);
+      layerRef.current?.findOne(`#${b.id}`)?.position({ x: boxes[i].left + b.layout.x, y: boxes[i].top + b.layout.y });
+      props.onMove?.(b.id, owner.layout.pageId, b.layout.x, y - boxes[i].top);
+      return;
+    }
     const i = pageAt(y + (heights.get(b.id) ?? 0) / 2, boxes);
     setSnap(null);
     setDragAt(null);
     props.onDragging?.(false);
     props.onMove?.(b.id, pages[i].id, x - boxes[i].left, y - boxes[i].top);
   };
+
+  // The same drag, for a block moved from outside the stage.
+  useImperativeHandle(props.mover, () => ({
+    move: (id, x, y) => {
+      const b = blocks.find((o) => o.id === id);
+      return b ? handleDragMove(b, x, y) : { x, y };
+    },
+    end: (id, x, y) => {
+      const b = blocks.find((o) => o.id === id);
+      if (b) handleDragEnd(b, x, y);
+    },
+  }));
 
   // Resize end: keep the block inside its page; images/equations keep their shape.
   const handleResize = (b: Block, r: ResizeResult) => {
@@ -174,10 +334,12 @@ export default function ExamCanvas(props: Props) {
     const shape = b.type === "shape";
     const graph = b.type === "graph" || b.type === "textbox" || shape; // graphs, text boxes and shapes can change shape freely
     const h = graph ? clamp(r.height, b.type === "textbox" ? 30 : shape ? (isLine(b) ? 0 : MIN_SHAPE_SIZE) : 80, page.height) : ratio ? width / ratio : (heights.get(b.id) ?? 0);
+    // (an image's caption sits under its picture: keep it on the page too)
+    const below = b.type === "image" ? Math.max(0, (heights.get(b.id) ?? 0) - b.layout.height) : 0;
     props.onResize?.(b.id, {
       pageId: pages[i].id,
       x: clamp(r.x - page.left, 0, page.width - width),
-      y: clamp(r.y - page.top, 0, page.height - h),
+      y: clamp(r.y - page.top, 0, page.height - h - below),
       width,
       ...(ratio || graph ? { height: h } : {}),
     });
@@ -187,9 +349,12 @@ export default function ExamCanvas(props: Props) {
   // being drawn; so does closing the page.
   useEffect(() => {
     const container = layerRef.current?.getStage()?.container();
-    if (container) container.style.cursor = drawing ? "crosshair" : "";
-    if (!drawing) stopDraw.current?.();
-  }, [drawing]);
+    if (container) {
+      container.style.cursor = inking && props.ink ? inkCursor(props.ink, zoom) : props.eraser && erasing ? eraserCursor(props.eraser.size) : drawing ? "crosshair" : "";
+      container.style.touchAction = inking || erasing ? "none" : ""; // (a pen or a finger draws / rubs instead of scrolling)
+    }
+    if (!drawing && !erasing) stopDraw.current?.();
+  }, [drawing, erasing, inking, props.ink, props.eraser, zoom]);
   useEffect(() => () => stopDraw.current?.(), []);
 
   // Mouse down on a page with the text box tool: follow the mouse (even outside the canvas) within that
@@ -250,6 +415,98 @@ export default function ExamCanvas(props: Props) {
     stopDraw.current = stop;
   };
 
+  // Mouse (pen, finger) down on a page with a drawing tool: the stroke follows the pointer within that page, steadied as it goes
+  // (InkCapture), shown as it will be, and handed over when let go.
+  const startInk = (stage: Konva.Stage, x: number, y: number, t: number) => {
+    const hand = ink.current;
+    if (!hand) return;
+    const page = pageAt(y, boxes);
+    const box = boxes[page];
+    const capture = new InkCapture(x, y, hand.smoothing, zoomRef.current, t);
+    const at = (e: PointerEvent) => {
+      stage.setPointersPositions(e);
+      const p = stage.getPointerPosition();
+      return p && { x: clamp(p.x, box.left, box.left + box.width), y: clamp(p.y, box.top, box.top + box.height) };
+    };
+    let frame = 0;
+    const show = () => {
+      frame = 0;
+      liveInk.current?.({ ...hand, points: finishInk(capture.points, hand.tool, hand.smoothing) });
+    };
+    const follow = (e: PointerEvent) => {
+      // every position the pointer went through since the last event (a fast stroke stays round, not made of corners)
+      const all = e.getCoalescedEvents?.() ?? [];
+      for (const c of all.length ? all : [e]) {
+        const p = at(c);
+        if (p) capture.add(p.x, p.y, c.timeStamp, c.pointerType === "pen" ? c.pressure : undefined);
+      }
+      if (!frame) frame = requestAnimationFrame(show);
+    };
+    const stop = () => {
+      window.removeEventListener("pointermove", follow);
+      window.removeEventListener("pointerup", release);
+      window.removeEventListener("pointercancel", release);
+      cancelAnimationFrame(frame);
+      stopDraw.current = null;
+      liveInk.current?.(null);
+    };
+    const release = (e: PointerEvent) => {
+      const p = at(e);
+      if (p) capture.end(p.x, p.y);
+      stop();
+      const points = finishInk(capture.points, hand.tool, hand.smoothing).map((q) => ({ ...q, x: q.x - box.left, y: q.y - box.top }));
+      const { tool, ...settings } = hand;
+      if (points.length) onInk.current?.({ pageIndex: page, tool, settings, points });
+    };
+    window.addEventListener("pointermove", follow);
+    window.addEventListener("pointerup", release);
+    window.addEventListener("pointercancel", release);
+    stopDraw.current = stop;
+    show();
+  };
+
+  // The eraser down on a page, until it is let go (one step of the undo). The real eraser rubs out the parts of the drawings it goes
+  // over: the way it went on the page is handed over at each move. The stroke eraser takes whole drawings and shapes: what is drawn
+  // under it (the shape blocks catch the mouse then, the others let it through).
+  const startErase = (stage: Konva.Stage, e: PointerEvent, how: EraserSettings) => {
+    const key = `erase:${Date.now()}`;
+    const radius = how.size / 2 / zoomRef.current; // (page px: the tip keeps its size on the screen)
+    const erasable = new Set(blocks.filter((b) => b.type === "shape").map((b) => b.id));
+    const gone = new Set<string>();
+    let last: { x: number; y: number } | null = null;
+    const rub = (ev: PointerEvent) => {
+      stage.setPointersPositions(ev);
+      const p = stage.getPointerPosition();
+      if (!p) return;
+      const from = last ?? p;
+      last = p;
+      if (how.mode === "partial") {
+        const i = pageAt(p.y, boxes);
+        const box = boxes[i];
+        const path = [from, p].map((q) => ({ x: q.x - box.left, y: q.y - box.top }));
+        onEraseInk.current?.(pages[i].id, path, radius, key);
+        return;
+      }
+      const before = gone.size;
+      for (const q of eraserPoints(from, p, radius)) {
+        const id = stage.getIntersection(q)?.findAncestor((n: Konva.Node) => erasable.has(n.id()), true)?.id();
+        if (id) gone.add(id);
+      }
+      if (gone.size > before) onErase.current?.([...gone], key);
+    };
+    const stop = () => {
+      window.removeEventListener("pointermove", rub);
+      window.removeEventListener("pointerup", stop);
+      window.removeEventListener("pointercancel", stop);
+      stopDraw.current = null;
+    };
+    window.addEventListener("pointermove", rub);
+    window.addEventListener("pointerup", stop);
+    window.addEventListener("pointercancel", stop);
+    stopDraw.current = stop;
+    rub(e);
+  };
+
   // A table with shapes or pictures is fixed like a picture: corner handles, in its own proportions.
   const media = selected?.type === "image" || selected?.type === "equation" || (selected?.type === "table" && isFixedTable(selected));
   const corners = media || selected?.type === "graph";
@@ -262,12 +519,29 @@ export default function ExamCanvas(props: Props) {
       height={height}
       // Clicking empty paper clears the selection (with the T tool: starts a new text there; with the
       // text box tool: starts drawing a box, blocks let the mouse through then).
+      // A drawing tool starts its stroke on pointer down (a mouse, a pen with its pressure, or a finger).
+      onPointerDown={(e) => {
+        if (erasing && e.evt.button === 0) {
+          e.evt.preventDefault(); // (no text selection while rubbing)
+          props.onSelect?.(null);
+          const stage = e.target.getStage();
+          if (stage && props.eraser) startErase(stage, e.evt, props.eraser);
+          return;
+        }
+        if (!inking || e.evt.button !== 0 || e.target.name() !== "paper") return;
+        const stage = e.target.getStage();
+        stage?.setPointersPositions(e.evt);
+        const p = stage?.getPointerPosition();
+        if (stage && p) startInk(stage, p.x, p.y, e.evt.timeStamp);
+      }}
       onMouseDown={(e) => {
         if (e.target !== e.target.getStage() && e.target.name() !== "paper") return;
         props.onSelect?.(null);
         const stage = e.target.getStage();
         const p = stage?.getPointerPosition();
-        if (drawing && stage && p && e.target.name() === "paper" && e.evt.button === 0) {
+        if (inking) {
+          e.evt.preventDefault(); // (the stroke started on pointer down) no text selection while drawing
+        } else if (drawing && stage && p && e.target.name() === "paper" && e.evt.button === 0) {
           e.evt.preventDefault(); // no text selection while dragging
           startDraw(stage, p.x, p.y);
         } else if (props.textTool && p && e.target.name() === "paper") {
@@ -290,9 +564,17 @@ export default function ExamCanvas(props: Props) {
           />
         ))}
 
-        {blocks.map((b) => (
+        {/* One list (keys kept), so a block that becomes selected keeps its node: a drag started on it goes on */}
+        {[
+          ...shown.flatMap((b) => (ghostIds.has(b.id) ? (raised ? [] : [{ b, passive: true }]) : [{ b, passive: false }])),
+          ...shown.filter((b) => ghostIds.has(b.id)).map((b) => ({ b, passive: false })),
+        ].map(({ b, passive }) => (
           <BlockNode
-            key={b.id}
+            key={passive ? `passive:${b.id}` : b.id}
+            passive={passive}
+            ghost={!passive && ghostIds.has(b.id) && !raised}
+            hovered={passive && ghostHover}
+            onHover={ghostIds.has(b.id) && !passive ? setGhostHover : undefined}
             block={b}
             x={boxes[pageIndex.get(b.layout.pageId) ?? 0].left + b.layout.x}
             y={boxes[pageIndex.get(b.layout.pageId) ?? 0].top + b.layout.y}
@@ -305,15 +587,20 @@ export default function ExamCanvas(props: Props) {
             selected={b.id === selectedId}
             interactive={interactive}
             textTool={!!props.textTool}
-            drawing={drawing}
-            onSelect={(underneath) => props.onSelect?.(underneath ? (blockUnder(b) ?? b.id) : b.id)}
-            onDragStart={() => props.onDragging?.(true)}
+            drawing={drawing || erasing}
+            erasable={erasing && props.eraser?.mode === "stroke" && b.type === "shape"}
+            typing={b.id === props.typingId}
+            onSelect={(alt) => pick(b, !!alt)}
+            onDragStart={() => handleDragStart(b)}
             onEdit={(field) => props.onEdit?.(b.id, field)}
             onPatch={(patch) => props.onPatch?.(b.id, patch)}
             onDragMove={(x, y) => handleDragMove(b, x, y)}
             onDragEnd={(x, y) => handleDragEnd(b, x, y)}
             onResize={(r) => handleResize(b, r)}
-            onResizing={(r) => props.onResizing?.(b.id, r)}
+            onResizing={(r) => {
+              setResizingId(r ? b.id : null);
+              props.onResizing?.(b.id, r);
+            }}
           />
         ))}
 
@@ -335,6 +622,11 @@ export default function ExamCanvas(props: Props) {
             dash={[4 / zoom, 4 / zoom]}
             listening={false}
           />
+        )}
+
+        {/* Where the block dragged in its text box would go */}
+        {slotLine && (
+          <Line points={[slotLine.left, slotLine.top, slotLine.left + slotLine.width, slotLine.top]} stroke={SNAP_COLOR} strokeWidth={2.5 / zoom} lineCap="round" listening={false} />
         )}
 
         {/* Pink alignment lines on the page being dragged over */}
@@ -381,6 +673,12 @@ export default function ExamCanvas(props: Props) {
           />
         )}
       </Layer>
+      {/* the stroke being drawn (a layer of its own: only it is redrawn while the pointer moves) */}
+      {inking && (
+        <Layer ref={inkLayerRef} listening={false}>
+          <LiveStroke bindRef={liveInk} layer={inkLayerRef} />
+        </Layer>
+      )}
     </Stage>
   );
 }
@@ -517,4 +815,36 @@ function GlideLine({ x, y, length, instant, ...style }: { x: number; y: number; 
   const [start] = useState({ x, y, points: [0, 0, 0, length] });
   useEffect(() => glide(ref.current, { x, y, points: [0, 0, 0, length] }, instant), [x, y, length, instant]);
   return <Line ref={ref} {...start} {...style} listening={false} />;
+}
+
+// The stroke being drawn, with the tool that draws it (stage pixels).
+type LiveInk = InkInHand & { points: InkPoint[] };
+
+// The stroke being drawn: the canvas hands it over through `bind` at each frame, so the page's blocks are not redrawn meanwhile.
+// A highlighter's layer darkens what is under it, like the stroke once it is on the page.
+function LiveStroke({ bindRef, layer }: { bindRef: RefObject<((s: LiveInk | null) => void) | null>; layer: RefObject<Konva.Layer | null> }) {
+  const [live, setLive] = useState<LiveInk | null>(null);
+  useEffect(() => {
+    bindRef.current = setLive;
+    return () => {
+      bindRef.current = null;
+    };
+  }, [bindRef]);
+  useEffect(() => {
+    const el = layer.current?.getCanvas()._canvas;
+    if (el) el.style.mixBlendMode = live?.tool === "highlighter" ? "multiply" : "";
+  }, [layer, live?.tool]);
+  if (!live || live.points.length < 1) return null;
+  return <InkStroke tool={live.tool} points={live.points} color={live.color} size={live.size} />;
+}
+
+// The pointer of a drawing tool: a ring the size of the stroke on screen (a small cross in it when that is tiny).
+function inkCursor(hand: InkInHand, zoom: number) {
+  const d = Math.max(4, Math.min(64, Math.round(hand.size * zoom)));
+  const s = d + 4;
+  const c = s / 2;
+  const cross = d < 10 ? `<path d='M${c} ${c - 5}v10M${c - 5} ${c}h10' stroke='white' stroke-width='3'/><path d='M${c} ${c - 5}v10M${c - 5} ${c}h10' stroke='black' stroke-width='1'/>` : "";
+  const ring = `<circle cx='${c}' cy='${c}' r='${d / 2}' fill='none' stroke='white' stroke-width='2.5'/><circle cx='${c}' cy='${c}' r='${d / 2}' fill='none' stroke='black' stroke-width='1'/>`;
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='${s}' height='${s}'>${ring}${cross}</svg>`;
+  return `url("data:image/svg+xml,${encodeURIComponent(svg)}") ${c} ${c}, crosshair`;
 }

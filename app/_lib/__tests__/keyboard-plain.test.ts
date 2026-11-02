@@ -81,7 +81,11 @@ describe("plainFromLatex: structures", () => {
     expect(label("\\sqrt[#?]{#0}")).toBeNull();
     expect(label("\\binom{#?}{#?}")).toBeNull();
     expect(label("\\vec{#?}")).toBeNull(); // no letter to put the arrow on
-    expect(label("\\dot{#@}")).toBeNull();
+  });
+
+  it("puts a dot over the letter just typed: the dot alone joins it", () => {
+    expect(label("\\dot{#@}")).toEqual({ text: "\u0307", caret: 1 });
+    expect(label("\\ddot{#@}")?.text).toBe("\u0308");
   });
 
   it("reads what the Graph Studio's formula field reads", () => {
@@ -89,6 +93,18 @@ describe("plainFromLatex: structures", () => {
     expect(formula("\\sqrt{#0}", "t")?.text).toBe("√(t)");
     expect(formula("\\sin\\left(#0\\right)", "2*pi*t/12")?.text).toBe("sin(2*pi*t/12)");
     expect(formula("\\cdot")?.text).toBe("·");
+  });
+
+  // A text on the page reads no markup: scripts are the small Unicode characters, or "^(…)" when one has none.
+  it("writes scripts as small characters in a text of the page", () => {
+    const text = (latex: string, selection = "") => plainFromLatex(latex, "text", selection);
+    expect(text("#@^{2}")?.text).toBe("²");
+    expect(text("u_{n+1}")?.text).toBe("uₙ₊₁");
+    expect(text("10^{-4}")?.text).toBe("10⁻⁴");
+    expect(text("90^{\\circ}")?.text).toBe("90°");
+    expect(text("#@^{#?}")).toEqual({ text: "^()", caret: 2 });
+    expect(text("e^{#?}")).toEqual({ text: "e^()", caret: 3 });
+    expect(text("\\frac{#0}{#?}", "a")).toEqual({ text: "a/()", caret: 3 });
   });
 });
 

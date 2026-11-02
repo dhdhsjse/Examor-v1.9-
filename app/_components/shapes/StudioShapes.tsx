@@ -24,6 +24,10 @@ type Props = {
   /** A shape (or one of its handles) is picked up and let go: a Studio whose undo works by gestures makes one step of what is between */
   onGrab?: () => void;
   onRelease?: () => void;
+  /** The shapes catch the mouse without being moved (an eraser finds what is under it) */
+  hittable?: boolean;
+  /** A double-click on a shape: type its text */
+  onEdit?: (id: string) => void;
 };
 
 const setCursor = (e: Konva.KonvaEventObject<MouseEvent>, value: string) => {
@@ -39,7 +43,7 @@ const turnAngle = (deg: number) => {
 // The shapes of a Studio, drawn inside its Konva layer (they go over what the Studio draws itself). The selected one has the
 // corner handles that resize and turn it (a line has a handle at each end instead), and its yellow handles (how round, how long…).
 // Everything is in the Studio's own coordinates; `scale` only keeps the handles the same size on the screen.
-export default function StudioShapes({ shapes, selectedId, interactive, scale, onSelect, onChange, onGrab, onRelease }: Props) {
+export default function StudioShapes({ shapes, selectedId, interactive, scale, onSelect, onChange, onGrab, onRelease, hittable, onEdit }: Props) {
   const transformer = useRef<Konva.Transformer>(null);
   const [version, setVersion] = useState(0); // (a handle that was dragged is put back where the state says it is, by making a new one)
   const selected = interactive ? shapes.find((s) => s.id === selectedId) : undefined;
@@ -67,8 +71,9 @@ export default function StudioShapes({ shapes, selectedId, interactive, scale, o
           offsetX={s.w / 2}
           offsetY={s.h / 2}
           rotation={s.rotation ?? 0}
-          listening={interactive}
+          listening={interactive || !!hittable}
           draggable={interactive}
+          onDblClick={() => interactive && onEdit?.(s.id)}
           onClick={(e) => {
             if (e.evt.button !== 0) return;
             e.cancelBubble = true;
@@ -97,6 +102,8 @@ export default function StudioShapes({ shapes, selectedId, interactive, scale, o
           onMouseEnter={(e) => interactive && setCursor(e, "move")}
           onMouseLeave={(e) => setCursor(e, "")}
         >
+          {/* (a shape with text and nothing painted, a text box: its whole box catches the mouse, not only its letters) */}
+          {s.text && !s.fill && <Rect width={s.w} height={s.h} fill="transparent" />}
           <ShapeGraphic style={s} w={s.w} h={s.h} />
         </Group>
       ))}

@@ -3,7 +3,7 @@
 import type { Editor as TextEditor, JSONContent } from "@tiptap/core";
 import { Trash2 } from "lucide-react";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type DragEvent } from "react";
-import { isQuestion } from "@/app/_lib/blocks";
+import { addPart, isQuestion } from "@/app/_lib/blocks";
 import type { EditField } from "@/app/_lib/editRegions";
 import { CANVAS_BOTTOM_SPACE, CANVAS_TOP_GAP, LABEL_HEIGHT, canvasTopPadding, pageAt, pageBoxes, stackSize, type PageBox } from "@/app/_lib/pageStack";
 import { DRAG_MIME, type ToolAction } from "@/app/_lib/tools";
@@ -13,16 +13,21 @@ import type { BlockPatch, DropPoint, RevealRequest } from "@/app/_lib/useExam";
 import { useZoom } from "@/app/_lib/useZoom";
 import { chromeConfig, withChromeConfig } from "@/app/_lib/pageChrome";
 import type { ResizeResult } from "../canvas/BlockNode";
-import ExamCanvas, { type DrawnBox, type MarginEditView } from "../canvas/ExamCanvas";
+import ExamCanvas, { type BlockMover, type DrawnBox, type MarginEditView } from "../canvas/ExamCanvas";
+import { DOCKED_HEIGHT_VAR } from "../math-keyboard/FloatingKeyboard";
 import AnswerBar from "./AnswerBar";
 import ChromeBar from "./ChromeBar";
 import DeletePageDialog from "./DeletePageDialog";
 import CorrectionBar from "./CorrectionBar";
 import InlineEditor from "./InlineEditor";
 import PageStrip from "./PageStrip";
+import SubQuestionButton from "./SubQuestionButton";
 import TextboxEditor from "./TextboxEditor";
 import type { StyleMark } from "@/app/_lib/textboxEditor";
 import ToolRail, { type CanvasTool } from "./ToolRail";
+import type { InkTools } from "@/app/_lib/ink/useInkTools";
+import type { EraserTool } from "@/app/_lib/ink/useEraserTool";
+import type { DrawnInk, InkInHand } from "../canvas/ExamCanvas";
 import ZoomBar from "./ZoomBar";
 
 export interface Editing {
@@ -49,6 +54,8 @@ interface Props {
   onChromeScope: (blockId: string, to: "all" | "page") => void;
   onChromeSettings: () => void;
   onToolChange: (tool: CanvasTool) => void;
+  mathKeyboard: boolean; // the math keyboard is on (its button is in the tool bar)
+  onToggleMathKeyboard: () => void;
   onSelect: (id: string | null) => void;
   onMove: (id: string, pageId: string, x: number, y: number) => void;
   onResize: (id: string, layout: Partial<BlockLayout>) => void;
@@ -66,6 +73,14 @@ interface Props {
   onCreateText: (at: DropPoint) => void;
   onDrawBox: (box: DrawnBox) => void; // a box drawn with the text box tool (or a shape drawn with the Shapes tool)
   drawShape?: "box" | "line"; // the Shapes tool is in hand: what it draws
+  shapeToDraw: string | null; // (the shape of the Shapes tool)
+  onPickShape: (shape: string) => void; // the Shapes button of the tool bar: draw this shape
+  ink: InkTools; // the Draw button's brush, pencil and highlighter
+  onInk: (stroke: DrawnInk) => void; // a stroke drawn on a page with one of them
+  eraser: EraserTool; // the Eraser button: how it rubs and how big it is
+  onErase: (ids: readonly string[], key: string) => void; // the stroke eraser rubbed out these drawings / shapes (`key`: one stroke of it)
+  onEraseInk: (pageId: string, path: { x: number; y: number }[], radius: number, key: string) => void; // the eraser went along `path` on a page
+
   onAddPage: () => void;
   onDeletePage: (pageId: string) => void;
   onActivePageChange: (index: number) => void;
@@ -80,6 +95,14 @@ const ANSWER_BAR_KEY = "examBuilder.answerBarOpen";
 export default function Workspace(props: Props) {
   const t = useT();
   const { doc, heights, numbers, mode, selectedId, activePage, reveal, editing } = props;
+  // The drawing tool in hand (none unless the Draw tool is): its stroke is drawn on the pages.
+  const drawing = props.tool === "draw";
+  const inkTool = props.ink.tool;
+  const inkSettings = props.ink.settings[inkTool];
+  const inkInHand = useMemo<InkInHand | null>(() => (drawing ? { tool: inkTool, ...inkSettings } : null), [drawing, inkTool, inkSettings]);
+  const erasing = props.tool === "eraser";
+  const { mode: eraserMode, size: eraserSize } = props.eraser;
+  const eraserInHand = useMemo(() => (erasing ? { mode: eraserMode, size: eraserSize } : null), [erasing, eraserMode, eraserSize]);
   const { pages } = doc;
   const scrollRef = useRef<HTMLDivElement>(null);
   const stackRef = useRef<HTMLDivElement>(null);
@@ -107,6 +130,9 @@ export default function Workspace(props: Props) {
   // A resize handle is held (the text box editor stays open), and where the edited box is while resized.
   const handleHeld = useRef(false);
   const [liveBox, setLiveBox] = useState<(ResizeResult & { id: string }) | null>(null);
+  // The edited text box dragged by its edge: hidden on the canvas meanwhile, snapped and dropped by it (mover).
+  const [movingId, setMovingId] = useState<string | null>(null);
+  const mover = useRef<BlockMover | null>(null);
 
   // ---- Zoom that keeps the same spot of the page under the screen center (or the mouse) ----
 
@@ -326,7 +352,7 @@ export default function Workspace(props: Props) {
                     active={i === activePage}
                     keyMode={mode === "key"}
                     onClick={() => scrollToPage(i)}
-                    onDelete={i > 0 ? () => setAskDelete(page.id) : undefined}
+                    onDelete={doc.pages.length > 1 ? () => setAskDelete(page.id) : undefined}
                   />
                 ))}
                 <div className={`absolute inset-0 ${props.tool === "textbox" || props.tool === "shape" ? "cursor-crosshair" : ""}`}>
@@ -351,11 +377,19 @@ export default function Workspace(props: Props) {
                     drawBox={props.tool === "textbox" || props.tool === "shape"}
                     drawShape={props.tool === "shape" ? props.drawShape : undefined}
                     onDrawBox={props.onDrawBox}
+                    ink={inkInHand}
+                    onInk={props.onInk}
+                    eraser={eraserInHand}
+                    onErase={props.onErase}
+                    onEraseInk={props.onEraseInk}
                     onHandleDown={() => {
                       handleHeld.current = true;
                       window.addEventListener("mouseup", () => setTimeout(() => (handleHeld.current = false)), { once: true });
                     }}
                     onResizing={(id, r) => setLiveBox(r && editing?.id === id ? { ...r, id } : null)}
+                    hiddenId={movingId}
+                    typingId={editing && editBlock?.type === "textbox" ? editBlock.id : null}
+                    mover={mover}
                   />
                 </div>
 
@@ -376,6 +410,16 @@ export default function Workspace(props: Props) {
                     onChange={props.onRichChange}
                     onDropBoxStyle={props.onDropBoxStyle}
                     onReady={props.onTextEditor}
+                    onOpenBlock={(id) => {
+                      props.onEditDone(editBlock.id);
+                      props.onSelect(id);
+                    }}
+                    onMoveStart={() => setMovingId(editBlock.id)}
+                    onMoving={(x, y) => mover.current?.move(editBlock.id, x, y) ?? { x, y }}
+                    onMoveEnd={(x, y) => {
+                      setMovingId(null);
+                      mover.current?.end(editBlock.id, x, y);
+                    }}
                     onDone={() => props.onEditDone(editBlock.id)}
                   />
                 )}
@@ -419,19 +463,32 @@ export default function Workspace(props: Props) {
                 </div>
               )}
 
-              {/* Green answer bar under the selected question (screen size, not zoomed) */}
+              {/* Green answer bar under the selected question (screen size, not zoomed); an open question has its
+                  "+ Sub-question" button above it */}
               {question && (
                 <div
-                  className="pointer-events-none absolute z-30"
+                  className="pointer-events-none absolute z-30 flex flex-col gap-1.5"
                   style={{
                     left: blockLeft(question) * zoom,
                     top: (blockTop(question) + (heights.get(question.id) ?? 0)) * zoom + 6,
                     width: Math.max(300, question.layout.width * zoom),
                   }}
                 >
+                  {question.type === "open" && (question.parts?.length ?? 0) < 12 && (
+                    <div className="self-start">
+                      <SubQuestionButton
+                        block={question}
+                        number={numbers.get(question.id) ?? 1}
+                        lang={doc.meta.lang}
+                        onAdd={() => {
+                          props.onPatch(question.id, addPart(question), "parts");
+                          props.onEditStart(question.id, { kind: "part", i: question.parts?.length ?? 0 });
+                        }}
+                      />
+                    </div>
+                  )}
                   <AnswerBar
                     block={question}
-                    number={numbers.get(question.id) ?? 1}
                     lang={doc.meta.lang}
                     mode={mode}
                     open={answerOpen}
@@ -455,7 +512,7 @@ export default function Workspace(props: Props) {
         </div>
 
         {/* Warning before a page goes */}
-        {askDelete && pageIndex(askDelete) > 0 && (
+        {askDelete && (
           <DeletePageDialog
             page={pageIndex(askDelete) + 1}
             blocks={doc.blocks.filter((b) => b.layout.pageId === askDelete && !b.meta?.role).length}
@@ -502,9 +559,21 @@ export default function Workspace(props: Props) {
           </div>
         )}
 
-        {/* Select / Text tools + zoom (bottom-right, away from the "Page 1 of 2" labels) */}
-        <div className="pointer-events-none absolute right-4 bottom-4 flex items-center gap-2" dir="ltr">
-          <ToolRail tool={props.tool} onChange={props.onToolChange} />
+        {/* Select / Text tools, the math keyboard + zoom (bottom-right, away from the "Page 1 of 2" labels). Sits on the math keyboard
+            while it is docked at the bottom of the screen (FloatingKeyboard sets the variable). */}
+        <div
+          className="pointer-events-none absolute right-4 flex items-center gap-2"
+          style={{ bottom: `calc(var(${DOCKED_HEIGHT_VAR}, 0px) + 1rem)` }}
+          dir="ltr"
+        >
+          <ToolRail
+            tool={props.tool}
+            onChange={props.onToolChange}
+            shape={props.shapeToDraw}
+            onPickShape={props.onPickShape}
+            ink={props.ink}
+            eraser={props.eraser}
+            keyboardOpen={props.mathKeyboard} onToggleKeyboard={props.onToggleMathKeyboard} />
           <ZoomBar
             zoom={zoom}
             fitMode={fitMode}

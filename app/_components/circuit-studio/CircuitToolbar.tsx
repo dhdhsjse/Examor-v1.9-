@@ -1,9 +1,10 @@
 "use client";
 
-import { MousePointer2, Pencil, RotateCw } from "lucide-react";
+import { Cable, MousePointer2, RotateCw } from "lucide-react";
 import { drawComponent, COMPONENT_SPECS, COMPONENT_TYPES } from "@/app/_lib/circuit/symbols";
 import type { ComponentType } from "@/app/_lib/circuit/types";
 import { ShapesMenuButton } from "@/app/_components/shapes/ShapeGallery";
+import { FREEHAND_ID } from "@/app/_lib/shapes";
 import { useT } from "@/app/_lib/uiLang";
 import type { CircuitStudioState, CircuitTool } from "./useCircuitStudio";
 
@@ -29,15 +30,15 @@ const TOOL_HINTS: Record<CircuitTool, string> = {
   select: "Click a component or a wire to select it, drag it to move it",
   shape: "Drag on the drawing to draw the shape (Shift: a square or a 45° line, Alt: from the centre), or click to put it at its usual size · Esc to stop",
   wire: "Click to start a wire, click again at each corner; click a terminal (or double-click) to end it. Shift: the other way round",
-  battery: "Click the drawing to put it there · R turns it before you click · Esc to stop",
-  resistor: "Click the drawing to put it there · R turns it before you click · Esc to stop",
-  capacitor: "Click the drawing to put it there · R turns it before you click · Esc to stop",
-  inductor: "Click the drawing to put it there · R turns it before you click · Esc to stop",
-  switch: "Click the drawing to put it there · R turns it before you click · Esc to stop",
-  lamp: "Click the drawing to put it there · R turns it before you click · Esc to stop",
-  diode: "Click the drawing to put it there · R turns it before you click · Esc to stop",
-  ammeter: "Click the drawing to put it there · R turns it before you click · Esc to stop",
-  voltmeter: "Click the drawing to put it there · R turns it before you click · Esc to stop",
+  battery: "Click the drawing to put it there · R, a right-click or the round handle turns it · Esc to stop",
+  resistor: "Click the drawing to put it there · R, a right-click or the round handle turns it · Esc to stop",
+  capacitor: "Click the drawing to put it there · R, a right-click or the round handle turns it · Esc to stop",
+  inductor: "Click the drawing to put it there · R, a right-click or the round handle turns it · Esc to stop",
+  switch: "Click the drawing to put it there · R, a right-click or the round handle turns it · Esc to stop",
+  lamp: "Click the drawing to put it there · R, a right-click or the round handle turns it · Esc to stop",
+  diode: "Click the drawing to put it there · R, a right-click or the round handle turns it · Esc to stop",
+  ammeter: "Click the drawing to put it there · R, a right-click or the round handle turns it · Esc to stop",
+  voltmeter: "Click the drawing to put it there · R, a right-click or the round handle turns it · Esc to stop",
 };
 export { TOOL_HINTS };
 
@@ -48,6 +49,7 @@ export default function CircuitToolbar({ studio }: { studio: CircuitStudioState 
   const t = useT();
   const { tool, setTool, rotate, selectedComponent, selectedShape } = studio;
   const placing = tool !== "select" && tool !== "wire" && tool !== "shape";
+  const pencil = tool === "shape" && studio.shapeKind === FREEHAND_ID; // (the pencil draws a freehand shape)
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto p-4">
       <section className="flex flex-col gap-2" aria-label={t("Tools")} data-testid="circuit-tools">
@@ -58,7 +60,7 @@ export default function CircuitToolbar({ studio }: { studio: CircuitStudioState 
             {t("Select")}
           </button>
           <button onClick={() => setTool(tool === "wire" ? "select" : "wire")} aria-pressed={tool === "wire"} data-tool="wire" title={t(TOOL_HINTS.wire)} className={button(tool === "wire")}>
-            <Pencil size={18} />
+            <Cable size={18} />
             {t("Wire")}
           </button>
           <button onClick={() => rotate(90)} disabled={!placing && !selectedComponent && !selectedShape} data-tool="rotate" title={`${t("Turn a quarter")} (R)`} className={`${button(false)} disabled:opacity-40`}>
@@ -67,13 +69,13 @@ export default function CircuitToolbar({ studio }: { studio: CircuitStudioState 
           </button>
         </div>
         <p className="text-xs text-muted" data-testid="circuit-tool-hint">
-          {t(TOOL_HINTS[tool])}
+          {pencil ? t("Draw freely on the drawing with the mouse · Esc to stop") : t(TOOL_HINTS[tool])}
         </p>
       </section>
 
       <section className="flex flex-col gap-2" aria-label={t("Shapes")} data-testid="circuit-shapes">
         <h3 className="text-xs font-semibold uppercase tracking-wide text-faint">{t("Shapes")}</h3>
-        <ShapesMenuButton active={tool === "shape"} current={tool === "shape" ? studio.shapeKind : null} onPick={studio.pickShape} />
+        <ShapesMenuButton active={tool === "shape" && !pencil} current={tool === "shape" && !pencil ? studio.shapeKind : null} onPick={studio.pickShape} />
       </section>
 
       <section className="flex flex-col gap-2" aria-label={t("Components")} data-testid="circuit-components">

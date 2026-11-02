@@ -3,7 +3,7 @@
 import type { Editor as TextEditor, JSONContent } from "@tiptap/core";
 import type Konva from "konva";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { CONTENT_WIDTH } from "@/app/_lib/a4";
+import { CONTENT_WIDTH, PAGE_MARGIN } from "@/app/_lib/a4";
 import { pageMargins } from "@/app/_lib/onboarding/applyOnboarding";
 import { pageSize } from "@/app/_lib/pageFormats";
 import { focusMathfield } from "@/app/_lib/activeMathfield";
@@ -16,15 +16,21 @@ import {
   blockLabel,
   insertOption,
   isQuestion,
+  nextTaskTitle,
   questionNumbers,
+  screenHeights,
   type BlockPreset,
 } from "@/app/_lib/blocks";
 import { editRegions, fieldKey, fieldPatch, fieldValue, type EditField } from "@/app/_lib/editRegions";
 import { figureDef } from "@/app/_lib/figures";
 import { newId } from "@/app/_lib/id";
 import { preloadImages, readImageFile } from "@/app/_lib/images";
-import { plainText } from "@/app/_lib/richText";
-import { richFromDoc } from "@/app/_lib/textboxDoc";
+import { sizingAfterResize } from "@/app/_lib/blockLayout";
+import { insertSnippet, snippetFor } from "@/app/_lib/textSnippets";
+import { canEmbed, newEmbedded } from "@/app/_lib/textboxSlots";
+import { drawInlineMath, inlineMathUrl, type InlineMath } from "@/app/_lib/inlineMath";
+import { isRich, parseRich, plainText } from "@/app/_lib/richText";
+import { docParagraphs, richFromDoc, textboxDoc } from "@/app/_lib/textboxDoc";
 import type { StyleMark } from "@/app/_lib/textboxEditor";
 import { BUILTIN_ASSETS, svgUrl, type Asset, type AssetKind } from "@/app/_lib/library";
 import { imagesToPdf, stagePageImages } from "@/app/_lib/pdf";
@@ -42,8 +48,13 @@ import BarRenderer from "@/app/_features/core/BarRenderer";
 import type { BarPosition, Ctx, MarginEdit, RightTab, Shell } from "@/app/_features/core/types";
 import { blockInspectorFor, findSectionFeature } from "@/app/_features/sections";
 import { defaultSize, picturesOf, shapeDef } from "@/app/_lib/shapes";
-import type { DrawnBox } from "./canvas/ExamCanvas";
+import type { DrawnBox, DrawnInk } from "./canvas/ExamCanvas";
+import { FREEHAND_ID } from "@/app/_lib/shapes";
+import { inkToShape } from "@/app/_lib/ink/engine";
+import { useInkTools } from "@/app/_lib/ink/useInkTools";
+import { useEraserTool } from "@/app/_lib/ink/useEraserTool";
 import type { CanvasTool } from "./workspace/ToolRail";
+import type { OpenedTarget } from "./math-keyboard/FloatingKeyboard";
 import Workspace, { type Editing } from "./workspace/Workspace";
 
 const fileName = (title: string) => title.replace(/[\\/:*?"<>|]+/g, "").trim() || "exam";
@@ -123,6 +134,8 @@ export default function Editor() {
   const eqTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const [tool, setTool] = useState<CanvasTool>("select");
   const [shapeToDraw, setShapeToDraw] = useState<string | null>(null); // (Insert → Shapes: what the Shapes tool draws)
+  const ink = useInkTools(); // the Draw tool: its brush, pencil and highlighter and how each draws (kept between sessions)
+  const eraser = useEraserTool(); // the Eraser: how it rubs (parts of the drawings, or whole ones) and how big it is (kept between sessions)
   const [editing, setEditing] = useState<Editing | null>(null);
   const [textEditor, setTextEditor] = useState<TextEditor | null>(null); // Tiptap editor of the text box being typed in
   const [session, setSession] = useState(0); // +1 for each new/opened exam (resets the zoom)
@@ -159,6 +172,7 @@ export default function Editor() {
 
   const heights = useMemo(() => blockHeights(doc), [doc]);
   const numbers = useMemo(() => questionNumbers(doc.blocks, doc.pages), [doc]);
+  const drawnHeights = useMemo(() => screenHeights(doc, heights, selectedId), [doc, heights, selectedId]);
   const stats = useMemo(() => {
     const questions = doc.blocks.filter(isQuestion);
     return { questions: questions.length, points: questions.reduce((s, q) => s + q.points, 0), pages: doc.pages.length };
@@ -317,12 +331,52 @@ export default function Editor() {
     notify(tr("Drag on the page to draw the shape — Esc to cancel"));
   };
 
+  // A new block right under another one (under its text box when it sits in one), pushing down what is there: an equation's graph or
+  // table of variations. It is a block of the page, never put in the text box.
+  const insertBelow = (sourceId: string, type: BlockType, preset: BlockPreset) => {
+    const source = doc.blocks.find((b) => b.id === sourceId);
+    const anchor = (source?.meta?.slot && doc.blocks.find((b) => b.id === source.meta?.slot)) || source;
+    if (!anchor) return void runTool({ kind: "block", type, preset });
+    const pageIndex = Math.max(0, doc.pages.findIndex((p) => p.id === anchor.layout.pageId));
+    const y = anchor.layout.y + (heights.get(anchor.id) ?? anchor.layout.height) + 16;
+    // A table goes from the page's margin (it is as wide as the text); a graph is centered under the equation.
+    const page = doc.pages[pageIndex];
+    const x = type === "table" ? (page?.margins?.left ?? PAGE_MARGIN) : anchor.layout.x + anchor.layout.width / 2 - (preset.width ?? (type === "graph" ? 320 : anchor.layout.width)) / 2;
+    const block = exam.addBlock(type, preset, { pageIndex, x: Math.max(0, x), y, corner: true });
+    exam.moveBlock(block.id, block.layout.pageId, block.layout.x, block.layout.y); // (what it lands on goes down)
+    setEditing(null);
+    setTab("properties");
+    setActiveInspectorId(inspectorFor(block));
+  };
+
   const runTool = (action: ToolAction, at?: DropPoint) => {
     // Another tool used meanwhile: no text box or shape is drawn any more.
-    setTool((cur) => (cur === "textbox" || cur === "shape" ? "select" : cur));
+    setTool((cur) => (cur === "textbox" || cur === "shape" || cur === "draw" ? "select" : cur));
+    // A question type or a table picked while a text box is being typed in is a real block placed in that box's text, at the cursor
+    // (textboxSlots.ts). It is then edited like any block, as when added on the page.
+    const box = textEditor && !at ? doc.blocks.find((b) => b.id === editing?.id) : undefined;
+    if (box?.type === "textbox" && textEditor) {
+      if (action.kind === "block" && canEmbed(action.type)) {
+        const { block, slotContent } = newEmbedded(box, action.type, doc.meta.lang, action.preset);
+        textEditor.chain().focus().insertContent(slotContent).run();
+        setTab("properties");
+        setActiveInspectorId(inspectorFor(block));
+        exam.setSelectedId(block.id);
+        setEditing(TYPE_ON_ADD.includes(block.type) ? { id: block.id, field: { kind: "text" }, selectAll: true } : null);
+        return;
+      }
+      const snippet = snippetFor(action, { lang: doc.meta.lang, blocks: doc.blocks });
+      if (snippet) return insertSnippet(textEditor, snippet);
+    }
     switch (action.kind) {
       case "block": {
-        const block = exam.addBlock(action.type, action.preset, at);
+        // A new exercise title follows the ones already in the exam ("Exercice 2 :", ...).
+        const textPreset = action.type === "text" ? (action.preset as { style?: string; text?: string } | undefined) : undefined;
+        const preset =
+          textPreset?.style === "heading" && textPreset.text === undefined
+            ? { ...action.preset, text: nextTaskTitle(doc.blocks, doc.meta.lang) }
+            : action.preset;
+        const block = exam.addBlock(action.type, preset, at);
         setTab("properties");
         setActiveInspectorId(inspectorFor(block));
         // Write right away on the page: the starting text is selected, so typing replaces it.
@@ -410,6 +464,29 @@ export default function Editor() {
       toggleKeyboard(true);
       setTimeout(focusMathfield, 80);
     }
+  };
+
+  // A math keyboard key pressed with no text open. Its text form goes in the selected block's first text (opened for typing), its LaTeX
+  // in the selected equation (the Properties panel is shown for its field), or in a new equation when nothing that takes text is selected.
+  const openForTyping = (): OpenedTarget => {
+    const block = selectedId ? doc.blocks.find((b) => b.id === selectedId) : undefined;
+    const showEquationField = () => {
+      setBarOpen("bar.right-panel", true);
+      setTab("properties");
+      setActiveInspectorId(null);
+    };
+    if (block?.type === "equation") {
+      showEquationField();
+      return "equation";
+    }
+    const first = block && editRegions(block, numbers.get(block.id) ?? 1, doc.meta, mode)[0];
+    if (block && first) {
+      setEditing({ id: block.id, field: first.field });
+      return "field";
+    }
+    runTool({ kind: "block", type: "equation" });
+    showEquationField();
+    return "new-equation";
   };
 
   const editChange = (value: string) => {
@@ -506,6 +583,15 @@ export default function Editor() {
     runTool({ kind: "block", type: "shape", preset }, { pageIndex: box.pageIndex, x: click ? box.x - width / 2 : box.x, y: click ? box.y - height / 2 : box.y, corner: true });
   };
 
+  // Draw tool: each stroke is a shape of the page (a freehand one drawn as ink), so it moves, stretches and is undone like any
+  // shape. The tool stays in hand: a drawing is many strokes.
+  const drawInk = ({ pageIndex, tool: inkTool, settings, points }: DrawnInk) => {
+    const s = inkToShape(points, settings.size);
+    if (!s) return;
+    const preset = { shape: FREEHAND_ID, ink: inkTool, stroke: settings.color, strokeWidth: settings.size, adj: s.adj, pressure: s.pressure, width: s.w, height: s.h };
+    exam.addBlock("shape", preset, { pageIndex, x: s.x, y: s.y, corner: true }, { quiet: true });
+  };
+
   // Equation typed in MathLive: save the LaTeX now, redraw it shortly after.
   const onLatex = (block: Block, latex: string) => {
     if (block.type !== "equation") return;
@@ -549,7 +635,27 @@ export default function Editor() {
   // Draw a clean copy off-screen (fonts and pictures loaded first) and return its pages as images.
   const renderPages = async (m: ViewMode, pixelRatio: number, quality: number) => {
     const srcs = doc.blocks.flatMap((b) => (b.type === "image" ? [b.src, ...(b.srcAnswer ? [b.srcAnswer] : [])] : b.type === "equation" && b.svg ? [svgUrl(b.svg)] : b.type === "table" ? picturesOf(b.shapes) : []));
-    await Promise.all([preloadImages(srcs), document.fonts.ready]);
+    // The formulas written in the text — of the text boxes, and of every other block (questions, tables, headers…): their drawings
+    // (made by MathJax first for those that keep none), loaded before the copy is drawn, else the page is taken without them.
+    const mathIn = (v: unknown): InlineMath[] =>
+      typeof v === "string"
+        ? isRich(v)
+          ? parseRich(v).flatMap((r) => (r.style.math ? [r.style.math] : []))
+          : []
+        : Array.isArray(v)
+          ? v.flatMap(mathIn)
+          : v && typeof v === "object"
+            ? Object.values(v).flatMap(mathIn)
+            : [];
+    const formulas = await Promise.all(
+      doc.blocks
+        .flatMap((b) => [
+          ...(b.type === "textbox" ? docParagraphs(textboxDoc(b)).flatMap((p) => p.runs.flatMap((r) => (r.style.math ? [r.style.math] : []))) : []),
+          ...(b.type === "image" ? mathIn(b.caption) : b.type === "equation" ? [] : mathIn(b)),
+        ])
+        .map((m) => inlineMathUrl(m) ?? drawInlineMath(m.latex).then((d) => d.url, () => "")),
+    );
+    await Promise.all([preloadImages([...srcs, ...formulas]), document.fonts.ready]);
     const stage = await new Promise<Konva.Stage>((resolve) => setExportJob({ doc, mode: m, resolve }));
     try {
       return stagePageImages(stage, doc.pages, pixelRatio, quality);
@@ -637,12 +743,20 @@ export default function Editor() {
       } else if (key === "escape") {
         exam.setSelectedId(null);
         setTool("select");
-      } else if (!mod && key === "t") {
-        setTool("text");
       } else if (!mod && key === "b") {
         setCanvasTool("textbox");
       } else if (!mod && key === "v") {
         setTool("select");
+      } else if (!mod && !e.altKey && key === "p") {
+        // P: the Draw tool (again: the next of its brush, pencil and highlighter)
+        if (tool === "draw") ink.cycle();
+        setTool("draw");
+      } else if (!mod && !e.altKey && key === "e") {
+        // E: the eraser (again: back to Select)
+        setTool(tool === "eraser" ? "select" : "eraser");
+      } else if (!mod && !e.altKey && (key === "r" || key === "o" || key === "l")) {
+        // The shapes of the tool bar's Shapes menu (Shift+L: the arrow).
+        drawShape(key === "r" ? "rect" : key === "o" ? "ellipse" : e.shiftKey ? "arrow" : "line");
       } else if (selected && key.startsWith("arrow")) {
         // Arrow keys nudge the selected block (Shift = 10px).
         e.preventDefault();
@@ -687,6 +801,8 @@ export default function Editor() {
     redo: exam.redo,
     busy,
     runTool: (action) => runTool(action),
+    insertBelow,
+    stepInBox: exam.stepInBox,
     canvasTool: tool,
     setCanvasTool,
     shapeToDraw,
@@ -742,6 +858,7 @@ export default function Editor() {
     replaceImage: (id) => void replaceImage(id),
     mathKeyboard: mathKb,
     toggleMathKeyboard: (open) => toggleKeyboard(open ?? !mathKb),
+    openForTyping,
     picker,
     openPicker: () => setPicker({ open: true, mustPick: false }),
     closePicker: () => setPicker({ open: false, mustPick: false }),
@@ -774,7 +891,7 @@ export default function Editor() {
     chartStudio,
     openChartStudio: (blockId) => setChartStudio({ open: true, blockId: blockId ?? null }),
     closeChartStudio: () => setChartStudio({ open: false, blockId: null }),
-    openTableStudio: (blockId, start) => setTableStudio({ open: true, blockId: blockId ?? null, start }),
+    openTableStudio: (blockId, shape) => setTableStudio({ open: true, blockId: blockId ?? null, shape }),
     closeTableStudio: () => setTableStudio({ open: false, blockId: null }),
     circuitStudio,
     openCircuitStudio: (blockId) => setCircuitStudio({ open: true, blockId: blockId ?? null }),
@@ -821,7 +938,7 @@ export default function Editor() {
             <Workspace
               key={session}
               doc={doc}
-              heights={heights}
+              heights={drawnHeights}
               numbers={numbers}
               mode={mode}
               selectedId={selectedId}
@@ -835,8 +952,17 @@ export default function Editor() {
         onChromeScope={exam.chromeScope}
         onChromeSettings={() => openInspector(HEADER_FOOTER_INSPECTOR)}
               onToolChange={setCanvasTool}
+              mathKeyboard={mathKb}
+              onToggleMathKeyboard={() => toggleKeyboard()}
               onDrawBox={drawOnPage}
+              ink={ink}
+              onInk={drawInk}
+              eraser={eraser}
+              onErase={exam.eraseBlocks}
+              onEraseInk={exam.eraseInk}
               drawShape={tool === "shape" && shapeToDraw ? (shapeDef(shapeToDraw).line ? "line" : "box") : undefined}
+              shapeToDraw={shapeToDraw}
+              onPickShape={drawShape}
               onPatch={(id, patch, field) => exam.updateBlock(id, patch, { key: `${id}:${field}` })}
               onEditStart={startEdit}
               onEditChange={editChange}
@@ -849,7 +975,12 @@ export default function Editor() {
               onCreateText={createText}
               onSelect={select}
               onMove={exam.moveBlock}
-              onResize={(id, layout) => exam.updateBlock(id, { layout })}
+              onResize={(id, layout) => {
+                // Dragging an edge of an auto-sized text box gives it that size, as in Figma (blockLayout.sizingAfterResize).
+                const b = doc.blocks.find((x) => x.id === id);
+                const sizing = b?.type === "textbox" ? sizingAfterResize(b, doc.meta, layout) : undefined;
+                exam.updateBlock(id, { layout, ...(b?.type === "textbox" && sizing !== b.sizing ? { sizing } : {}) });
+              }}
               onAddPage={() => exam.addPage()}
               onDeletePage={exam.deletePage}
               onActivePageChange={exam.setActivePage}

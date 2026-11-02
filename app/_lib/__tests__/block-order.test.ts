@@ -56,17 +56,11 @@ describe("Alt+click: the blocks under a point", () => {
 });
 
 describe("dropping a block on another one", () => {
-  it("free objects lie on top of each other: nothing is pushed down", () => {
+  it("a picture and a text box lie on top of each other: nothing is pushed down", () => {
     const list = [block("img", "image", 0, 100), block("box", "textbox", 0, 100)];
-    expect(pushDownOverlaps(list, "box", heights(list), 1000)).toBe(list);
+    const next = pushDownOverlaps(list, "box", heights(list), 1000);
+    expect(next.map((b) => b.layout.y)).toEqual([100, 100]);
     expect(isFloating(list[0]) && isFloating(list[1])).toBe(true);
-  });
-
-  it("a question dropped on a picture does not push it either", () => {
-    const list = [block("img", "image", 0, 100), block("q", "mcq", 0, 100)];
-    const next = pushDownOverlaps(list, "q", heights(list), 1000);
-    expect(next.find((b) => b.id === "img")?.layout.y).toBe(100);
-    expect(next.find((b) => b.id === "q")?.layout.y).toBe(100);
   });
 
   it("questions still push each other down (the one dropped keeps its place)", () => {

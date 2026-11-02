@@ -2,28 +2,26 @@
 
 import { useEffect } from "react";
 import type { Ctx } from "@/app/_features/core/types";
-import FloatingKeyboard from "./FloatingKeyboard";
-import KeyboardLauncher from "./KeyboardLauncher";
 import { trackTextFields } from "./fieldTarget";
+import FloatingKeyboard from "./FloatingKeyboard";
 import { keyboardState } from "./keyboardState";
 import { setKeyboardSubject } from "./keyboardStore";
 
-// The math keyboard over the pages: the button to show / hide it, and the keyboard itself, which types in the place last clicked to type:
-// an equation, a text or a cell on the sheet, a box of the Properties panel. A studio
-// that is open covers the page and has its own button and keyboard (StudioKeyboard), so this one steps aside then.
+// The math keyboard over the pages, while the teacher has it on (its button is in the tool bar, next to Select and Text). It types in
+// the text last clicked in, or else the equation of the Properties panel; with neither, a key opens the selected block's text (or a new
+// equation) and types there (shell.openForTyping). A studio that is open covers the page and has its own button
+// and keyboard (StudioKeyboard), so this one steps aside then.
 export default function PageKeyboard({ ctx }: { ctx: Ctx }) {
   const { shell } = ctx;
 
   // The exam's subject picks Math or Physics keys until the teacher picks by hand; the studios, which do not know the exam, read it here.
   useEffect(() => setKeyboardSubject(shell.subject), [shell.subject]);
+  useEffect(() => trackTextFields(), []);
 
-  const studioOpen = shell.graphStudio.open || shell.circuitStudio.open || shell.tableStudio.open || shell.mathGraphStudio.open || shell.chartStudio.open || shell.molecule.open || shell.moleculeLab.open;
-  // The page follows the places typed in only while the page is the one in front (a studio follows its own).
-  useEffect(() => (studioOpen ? undefined : trackTextFields("text")), [studioOpen]);
+  const studioOpen = shell.graphStudio.open || shell.circuitStudio.open || shell.tableStudio.open || shell.molecule.open || shell.moleculeLab.open;
   return (
     <div className="pointer-events-none absolute inset-0 z-40">
-      <KeyboardLauncher ctx={ctx} />
-      {!studioOpen && keyboardState(shell).visible && <FloatingKeyboard target="page" onClose={() => shell.toggleMathKeyboard(false)} />}
+      {!studioOpen && keyboardState(shell).visible && <FloatingKeyboard where="page" onClose={() => shell.toggleMathKeyboard(false)} openTarget={shell.openForTyping} />}
     </div>
   );
 }

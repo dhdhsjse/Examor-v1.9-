@@ -1,7 +1,7 @@
+import { defaultDividerLabel } from "./divider";
 import { CONTENT_WIDTH, PAGE_MARGIN } from "./a4";
 import { pageSize } from "./pageFormats";
 import { blockHeight } from "./blockLayout";
-import { isFloating } from "./blockOrder";
 import { newId } from "./id";
 import { defaultSize } from "./shapes";
 import { EX_PX } from "./math";
@@ -48,6 +48,7 @@ export const BLOCK_TYPE_NAMES: Record<BlockType, string> = {
   header: "Exam header",
   textbox: "Text box",
   shape: "Shape",
+  divider: "Separator",
 };
 
 // Questions start empty, so the teacher types right away instead of deleting sample text first.
@@ -78,6 +79,24 @@ const DEFAULTS = {
   },
 };
 
+// Title of the n-th exercise of the exam ("Exercice 2 :"), in the exam's language.
+const AR_ORDINALS = ["الأول", "الثاني", "الثالث", "الرابع", "الخامس", "السادس", "السابع", "الثامن", "التاسع", "العاشر"];
+export function taskTitle(n: number, lang: Lang): string {
+  return lang === "ar" ? `التمرين ${AR_ORDINALS[n - 1] ?? n} :` : `Exercice ${n} :`;
+}
+
+// Title for a new exercise: numbered after the exercise titles already in the exam (title blocks, and title
+// lines typed in text boxes).
+export function nextTaskTitle(blocks: Block[], lang: Lang): string {
+  const isTask = lang === "ar" ? /^\s*التمرين/ : /^\s*exercice\b/i;
+  let count = 0;
+  for (const b of blocks) {
+    if (b.type === "text" && b.style !== "body" && isTask.test(plainText(b.text))) count++;
+    else if (b.type === "textbox") count += plainText(b.text).split("\n").filter((l) => isTask.test(l)).length;
+  }
+  return taskTitle(count + 1, lang);
+}
+
 // Ghost examples shown in empty question texts, in the exam's language.
 const HINTS = {
   fr: {
@@ -94,7 +113,9 @@ const HINTS = {
     items: ["Première étape", "Deuxième étape", "Troisième étape", "Quatrième étape"],
     classify: "Classez les mots suivants dans le tableau :",
     groups: ["Noms", "Verbes"],
+    bank: "mot … / mot … / mot … / mot …",
     part: "Sous-question",
+    statement: "Énoncé (facultatif) : données, texte, situation…",
   },
   ar: {
     question: "اكتب سؤالك هنا",
@@ -110,9 +131,17 @@ const HINTS = {
     items: ["المرحلة الأولى", "المرحلة الثانية", "المرحلة الثالثة", "المرحلة الرابعة"],
     classify: "صنف الكلمات التالية في الجدول :",
     groups: ["أسماء", "أفعال"],
+    bank: "كلمة … / كلمة … / كلمة … / كلمة …",
     part: "سؤال فرعي",
+    statement: "السند (اختياري) : معطيات، نص، وضعية…",
   },
 };
+
+// The ghost examples of an open question's question and statement, for its texts being typed in (InlineEditor).
+export function openHints(lang: Lang) {
+  const h = HINTS[lang] ?? HINTS.fr;
+  return { question: h.question, statement: h.statement };
+}
 
 const GHOST = "#b4b9c3";
 // An empty text gets its example in light grey; a filled one stays as it is.
@@ -120,8 +149,9 @@ const ghost = (value: string, hint: string | undefined) => (value.trim() || !hin
 
 // The block as drawn on screen: empty question texts show a ghost example. Only for the editor
 // canvas: the saved block stays empty, and printing / export draw the real block.
-// (Only one-line texts, so the block keeps the height computed from its real content.)
-export function withHints(b: Block, lang: Lang): Block {
+// (Only one-line texts, so the block keeps the height computed from its real content.) `statement`: an open question without
+// a statement also shows its ghost statement line (the selected one: it is one line taller on screen, see screenHeights).
+export function withHints(b: Block, lang: Lang, opts: { statement?: boolean } = {}): Block {
   const h = HINTS[lang] ?? HINTS.fr;
   switch (b.type) {
     case "mcq":
@@ -131,15 +161,23 @@ export function withHints(b: Block, lang: Lang): Block {
     case "blank":
       return { ...b, text: ghost(b.text, h.blank), content: ghost(b.content, h.content) };
     case "open":
-      return { ...b, text: ghost(b.text, h.question), parts: b.parts?.map((p, i) => ({ ...p, text: ghost(p.text, `${h.part} ${i + 1}`) })) };
+      return {
+        ...b,
+        text: ghost(b.text, h.question),
+        ...(opts.statement ? { context: ghost(b.context ?? "", h.statement) } : {}),
+        parts: b.parts?.map((p, i) => ({ ...p, text: ghost(p.text, `${h.part} ${i + 1}`) })),
+      };
     case "match":
       return { ...b, text: ghost(b.text, h.match), pairs: b.pairs.map((p, i) => ({ ...p, left: ghost(p.left, h.left(i + 1)), right: ghost(p.right, h.right(i + 1)) })) };
     case "order":
       // "Sentence" style: the words are the items, they are not shown one per line.
       if (b.style === "sentence") return { ...b, text: ghost(b.text, h.order) };
       return { ...b, text: ghost(b.text, h.order), items: b.items.map((it, i) => ghost(it, h.items[i] ?? h.items[0])) };
-    case "classify":
-      return { ...b, text: ghost(b.text, h.classify), groups: b.groups.map((g, i) => ({ ...g, name: ghost(g.name, h.groups[i]) })) };
+    case "classify": {
+      // The selected one with no words yet shows where they will go: a ghost box of words, filled as the categories are.
+      const empty = !b.hideBank && !b.groups.some((g) => g.items.some((w) => plainText(w).trim()));
+      return { ...b, text: ghost(b.text, h.classify), groups: b.groups.map((g, i) => ({ ...g, name: ghost(g.name, h.groups[i]) })), ...(empty && opts.statement ? { bankHint: h.bank } : {}) };
+    }
     default:
       return b;
   }
@@ -223,6 +261,8 @@ export function createBlock(type: BlockType, lang: Lang, pageId: string, preset:
         return { type, text: "" };
       case "shape":
         return { type, shape: "rect" };
+      case "divider":
+        return { type, style: "solid" as const, label: defaultDividerLabel(lang) };
     }
   })();
 
@@ -357,6 +397,17 @@ export function blockHeights(doc: ExamDoc): Map<string, number> {
   return new Map(doc.blocks.map((b) => [b.id, blockHeight(b, numbers.get(b.id) ?? 1, doc.meta)]));
 }
 
+// The heights as drawn on screen: the selected open question without a statement shows its ghost statement line
+// (withHints), so it is that much taller there. Printing and placing blocks use the real heights.
+export function screenHeights(doc: ExamDoc, heights: Map<string, number>, selectedId: string | null): Map<string, number> {
+  const b = doc.blocks.find((x) => x.id === selectedId);
+  // (the selected "sort into groups" with no words yet shows its ghost box of words too)
+  const ghostBank = b?.type === "classify" && !b.hideBank && !b.groups.some((g) => g.items.some((w) => plainText(w).trim()));
+  if (!ghostBank && (b?.type !== "open" || plainText(b.context ?? "").trim())) return heights;
+  const n = questionNumbers(doc.blocks, doc.pages).get(b.id) ?? 1;
+  return new Map(heights).set(b.id, blockHeight(withHints(b, doc.meta.lang, { statement: true }), n, doc.meta));
+}
+
 // Y position just below the lowest block of a page, so new blocks stack neatly.
 export function nextFreeY(blocks: Block[], heights: Map<string, number>, top = PAGE_MARGIN): number {
   const gap = 14;
@@ -376,16 +427,25 @@ export function patchPart(parts: OpenPart[], i: number, patch: Partial<OpenPart>
   return { parts: next, points: next.reduce((s, p) => s + p.points, 0) };
 }
 
+// Two blocks that may lie over each other. Shapes and pictures are laid freely on the page: over each other, or over a text box (a picture in a frame, a photo on a
+// colored shape…). Nothing is pushed away for them.
+const LOOSE = new Set<Block["type"]>(["shape", "image"]);
+const mayOverlap = (a: Block, b: Block) => (LOOSE.has(a.type) && (LOOSE.has(b.type) || b.type === "textbox")) || (LOOSE.has(b.type) && a.type === "textbox");
+
 // After a block is dropped: blocks it covers are pushed down below it (and so on),
 // so nothing overlaps and the reading order (question numbers) matches what you see. Objects placed freely (text boxes, pictures,
 // shapes, graphs, tables, equations) are left out: they may lie on top of each other and on the text.
 export function pushDownOverlaps(blocks: Block[], movedId: string, heights: Map<string, number>, pageHeight: number): Block[] {
   const gap = 14;
   const moved = blocks.find((b) => b.id === movedId);
-  if (!moved || isFloating(moved)) return blocks;
+  if (!moved) return blocks;
   const h = (b: Block) => heights.get(b.id) ?? 0;
   const sideBySide = (a: Block, b: Block) => a.layout.x + a.layout.width <= b.layout.x || b.layout.x + b.layout.width <= a.layout.x;
-  const samePage = blocks.filter((b) => b.layout.pageId === moved.layout.pageId && !sideBySide(b, moved) && b.id !== movedId && !isFloating(b));
+  // (a block inside a text box is placed by its box, and not pushed on its own; a shape may lie over another shape or a text
+  // box, or a text box over a shape: neither of them moves)
+  const samePage = blocks.filter(
+    (b) => b.layout.pageId === moved.layout.pageId && !sideBySide(b, moved) && b.id !== movedId && !b.meta?.slot && !mayOverlap(b, moved),
+  );
 
   // A block that starts higher but reaches into the dropped one: the dropped one goes below it.
   let y = moved.layout.y;
