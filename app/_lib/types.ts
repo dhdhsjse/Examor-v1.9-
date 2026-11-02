@@ -1,6 +1,7 @@
 import type { JSONContent } from "@tiptap/core";
 import type { MoleculeGraph } from "@/app/_lib/chemistry/types";
 import type { CircuitConfig } from "@/app/_lib/circuit/types";
+import type { ProbaConfig } from "@/app/_lib/proba/types";
 import type { GraphConfig } from "@/app/_lib/graph/types";
 import type { ListKind } from "@/app/_lib/lists";
 import type { ShapeStyle } from "@/app/_lib/shapes/types";
@@ -263,6 +264,7 @@ export interface ImageBlock extends BlockBase {
   drawing?: MoleculeGraph; // a drawing made by hand in the drawing Studio: `src` is its picture, redrawn on edit
   graphStudio?: GraphConfig; // a graph paper from the Graph Studio: `src` is its picture, redrawn on edit
   circuitStudio?: CircuitConfig; // a circuit from the Circuit Studio: `src` is its picture, redrawn on edit
+  probaStudio?: ProbaConfig; // probability trees and figures from the Probability Studio: `src` is their picture, redrawn on edit
   // Text printed under the picture (a description, a legend, a source…), rich text. `layout.height` stays the picture's own
   // height: the caption is added below it (blockHeight).
   caption?: string;

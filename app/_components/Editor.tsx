@@ -125,6 +125,7 @@ export default function Editor() {
   const [moleculeLab, setMoleculeLab] = useState<Shell["moleculeLab"]>({ open: false, blockId: null }); // the drawing Studio
   const [graphStudio, setGraphStudio] = useState<Shell["graphStudio"]>({ open: false, blockId: null }); // the Graph Studio
   const [circuitStudio, setCircuitStudio] = useState<Shell["circuitStudio"]>({ open: false, blockId: null }); // the Circuit Studio
+  const [probaStudio, setProbaStudio] = useState<Shell["probaStudio"]>({ open: false, blockId: null }); // the Probability Studio
   const [tableStudio, setTableStudio] = useState<Shell["tableStudio"]>({ open: false, blockId: null }); // the Table Studio
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
@@ -284,7 +285,7 @@ export default function Editor() {
     if (!file || !block) return;
     const { src, ratio } = await readImageFile(file);
     // A picture that was drawn in a Studio is no longer that drawing: double-click must not reopen the old one.
-    exam.updateBlock(id, { src, ratio, drawing: undefined, molecule: undefined, graphStudio: undefined, circuitStudio: undefined, layout: { height: block.layout.width / ratio } });
+    exam.updateBlock(id, { src, ratio, drawing: undefined, molecule: undefined, graphStudio: undefined, circuitStudio: undefined, probaStudio: undefined, layout: { height: block.layout.width / ratio } });
   };
 
   // Keep a copy of a block in "My blocks" (without its place on the page or its header/footer role).
@@ -416,6 +417,9 @@ export default function Editor() {
       case "circuit-studio":
         setCircuitStudio({ open: true, blockId: null });
         break;
+      case "proba-studio":
+        setProbaStudio({ open: true, blockId: null });
+        break;
       case "table-studio":
         setTableStudio({ open: true, blockId: null });
         break;
@@ -447,6 +451,8 @@ export default function Editor() {
     if (block?.type === "image" && block.graphStudio) return setGraphStudio({ open: true, blockId: id });
     // A circuit reopens in the Circuit Studio, with its components and wires.
     if (block?.type === "image" && block.circuitStudio) return setCircuitStudio({ open: true, blockId: id });
+    // A probability drawing reopens in the Probability Studio, with its trees and figures.
+    if (block?.type === "image" && block.probaStudio) return setProbaStudio({ open: true, blockId: id });
     if (field) setEditing({ id, field });
     else if (block?.type === "equation") {
       toggleKeyboard(true);
@@ -713,7 +719,7 @@ export default function Editor() {
         setBarOpen(bar.id);
         return;
       }
-      if (typing || picker.open || preview || history || molecule.open || moleculeLab.open || graphStudio.open || circuitStudio.open || tableStudio.open) return;
+      if (typing || picker.open || preview || history || molecule.open || moleculeLab.open || graphStudio.open || circuitStudio.open || probaStudio.open || tableStudio.open) return;
 
       if (mod && key === "z") {
         e.preventDefault();
@@ -765,7 +771,7 @@ export default function Editor() {
   // Copy, cut and paste of whole blocks (when no text is being typed in).
   const clipboard = useBlockClipboard({
     selected,
-    active: !(picker.open || preview || history || molecule.open || moleculeLab.open || graphStudio.open || circuitStudio.open || tableStudio.open),
+    active: !(picker.open || preview || history || molecule.open || moleculeLab.open || graphStudio.open || circuitStudio.open || probaStudio.open || tableStudio.open),
     deleteBlock: exam.deleteBlock,
     pasteBlock: exam.pasteBlock,
     addText: (text) => exam.addBlock("text", { text, style: "body" }),
@@ -877,6 +883,9 @@ export default function Editor() {
     circuitStudio,
     openCircuitStudio: (blockId) => setCircuitStudio({ open: true, blockId: blockId ?? null }),
     closeCircuitStudio: () => setCircuitStudio({ open: false, blockId: null }),
+    probaStudio,
+    openProbaStudio: (blockId) => setProbaStudio({ open: true, blockId: blockId ?? null }),
+    closeProbaStudio: () => setProbaStudio({ open: false, blockId: null }),
     restore,
     exportJob,
     toast,

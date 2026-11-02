@@ -95,7 +95,7 @@ export function ImageEditor({ b, lang, meta, onChange, onReplace }: { b: ImageBl
       </Field>
       {hasCaption && <CaptionControls b={b} meta={meta} onChange={onChange} />}
       {/* A figure is redrawn from its settings, a molecule or a drawing from its data: replacing it with a picture drops them. */}
-      <SmallButton onClick={onReplace}>{t(b.figure || b.molecule || b.drawing || b.graphStudio || b.circuitStudio ? "Replace with an image…" : "Replace image…")}</SmallButton>
+      <SmallButton onClick={onReplace}>{t(b.figure || b.molecule || b.drawing || b.graphStudio || b.circuitStudio || b.probaStudio ? "Replace with an image…" : "Replace image…")}</SmallButton>
       <Field label={t("Width (px)")}>
         <NumberInput
           value={Math.round(b.layout.width)}

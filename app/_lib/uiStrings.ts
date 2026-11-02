@@ -3,6 +3,7 @@
 import { STUDIO_AR, STUDIO_FR } from "@/app/_lib/chemistry/strings";
 import { CIRCUIT_AR, CIRCUIT_FR } from "@/app/_lib/circuit/strings";
 import { GRAPH_AR, GRAPH_FR } from "@/app/_lib/graph/strings";
+import { PROBA_AR, PROBA_FR } from "@/app/_lib/proba/strings";
 import { RIBBON_AR, RIBBON_FR } from "@/app/_lib/ribbon/strings";
 import { SHAPES_AR, SHAPES_FR } from "@/app/_lib/shapes/strings";
 import { TABLE_AR, TABLE_FR } from "@/app/_lib/table/strings";
@@ -1843,6 +1844,10 @@ Object.assign(AR, GRAPH_AR);
 // Circuit Studio (app/_lib/circuit/strings.ts)
 Object.assign(FR, CIRCUIT_FR);
 Object.assign(AR, CIRCUIT_AR);
+
+// Probability Studio (app/_lib/proba/strings.ts)
+Object.assign(FR, PROBA_FR);
+Object.assign(AR, PROBA_AR);
 
 // The Home ribbon (right panel): font, paragraph, clipboard, find and replace, symbols.
 Object.assign(FR, RIBBON_FR);
