@@ -1,6 +1,6 @@
 "use client";
 
-import { RotateCcw, RotateCw, Trash2 } from "lucide-react";
+import { RotateCcw, RotateCw, Scissors, Trash2 } from "lucide-react";
 import { useId, useState, type ReactNode } from "react";
 import { COMPONENT_SPECS, UNITS, withUnit } from "@/app/_lib/circuit/symbols";
 import { MAX_AREA, MIN_AREA, type LabelSide } from "@/app/_lib/circuit/types";
@@ -73,7 +73,7 @@ const iconButton = "grid size-8 place-items-center rounded-lg border border-line
 // state of a switch; a wire), or, with nothing selected, the size of the drawing area.
 export default function CircuitPanel({ studio }: { studio: CircuitStudioState }) {
   const t = useT();
-  const { config, selectedComponent: comp, selectedWire: wire, selectedShape: shape, updateComponentProps, rotate, deleteSelected, setArea, numberTheLabels } = studio;
+  const { config, selectedComponent: comp, selectedWire: wire, selectedSection: section, selectedShape: shape, updateComponentProps, rotate, deleteSelected, setArea, numbered, numberTheLabels } = studio;
   const sides: { id: LabelSide; name: string }[] = [
     { id: "auto", name: t("Automatic") },
     { id: "top", name: t("Above") },
@@ -145,9 +145,17 @@ export default function CircuitPanel({ studio }: { studio: CircuitStudioState })
             {t("Corners: {count}", { count: Math.max(0, wire.points.length / 2 - 2) })}
           </p>
           <p className="text-xs text-muted">{t("Drag it to move it. It is connected to a terminal when its end is on it.")}</p>
-          <button onClick={deleteSelected} data-testid="delete-selected" className="flex items-center justify-center gap-2 rounded-lg border border-line bg-white px-3 py-1.5 text-sm font-medium text-red-600 transition-colors hover:border-red-300 hover:bg-red-50">
+          {section ? (
+            <button onClick={deleteSelected} data-testid="remove-section" title={`${t("Remove this section")} (Delete)`} className="flex items-center justify-center gap-2 rounded-lg border border-line bg-white px-3 py-1.5 text-sm font-medium text-red-600 transition-colors hover:border-red-300 hover:bg-red-50">
+              <Scissors size={14} />
+              {t("Remove this section")}
+            </button>
+          ) : (
+            <p className="text-xs text-faint">{t("Click a part of the wire to select only that section, then remove it.")}</p>
+          )}
+          <button onClick={() => studio.deleteWire(wire.id)} data-testid="delete-selected" className="flex items-center justify-center gap-2 rounded-lg border border-line bg-white px-3 py-1.5 text-sm font-medium text-red-600 transition-colors hover:border-red-300 hover:bg-red-50">
             <Trash2 size={14} />
-            {t("Delete")}
+            {t("Delete the whole wire")}
           </button>
         </Section>
       )}
@@ -173,7 +181,15 @@ export default function CircuitPanel({ studio }: { studio: CircuitStudioState })
           <p className="text-xs text-muted tabular-nums">
             {t("{components} components, {wires} wires", { components: config.components.length, wires: config.wires.length })}
           </p>
-          <button onClick={numberTheLabels} disabled={config.components.length < 2} title={t("R, R → R1, R2: the labels that are still the plain letter")} data-testid="number-labels" className="rounded-lg border border-line bg-white px-3 py-1.5 text-sm font-medium text-ink transition-colors hover:border-accent hover:bg-accent-soft disabled:opacity-40">
+          {/* a toggle: a second click takes the numbers off again */}
+          <button
+            onClick={numberTheLabels}
+            disabled={config.components.length < 2 && !numbered}
+            aria-pressed={numbered}
+            title={numbered ? t("R1, R2 → R, R: back to the plain letters") : t("R, R → R1, R2: the labels that are still the plain letter")}
+            data-testid="number-labels"
+            className={`rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors disabled:opacity-40 ${numbered ? "border-accent bg-accent-soft text-accent-strong" : "border-line bg-white text-ink hover:border-accent hover:bg-accent-soft"}`}
+          >
             {t("Number the labels (R1, R2…)")}
           </button>
           <p className="text-xs text-faint">{t("Click a component or a wire to change it.")}</p>

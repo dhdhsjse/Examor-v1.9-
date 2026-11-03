@@ -14,6 +14,8 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     // Rust build output (bundled and generated scripts).
     "src-tauri/target/**",
+    // Vendored, minified RDKit build (not our code).
+    "public/rdkit/**",
   ]),
 ]);
 

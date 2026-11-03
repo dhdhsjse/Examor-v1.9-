@@ -26,7 +26,7 @@ describe("the interface strings of the Circuit Studio", () => {
 
   it("finds the strings of the screens, the hints and the component names", () => {
     expect(used.size).toBeGreaterThan(30);
-    expect(hints.length).toBe(12); // one per tool
+    expect(hints.length).toBe(15); // one per tool
     expect(used.has("Resistor")).toBe(true);
   });
 

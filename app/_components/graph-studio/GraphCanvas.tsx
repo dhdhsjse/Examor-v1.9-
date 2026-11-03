@@ -7,8 +7,10 @@ import { ANNOTATION_HINTS, ANNOTATION_SPECS, POINTS_HINT } from "@/app/_lib/grap
 import { PAPER_MARGIN, buildScene, pxToGraphX, pxToGraphY, type Segment } from "@/app/_lib/graph/grid";
 import { AXIS_WIDTH, FRAME_STROKE, INK, MAJOR_WIDTH, MID_OPACITY, MID_WIDTH, MINOR_OPACITY, MINOR_WIDTH, TICK_WIDTH } from "@/app/_lib/graph/svg";
 import { axisSteps } from "@/app/_lib/graph/types";
-import ShapeDrawSurface from "@/app/_components/shapes/ShapeDrawSurface";
-import StudioShapes from "@/app/_components/shapes/StudioShapes";
+import TableDrawingLayer from "@/app/_components/table-studio/TableDrawingLayer";
+import type { EraserTool } from "@/app/_lib/ink/useEraserTool";
+import type { InkTools } from "@/app/_lib/ink/useInkTools";
+import type { ShapeStyle } from "@/app/_lib/shapes";
 import { useT } from "@/app/_lib/uiLang";
 import RichText from "./RichText";
 import type { GraphStudioState } from "./useGraphStudio";
@@ -57,8 +59,9 @@ function Segments({ segments, color, width, opacity = 1 }: { segments: Segment[]
 // numbers and the labels, the curves and the annotations, all from the scene of grid.ts (the same one the picture for the page
 // is made from). The paper is shown smaller when it does not fit the window; its size on the page does not change.
 // A click goes to what is under it: with an annotation tool in hand it places one (on a curve or on the paper); otherwise it
-// selects the curve or annotation, or lets go of the selection. The selected annotation shows its handles to drag.
-export default function GraphCanvas({ studio }: { studio: GraphStudioState }) {
+// selects the curve or annotation, or lets go of the selection. The selected annotation shows its handles to drag. The drawings,
+// shapes and text boxes of the floating bar are on a layer over the paper.
+export default function GraphCanvas({ studio, ink, eraser }: { studio: GraphStudioState; ink: InkTools; eraser: EraserTool }) {
   const t = useT();
   const { config, tool, selected, selectedAnnotation, handles, snap, view } = studio;
   const student = view === "student"; // the student's version is only looked at: nothing here answers a click
@@ -67,6 +70,8 @@ export default function GraphCanvas({ studio }: { studio: GraphStudioState }) {
   const [dragVersion, setDragVersion] = useState(0); // (a dragged node is put back where the state says it is, by making a new one)
   const [notice, setNotice] = useState<string | null>(null);
   const scene = useMemo(() => buildScene(config, { student }), [config, student]);
+  const textStyle = useMemo<Partial<ShapeStyle>>(() => ({ fontSize: 16, textAlign: "left", textVAlign: "top" }), []);
+  const margin = useMemo(() => ({ x: PAPER_MARGIN, y: PAPER_MARGIN }), []);
 
   useEffect(() => {
     const el = box.current;
@@ -115,7 +120,7 @@ export default function GraphCanvas({ studio }: { studio: GraphStudioState }) {
 
   return (
     <div ref={box} dir="ltr" data-testid="graph-canvas" className="relative grid min-h-0 flex-1 place-items-center overflow-auto bg-subtle/60 p-4">
-      <div className="shadow-sm" style={{ width: total.w * scale, height: total.h * scale, cursor: tool || studio.shapeTool ? "crosshair" : undefined }} aria-label={t("Graph paper preview")} role="img">
+      <div className="relative shadow-sm" style={{ width: total.w * scale, height: total.h * scale, cursor: tool ? "crosshair" : undefined }} aria-label={t("Graph paper preview")} role="img">
         <Stage width={total.w * scale} height={total.h * scale} scaleX={scale} scaleY={scale}>
           <Layer listening={!student}>
             {/* the margin is the same white as the paper: the arrows and the labels may go past its edge */}
@@ -312,13 +317,35 @@ export default function GraphCanvas({ studio }: { studio: GraphStudioState }) {
                   />
                 ),
               )}
-
-              {/* the shapes drawn over the paper (in pixels of the paper) */}
-              <StudioShapes shapes={config.shapes ?? []} selectedId={studio.selectedShape?.id ?? null} interactive={!student && !tool && !studio.shapeTool} scale={scale} onSelect={studio.selectShape} onChange={studio.changeShape} />
-              {studio.shapeTool && !student && <ShapeDrawSurface width={config.width} height={config.height} shape={studio.shapeTool} onDraw={studio.drawShape} />}
             </Group>
           </Layer>
         </Stage>
+
+        {/* the drawings, shapes and text boxes of the floating bar, over the paper and its margin (in pixels of the paper) */}
+        {/* (the wrapper lets the mouse through: the layer itself takes it only with a drawing tool or over a drawing; in the student's view, never) */}
+        <div className="pointer-events-none absolute left-0 top-0" inert={student}>
+          <TableDrawingLayer
+            width={total.w}
+            rowsHeight={total.h}
+            roomBelow={0}
+            offset={margin}
+            scale={scale}
+            shapes={config.shapes ?? []}
+            tool={student ? "select" : (studio.inkTool ?? (studio.shapeTool ? "shape" : "select"))}
+            shapeKind={studio.shapeTool ?? "rect"}
+            ink={ink}
+            textStyle={textStyle}
+            selectedId={studio.selectedShape?.id ?? null}
+            editingId={studio.textId}
+            onSelect={studio.selectShape}
+            onChange={studio.changeShape}
+            onAdd={studio.addDrawing}
+            eraser={eraser}
+            onErase={studio.eraseShapes}
+            onEraseInk={studio.eraseInk}
+            onEdit={studio.editText}
+          />
+        </div>
       </div>
       {tool && (
         <p data-testid="graph-tool-hint" className="absolute start-3 top-3 max-w-sm rounded-lg border border-accent bg-white/95 px-2.5 py-1.5 text-xs text-accent-strong shadow-sm">
@@ -332,7 +359,7 @@ export default function GraphCanvas({ studio }: { studio: GraphStudioState }) {
         </p>
       )}
       {percent < 100 && (
-        <p data-testid="graph-scale-note" className="absolute bottom-2 start-3 rounded-md bg-white/90 px-2 py-1 text-[11px] text-muted shadow-sm">
+        <p data-testid="graph-scale-note" className="pointer-events-none absolute top-2 end-3 rounded-md bg-white/90 px-2 py-1 text-[11px] text-muted shadow-sm">
           {t("The graph paper is shown at {percent}% to fit the window.", { percent })}
         </p>
       )}

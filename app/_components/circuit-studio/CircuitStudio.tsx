@@ -3,15 +3,16 @@
 import { Redo2, Undo2, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { StudioKeyboard } from "@/app/_components/math-keyboard/StudioKeyboard";
-import StudioDock from "@/app/_components/StudioDock";
 import DiscardDialog from "@/app/_components/molecule-studio/DiscardDialog";
+import TableToolDock from "@/app/_components/table-studio/TableToolDock";
 import { DEFAULT_CIRCUIT_CONFIG, type CircuitConfig } from "@/app/_lib/circuit/types";
-import { FREEHAND_ID } from "@/app/_lib/shapes";
+import { useEraserTool } from "@/app/_lib/ink/useEraserTool";
+import { useInkTools } from "@/app/_lib/ink/useInkTools";
 import { useUi } from "@/app/_lib/uiLang";
 import CircuitCanvas from "./CircuitCanvas";
 import CircuitPanel from "./CircuitPanel";
-import CircuitToolbar from "./CircuitToolbar";
-import { useCircuitStudio } from "./useCircuitStudio";
+import CircuitToolbar, { TOOL_HINTS } from "./CircuitToolbar";
+import { isBarTool, useCircuitStudio } from "./useCircuitStudio";
 import { studioHeaderProps } from "@/app/_lib/desktopWindow";
 
 interface Props {
@@ -24,14 +25,16 @@ interface Props {
   onClose: () => void;
 }
 
-// The Circuit Studio: a full-screen modal laid out like the Molecule Studio, with the components and tools on the left, the
-// drawing area in the middle and the properties on the right. The circuit lives in this Studio only (useCircuitStudio, with its
+// The Circuit Studio: a full-screen modal laid out like the Molecule Studio, with the components (and the wire) on the left, the
+// drawing area in the middle (with the floating tool bar of the page: select, draw, text box, eraser, math keyboard) and the
+// properties on the right. The circuit lives in this Studio only (useCircuitStudio, with its
 // own undo and redo): the exam's undo history gets one step when the circuit is inserted or updated.
 export default function CircuitStudio({ editing, onInsert, onUpdate, onClose }: Props) {
   const { t, rtl } = useUi();
   const studio = useCircuitStudio(editing ?? DEFAULT_CIRCUIT_CONFIG);
   const { config, tool, draft, selectedComponent, selectedWire, selectedShape, undo, redo, canUndo, canRedo, dirty, empty } = studio;
-  const pencil = tool === "shape" && studio.shapeKind === FREEHAND_ID; // (the pencil draws a freehand shape)
+  const ink = useInkTools(); // (the page's Draw tool: the same brush, pencil and highlighter, kept between sessions)
+  const eraser = useEraserTool(); // (the page's Eraser)
   const anySelected = !!(selectedComponent || selectedWire || selectedShape);
   const [confirmClose, setConfirmClose] = useState(false);
 
@@ -98,6 +101,10 @@ export default function CircuitStudio({ editing, onInsert, onUpdate, onClose }: 
           <Redo2 size={16} />
         </button>
 
+        <p data-testid="circuit-tool-hint" className="ms-2 hidden min-w-0 flex-1 truncate text-xs text-muted lg:block">
+          {t(TOOL_HINTS[tool])}
+        </p>
+
         <button
           onClick={() => (editing ? onUpdate(config) : onInsert(config))}
           disabled={empty}
@@ -118,15 +125,9 @@ export default function CircuitStudio({ editing, onInsert, onUpdate, onClose }: 
         </aside>
 
         <main className="relative flex min-w-0 flex-1 flex-col">
-          <CircuitCanvas studio={studio} />
-          {/* the floating toolbar: the pencil draws freely on the drawing, Select puts it down */}
-          <StudioDock
-            pencil={pencil}
-            selecting={tool === "select"}
-            onSelect={() => studio.setTool("select")}
-            onPencil={() => (pencil ? studio.setTool("select") : studio.pickShape(FREEHAND_ID))}
-            hint={t("Draw freely on the drawing with the mouse · Esc to stop")}
-          />
+          <CircuitCanvas studio={studio} ink={ink} eraser={eraser} />
+          {/* the floating tool bar of the page: select, draw (brush, pencil, highlighter), text box, eraser, math keyboard */}
+          <TableToolDock tool={isBarTool(tool) ? tool : "select"} onTool={(next) => studio.setTool(next)} ink={ink} eraser={eraser} textboxHint={t("Text box: drag on the drawing to draw one, then type")} />
         </main>
 
         <aside className="flex w-[300px] shrink-0 flex-col border-line bg-white ltr:border-l rtl:border-r">

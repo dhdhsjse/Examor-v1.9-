@@ -1,6 +1,6 @@
 "use client";
 
-import { AlignCenter, AlignLeft, AlignRight, AlignVerticalJustifyCenter, AlignVerticalJustifyEnd, AlignVerticalJustifyStart, ArrowDown, ArrowUp, Bold, BringToFront, Copy, FlipHorizontal2, FlipVertical2, Italic, SendToBack, Trash2, type LucideIcon } from "lucide-react";
+import { AlignCenter, AlignLeft, AlignRight, AlignVerticalJustifyCenter, AlignVerticalJustifyEnd, AlignVerticalJustifyStart, ArrowDown, ArrowUp, Bold, BringToFront, ChevronRight, Copy, FlipHorizontal2, FlipVertical2, Italic, SendToBack, Trash2, type LucideIcon } from "lucide-react";
 import { useId, useState, type ReactNode } from "react";
 import { FILL_COLORS, TEXT_COLORS } from "@/app/_lib/fonts";
 import { DEFAULT_FONT_SIZE, DEFAULT_STROKE, DEFAULT_TEXT_COLOR, MIN_SHAPE_SIZE, isLine, resolveStyle, shapeDef, type DashKind, type Order, type ShapeStyle, type ShapeTextAlign, type ShapeVAlign } from "@/app/_lib/shapes";
@@ -8,13 +8,16 @@ import { useT } from "@/app/_lib/uiLang";
 import { FontSelect } from "@/app/_components/rich/FormatBar";
 import { ShapesMenuButton, ShapeThumb } from "./ShapeGallery";
 
-const input = "w-full rounded-lg border border-line bg-subtle px-2.5 py-1.5 text-sm text-ink outline-none focus:border-accent";
+// The look of the Studios' panels: 12px labels and buttons, 14px for what is typed, 28px controls with 4px corners, a 4px grid.
+const field = "w-full min-w-0 rounded border border-line bg-white px-2 text-sm text-ink outline-none focus:border-accent";
+const input = `h-7 ${field}`;
+const textBtn = "flex h-7 flex-1 items-center justify-center gap-1 rounded border border-line bg-white px-2 text-xs font-medium";
 const PALETTE = [...TEXT_COLORS, "#ffffff", ...FILL_COLORS];
 
 function Section({ title, children, testId }: { title: string; children: ReactNode; testId?: string }) {
   return (
-    <section data-testid={testId} className="flex flex-col gap-2.5 border-b border-line px-4 py-3.5 last:border-b-0">
-      <h4 className="text-xs font-semibold uppercase tracking-wide text-faint">{title}</h4>
+    <section data-testid={testId} className="flex flex-col gap-2 border-b border-line p-3 last:border-b-0">
+      <h4 className="text-xs font-semibold text-ink">{title}</h4>
       {children}
     </section>
   );
@@ -30,9 +33,9 @@ function IconToggle({ icon: Icon, label, pressed, disabled, onClick, testId }: {
       disabled={disabled}
       data-testid={testId}
       onClick={onClick}
-      className={`grid size-8 place-items-center rounded-lg border transition-colors disabled:opacity-40 ${pressed ? "border-accent bg-accent-soft text-accent-strong" : "border-line bg-white text-muted enabled:hover:border-accent enabled:hover:text-ink"}`}
+      className={`grid size-7 place-items-center rounded disabled:opacity-40 ${pressed ? "bg-accent-soft text-accent-strong" : "text-muted enabled:hover:bg-hover enabled:hover:text-ink"}`}
     >
-      <Icon size={15} />
+      <Icon size={14} />
     </button>
   );
 }
@@ -83,12 +86,12 @@ function NumberInput({ label, value, min, max, step = 1, onCommit, testId }: { l
 function ColorRow({ label, value, none, onChange, testId }: { label: string; value: string | null; none?: string; onChange: (c: string | null) => void; testId: string }) {
   const t = useT();
   return (
-    <div data-testid={testId} className="flex flex-col gap-1.5">
+    <div data-testid={testId} className="flex flex-col gap-1">
       <div className="flex items-center justify-end">
         <span className="sr-only">{label}</span>
         {none !== undefined && (
-          <label className="flex items-center gap-1.5 text-xs text-muted">
-            <input type="checkbox" checked={value === null} onChange={(e) => onChange(e.target.checked ? null : (PALETTE[0] as string))} data-testid={`${testId}-none`} />
+          <label className="flex min-h-7 items-center gap-2 text-xs text-muted">
+            <input type="checkbox" className="size-4 accent-accent" checked={value === null} onChange={(e) => onChange(e.target.checked ? null : (PALETTE[0] as string))} data-testid={`${testId}-none`} />
             {none}
           </label>
         )}
@@ -106,7 +109,7 @@ function ColorRow({ label, value, none, onChange, testId }: { label: string; val
             className={`size-5 rounded border ${value === c ? "ring-2 ring-accent ring-offset-1" : "border-line"}`}
           />
         ))}
-        <input type="color" aria-label={`${label}: ${t("Color")}`} value={/^#[0-9a-f]{6}$/i.test(value ?? "") ? (value as string) : "#ffffff"} onChange={(e) => onChange(e.target.value)} className="size-6 cursor-pointer rounded border border-line bg-white p-0" />
+        <input type="color" aria-label={`${label}: ${t("Color")}`} value={/^#[0-9a-f]{6}$/i.test(value ?? "") ? (value as string) : "#ffffff"} onChange={(e) => onChange(e.target.value)} className="size-5 cursor-pointer rounded border border-line bg-white p-0" />
       </div>
     </div>
   );
@@ -146,13 +149,13 @@ export default function ShapeProperties({ item, onChange, geometry, size, onOrde
   return (
     <div data-testid="shape-properties">
       <Section title={t("Shape")}>
-        <div className="flex items-center gap-2.5">
-          <span className="grid size-10 shrink-0 place-items-center rounded-lg border border-line bg-subtle">
-            <ShapeThumb shape={item.shape} size={30} />
+        <div className="flex items-center gap-2">
+          <span className="grid size-7 shrink-0 place-items-center rounded border border-line">
+            <ShapeThumb shape={item.shape} size={22} />
           </span>
-          <span className="min-w-0 flex-1 truncate text-sm font-medium text-ink">{t(def.label)}</span>
+          <span className="min-w-0 flex-1 truncate text-sm text-ink">{t(def.label)}</span>
+          <ShapesMenuButton variant="icon" current={item.shape} testId="shape-change" onPick={(shape) => onChange({ shape, adj: undefined })} />
         </div>
-        <ShapesMenuButton current={item.shape} testId="shape-change" onPick={(shape) => onChange({ shape, adj: undefined })} />
       </Section>
 
       {!line && (
@@ -163,7 +166,7 @@ export default function ShapeProperties({ item, onChange, geometry, size, onOrde
 
       <Section title={t("Shape outline")}>
         <ColorRow label={t("Shape outline")} value={stroke} none={line ? undefined : t("No outline")} onChange={(c) => onChange({ stroke: c })} testId="shape-stroke" />
-        <div className="flex gap-2.5">
+        <div className="flex gap-2">
           <NumberInput label={t("Outline width")} value={strokeWidth} min={0.5} max={24} step={0.5} onCommit={(strokeWidth) => onChange({ strokeWidth })} testId="shape-stroke-width" />
           <div className="flex min-w-0 flex-[1.4] flex-col gap-1">
             <label className="text-xs text-muted" htmlFor="shape-dash">
@@ -189,26 +192,26 @@ export default function ShapeProperties({ item, onChange, geometry, size, onOrde
             placeholder={t("Type the text of the shape")}
             aria-label={t("Text in the shape")}
             data-testid="shape-text"
-            className={`${input} resize-y`}
+            className={`${field} resize-y py-1`}
           />
           <div className="flex flex-col gap-1">
             <label className="text-xs text-muted" htmlFor="shape-font">
               {t("Font")}
             </label>
-            <FontSelect value={item.fontFamily} onChange={(fontFamily) => onChange({ fontFamily })} defaultLabel={t("Default font")} className={`${input} !py-1.5`} />
+            <FontSelect value={item.fontFamily} onChange={(fontFamily) => onChange({ fontFamily })} defaultLabel={t("Default font")} className={input} />
           </div>
-          <div className="flex items-end gap-2.5">
+          <div className="flex items-end gap-2">
             <NumberInput label={t("Font size")} value={item.fontSize ?? DEFAULT_FONT_SIZE} min={6} max={120} onCommit={(fontSize) => onChange({ fontSize })} testId="shape-font-size" />
             <ColorSwatch label={t("Text color")} value={item.textColor ?? DEFAULT_TEXT_COLOR} onChange={(textColor) => onChange({ textColor })} />
           </div>
           <div className="flex flex-wrap gap-1">
             <IconToggle icon={Bold} label={t("Bold text")} pressed={!!item.bold} onClick={() => onChange({ bold: !item.bold || undefined })} testId="shape-bold" />
             <IconToggle icon={Italic} label={t("Italic")} pressed={!!item.italic} onClick={() => onChange({ italic: !item.italic || undefined })} testId="shape-italic" />
-            <span className="mx-1 w-px self-stretch bg-line" aria-hidden />
+            <span className="mx-1 my-1 w-px self-stretch bg-line" aria-hidden />
             <IconToggle icon={AlignLeft} label={t("Align text left")} pressed={align === "left"} onClick={() => onChange({ textAlign: "left" })} />
             <IconToggle icon={AlignCenter} label={t("Center text")} pressed={align === "center"} onClick={() => onChange({ textAlign: undefined })} />
             <IconToggle icon={AlignRight} label={t("Align text right")} pressed={align === "right"} onClick={() => onChange({ textAlign: "right" })} />
-            <span className="mx-1 w-px self-stretch bg-line" aria-hidden />
+            <span className="mx-1 my-1 w-px self-stretch bg-line" aria-hidden />
             <IconToggle icon={AlignVerticalJustifyStart} label={t("Align text to the top")} pressed={valign === "top"} onClick={() => onChange({ textVAlign: "top" })} />
             <IconToggle icon={AlignVerticalJustifyCenter} label={t("Center text vertically")} pressed={valign === "middle"} onClick={() => onChange({ textVAlign: undefined })} />
             <IconToggle icon={AlignVerticalJustifyEnd} label={t("Align text to the bottom")} pressed={valign === "bottom"} onClick={() => onChange({ textVAlign: "bottom" })} />
@@ -222,7 +225,7 @@ export default function ShapeProperties({ item, onChange, geometry, size, onOrde
           <IconToggle icon={FlipVertical2} label={t("Flip vertically")} pressed={!!item.flipY} onClick={() => onChange({ flipY: !item.flipY || undefined })} testId="shape-flip-y" />
           {onOrder && (
             <>
-              <span className="mx-1 w-px self-stretch bg-line" aria-hidden />
+              <span className="mx-1 my-1 w-px self-stretch bg-line" aria-hidden />
               <IconToggle icon={BringToFront} label={t("Bring to front")} onClick={() => onOrder("front")} testId="shape-front" />
               <IconToggle icon={ArrowUp} label={t("Bring forward")} onClick={() => onOrder("forward")} testId="shape-forward" />
               <IconToggle icon={ArrowDown} label={t("Send backward")} onClick={() => onOrder("backward")} testId="shape-backward" />
@@ -231,34 +234,40 @@ export default function ShapeProperties({ item, onChange, geometry, size, onOrde
           )}
         </div>
         {geometry && item.w !== undefined && item.h !== undefined && item.x !== undefined && item.y !== undefined && (
-          <>
-            <div className="flex gap-2.5">
+          <details className="group">
+            <summary className="flex h-7 cursor-pointer list-none items-center gap-1 rounded text-xs text-muted outline-none hover:text-ink focus-visible:ring-2 focus-visible:ring-accent [&::-webkit-details-marker]:hidden">
+              <ChevronRight size={14} className="shrink-0 group-open:rotate-90 rtl:-scale-x-100 rtl:group-open:scale-x-100" />
+              {t("Position")}
+            </summary>
+            <div className="flex flex-col gap-2 pt-1">
+            <div className="flex gap-2">
               <NumberInput label="X" value={item.x} min={-5000} max={5000} onCommit={(x) => onChange({ x })} testId="shape-x" />
               <NumberInput label="Y" value={item.y} min={-5000} max={5000} onCommit={(y) => onChange({ y })} testId="shape-y" />
             </div>
-            <div className="flex gap-2.5">
+            <div className="flex gap-2">
               <NumberInput label={t("Width")} value={item.w} min={line ? 0 : MIN_SHAPE_SIZE} max={5000} onCommit={(w) => onChange({ w })} testId="shape-w" />
               <NumberInput label={t("Height")} value={item.h} min={line ? 0 : MIN_SHAPE_SIZE} max={5000} onCommit={(h) => onChange({ h })} testId="shape-h" />
               {!line && <NumberInput label={t("Rotation")} value={item.rotation ?? 0} min={-360} max={360} onCommit={(rotation) => onChange({ rotation: rotation % 360 || undefined })} testId="shape-rotation" />}
             </div>
-          </>
+            </div>
+          </details>
         )}
         {!geometry && size && item.w !== undefined && item.h !== undefined && (
-          <div className="flex gap-2.5">
+          <div className="flex gap-2">
             <NumberInput label={t("Width")} value={item.w} min={line ? 0 : MIN_SHAPE_SIZE} max={5000} onCommit={(w) => onChange({ w })} testId="shape-w" />
             <NumberInput label={t("Height")} value={item.h} min={line ? 0 : MIN_SHAPE_SIZE} max={5000} onCommit={(h) => onChange({ h })} testId="shape-h" />
           </div>
         )}
         {(onDuplicate || onDelete) && (
-          <div className="flex gap-2">
+          <div className="flex gap-1">
             {onDuplicate && (
-              <button type="button" onClick={onDuplicate} data-testid="shape-duplicate" className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-line bg-white px-2.5 py-1.5 text-sm text-ink hover:border-accent">
+              <button type="button" onClick={onDuplicate} data-testid="shape-duplicate" className={`${textBtn} text-ink hover:bg-hover`}>
                 <Copy size={14} />
                 {t("Duplicate")}
               </button>
             )}
             {onDelete && (
-              <button type="button" onClick={onDelete} data-testid="shape-delete" className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-line bg-white px-2.5 py-1.5 text-sm text-red-600 hover:border-red-400">
+              <button type="button" onClick={onDelete} data-testid="shape-delete" className={`${textBtn} text-red-600 hover:bg-red-50`}>
                 <Trash2 size={14} />
                 {t("Delete")}
               </button>
@@ -278,7 +287,7 @@ function ColorSwatch({ label, value, onChange }: { label: string; value: string;
       <label htmlFor={id} className="text-xs text-muted">
         {label}
       </label>
-      <input id={id} type="color" value={/^#[0-9a-f]{6}$/i.test(value) ? value : DEFAULT_STROKE} onChange={(e) => onChange(e.target.value)} data-testid="shape-text-color" className="h-[34px] w-12 cursor-pointer rounded-lg border border-line bg-white p-0.5" />
+      <input id={id} type="color" value={/^#[0-9a-f]{6}$/i.test(value) ? value : DEFAULT_STROKE} onChange={(e) => onChange(e.target.value)} data-testid="shape-text-color" className="h-7 w-12 cursor-pointer rounded border border-line bg-white p-0.5" />
     </div>
   );
 }

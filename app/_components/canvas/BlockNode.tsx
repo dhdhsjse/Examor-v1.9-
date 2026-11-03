@@ -34,6 +34,7 @@ interface Props {
   totalPoints: number; // for the header score
   zoom: number;
   selected: boolean;
+  grouped?: boolean; // one of several blocks selected together: outlined
   interactive: boolean; // false when exporting
   textTool: boolean; // "T" tool: one click starts typing
   drawing: boolean; // a box is being drawn on the page (text box tool): blocks ignore the mouse
@@ -45,8 +46,9 @@ interface Props {
   passive?: boolean;
   hovered?: boolean; // (passive copy) the mouse is over its ghost
   onHover?: (hover: boolean) => void; // (ghost) tells its passive copy
-  // A click on the block (alt: Alt held, pick the block under it). Returns false when another block was picked instead.
-  onSelect: (alt?: boolean) => boolean;
+  // A click on the block (alt: Alt held, pick the block under it; shift: Shift held, add it to the selection or take it out).
+  // Returns false when another block was picked instead.
+  onSelect: (alt?: boolean, shift?: boolean) => boolean;
   onDragStart: () => void;
   onDragMove: (x: number, y: number) => { x: number; y: number };
   onDragEnd: (x: number, y: number) => void;
@@ -155,7 +157,7 @@ export default function BlockNode(props: Props) {
       onMouseDown={(e) => {
         if (props.erasable) return; // (the eraser rubs it, it does not pick it)
         wasSelected.current = selected;
-        passedOn.current = !onSelect(e.evt.altKey);
+        passedOn.current = !onSelect(e.evt.altKey, e.evt.shiftKey);
       }}
       onTap={() => {
         passedOn.current = false;
@@ -192,9 +194,9 @@ export default function BlockNode(props: Props) {
         width={width}
         height={height}
         fill={media ? "transparent" : selected && interactive ? "#f7f7ff" : "#ffffff"}
-        stroke={interactive && hover && !selected ? "#c7d2fe" : undefined}
-        strokeWidth={1}
-        dash={[4, 3]}
+        stroke={interactive && props.grouped ? "#4f46e5" : interactive && hover && !selected ? "#c7d2fe" : undefined}
+        strokeWidth={props.grouped ? 1.5 / props.zoom : 1}
+        dash={props.grouped ? [5 / props.zoom, 3 / props.zoom] : [4, 3]}
         cornerRadius={4}
         listening={!props.erasable}
       />

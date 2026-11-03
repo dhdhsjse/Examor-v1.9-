@@ -12,8 +12,10 @@ import { pairClick } from "@/app/_lib/chemistry/lonePairs";
 import { countOf, selectInRect, union, type Rect as WorldRect } from "@/app/_lib/chemistry/selection";
 import { TOOL_HINTS } from "@/app/_lib/chemistry/strings";
 import type { AtomNode } from "@/app/_lib/chemistry/types";
-import ShapeDrawSurface from "@/app/_components/shapes/ShapeDrawSurface";
-import StudioShapes from "@/app/_components/shapes/StudioShapes";
+import TableDrawingLayer from "@/app/_components/table-studio/TableDrawingLayer";
+import type { EraserTool } from "@/app/_lib/ink/useEraserTool";
+import type { InkTools } from "@/app/_lib/ink/useInkTools";
+import type { ShapeStyle } from "@/app/_lib/shapes";
 import { useT } from "@/app/_lib/uiLang";
 import { BUTTON_FACTOR, GRID, fitView, panBy, scrollRanges, snapToGrid, thumb, toWorld, viewMinFromThumb, wheelFactor, wheelScroll, zoomAt, type ScrollRanges, type Size, type View } from "@/app/_lib/chemistry/viewport";
 import AnnotationEditor from "./AnnotationEditor";
@@ -28,13 +30,16 @@ const MIN_VISIBLE_GAP = 7; // thin lines closer than this (on screen) are left o
 const PLACE_CLEARANCE = 10; // a new atom is not placed within this distance of another one
 const GROUP_REACH = 30; // a group is attached to the atom this near the click (a click on the atom itself is within 16)
 const GHOST_OPACITY = 0.4;
-const WORLD_EDGE = 100000; // the Shapes tool's sheet reaches this far from the origin each way
+const TEXT_STYLE: Partial<ShapeStyle> = { fontSize: 16, textAlign: "left", textVAlign: "top" }; // (a text box of the floating bar)
 const TARGET_RING = 18;
 
 interface Props {
   studio: MoleculeStudioState;
   /** The student's view: the masks applied, and the drawing only looked at (it can still be scrolled and zoomed). */
   student?: boolean;
+  /** The Draw and Eraser tools of the floating bar (the page's) */
+  ink: InkTools;
+  eraser: EraserTool;
 }
 
 type PointerEvent = Konva.KonvaEventObject<MouseEvent | TouchEvent>;
@@ -54,7 +59,7 @@ const MIN_BAND_PX = 4;
 // drag from an atom to draw a bond, click a bond to change its order, click with the eraser to delete.
 // Until the teacher moves the view, the drawing is centred as it was when it was opened; give the
 // component a new `key` for a new drawing. Editing never moves the view.
-export default function StudioCanvas({ studio, student = false }: Props) {
+export default function StudioCanvas({ studio, student = false, ink, eraser }: Props) {
   const t = useT();
   const { graph, activeTool, activeElement, activeBondType, activeRing, selection } = studio;
   const { select, selectOnly, toggleSelected, clearSelection, setElementOf, addAtom, moveAtom, moveGroup, moleculeOf, claim, deleteAtom } = studio;
@@ -438,24 +443,11 @@ export default function StudioCanvas({ studio, student = false }: Props) {
           <Layer listening={!student}>
             <AnnotationLayer annotations={graph.annotations} interaction={noteInteraction} />
             <MoleculeRenderer graph={graph} interaction={student ? undefined : interaction} student={student} />
-            {/* the shapes drawn over the molecule */}
-            <StudioShapes
-              shapes={graph.shapes ?? []}
-              selectedId={studio.selectedShape?.id ?? null}
-              interactive={!student && activeTool === "select"}
-              scale={view.scale}
-              onSelect={studio.selectShape}
-              onChange={studio.changeShape}
-              onGrab={studio.startGesture}
-              onRelease={studio.finishGesture}
-            />
             {ghostGraph && (
               <Group listening={false} opacity={GHOST_OPACITY}>
                 <MoleculeRenderer graph={ghostGraph} />
               </Group>
             )}
-            {/* with the Shapes tool: drag to draw the shape chosen in the gallery (the paper has no edge) */}
-            {!student && activeTool === "shape" && <ShapeDrawSurface x={-WORLD_EDGE} y={-WORLD_EDGE} width={2 * WORLD_EDGE} height={2 * WORLD_EDGE} shape={studio.shapeKind} onDraw={studio.drawShape} />}
             {band && (
               <Rect
                 x={Math.min(band.rect.x0, band.rect.x1)}
@@ -484,6 +476,35 @@ export default function StudioCanvas({ studio, student = false }: Props) {
             )}
           </Layer>
         </Stage>
+      )}
+
+      {/* the drawings, shapes and text boxes of the floating bar, over the molecule: a window on them that follows the view */}
+      {/* (the wrapper lets the mouse through: the layer itself takes it only with a drawing tool or over a drawing; in the student's view, never) */}
+      {size.w > 0 && size.h > 0 && (
+        <div className="pointer-events-none absolute left-0 top-0" inert={student}>
+          <TableDrawingLayer
+            width={size.w / view.scale}
+            rowsHeight={size.h / view.scale}
+            roomBelow={0}
+            clip
+            offset={{ x: view.x / view.scale, y: view.y / view.scale }}
+            scale={view.scale}
+            shapes={graph.shapes ?? []}
+            tool={student ? "select" : activeTool === "draw" || activeTool === "shape" || activeTool === "textbox" || activeTool === "eraser" ? activeTool : "select"}
+            shapeKind={studio.shapeKind}
+            ink={ink}
+            textStyle={TEXT_STYLE}
+            selectedId={studio.selectedShape?.id ?? null}
+            editingId={studio.textId}
+            onSelect={studio.selectShape}
+            onChange={studio.changeShape}
+            onAdd={studio.addDrawing}
+            eraser={eraser}
+            onErase={studio.eraseShapes}
+            onEraseInk={studio.eraseInk}
+            onEdit={studio.editText}
+          />
+        </div>
       )}
 
       {editedNote && <AnnotationEditor key={editedNote.id} note={editedNote} view={view} onDone={finishEditing} />}
