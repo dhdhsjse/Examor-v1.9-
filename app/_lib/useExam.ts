@@ -1,9 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type SetStateAction } from "react";
 import { DEFAULT_MARGINS, PAGE_MARGIN } from "./a4";
 import { blockHeight, fitTextboxes } from "./blockLayout";
-import { blockHeights, createBlock, nextFreeY, pageBottom, pushDownOverlaps, type BlockPreset } from "./blocks";
+import { blockHeights, createBlock, firstFreeY, nextFreeY, pageBottom, pushDownOverlaps, type BlockPreset } from "./blocks";
 import { newId } from "./id";
 import { cutStroke, isStroke } from "./ink/eraser";
 import { renderEquation, type RenderedEquation } from "./math";
@@ -25,7 +25,7 @@ import {
 import { saveAutosave } from "./storage";
 import { moveSlotTo, removeBlock, stepSlot, syncEmbedded } from "./textboxSlots";
 import { buildDoc, type Template } from "./templates";
-import type { Block, BlockData, BlockLayout, BlockType, EquationBlock, ExamDoc, ExamMeta, HeaderBlock, HeaderFooterConfig, Page, PageFormat, PageMargins } from "./types";
+import type { Block, BlockData, BlockLayout, BlockType, EquationBlock, ExamDoc, ExamMeta, HeaderFooterConfig, Page, PageFormat, PageMargins } from "./types";
 import type { T } from "./uiLang";
 
 // Ask the workspace to scroll to a page (n changes on every request).
@@ -68,7 +68,8 @@ const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(v,
 // The meta of a copy of a block: a copy of a block that sits in a text box is a block of the page, no longer in that box.
 const looseMeta = (b: Block): Block["meta"] => {
   if (!b.meta?.slot) return b.meta;
-  const { slot: _slot, ...rest } = b.meta;
+  const rest = { ...b.meta };
+  delete rest.slot;
   return Object.keys(rest).length ? rest : undefined;
 };
 
@@ -100,7 +101,18 @@ export function useExam(initial: ExamDoc, t?: T) {
   });
   // Exam headers that are plain blocks become their page's header settings (see adoptHeaders).
   const [hist, setHist] = useState<History>(() => ({ past: [], present: adoptHeaders(initial), future: [] }));
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedId, setSelectedIdRaw] = useState<string | null>(null);
+  // Several blocks selected at once (a box dragged over them with the Select tool, or Shift+click): moved and deleted together.
+  // Selecting one block (or none) lets go of them.
+  const [groupIds, setGroupIds] = useState<string[]>([]);
+  const setSelectedId = useCallback((v: SetStateAction<string | null>) => {
+    setSelectedIdRaw(v);
+    if (typeof v !== "function") setGroupIds([]);
+  }, []);
+  const selectGroup = useCallback((ids: string[]) => {
+    setSelectedIdRaw(null);
+    setGroupIds(ids);
+  }, []);
   const [activePage, setActivePage] = useState(0); // page currently in view
   const [reveal, setReveal] = useState<RevealRequest | null>(null);
   const [save, setSave] = useState<SaveState>({ status: "saved", at: null });
@@ -162,12 +174,12 @@ export function useExam(initial: ExamDoc, t?: T) {
     [commit],
   );
 
-  // Change several blocks in one undo step (Find and replace → Replace all).
+  // Change several blocks in one undo step (Find and replace → Replace all, the arrow keys on several selected blocks).
   const updateBlocks = useCallback(
-    (changes: { id: string; patch: BlockPatch }[]) => {
+    (changes: { id: string; patch: BlockPatch }[], opts?: { key?: string }) => {
       if (!changes.length) return;
       const by = new Map(changes.map((c) => [c.id, c.patch]));
-      commit((d) => ({ ...d, blocks: d.blocks.map((b) => (by.has(b.id) ? ({ ...b, ...by.get(b.id), layout: { ...b.layout, ...by.get(b.id)?.layout } } as Block) : b)) }));
+      commit((d) => ({ ...d, blocks: d.blocks.map((b) => (by.has(b.id) ? ({ ...b, ...by.get(b.id), layout: { ...b.layout, ...by.get(b.id)?.layout } } as Block) : b)) }), opts);
     },
     [commit],
   );
@@ -211,13 +223,25 @@ export function useExam(initial: ExamDoc, t?: T) {
           y: clamp(at.corner ? at.y : at.y - Math.min(h, 40) / 2, 0, size.height - h),
         };
       } else {
+        // Narrow blocks (images, equations) are centered; the rest use the margin.
+        const across = (p: Page) => {
+          const pageWidth = pageSize(p).width;
+          const left = p.margins?.left ?? PAGE_MARGIN;
+          const room = pageWidth - left - (p.margins?.right ?? PAGE_MARGIN);
+          return { x: w < room - 1 ? (pageWidth - w) / 2 : left, width: Math.min(w, room) };
+        };
         const heights = blockHeights(doc);
         let target: { pageId: string; y: number } | null = null;
         let pageIdx = 0;
+        // Under the last block of the page in view (then of the next ones); when there is no room there, in the first gap of that
+        // page big enough for it (the top of a page emptied above a block left low on it), before going on to the next page.
         for (let i = clamp(activePage, 0, pages.length - 1); i < pages.length && !target; i++) {
           const onPage = doc.blocks.filter((b) => b.layout.pageId === pages[i].id);
-          const y = nextFreeY(onPage, heights, pages[i].margins?.top);
-          if (y + h <= pageBottom(onPage, pages[i])) {
+          const bottom = pageBottom(onPage, pages[i]);
+          const under = nextFreeY(onPage, heights, pages[i].margins?.top);
+          const { x, width } = across(pages[i]);
+          const y = under + h <= bottom ? under : firstFreeY(onPage, heights, pages[i].margins?.top ?? PAGE_MARGIN, bottom, h, x, width);
+          if (y !== null) {
             target = { pageId: pages[i].id, y };
             pageIdx = i;
           }
@@ -230,13 +254,7 @@ export function useExam(initial: ExamDoc, t?: T) {
           const chromeHeights = new Map(chrome.map((b) => [b.id, blockHeight(b, 1, doc.meta)]));
           target = { pageId: page.id, y: nextFreeY(chrome, chromeHeights, page.margins?.top) };
         }
-        // Narrow blocks (images, equations) are centered; the rest use the margin.
-        const m = pages[pageIdx].margins;
-        const pageWidth = pageSize(pages[pageIdx]).width;
-        const left = m?.left ?? PAGE_MARGIN;
-        const room = pageWidth - left - (m?.right ?? PAGE_MARGIN);
-        const x = w < room - 1 ? (pageWidth - w) / 2 : left;
-        block.layout = { ...block.layout, ...target, x, width: Math.min(w, room) };
+        block.layout = { ...block.layout, ...target, ...across(pages[pageIdx]) };
       }
 
       // A new page changes "Page 1 of N" on the others.
@@ -253,7 +271,7 @@ export function useExam(initial: ExamDoc, t?: T) {
       if (block.type === "equation") refreshEquation(block);
       return block;
     },
-    [doc, activePage, commit, refreshEquation],
+    [doc, activePage, commit, refreshEquation, setSelectedId],
   );
 
   // Drop a block somewhere; blocks it lands on are pushed down below it. A block in a text box's text stays in it: it takes its place
@@ -277,6 +295,28 @@ export function useExam(initial: ExamDoc, t?: T) {
     [commit],
   );
 
+  // Several blocks dropped together (one undo step): each on its page, over the others (in the order they were stacked), and the
+  // blocks they land on pushed down below them, from the top one down.
+  const moveBlocks = useCallback(
+    (moves: { id: string; pageId: string; x: number; y: number }[]) =>
+      commit((d) => {
+        const by = new Map(moves.map((m) => [m.id, m]));
+        const top = Math.max(0, ...d.blocks.filter((b) => !by.has(b.id)).map((b) => b.layout.z ?? 0));
+        const order = d.blocks.filter((b) => by.has(b.id)).sort((a, c) => (a.layout.z ?? 0) - (c.layout.z ?? 0));
+        const z = new Map(order.map((b, i) => [b.id, top + 1 + i]));
+        let blocks = d.blocks.map((b) => {
+          const m = by.get(b.id);
+          return m ? ({ ...b, layout: { ...b.layout, pageId: m.pageId, x: m.x, y: m.y, z: z.get(b.id) } } as Block) : b;
+        });
+        for (const m of [...moves].sort((a, c) => a.y - c.y)) {
+          const pageHeight = pageSize(d.pages.find((p) => p.id === m.pageId)).height;
+          blocks = pushDownOverlaps(blocks, m.id, blockHeights({ ...d, blocks }), pageHeight);
+        }
+        return { ...d, blocks };
+      }),
+    [commit],
+  );
+
   // A block of a text box one place up (−1) or down (+1) among the blocks of its text.
   const stepInBox = useCallback((id: string, dir: -1 | 1) => commit((d) => stepSlot(d, id, dir)), [commit]);
 
@@ -284,7 +324,17 @@ export function useExam(initial: ExamDoc, t?: T) {
     (id: string) => {
       // A header/footer goes from its settings: the page's own, or the document's (see deleteChrome).
       commit((d) => (tRef.current && deleteChrome(d, id, tRef.current)) || removeBlock(d, id));
-      setSelectedId((cur) => (cur === id ? null : cur));
+      setSelectedIdRaw((cur) => (cur === id ? null : cur));
+    },
+    [commit],
+  );
+
+  // Several selected blocks deleted together (one undo step).
+  const deleteBlocks = useCallback(
+    (ids: readonly string[]) => {
+      commit((d) => ids.reduce((acc, id) => (acc.blocks.some((b) => b.id === id) ? (tRef.current && deleteChrome(acc, id, tRef.current)) || removeBlock(acc, id) : acc), d));
+      setGroupIds([]);
+      setSelectedIdRaw((cur) => (cur && ids.includes(cur) ? null : cur));
     },
     [commit],
   );
@@ -293,7 +343,7 @@ export function useExam(initial: ExamDoc, t?: T) {
   const eraseBlocks = useCallback(
     (ids: readonly string[], key: string) => {
       commit((d) => ids.reduce((acc, id) => (acc.blocks.some((b) => b.id === id) ? removeBlock(acc, id) : acc), d), { key });
-      setSelectedId((cur) => (cur && ids.includes(cur) ? null : cur));
+      setSelectedIdRaw((cur) => (cur && ids.includes(cur) ? null : cur));
     },
     [commit],
   );
@@ -346,7 +396,7 @@ export function useExam(initial: ExamDoc, t?: T) {
       commit((d) => ({ ...d, blocks: [...d.blocks, copy] }));
       setSelectedId(copy.id);
     },
-    [doc, activePage, commit],
+    [doc, activePage, commit, setSelectedId],
   );
 
   const duplicateBlock = useCallback(
@@ -364,7 +414,7 @@ export function useExam(initial: ExamDoc, t?: T) {
       commit((d) => ({ ...d, blocks: [...d.blocks, copy] }));
       setSelectedId(copy.id);
     },
-    [doc, commit],
+    [doc, commit, setSelectedId],
   );
 
   const addPage = useCallback(() => {
@@ -466,7 +516,7 @@ export function useExam(initial: ExamDoc, t?: T) {
       // Equations from older files may need their drawing.
       next.blocks.forEach((b) => b.type === "equation" && !b.svg && refreshEquation(b));
     },
-    [commit, refreshEquation],
+    [commit, refreshEquation, setSelectedId],
   );
 
   const newFromTemplate = useCallback((t: Template) => replaceDoc(buildDoc(t)), [replaceDoc]);
@@ -475,6 +525,8 @@ export function useExam(initial: ExamDoc, t?: T) {
     doc,
     selectedId,
     setSelectedId,
+    groupIds,
+    selectGroup,
     activePage,
     setActivePage,
     reveal,
@@ -489,8 +541,10 @@ export function useExam(initial: ExamDoc, t?: T) {
     revealPage,
     refreshEquation,
     moveBlock,
+    moveBlocks,
     stepInBox,
     deleteBlock,
+    deleteBlocks,
     eraseBlocks,
     eraseInk,
     duplicateBlock,

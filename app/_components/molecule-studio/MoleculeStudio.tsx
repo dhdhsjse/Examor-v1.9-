@@ -9,7 +9,11 @@ import { useUi } from "@/app/_lib/uiLang";
 import type { MoleculeBlockData, Representation } from "@/app/_molecule/model";
 import { availableRepresentations } from "@/app/_molecule/render";
 import { REP_LABEL, REP_SHORT } from "@/app/_molecule/strings";
-import { StudioKeyboard, StudioKeyboardButton } from "@/app/_components/math-keyboard/StudioKeyboard";
+import { StudioKeyboard } from "@/app/_components/math-keyboard/StudioKeyboard";
+import TableToolDock from "@/app/_components/table-studio/TableToolDock";
+import type { TableTool } from "@/app/_components/table-studio/TableDrawingLayer";
+import { useEraserTool } from "@/app/_lib/ink/useEraserTool";
+import { useInkTools } from "@/app/_lib/ink/useInkTools";
 import DiscardDialog from "./DiscardDialog";
 import PeriodicTableDialog from "./PeriodicTableDialog";
 import PropertiesPanel from "./PropertiesPanel";
@@ -35,8 +39,8 @@ const BLANK: MoleculeGraph = { atoms: [], bonds: [], annotations: [], hydrogens:
 // What a new drawing can start from: a blank page (the usual), or one of the test molecules.
 const STARTS: { id: string; name?: { fr: string; en: string }; graph: MoleculeGraph }[] = [{ id: "blank", graph: BLANK }, ...SAMPLE_MOLECULES];
 
-// The drawing Studio: a full-screen modal with the tools on the left, the drawing area in the middle
-// and the properties on the right. The drawing lives in this Studio only (useMoleculeStudio, with its own
+// The drawing Studio: a full-screen modal with the tools on the left, the drawing area in the middle (with the floating tool
+// bar of the page: select, draw, text box, eraser, math keyboard) and the properties on the right. The drawing lives in this Studio only (useMoleculeStudio, with its own
 // undo and redo): the exam's own undo history gets one step when the drawing is inserted or updated.
 export default function MoleculeStudio({ editing, onInsert, onUpdate, onInsertMolecule, onClose }: Props) {
   const { t, lang, rtl } = useUi();
@@ -57,7 +61,11 @@ export default function MoleculeStudio({ editing, onInsert, onUpdate, onInsertMo
   const locked = !!rep || student; // looking at it, not editing it: the tools and the properties are off
   const [startId, setStartId] = useState(STARTS[0].id);
   const start = STARTS.find((s) => s.id === startId) ?? STARTS[0];
-  const { selectedShape } = studio;
+  const { selectedShape, activeTool } = studio;
+  const ink = useInkTools(); // (the page's Draw tool: the same brush, pencil and highlighter, kept between sessions)
+  const eraser = useEraserTool(); // (the page's Eraser: it rubs the drawings; the Eraser of the left panel deletes atoms and bonds)
+  const barTool = (["draw", "shape", "textbox", "eraser"] as const).find((x) => x === activeTool);
+  const dockTool: TableTool = barTool ?? "select";
   const empty = graph.atoms.length === 0 && graph.annotations.length === 0 && !graph.shapes?.length;
   const hasSelection = selection.atoms.length + selection.bonds.length + selection.notes.length > 0 || !!selectedShape;
 
@@ -77,7 +85,8 @@ export default function MoleculeStudio({ editing, onInsert, onUpdate, onInsertMo
       const key = e.key.toLowerCase();
       if (e.key === "Escape") {
         // (the field of a text handles its own Esc and marks the key as handled: that never gets here)
-        if (!typing && hasSelection) clearSelection();
+        if (!typing && barTool) studio.setTool("select"); // (a tool of the floating bar, or a shape, is put down)
+        else if (!typing && hasSelection) clearSelection();
         else requestClose();
       } else if ((e.ctrlKey || e.metaKey) && !typing && (key === "z" || key === "y")) {
         e.preventDefault();
@@ -105,7 +114,7 @@ export default function MoleculeStudio({ editing, onInsert, onUpdate, onInsertMo
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tableOpen, confirmClose, locked, hasSelection, selectedShape, clearSelection, selectEverything, deleteSelected, copy, cut, paste, undo, redo, dirty, onClose]);
+  }, [tableOpen, confirmClose, locked, hasSelection, selectedShape, barTool, clearSelection, selectEverything, deleteSelected, copy, cut, paste, undo, redo, dirty, onClose]);
 
   const chooseStart = (id: string) => {
     const next = STARTS.find((s) => s.id === id);
@@ -129,7 +138,6 @@ export default function MoleculeStudio({ editing, onInsert, onUpdate, onInsertMo
         <button onClick={redo} disabled={!canRedo} title={`${t("Redo")} (Ctrl+Y)`} aria-label={t("Redo")} data-testid="redo" className={iconButton}>
           <Redo2 size={16} />
         </button>
-        <StudioKeyboardButton />
 
         <div className="mx-1 flex rounded-lg bg-subtle p-0.5" role="group" aria-label={t("View")} data-testid="view-toggle">
           {(["teacher", "student"] as const).map((v) => (
@@ -195,8 +203,10 @@ export default function MoleculeStudio({ editing, onInsert, onUpdate, onInsertMo
             ))}
           </div>
           {/* the canvas stays mounted under a preview, so that the view (zoom, position) is kept */}
-          <div className={`min-h-0 flex-1 ${rep ? "hidden" : ""}`}>
-            <StudioCanvas key={editing ? "editing" : start.id} studio={studio} student={student} />
+          <div className={`relative min-h-0 flex-1 ${rep ? "hidden" : ""}`}>
+            <StudioCanvas key={editing ? "editing" : start.id} studio={studio} student={student} ink={ink} eraser={eraser} />
+            {/* the floating tool bar of the page: select, draw (brush, pencil, highlighter), text box, eraser, math keyboard */}
+            {!student && <TableToolDock tool={dockTool} onTool={(next) => studio.setTool(next)} ink={ink} eraser={eraser} textboxHint={t("Text box: drag on the paper to draw one, then type")} />}
           </div>
           {/* these two are text built from the whole molecule: nothing can be masked in them, and the student version would give the answer away */}
           {student && masked > 0 && (rep === "molecular" || rep === "semi-structural") && (

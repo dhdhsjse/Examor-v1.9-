@@ -36,7 +36,7 @@ export type MarginEditView = { margins: PageMargins; dragging: boolean };
 // A box drawn on a page with the text box tool (page pixels, relative to that page).
 // (`flipX` / `flipY`: a line drawn leftwards / upwards; a click without a drag has no size: width and height 0, and x, y are where it was)
 export type DrawnBox = { pageIndex: number; x: number; y: number; width: number; height: number; flipX?: boolean; flipY?: boolean };
-const MIN_DRAWN = { width: 40, height: 20 }; // a smaller drag is taken for a click: no box
+const MIN_DRAWN = { width: 40, height: 20 }; // a smaller drag is taken for a click: a small text box at its usual size
 type DrawDraft = { page: number; x0: number; y0: number; x1: number; y1: number };
 const SNAP_COLOR = "#ec4899"; // pink lines while dragging
 const ACCENT = "#4f46e5";
@@ -56,6 +56,11 @@ interface Props {
   interactive?: boolean; // false = clean render for the PDF
   stageRef?: RefObject<Konva.Stage | null>;
   onSelect?: (id: string | null) => void;
+  // Several blocks selected at once: a box dragged over them on the paper with the Select tool (Shift: added to the selection),
+  // or Shift+click. They are outlined, dragged together and dropped in one step (`onMoveMany`, page px of each one's page).
+  groupIds?: readonly string[];
+  onSelectMany?: (ids: string[]) => void;
+  onMoveMany?: (moves: { id: string; pageId: string; x: number; y: number }[]) => void;
   onMove?: (id: string, pageId: string, x: number, y: number) => void;
   onResize?: (id: string, layout: Partial<BlockLayout>) => void;
   textTool?: boolean;
@@ -171,8 +176,40 @@ export default function ExamCanvas(props: Props) {
   }, [selected, blocks, inBox]);
   const shown = drawOrder.filter((b) => b.id !== props.hiddenId);
 
+  // The blocks selected together (those still in the exam: an undo may have taken some away).
+  const group = useMemo(
+    () => new Set(interactive ? (props.groupIds ?? []).filter((id) => blocks.some((b) => b.id === id)) : []),
+    [interactive, props.groupIds, blocks],
+  );
+  // What can be selected with other blocks: not a page's header or footer, not a block in a text box's text (it goes with its box).
+  const groupable = (b: Block) => b.type !== "header" && !b.meta?.role && !(b.meta?.slot && blocks.some((o) => o.id === b.meta?.slot));
+  // A click (no drag) on one of the blocks selected together selects that block alone, on release.
+  const clickInGroup = useRef<string | null>(null);
+
   // Alt+click: the block under the one clicked (again: the next one down, then back to the top one), as the page stacks them.
-  const pick = (b: Block, alt: boolean) => {
+  // Shift+click: the block joins the blocks selected (or leaves them).
+  const pick = (b: Block, alt: boolean, shift = false) => {
+    if (shift && !alt && groupable(b)) {
+      const before = group.size ? [...group] : selected && groupable(selected) ? [selected.id] : [];
+      const next = before.includes(b.id) ? before.filter((id) => id !== b.id) : [...before, b.id];
+      if (next.length > 1) props.onSelectMany?.(next);
+      else props.onSelect?.(next[0] ?? null);
+      return next.includes(b.id);
+    }
+    if (group.has(b.id) && !alt) {
+      // (pressed on the blocks selected together: they stay selected, to be dragged together)
+      clickInGroup.current = b.id;
+      window.addEventListener(
+        "mouseup",
+        () =>
+          setTimeout(() => {
+            if (clickInGroup.current === b.id) props.onSelect?.(b.id);
+            clickInGroup.current = null;
+          }),
+        { once: true },
+      );
+      return true;
+    }
     let id = b.id;
     const p = alt ? layerRef.current?.getStage()?.getPointerPosition() : null;
     if (p) {
@@ -254,9 +291,66 @@ export default function ExamCanvas(props: Props) {
       return node ? [{ node, dx: o.layout.x - b.layout.x, dy: o.layout.y - b.layout.y }] : [];
     });
   };
+  // Where a block is on the stage (its page's box + its place on the page).
+  const stagePos = (b: Block) => {
+    const page = boxes[pageIndex.get(b.layout.pageId) ?? 0];
+    return { x: page.left + b.layout.x, y: page.top + b.layout.y };
+  };
+  // Blocks selected together, one of them dragged: the others go the same way (no snapping), each dropped on the page it is over.
+  const groupDrag = useRef<{ id: string; from: { x: number; y: number }; members: { b: Block; node: Konva.Node; from: { x: number; y: number } }[] } | null>(null);
   const handleDragStart = (b: Block) => {
+    clickInGroup.current = null;
     setLiftedId(b.id);
     props.onDragging?.(true);
+    const layer = layerRef.current;
+    groupDrag.current =
+      group.has(b.id) && group.size > 1 && layer
+        ? {
+            id: b.id,
+            from: stagePos(b),
+            members: blocks.flatMap((o) => {
+              const node = group.has(o.id) && o.id !== b.id ? layer.findOne(`#${o.id}`) : undefined;
+              return node ? [{ b: o, node, from: stagePos(o) }] : [];
+            }),
+          }
+        : null;
+  };
+  const moveGroup = (b: Block, x: number, y: number) => {
+    const g = groupDrag.current;
+    if (!g || g.id !== b.id) return false;
+    const dx = x - g.from.x;
+    const dy = y - g.from.y;
+    followBox(b, { x, y });
+    for (const m of g.members) {
+      const at = { x: m.from.x + dx, y: m.from.y + dy };
+      m.node.position(at);
+      followBox(m.b, at);
+    }
+    return true;
+  };
+  const dropGroup = (b: Block, x: number, y: number) => {
+    const g = groupDrag.current;
+    if (!g || g.id !== b.id) return false;
+    groupDrag.current = null;
+    setLiftedId(null);
+    props.onDragging?.(false);
+    const dx = x - g.from.x;
+    const dy = y - g.from.y;
+    // each one on the page it is over, kept inside it
+    const place = (o: Block, sx: number, sy: number) => {
+      const h = heights.get(o.id) ?? 0;
+      const i = pageAt(sy + h / 2, boxes);
+      const page = boxes[i];
+      return { id: o.id, pageId: pages[i].id, x: clamp(sx - page.left, 0, page.width - o.layout.width), y: clamp(sy - page.top, 0, Math.max(0, page.height - h)), i };
+    };
+    const moves = [place(b, x, y), ...g.members.map((m) => place(m.b, m.from.x + dx, m.from.y + dy))];
+    // (the nodes stand where the blocks land, until the page draws them there)
+    for (const m of g.members) {
+      const to = moves.find((v) => v.id === m.b.id);
+      if (to) m.node.position({ x: boxes[to.i].left + to.x, y: boxes[to.i].top + to.y });
+    }
+    props.onMoveMany?.(moves); // (its page index `i` too: not read)
+    return true;
   };
   const followBox = (b: Block, pos: { x: number; y: number }) => {
     embeddedNodes(b).forEach(({ node, dx, dy }) => node.position({ x: pos.x + dx, y: pos.y + dy }));
@@ -264,6 +358,7 @@ export default function ExamCanvas(props: Props) {
 
   // While dragging: pick the closest page, snap to guides, keep the block inside that page.
   const handleDragMove = (b: Block, x: number, y: number) => {
+    if (moveGroup(b, x, y)) return { x, y };
     const at = placeDragged(b, x, y);
     followBox(b, at);
     return at;
@@ -300,6 +395,7 @@ export default function ExamCanvas(props: Props) {
 
   // Drop: save which page the block landed on and its position on that page.
   const handleDragEnd = (b: Block, x: number, y: number) => {
+    if (dropGroup(b, x, y)) return;
     setLiftedId(null); // from now on its saved place in the stack (layout.z, raised by the move) keeps it on top
     const owner = b.meta?.slot ? blocks.find((o) => o.id === b.meta?.slot) : undefined;
     if (owner) {
@@ -412,12 +508,60 @@ export default function ExamCanvas(props: Props) {
         onDrawBox.current?.(click ? { pageIndex: page, x: d.x0 - box.left, y: d.y0 - box.top, width: 0, height: 0 } : { pageIndex: page, x: r.x - box.left, y: r.y - box.top, width: r.width, height: r.height, flipX: d.x1 < d.x0, flipY: d.y1 < d.y0 });
         return;
       }
-      if (r.width < MIN_DRAWN.width || r.height < MIN_DRAWN.height) return;
+      // a text box: a click (or a drag too small for a box) puts a small one where the mouse is
+      if (r.width < MIN_DRAWN.width || r.height < MIN_DRAWN.height) {
+        onDrawBox.current?.({ pageIndex: page, x: d.x0 - box.left, y: d.y0 - box.top, width: 0, height: 0 });
+        return;
+      }
       onDrawBox.current?.({ pageIndex: page, x: r.x - box.left, y: r.y - box.top, width: r.width, height: r.height });
     };
     window.addEventListener("mousemove", follow);
     window.addEventListener("mouseup", release);
     stopDraw.current = stop;
+  };
+
+  // Select tool, mouse down on the paper (or between the pages) and dragged: a box follows the mouse, and the blocks it touches when
+  // let go are selected (with Shift: added to those already selected). A click without a drag only clears the selection.
+  const [lasso, setLasso] = useState<DrawDraft | null>(null);
+  const stopLasso = useRef<(() => void) | null>(null);
+  useEffect(() => () => stopLasso.current?.(), []);
+  const startLasso = (stage: Konva.Stage, x: number, y: number, keep: string[]) => {
+    let d: DrawDraft = { page: 0, x0: x, y0: y, x1: x, y1: y };
+    let moved = false;
+    const follow = (e: MouseEvent) => {
+      stage.setPointersPositions(e);
+      const p = stage.getPointerPosition();
+      if (!p) return;
+      d = { ...d, x1: clamp(p.x, 0, width), y1: clamp(p.y, 0, height) };
+      moved ||= Math.hypot(d.x1 - d.x0, d.y1 - d.y0) * zoomRef.current > 4; // (a few screen px: a shaky click is still a click)
+      if (moved) setLasso(d);
+    };
+    const stop = () => {
+      window.removeEventListener("mousemove", follow);
+      window.removeEventListener("mouseup", release);
+      stopLasso.current = null;
+      setLasso(null);
+    };
+    const release = (e: MouseEvent) => {
+      follow(e);
+      stop();
+      if (!moved) return;
+      const r = draftRect(d);
+      const hits = blocks
+        .filter((b) => groupable(b) && b.id !== props.hiddenId)
+        .filter((b) => {
+          const { x: bx, y: by } = stagePos(b);
+          const h = heights.get(b.id) ?? 0;
+          return bx < r.x + r.width && bx + b.layout.width > r.x && by < r.y + r.height && by + h > r.y;
+        })
+        .map((b) => b.id);
+      const ids = [...new Set([...keep, ...hits])];
+      if (ids.length > 1) props.onSelectMany?.(ids);
+      else if (ids.length === 1) props.onSelect?.(ids[0]);
+    };
+    window.addEventListener("mousemove", follow);
+    window.addEventListener("mouseup", release);
+    stopLasso.current = stop;
   };
 
   // Mouse (pen, finger) down on a page with a drawing tool: the stroke follows the pointer within that page, steadied as it goes
@@ -540,10 +684,15 @@ export default function ExamCanvas(props: Props) {
       }}
       onMouseDown={(e) => {
         if (e.target !== e.target.getStage() && e.target.name() !== "paper") return;
-        props.onSelect?.(null);
+        // (with Shift the selection stays: the box adds to it)
+        const keep = e.evt.shiftKey ? (group.size ? [...group] : selected && groupable(selected) ? [selected.id] : []) : [];
+        if (!e.evt.shiftKey) props.onSelect?.(null);
         const stage = e.target.getStage();
         const p = stage?.getPointerPosition();
-        if (inking) {
+        if (interactive && !drawing && !erasing && !props.textTool && stage && p && e.evt.button === 0) {
+          e.evt.preventDefault(); // no text selection while dragging the box
+          startLasso(stage, p.x, p.y, keep);
+        } else if (inking) {
           e.evt.preventDefault(); // (the stroke started on pointer down) no text selection while drawing
         } else if (drawing && stage && p && e.target.name() === "paper" && e.evt.button === 0) {
           e.evt.preventDefault(); // no text selection while dragging
@@ -589,12 +738,13 @@ export default function ExamCanvas(props: Props) {
             totalPoints={totalPoints}
             zoom={zoom}
             selected={b.id === selectedId}
+            grouped={!passive && group.has(b.id)}
             interactive={interactive}
             textTool={!!props.textTool}
             drawing={drawing || erasing}
             erasable={erasing && props.eraser?.mode === "stroke" && b.type === "shape"}
             typing={b.id === props.typingId}
-            onSelect={(alt) => pick(b, !!alt)}
+            onSelect={(alt, shift) => pick(b, !!alt, !!shift)}
             onDragStart={() => handleDragStart(b)}
             onEdit={(field) => props.onEdit?.(b.id, field)}
             onPatch={(patch) => props.onPatch?.(b.id, patch)}
@@ -626,6 +776,11 @@ export default function ExamCanvas(props: Props) {
             dash={[4 / zoom, 4 / zoom]}
             listening={false}
           />
+        )}
+
+        {/* The box dragged with the Select tool: the blocks it touches get selected */}
+        {lasso && (
+          <Rect {...draftRect(lasso)} fill="rgba(79,70,229,0.06)" stroke={ACCENT} strokeWidth={1 / zoom} dash={[4 / zoom, 3 / zoom]} listening={false} />
         )}
 
         {/* Where the block dragged in its text box would go */}

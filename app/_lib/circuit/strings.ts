@@ -46,6 +46,15 @@ export const CIRCUIT_FR: Record<string, string> = {
   "Number the labels (R1, R2…)": "Numéroter les étiquettes (R1, R2…)",
   "R, R → R1, R2: the labels that are still the plain letter": "R, R → R1, R2 : les étiquettes qui sont encore la simple lettre",
   "The drawing is shown at {percent}% to fit the window.": "Le dessin est affiché à {percent} % pour tenir dans la fenêtre.",
+  "R1, R2 → R, R: back to the plain letters": "R1, R2 → R, R : retour à la simple lettre",
+  "Remove this section": "Supprimer ce tronçon",
+  "Click a part of the wire to select only that section, then remove it.": "Cliquez sur une partie du fil pour ne sélectionner que ce tronçon, puis supprimez-le.",
+  "Delete the whole wire": "Supprimer tout le fil",
+  "Click a component or a wire to select it, drag it to move it · Delete: remove the section of the wire clicked": "Cliquez sur un composant ou un fil pour le sélectionner, faites-le glisser pour le déplacer · Suppr : supprime le tronçon de fil cliqué",
+  "Drag on the drawing to draw freely · Esc to stop": "Faites glisser sur le dessin pour dessiner librement · Échap pour arrêter",
+  "Drag on the drawing to draw a text box, then type in it · Esc to stop": "Faites glisser sur le dessin pour tracer une zone de texte, puis tapez · Échap pour arrêter",
+  "Text box: drag on the drawing to draw one, then type": "Zone de texte : faites glisser sur le dessin pour en tracer une, puis tapez",
+  "Drag over a drawing or a shape to rub it out · Esc to stop": "Passez sur un dessin ou une forme pour l’effacer · Échap pour arrêter",
 };
 
 export const CIRCUIT_AR: Record<string, string> = {
@@ -93,4 +102,13 @@ export const CIRCUIT_AR: Record<string, string> = {
   "Number the labels (R1, R2…)": "ترقيم التسميات (R1, R2…)",
   "R, R → R1, R2: the labels that are still the plain letter": "R, R ← R1, R2: التسميات التي ما زالت الحرف وحده",
   "The drawing is shown at {percent}% to fit the window.": "يُعرض الرسم بنسبة {percent}% ليناسب النافذة.",
+  "R1, R2 → R, R: back to the plain letters": "R1, R2 ← R, R: العودة إلى الحرف وحده",
+  "Remove this section": "حذف هذا الجزء",
+  "Click a part of the wire to select only that section, then remove it.": "انقر على جزء من السلك لتحديد هذا الجزء فقط، ثم احذفه.",
+  "Delete the whole wire": "حذف السلك كله",
+  "Click a component or a wire to select it, drag it to move it · Delete: remove the section of the wire clicked": "انقر على مكوّن أو سلك لتحديده، واسحبه لتحريكه · Delete: حذف جزء السلك المنقور",
+  "Drag on the drawing to draw freely · Esc to stop": "اسحب على الرسم للرسم بحرية · Esc للإيقاف",
+  "Drag on the drawing to draw a text box, then type in it · Esc to stop": "اسحب على الرسم لرسم مربع نص، ثم اكتب فيه · Esc للإيقاف",
+  "Text box: drag on the drawing to draw one, then type": "مربع نص: اسحب على الرسم لرسمه، ثم اكتب",
+  "Drag over a drawing or a shape to rub it out · Esc to stop": "مرّر فوق رسم أو شكل لمسحه · Esc للتوقف",
 };

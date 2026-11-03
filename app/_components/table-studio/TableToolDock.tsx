@@ -23,7 +23,7 @@ export default function TableToolDock({ tool, onTool, ink, eraser, textboxHint }
   const textbox = textboxHint ?? t("Text box: drag on the table to draw one, then type");
   return (
     <div className="pointer-events-none absolute inset-x-0 bottom-4 z-20 flex justify-center">
-      <div data-testid="table-tool-dock" dir="ltr" className="pointer-events-auto relative flex items-center gap-0.5 rounded-[10px] border border-line bg-surface p-1 shadow-[0_4px_16px_-4px_rgba(0,0,0,0.16)]">
+      <div data-testid="table-tool-dock" dir="ltr" className="pointer-events-auto relative flex items-center gap-0.5 rounded-md border border-line bg-surface p-1 shadow-sm">
         <button type="button" onClick={() => onTool("select")} aria-pressed={tool === "select"} title={t("Select and move")} aria-label={t("Select and move")} data-testid="tool-select" className={toolBtn(tool === "select")}>
           <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden>
             <path d="M3 1.5l9.5 7.2-4.3.6 2.6 4.9-1.9 1-2.6-5-3.3 3z" />

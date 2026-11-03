@@ -190,6 +190,7 @@ export const GRAPH_FR: Record<string, string> = {
   "On both sides": "Des deux côtés",
   "To the right of the point": "À droite du point",
   "To the left of the point": "À gauche du point",
+  "Text box: drag on the paper to draw one, then type": "Zone de texte : faites glisser sur le papier pour en tracer une, puis tapez",
 };
 
 export const GRAPH_AR: Record<string, string> = {
@@ -381,4 +382,5 @@ export const GRAPH_AR: Record<string, string> = {
   "On both sides": "في الجهتين",
   "To the right of the point": "يمين النقطة",
   "To the left of the point": "يسار النقطة",
+  "Text box: drag on the paper to draw one, then type": "مربع نص: اسحب على الورقة لرسمه، ثم اكتب",
 };

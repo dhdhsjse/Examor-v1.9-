@@ -2,7 +2,8 @@
 
 import { useCallback, useMemo, useRef, useState } from "react";
 import type { ShapePatch } from "@/app/_components/shapes/StudioShapes";
-import { addShape, duplicateShape, isLine, newShapeItem, removeShape, reorderShape, updateShape, type DrawnBox, type Order } from "@/app/_lib/shapes";
+import { eraseStrokes } from "@/app/_lib/ink/eraser";
+import { FREEHAND_ID, addShape, duplicateShape, isLine, newShapeId, removeShape, reorderShape, updateShape, type Order, type ShapeItem } from "@/app/_lib/shapes";
 import { COALESCE_MS } from "@/app/_lib/studioHistory";
 import { FRAGMENTS, attachFragment, placeFragment, type FragmentId } from "@/app/_lib/chemistry/fragments";
 import {
@@ -79,6 +80,7 @@ export function useMoleculeStudio(initialGraph: MoleculeGraph) {
   const [picked, setPicked] = useState<Selection>(EMPTY_SELECTION);
   const [shapeId, setShapeId] = useState<string | null>(null); // the selected shape (when one is, nothing else is)
   const [shapeKind, setShapeKind] = useState("rect"); // the shape the Shapes tool draws
+  const [textId, setTextId] = useState<string | null>(null); // the drawing whose text is being typed
   const lastShapeEdit = useRef<{ key: string; at: number } | null>(null);
   const [clipboard, setClipboard] = useState<Clipboard | null>(null);
   // How the drawing is looked at (neither is an edit, so neither is in the undo history): the teacher's or the student's
@@ -307,39 +309,71 @@ export function useMoleculeStudio(initialGraph: MoleculeGraph) {
 
   // ---- shapes ----
 
+  // A tool of the floating bar or of the left panel. The pencil of the Shapes gallery is the Draw tool.
+  const setTool = useCallback((tool: StudioTool) => {
+    setActiveTool(tool);
+    if (tool === "draw" || tool === "textbox" || tool === "eraser") {
+      setPicked(EMPTY_SELECTION);
+      setShapeId(null);
+    }
+  }, []);
   // A shape chosen in the gallery: the next drag on the paper draws it.
   const pickShape = useCallback((shape: string) => {
-    setShapeKind(shape);
-    setActiveTool("shape");
+    if (shape !== FREEHAND_ID) setShapeKind(shape);
+    setActiveTool(shape === FREEHAND_ID ? "draw" : "shape");
     setPicked(EMPTY_SELECTION);
     setShapeId(null);
   }, []);
-  const selectShape = useCallback((id: string) => {
+  const selectShape = useCallback((id: string | null) => {
     setPicked(EMPTY_SELECTION);
     setShapeId(id);
   }, []);
-  const drawShape = useCallback(
-    (box: DrawnBox) => {
-      const item = newShapeItem(shapeKind, box);
-      editNotes((g) => ({ ...g, shapes: addShape(g.shapes, item) }));
-      setPicked(EMPTY_SELECTION);
-      setShapeId(item.id);
-      setActiveTool("select"); // (like PowerPoint: one shape, then the Select tool is back)
-    },
-    [shapeKind, editNotes],
-  );
-  // `key` names what changed: edits of the same thing close together (typing the text, a thickness) are one step of the undo.
-  const changeShape = useCallback(
-    (id: string, patch: ShapePatch, key: string) => {
+  // An edit of the shapes: `key` names what changed, and edits of the same thing close together (typing the text, a thickness, a
+  // drag, one stroke of the eraser) are one step of the undo; `merge` makes it part of the last step whatever the time.
+  const editShapes = useCallback(
+    (change: (g: MoleculeGraph) => MoleculeGraph, key: string, merge = false) => {
       const now = Date.now();
-      const merge = lastShapeEdit.current?.key === key && now - lastShapeEdit.current.at < COALESCE_MS;
+      const same = merge || (lastShapeEdit.current?.key === key && (key.startsWith("erase:") || now - lastShapeEdit.current.at < COALESCE_MS));
       lastShapeEdit.current = { key, at: now };
-      const change = (g: MoleculeGraph): MoleculeGraph => ({ ...g, shapes: updateShape(g.shapes, id, patch) });
-      if (merge) setHistory((h) => (change(h.graph) === h.graph ? h : { ...h, graph: change(h.graph) }));
+      if (same) setHistory((h) => (change(h.graph) === h.graph ? h : { ...h, graph: change(h.graph) }));
       else editNotes(change);
     },
     [editNotes],
   );
+  const changeShape = useCallback((id: string, patch: ShapePatch, key: string) => editShapes((g) => ({ ...g, shapes: updateShape(g.shapes, id, patch) }), key), [editShapes]);
+  // A drawing of the floating bar (a stroke, a shape, a text box) put on the paper.
+  const addDrawing = useCallback(
+    (item: ShapeItem) => {
+      editShapes((g) => ({ ...g, shapes: addShape(g.shapes, item) }), `add:${item.id}`);
+      if (activeTool === "draw") return; // (the brush stays in hand: a drawing is many strokes)
+      setPicked(EMPTY_SELECTION);
+      setShapeId(item.id);
+      setActiveTool("select"); // (like PowerPoint: one shape, then the Select tool is back)
+      if (activeTool === "textbox") setTextId(item.id); // (a text box: type in it at once)
+    },
+    [activeTool, editShapes],
+  );
+  const eraseShapes = useCallback((ids: ReadonlySet<string>, gesture: string) => editShapes((g) => {
+    const left = (g.shapes ?? []).filter((s) => !ids.has(s.id));
+    return { ...g, shapes: left.length ? left : undefined };
+  }, gesture), [editShapes]);
+  // the real eraser: the drawings it went over are cut there (worked out from the paper as it is at each move)
+  const eraseInk = useCallback((path: { x: number; y: number }[], radius: number, gesture: string) => editShapes((g) => {
+    const left = eraseStrokes(g.shapes ?? [], path, radius, newShapeId);
+    return left ? { ...g, shapes: left.length ? left : undefined } : g;
+  }, gesture), [editShapes]);
+  // The text of a drawing typed, or done with (a text box left empty goes away, in the step that drew it).
+  const editText = useCallback((id: string | null) => {
+    const typed = (graph.shapes ?? []).find((s) => s.id === textId);
+    setTextId(id);
+    if (!id && typed && !typed.text?.trim() && typed.fill === null && typed.stroke === null) {
+      editShapes((g) => {
+        const left = removeShape(g.shapes, typed.id);
+        return { ...g, shapes: left.length ? left : undefined };
+      }, `add:${typed.id}`, true);
+      setShapeId(null);
+    }
+  }, [graph.shapes, textId, editShapes]);
   const orderShape = useCallback((id: string, order: Order) => editNotes((g) => ({ ...g, shapes: reorderShape(g.shapes, id, order) })), [editNotes]);
   const duplicateShapeOf = useCallback(
     (id: string) => {
@@ -379,6 +413,12 @@ export function useMoleculeStudio(initialGraph: MoleculeGraph) {
     setHydrogenMode,
     addMissingHydrogens,
     activeTool,
+    setTool,
+    textId,
+    editText,
+    addDrawing,
+    eraseShapes,
+    eraseInk,
     setActiveTool,
     activeElement,
     setActiveElement,
@@ -399,7 +439,6 @@ export function useMoleculeStudio(initialGraph: MoleculeGraph) {
     shapeKind,
     pickShape,
     selectShape,
-    drawShape,
     changeShape,
     orderShape,
     duplicateShapeOf,

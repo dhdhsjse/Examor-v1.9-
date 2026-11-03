@@ -62,6 +62,8 @@ export default function TextboxEditor({ block, meta, zoom, box, selectAll, keepO
 
   // The extensions are made once for this editing session (new ones on every render would be new options every time).
   // The direction and the size are those of the box when typing starts: they do not change while it is open.
+  // (The callback is only kept by the extensions and called later, when a block is opened: the ref is not read during render.)
+  // eslint-disable-next-line react-hooks/refs
   const [extensions] = useState(() => cmd.textboxExtensions({ rtl, size: s.font.size }, (id) => latest.current.onOpenBlock(id)));
   const editor = useEditor({
     extensions,

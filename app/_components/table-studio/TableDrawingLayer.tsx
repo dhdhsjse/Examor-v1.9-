@@ -1,7 +1,7 @@
 "use client";
 
 import type Konva from "konva";
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { Group, Layer, Rect, Stage } from "react-konva";
 import { InkStroke } from "@/app/_components/shapes/InkGraphic";
 import ShapeDrawSurface from "@/app/_components/shapes/ShapeDrawSurface";
@@ -48,21 +48,34 @@ type Props = {
   onEdit: (id: string | null) => void;
   /** Page px of empty room under the rows while a drawing tool is in hand (by default ROOM_BELOW; 0 for a sheet of a fixed size) */
   roomBelow?: number;
+  /** Where the shapes' (0, 0) is on the layer, page px (a layer that also covers a margin round the drawing): the shapes are given and handed back in their own coordinates */
+  offset?: { x: number; y: number };
+  /** The layer is exactly width × rowsHeight, whatever is drawn beyond it (a window on a drawing with no edge) */
+  clip?: boolean;
 };
+
+const NO_OFFSET = { x: 0, y: 0 };
 
 // What is drawn over the cells of the Table Studio: the drawings and shapes of the table, where the page puts them (in page px of
 // the table's box; the cells under it are drawn at the same scale), and the tools of the floating bar working on them: the brush,
 // pencil and highlighter of the page, the shapes, text boxes and the eraser. With the Select tool it lets the mouse through to the
 // cells, except over a shape (it is then picked, moved, turned…); with any other tool it takes the mouse everywhere on the table.
 export default function TableDrawingLayer(props: Props) {
-  const { width, rowsHeight, scale: s, shapes, tool, shapeKind, ink, eraser, textStyle, selectedId, editingId, onSelect, onChange, onAdd, onErase, onEraseInk, onEdit, roomBelow = ROOM_BELOW } = props;
+  const { width, rowsHeight, scale: s, tool, shapeKind, ink, eraser, textStyle, selectedId, editingId, onSelect, onErase, onEdit, roomBelow = ROOM_BELOW, offset = NO_OFFSET, clip = false } = props;
+  // (the shapes on the layer's own coordinates, and what is handed back on the shapes' own)
+  const { x: ox, y: oy } = offset;
+  const shapes = useMemo(() => (ox || oy ? props.shapes.map((sh) => ({ ...sh, x: sh.x + ox, y: sh.y + oy })) : props.shapes), [props.shapes, ox, oy]);
+  const onChange = (id: string, patch: ShapePatch, key: string) =>
+    props.onChange(id, ox || oy ? { ...patch, ...(patch.x !== undefined ? { x: patch.x - ox } : {}), ...(patch.y !== undefined ? { y: patch.y - oy } : {}) } : patch, key);
+  const onAdd = (item: ShapeItem) => props.onAdd(ox || oy ? { ...item, x: item.x - ox, y: item.y - oy } : item);
+  const onEraseInk = (path: { x: number; y: number }[], radius: number, gesture: string) => props.onEraseInk(ox || oy ? path.map((q) => ({ x: q.x - ox, y: q.y - oy })) : path, radius, gesture);
   const stageRef = useRef<Konva.Stage>(null);
   const layerRef = useRef<Konva.Layer>(null);
   const [over, setOver] = useState(false); // (the Select tool) the mouse is over a shape or a handle
   const [live, setLive] = useState<{ points: InkPoint[]; tool: InkTools["tool"]; color: string; size: number } | null>(null);
   const selecting = tool === "select";
   const lowest = Math.ceil(Math.max(0, ...shapes.map((sh) => sh.y + sh.h)));
-  const height = Math.max(rowsHeight, lowest) + (selecting ? 0 : roomBelow);
+  const height = clip ? rowsHeight : Math.max(rowsHeight, lowest) + (selecting ? 0 : roomBelow);
 
   // With the Select tool, whether the mouse is over something of the drawing decides who gets it: the drawing or the cells.
   useEffect(() => {
