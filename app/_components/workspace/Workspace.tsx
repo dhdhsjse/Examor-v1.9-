@@ -57,6 +57,9 @@ interface Props {
   mathKeyboard: boolean; // the math keyboard is on (its button is in the tool bar)
   onToggleMathKeyboard: () => void;
   onSelect: (id: string | null) => void;
+  groupIds: readonly string[]; // several blocks selected together (see ExamCanvas)
+  onSelectMany: (ids: string[]) => void;
+  onMoveMany: (moves: { id: string; pageId: string; x: number; y: number }[]) => void;
   onMove: (id: string, pageId: string, x: number, y: number) => void;
   onResize: (id: string, layout: Partial<BlockLayout>) => void;
   onPatch: (id: string, patch: BlockPatch, field: string) => void;
@@ -368,6 +371,9 @@ export default function Workspace(props: Props) {
                     selectedId={selectedId}
                     textTool={props.tool === "text"}
                     onSelect={props.onSelect}
+                    groupIds={props.groupIds}
+                    onSelectMany={props.onSelectMany}
+                    onMoveMany={props.onMoveMany}
                     onMove={props.onMove}
                     onResize={props.onResize}
                     onEdit={props.onEditStart}

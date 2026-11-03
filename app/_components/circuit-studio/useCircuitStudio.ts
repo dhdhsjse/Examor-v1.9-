@@ -1,21 +1,32 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { GRID, routeNext, type P, type SnapTarget } from "@/app/_lib/circuit/geometry";
-import { addComponent, addWire, moveComponent, moveWire, newComponent, numberLabels, removeComponent, removeWire, resizeArea, rotateComponent, updateComponent } from "@/app/_lib/circuit/ops";
+import { GRID, pathLength, routeNext, type P, type Section, type SnapTarget } from "@/app/_lib/circuit/geometry";
+import { addComponent, addWire, labelsNumbered, moveComponent, moveWire, newComponent, numberLabels, removeComponent, removeWire, removeWireSection, resizeArea, rotateComponent, unnumberLabels, updateComponent } from "@/app/_lib/circuit/ops";
 import { DEFAULT_CIRCUIT_CONFIG, type CircuitComponent, type CircuitConfig, type ComponentType } from "@/app/_lib/circuit/types";
-import { FREEHAND_ID, addShape, duplicateShape, isLine, newShapeItem, removeShape, reorderShape, updateShape, type DrawnBox, type Order } from "@/app/_lib/shapes";
+import { eraseStrokes } from "@/app/_lib/ink/eraser";
+import { FREEHAND_ID, addShape, duplicateShape, isLine, newShapeId, removeShape, reorderShape, updateShape, type Order, type ShapeItem } from "@/app/_lib/shapes";
 import type { ShapePatch } from "@/app/_components/shapes/StudioShapes";
-import type { ShapeStyle } from "@/app/_lib/shapes";
 import { canRedoStudio, canUndoStudio, editStudioHistory, isStudioDirty, redoStudioHistory, startStudioHistory, undoStudioHistory, type StudioHistory } from "@/app/_lib/studioHistory";
 
-/** The tool in hand: select and move, draw wires, or put a component of a kind. */
-export type CircuitTool = "select" | "wire" | "shape" | ComponentType;
+/** The tool in hand: select and move, the tools of the floating bar (draw, a shape, a text box, the eraser), draw wires, or put a component of a kind. */
+export type CircuitTool = "select" | "draw" | "shape" | "textbox" | "eraser" | "wire" | ComponentType;
+
+const BAR_TOOLS = ["select", "draw", "shape", "textbox", "eraser"] as const;
+/** The tools of the floating bar (the others are tiles of the left panel). */
+export type BarTool = (typeof BAR_TOOLS)[number];
+export const isBarTool = (t: CircuitTool): t is BarTool => (BAR_TOOLS as readonly string[]).includes(t);
+/** A component tile is in hand: a click puts one. */
+export const isPlaceTool = (t: CircuitTool): t is ComponentType => !isBarTool(t) && t !== "wire";
+
+// A text box drawn on the sheet that was left empty goes away (it would be an invisible box).
+const emptyTextBox = (s: ShapeItem | undefined) => !!s && !s.text?.trim() && s.fill === null && s.stroke === null;
 
 /** A wire being drawn: its corners so far, and the way the terminal it started on points. */
 export type WireDraft = { points: number[]; startDir?: P };
 
-type Selection = { kind: "component" | "wire" | "shape"; id: string };
+/** What is selected: a component, a shape, or a wire (with the section of it clicked: Delete takes only that section away). */
+type Selection = { kind: "component" | "shape"; id: string } | { kind: "wire"; id: string; section?: Section };
 
 // The state of the Circuit Studio: the circuit, with its own undo and redo (the exam's own undo history gets one step when the
 // circuit is inserted or updated), what is selected, the tool in hand, the rotation a component about to be placed will have,
@@ -27,6 +38,7 @@ export function useCircuitStudio(initial: CircuitConfig = DEFAULT_CIRCUIT_CONFIG
   const [pendingRotation, setPendingRotation] = useState(0); // (the turn of the next component placed: R turns it before the click)
   const [draft, setDraft] = useState<WireDraft | null>(null);
   const [shapeKind, setShapeKind] = useState("rect"); // (the shape the Shapes tool draws)
+  const [textId, setTextId] = useState<string | null>(null); // the drawing whose text is being typed
   const config = history.present;
 
   // Edits are made on the latest circuit (two quick ones must not undo each other); `key` names what changed, so that a drag or a
@@ -35,6 +47,8 @@ export function useCircuitStudio(initial: CircuitConfig = DEFAULT_CIRCUIT_CONFIG
 
   const selectedComponent = selection?.kind === "component" ? (config.components.find((c) => c.id === selection.id) ?? null) : null;
   const selectedWire = selection?.kind === "wire" ? (config.wires.find((w) => w.id === selection.id) ?? null) : null; // (what undo took away is no longer selected)
+  // (a section that is no longer on the wire, after an undo, is not selected)
+  const selectedSection = selection?.kind === "wire" && selection.section && selectedWire && selection.section.b <= pathLength(selectedWire.points) + 0.5 ? selection.section : null;
   const selectedShape = selection?.kind === "shape" ? ((config.shapes ?? []).find((s) => s.id === selection.id) ?? null) : null;
 
   // ---- tools ----
@@ -46,29 +60,28 @@ export function useCircuitStudio(initial: CircuitConfig = DEFAULT_CIRCUIT_CONFIG
     if (next !== "select") setSelection(null);
   }, []);
   const selectComponent = useCallback((id: string | null) => setSelection(id ? { kind: "component", id } : null), []);
-  const selectWire = useCallback((id: string | null) => setSelection(id ? { kind: "wire", id } : null), []);
+  const selectWire = useCallback((id: string | null, section?: Section | null) => setSelection(id ? { kind: "wire", id, ...(section ? { section } : {}) } : null), []);
   const clearSelection = useCallback(() => setSelection(null), []);
 
   // ---- shapes ----
 
-  // A shape chosen in the gallery: the next drag on the drawing draws it.
+  // A shape chosen in the gallery: the next drag on the drawing draws it (the pencil of the gallery is the Draw tool).
   const pickShape = useCallback((shape: string) => {
+    if (shape === FREEHAND_ID) return setTool("draw");
     setShapeKind(shape);
-    setToolState("shape");
-    setDraft(null);
-    setPendingRotation(0);
-    setSelection(null);
-  }, []);
-  const selectShape = useCallback((id: string) => setSelection({ kind: "shape", id }), []);
-  const drawShape = useCallback(
-    (box: DrawnBox, style?: Partial<ShapeStyle>) => {
-      const item = newShapeItem(shapeKind, box, style);
+    setTool("shape");
+  }, [setTool]);
+  const selectShape = useCallback((id: string | null) => setSelection(id ? { kind: "shape", id } : null), []);
+  // A drawing of the floating bar (a stroke, a shape, a text box) put on the sheet.
+  const addDrawing = useCallback(
+    (item: ShapeItem) => {
       change((c) => ({ ...c, shapes: addShape(c.shapes, item) }), `add:${item.id}`);
-      if (shapeKind === FREEHAND_ID) return; // (the pencil stays in hand: a drawing is many strokes)
+      if (tool === "draw") return; // (the brush stays in hand: a drawing is many strokes)
       setSelection({ kind: "shape", id: item.id });
       setToolState("select"); // (like PowerPoint: one shape, then the Select tool is back)
+      if (tool === "textbox") setTextId(item.id); // (a text box: type in it at once)
     },
-    [shapeKind, change],
+    [tool, change],
   );
   const changeShape = useCallback((id: string, patch: ShapePatch, key: string) => change((c) => ({ ...c, shapes: updateShape(c.shapes, id, patch) }), key), [change]);
   const orderShape = useCallback((id: string, order: Order) => change((c) => ({ ...c, shapes: reorderShape(c.shapes, id, order) }), `order:${id}:${Date.now()}`), [change]);
@@ -81,6 +94,27 @@ export function useCircuitStudio(initial: CircuitConfig = DEFAULT_CIRCUIT_CONFIG
     },
     [config.shapes, change],
   );
+  const eraseShapes = useCallback((ids: ReadonlySet<string>, gesture: string) => change((c) => {
+    const left = (c.shapes ?? []).filter((s) => !ids.has(s.id));
+    return { ...c, shapes: left.length ? left : undefined };
+  }, gesture), [change]);
+  // the real eraser: the drawings it went over are cut there (worked out from the sheet as it is at each move)
+  const eraseInk = useCallback((path: { x: number; y: number }[], radius: number, gesture: string) => change((c) => {
+    const left = eraseStrokes(c.shapes ?? [], path, radius, newShapeId);
+    return left ? { ...c, shapes: left.length ? left : undefined } : c;
+  }, gesture), [change]);
+  const deleteShape = useCallback((id: string, key = `remove:${id}`) => {
+    change((c) => {
+      const left = removeShape(c.shapes, id);
+      return { ...c, shapes: left.length ? left : undefined };
+    }, key);
+    setSelection(null);
+  }, [change]);
+  const editText = useCallback((id: string | null) => {
+    const typed = (config.shapes ?? []).find((s) => s.id === textId);
+    setTextId(id);
+    if (!id && typed && emptyTextBox(typed)) deleteShape(typed.id, `add:${typed.id}`); // (the same step of the undo as drawing it)
+  }, [config.shapes, textId, deleteShape]);
   const nudgeShape = useCallback((id: string, dx: number, dy: number) => change((c) => ({ ...c, shapes: (c.shapes ?? []).map((s) => (s.id === id ? { ...s, x: s.x + dx, y: s.y + dy } : s)) }), `shape-move:${id}`), [change]);
 
   // ---- components ----
@@ -105,7 +139,7 @@ export function useCircuitStudio(initial: CircuitConfig = DEFAULT_CIRCUIT_CONFIG
   // placed follows it; with nothing selected, the component about to be placed, or else the selected shape.
   const rotate = useCallback(
     (by = 90) => {
-      const placing = tool !== "select" && tool !== "wire" && tool !== "shape";
+      const placing = isPlaceTool(tool);
       const turned = (r: number) => (((r + by) % 360) + 360) % 360;
       if (selectedComponent) {
         change((c) => rotateComponent(c, selectedComponent.id, by), `rotate:${selectedComponent.id}`);
@@ -168,15 +202,25 @@ export function useCircuitStudio(initial: CircuitConfig = DEFAULT_CIRCUIT_CONFIG
 
   // ---- the whole circuit ----
 
+  // Delete: the selected component or shape; for a wire, the section of it that was clicked (the whole wire when none was).
   const deleteSelected = useCallback(() => {
     if (!selection) return;
     if (selection.kind === "component") change((c) => removeComponent(c, selection.id), `remove:${selection.id}`);
-    else if (selection.kind === "shape") change((c) => ({ ...c, shapes: removeShape(c.shapes, selection.id) }), `remove:${selection.id}`);
+    else if (selection.kind === "shape") return deleteShape(selection.id);
+    else if (selectedSection) change((c) => removeWireSection(c, selection.id, selectedSection), `cut:${selection.id}:${Date.now()}`);
     else change((c) => removeWire(c, selection.id), `remove:${selection.id}`);
     setSelection(null);
-  }, [selection, change]);
+  }, [selection, selectedSection, change, deleteShape]);
 
-  const numberTheLabels = useCallback(() => change((c) => numberLabels(c), "number"), [change]);
+  // The whole wire, even with a section of it selected.
+  const deleteWire = useCallback((id: string) => {
+    change((c) => removeWire(c, id), `remove:${id}`);
+    setSelection(null);
+  }, [change]);
+
+  // The labels numbered (R, R → R1, R2), or, when they already are, back to their plain letters: the button is a toggle.
+  const numbered = labelsNumbered(config);
+  const numberTheLabels = useCallback(() => change((c) => (labelsNumbered(c) ? unnumberLabels(c) : numberLabels(c)), `number:${Date.now()}`), [change]);
 
   const setArea = useCallback((width: number, height: number) => change((c) => resizeArea(c, width, height), "area"), [change]);
 
@@ -188,10 +232,16 @@ export function useCircuitStudio(initial: CircuitConfig = DEFAULT_CIRCUIT_CONFIG
     selectedComponent,
     selectedWire,
     selectedShape,
+    selectedSection,
     shapeKind,
     pickShape,
     selectShape,
-    drawShape,
+    addDrawing,
+    textId,
+    editText,
+    eraseShapes,
+    eraseInk,
+    deleteShape,
     changeShape,
     orderShape,
     duplicateShapeOf,
@@ -214,7 +264,9 @@ export function useCircuitStudio(initial: CircuitConfig = DEFAULT_CIRCUIT_CONFIG
     cancelWire,
     moveWireBy,
     deleteSelected,
+    deleteWire,
     setArea,
+    numbered,
     numberTheLabels,
     undo,
     redo,

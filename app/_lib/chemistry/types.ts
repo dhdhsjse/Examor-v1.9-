@@ -95,4 +95,4 @@ export type MoleculeGraph = {
 export type RingSpec = { sides: number; isAromatic: boolean };
 
 /** The tools of the drawing Studio. */
-export type StudioTool = "select" | "shape" | "atom" | "erase" | "bond" | "ring" | "template" | "text" | "arrow" | "pair" | "electron";
+export type StudioTool = "select" | "shape" | "atom" | "erase" | "bond" | "ring" | "template" | "text" | "arrow" | "pair" | "electron" | "draw" | "textbox" | "eraser";

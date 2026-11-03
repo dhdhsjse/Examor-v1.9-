@@ -415,6 +415,24 @@ export function nextFreeY(blocks: Block[], heights: Map<string, number>, top = P
   return blocks.filter((b) => b.meta?.role !== "footer").reduce((bottom, b) => Math.max(bottom, b.layout.y + (heights.get(b.id) ?? 0) + gap), top);
 }
 
+// The highest free spot of a page for a block `h` tall, from `x` to `x + w`: the first gap (from `top` down) between the blocks
+// that are across that width, or under the last of them, as long as it ends above `bottom`. null: no room on that page.
+// (a page emptied at the top but with a block still low on it has room up there)
+export function firstFreeY(blocks: Block[], heights: Map<string, number>, top: number, bottom: number, h: number, x: number, w: number): number | null {
+  const gap = 14;
+  const busy = blocks
+    .filter((b) => b.meta?.role !== "footer" && b.layout.x < x + w && b.layout.x + b.layout.width > x)
+    .map((b) => ({ y0: b.layout.y, y1: b.layout.y + (heights.get(b.id) ?? 0) }))
+    .sort((a, c) => a.y0 - c.y0);
+  let y = top;
+  for (const r of busy) {
+    if (r.y1 + gap <= y) continue; // (above the spot)
+    if (y + h + gap <= r.y0) return y; // fits before it
+    y = Math.max(y, r.y1 + gap);
+  }
+  return y + h <= bottom ? y : null;
+}
+
 // Lowest y a new block may reach on a page: above its footer, or the bottom margin.
 export function pageBottom(onPage: Block[], page: Page): number {
   const footers = onPage.filter((b) => b.meta?.role === "footer").map((b) => b.layout.y - 14);

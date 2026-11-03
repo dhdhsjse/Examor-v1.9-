@@ -1,7 +1,7 @@
 // The edits of a circuit, as pure functions from one CircuitConfig to the next. A wire is connected to a component when one of its
 // ends is on one of its terminals: moving or turning the component carries those ends along (the wire stays orthogonal), and
 // nothing needs to be stored to remember the connection. Unit-tested.
-import { GRID, HALF_LENGTH, endsOf, moveEndpoint, normRotation, simplifyPath, snap, terminalsOf, translatePath, type P } from "./geometry";
+import { GRID, HALF_LENGTH, endsOf, moveEndpoint, normRotation, pathLength, simplifyPath, snap, subPath, terminalsOf, translatePath, type P, type Section } from "./geometry";
 import { COMPONENT_SPECS } from "./symbols";
 import type { CircuitComponent, CircuitConfig, ComponentType } from "./types";
 
@@ -83,6 +83,18 @@ export function numberLabels(config: CircuitConfig): CircuitConfig {
   return components.every((c, i) => c === config.components[i]) ? config : { ...config, components };
 }
 
+/** The labels numbered by numberLabels (R1, R2…) back to their plain letter (R, R…). A label the teacher wrote is left alone. */
+export function unnumberLabels(config: CircuitConfig): CircuitConfig {
+  const components = config.components.map((c) => {
+    const letter = COMPONENT_SPECS[c.type].label;
+    return letter && c.label !== letter && new RegExp(`^${letter}\\d+$`).test(c.label) ? { ...c, label: letter } : c;
+  });
+  return components.every((c, i) => c === config.components[i]) ? config : { ...config, components };
+}
+
+/** Whether the labels are numbered (numberLabels has nothing left to do and a label has its number): the button then takes the numbers off. */
+export const labelsNumbered = (config: CircuitConfig): boolean => numberLabels(config) === config && unnumberLabels(config) !== config;
+
 /** Takes a component away. Its wires stay (their ends are left where they were). */
 export const removeComponent = (config: CircuitConfig, id: string): CircuitConfig => ({ ...config, components: config.components.filter((c) => c.id !== id) });
 
@@ -98,6 +110,23 @@ export function addWire(config: CircuitConfig, points: number[], id?: string): C
 }
 
 export const removeWire = (config: CircuitConfig, id: string): CircuitConfig => ({ ...config, wires: config.wires.filter((w) => w.id !== id) });
+
+/**
+ * Takes a section of a wire away (from `section.a` to `section.b` pixels along it): what is left before it keeps the wire's id,
+ * what is left after it is a new wire. A wire with nothing left goes.
+ */
+export function removeWireSection(config: CircuitConfig, id: string, section: Section, newId: string = crypto.randomUUID()): CircuitConfig {
+  const wire = config.wires.find((w) => w.id === id);
+  if (!wire) return config;
+  const length = pathLength(wire.points);
+  const a = Math.max(0, Math.min(section.a, section.b));
+  const b = Math.min(length, Math.max(section.a, section.b));
+  if (b - a < 0.5) return config;
+  const before = a > 0.5 ? newWire(subPath(wire.points, 0, a), wire.id) : null;
+  const after = length - b > 0.5 ? newWire(subPath(wire.points, b, length), before ? newId : wire.id) : null;
+  const left = [before, after].filter((w): w is NonNullable<typeof w> => !!w);
+  return { ...config, wires: config.wires.flatMap((w) => (w.id === id ? left : [w])) };
+}
 
 /** Moves a whole wire by (dx, dy), rounded to the grid. It is then connected to whatever its ends are on now. */
 export function moveWire(config: CircuitConfig, id: string, dx: number, dy: number): CircuitConfig {

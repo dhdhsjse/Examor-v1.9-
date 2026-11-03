@@ -2,7 +2,8 @@
 
 import { useCallback, useMemo, useState } from "react";
 import type { ShapePatch } from "@/app/_components/shapes/StudioShapes";
-import { addShape, duplicateShape, isLine, newShapeItem, removeShape, reorderShape, updateShape, type DrawnBox, type Order } from "@/app/_lib/shapes";
+import { eraseStrokes } from "@/app/_lib/ink/eraser";
+import { FREEHAND_ID, addShape, duplicateShape, isLine, newShapeId, removeShape, reorderShape, updateShape, type Order, type ShapeItem } from "@/app/_lib/shapes";
 import { detachCurve, handlesOf, moveHandle, newAnnotation, type Handle, type PlacePoint } from "@/app/_lib/graph/annotations";
 import { configIssues, fatalIssue, type GraphIssue } from "@/app/_lib/graph/grid";
 import { canRedo, canUndo, edit, isDirty, redo, startHistory, undo, type GraphHistory } from "@/app/_lib/graph/history";
@@ -15,6 +16,12 @@ export type FunctionPatch = Partial<Pick<GraphFunction, "color" | "strokeWidth" 
 
 /** The tool in hand: an annotation, or the one that adds measured points to the selected series. */
 export type GraphTool = AnnotationType | "points";
+
+/** A tool of the floating bar that draws over the paper: the brush (pencil, highlighter), a text box, the eraser. */
+export type InkTool = "draw" | "textbox" | "eraser";
+
+// A text box drawn on the paper that was left empty goes away (it would be an invisible box).
+const emptyTextBox = (s: ShapeItem | undefined) => !!s && !s.text?.trim() && s.fill === null && s.stroke === null;
 
 /** Whose version of the graph is on the screen: the teacher's (everything, the masked parts faded) or the student's (the masks applied, only looked at). */
 export type GraphView = "teacher" | "student";
@@ -29,6 +36,8 @@ export function useGraphStudio(initial: GraphConfig = DEFAULT_GRAPH_CONFIG) {
   const [selection, setSelection] = useState<{ kind: "curve" | "annotation" | "shape"; id: string } | null>(null);
   const [tool, setTool] = useState<GraphTool | null>(null); // the tool in hand: the next click on the paper places an annotation, or a point (and stays in hand)
   const [shapeTool, setShapeTool] = useState<string | null>(null); // the shape the next drag on the paper draws (from the Shapes gallery)
+  const [inkTool, setInkTool] = useState<InkTool | null>(null); // a tool of the floating bar (draw, text box, eraser)
+  const [textId, setTextId] = useState<string | null>(null); // the drawing whose text is being typed
   const [view, setViewState] = useState<GraphView>("teacher");
   const [snap, setSnap] = useState(true); // clicks and drags land on the fine grid
   const config = history.present;
@@ -59,6 +68,7 @@ export function useGraphStudio(initial: GraphConfig = DEFAULT_GRAPH_CONFIG) {
   // (a series stays selected while its points are being put: they go to it)
   const pickTool = useCallback((next: GraphTool | null) => {
     setShapeTool(null);
+    setInkTool(null);
     setTool((t) => (t === next ? null : next));
     if (next !== "points") setSelection(null);
   }, []);
@@ -69,6 +79,7 @@ export function useGraphStudio(initial: GraphConfig = DEFAULT_GRAPH_CONFIG) {
       setSelection(null);
       setTool(null);
       setShapeTool(null);
+      setInkTool(null);
     }
   }, []);
 
@@ -193,22 +204,42 @@ export function useGraphStudio(initial: GraphConfig = DEFAULT_GRAPH_CONFIG) {
 
   // ---- shapes ----
 
-  // A shape chosen in the gallery: the next drag on the paper draws it.
+  // A tool of the floating bar (draw, text box, eraser), or null: the Select tool. The annotation tool and the shape go down.
+  const pickInkTool = useCallback((next: InkTool | null) => {
+    setInkTool(next);
+    setTool(null);
+    setShapeTool(null);
+    if (next) setSelection(null);
+  }, []);
+  // A shape chosen in the gallery: the next drag on the paper draws it (the pencil of the gallery is the Draw tool).
   const pickShape = useCallback((shape: string) => {
+    if (shape === FREEHAND_ID) return pickInkTool("draw");
     setShapeTool(shape);
+    setInkTool(null);
     setTool(null);
     setSelection(null);
-  }, []);
-  const drawShape = useCallback(
-    (box: DrawnBox) => {
-      if (!shapeTool) return;
-      const item = newShapeItem(shapeTool, box);
+  }, [pickInkTool]);
+  // A drawing of the floating bar (a stroke, a shape, a text box) put on the paper.
+  const addDrawing = useCallback(
+    (item: ShapeItem) => {
       change((c) => ({ ...c, shapes: addShape(c.shapes, item) }), `add:${item.id}`);
+      if (inkTool === "draw") return; // (the brush stays in hand: a drawing is many strokes)
       setSelection({ kind: "shape", id: item.id });
       setShapeTool(null); // (like PowerPoint: one shape, then the Select tool is back)
+      setInkTool(null);
+      if (inkTool === "textbox") setTextId(item.id); // (a text box: type in it at once)
     },
-    [shapeTool, change],
+    [inkTool, change],
   );
+  const eraseShapes = useCallback((ids: ReadonlySet<string>, gesture: string) => change((c) => {
+    const left = (c.shapes ?? []).filter((s) => !ids.has(s.id));
+    return { ...c, shapes: left.length ? left : undefined };
+  }, gesture), [change]);
+  // the real eraser: the drawings it went over are cut there (worked out from the paper as it is at each move)
+  const eraseInk = useCallback((path: { x: number; y: number }[], radius: number, gesture: string) => change((c) => {
+    const left = eraseStrokes(c.shapes ?? [], path, radius, newShapeId);
+    return left ? { ...c, shapes: left.length ? left : undefined } : c;
+  }, gesture), [change]);
   const changeShape = useCallback((id: string, patch: ShapePatch, key: string) => change((c) => ({ ...c, shapes: updateShape(c.shapes, id, patch) }), key), [change]);
   const orderShape = useCallback((id: string, order: Order) => change((c) => ({ ...c, shapes: reorderShape(c.shapes, id, order) }), `order:${id}:${Date.now()}`), [change]);
   const duplicateShapeOf = useCallback(
@@ -221,12 +252,20 @@ export function useGraphStudio(initial: GraphConfig = DEFAULT_GRAPH_CONFIG) {
     [config.shapes, change],
   );
   const removeShapeById = useCallback(
-    (id: string) => {
-      change((c) => ({ ...c, shapes: removeShape(c.shapes, id) }), `remove:${id}`);
+    (id: string, key = `remove:${id}`) => {
+      change((c) => {
+        const left = removeShape(c.shapes, id);
+        return { ...c, shapes: left.length ? left : undefined };
+      }, key);
       setSelection((s) => (s?.id === id ? null : s));
     },
     [change],
   );
+  const editText = useCallback((id: string | null) => {
+    const typed = (config.shapes ?? []).find((s) => s.id === textId);
+    setTextId(id);
+    if (!id && typed && emptyTextBox(typed)) removeShapeById(typed.id, `add:${typed.id}`); // (the same step of the undo as drawing it)
+  }, [config.shapes, textId, removeShapeById]);
   const nudgeShape = useCallback(
     (id: string, dx: number, dy: number) => change((c) => ({ ...c, shapes: (c.shapes ?? []).map((s) => (s.id === id ? { ...s, x: s.x + dx, y: s.y + dy } : s)) }), `shape-move:${id}`),
     [change],
@@ -276,7 +315,13 @@ export function useGraphStudio(initial: GraphConfig = DEFAULT_GRAPH_CONFIG) {
     selectShape,
     shapeTool,
     pickShape,
-    drawShape,
+    inkTool,
+    pickInkTool,
+    addDrawing,
+    eraseShapes,
+    eraseInk,
+    textId,
+    editText,
     changeShape,
     orderShape,
     duplicateShapeOf,

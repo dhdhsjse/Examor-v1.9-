@@ -59,9 +59,9 @@ export default function EraserTools({ open, eraser, onOpen, shortcut }: { open: 
         aria-label={t("Eraser")}
         aria-hidden={!shown}
         data-testid="eraser-panel"
-        className={`absolute bottom-full left-1/2 mb-3 w-64 -translate-x-1/2 rounded-xl border border-line bg-white p-3 text-start shadow-[0_10px_30px_-10px_rgba(16,24,40,0.35)] transition-[opacity,transform] duration-200 ${shown ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-1 opacity-0"}`}
+        className={`absolute bottom-full left-1/2 mb-2 w-64 -translate-x-1/2 rounded-md border border-line bg-white p-3 text-start shadow-sm transition-[opacity,transform] duration-200 ${shown ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-1 opacity-0"}`}
       >
-        <div role="radiogroup" className="grid grid-cols-2 gap-1 rounded-lg bg-subtle p-1">
+        <div role="radiogroup" className="grid h-7 grid-cols-2 overflow-hidden rounded border border-line">
           {MODES.map(({ mode, label: name, Icon }) => (
             <button
               key={mode}
@@ -71,16 +71,16 @@ export default function EraserTools({ open, eraser, onOpen, shortcut }: { open: 
               tabIndex={shown ? 0 : -1}
               onClick={() => eraser.setMode(mode)}
               data-testid={`eraser-${mode}`}
-              className={`flex h-8 items-center justify-center gap-1.5 rounded-md text-xs font-medium transition-colors ${eraser.mode === mode ? "bg-white text-ink shadow-sm" : "text-muted hover:text-ink"}`}
+              className={`flex items-center justify-center gap-1 text-xs not-first:border-s not-first:border-line ${eraser.mode === mode ? "bg-accent-soft font-medium text-accent-strong" : "text-muted hover:bg-hover hover:text-ink"}`}
             >
-              <Icon size={14} strokeWidth={1.9} aria-hidden />
+              <Icon size={14} aria-hidden />
               {t(name)}
             </button>
           ))}
         </div>
-        <p className="mt-1.5 text-[11px] leading-snug text-muted">{t(MODES.find((m) => m.mode === eraser.mode)?.hint ?? "")}</p>
+        <p className="mt-2 text-xs leading-snug text-muted">{t(MODES.find((m) => m.mode === eraser.mode)?.hint ?? "")}</p>
 
-        <div className="mt-3 flex items-center gap-2.5">
+        <div className="mt-2 flex items-center gap-2">
           <span className="text-xs text-muted">{t("Size")}</span>
           <input
             type="range"
@@ -91,7 +91,7 @@ export default function EraserTools({ open, eraser, onOpen, shortcut }: { open: 
             onChange={(e) => eraser.setSize(Number(e.target.value))}
             aria-label={t("Size")}
             data-testid="eraser-size"
-            className="min-w-0 flex-1 accent-[var(--color-accent,#4f46e5)]"
+            className="min-w-0 flex-1 accent-accent"
           />
           <span className="w-9 text-end text-xs tabular-nums text-ink">{eraser.size}px</span>
           {/* the tip, at its size on the screen (up to the room it has) */}

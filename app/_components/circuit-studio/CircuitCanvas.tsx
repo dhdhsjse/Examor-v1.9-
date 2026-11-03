@@ -3,22 +3,24 @@
 import type Konva from "konva";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Circle, Group, Layer, Line, Path, Rect, Shape, Stage, Text } from "react-konva";
-import { GRID, routeNext, snapTarget, type P } from "@/app/_lib/circuit/geometry";
+import { GRID, routeNext, sectionAt, snapTarget, subPath, type P, type Section } from "@/app/_lib/circuit/geometry";
 import { JUNCTION_RADIUS, WIRE_STROKE, buildCircuitScene } from "@/app/_lib/circuit/scene";
 import { SYMBOL_STROKE, drawComponent, type SymbolShape } from "@/app/_lib/circuit/symbols";
 import { INK } from "@/app/_lib/circuit/svg";
-import type { ComponentType } from "@/app/_lib/circuit/types";
 import { newComponent } from "@/app/_lib/circuit/ops";
-import ShapeDrawSurface from "@/app/_components/shapes/ShapeDrawSurface";
-import StudioShapes from "@/app/_components/shapes/StudioShapes";
+import TableDrawingLayer from "@/app/_components/table-studio/TableDrawingLayer";
+import type { EraserTool } from "@/app/_lib/ink/useEraserTool";
+import type { InkTools } from "@/app/_lib/ink/useInkTools";
+import type { ShapeStyle } from "@/app/_lib/shapes";
 import { useT } from "@/app/_lib/uiLang";
-import type { CircuitStudioState } from "./useCircuitStudio";
+import { isBarTool, isPlaceTool, type CircuitStudioState } from "./useCircuitStudio";
 
 const FONT = "Arial, Helvetica, sans-serif";
 const TEXT_BOX = 160; // a text is laid out in a box this wide, aligned inside it
 const AREA_PADDING = 24;
 const MIN_SCALE = 0.1;
 const ACCENT = "#4f46e5";
+const HOVER = "#818cf8"; // the section of a wire under the mouse
 const HIT_WIDTH = 12;
 const TERMINAL_RADIUS = 4;
 const TERMINAL_COLOR = "#dc2626"; // the places a wire can end, with the wire tool
@@ -64,10 +66,13 @@ function DotGrid({ width, height }: { width: number; height: number }) {
 // from the scene of _lib/circuit/scene.ts (the same one the picture for the page is made from). The drawing is shown smaller
 // when it does not fit the window. A click goes to what is under it: with the Select tool it selects (and a drag moves a
 // component, or a wire); with a component tool it puts one there (a ghost shows where, on the grid); with the Wire tool it draws,
-// from terminal to terminal, along horizontal and vertical lines only.
-export default function CircuitCanvas({ studio }: { studio: CircuitStudioState }) {
+// from terminal to terminal, along horizontal and vertical lines only. A click on a wire selects the section of it under the mouse
+// (between two corners, or where another wire joins it): Delete takes that section away. The drawings, shapes and text boxes of
+// the floating bar are on a layer over the circuit.
+export default function CircuitCanvas({ studio, ink, eraser }: { studio: CircuitStudioState; ink: InkTools; eraser: EraserTool }) {
   const t = useT();
-  const { config, tool, selectedComponent, selectedWire, draft, pendingRotation } = studio;
+  const { config, tool, selectedComponent, selectedWire, selectedSection, draft, pendingRotation } = studio;
+  const [hoverSection, setHoverSection] = useState<(Section & { id: string }) | null>(null);
   const box = useRef<HTMLDivElement>(null);
   const [area, setArea] = useState({ w: 0, h: 0 });
   const [pointer, setPointer] = useState<P | null>(null); // where the mouse is on the drawing, when a tool needs to know
@@ -92,7 +97,7 @@ export default function CircuitCanvas({ studio }: { studio: CircuitStudioState }
     return p ? { x: p.x / scale, y: p.y / scale } : null;
   };
 
-  const placing = tool !== "select" && tool !== "wire" && tool !== "shape" ? (tool as ComponentType) : null;
+  const placing = isPlaceTool(tool) ? tool : null;
   const target = pointer && tool === "wire" ? snapTarget(config, pointer) : null;
   const ghost = pointer && placing ? drawComponent(newComponent(config, placing, pointer.x, pointer.y, pendingRotation, "ghost")) : null;
   const preview = draft && target ? routeNext(draft.points, draft.startDir, target.point, shift) : null;
@@ -109,17 +114,22 @@ export default function CircuitCanvas({ studio }: { studio: CircuitStudioState }
   const selecting = tool === "select";
   // The components can be taken (selected, dragged, turned) with the Select tool and with a component tool in hand alike.
   const handling = selecting || !!placing;
+  const textStyle = useMemo<Partial<ShapeStyle>>(() => ({ fontSize: 16, textAlign: "left", textVAlign: "top" }), []);
+  const sectionUnder = (w: { id: string; points: number[] }, stage: Konva.Stage | null) => {
+    const p = paperPoint(stage);
+    return p ? sectionAt(config, w, p) : null;
+  };
 
   return (
     <div ref={box} dir="ltr" data-testid="circuit-canvas" className="relative grid min-h-0 flex-1 place-items-center overflow-auto bg-subtle/60 p-4">
-      <div className="shadow-sm" style={{ width: config.width * scale, height: config.height * scale, cursor: tool === "select" ? undefined : "crosshair" }} aria-label={t("Circuit drawing area")} role="img">
+      <div className="relative shadow-sm" style={{ width: config.width * scale, height: config.height * scale, cursor: placing || tool === "wire" ? "crosshair" : undefined }} aria-label={t("Circuit drawing area")} role="img">
         <Stage
           width={config.width * scale}
           height={config.height * scale}
           scaleX={scale}
           scaleY={scale}
           onMouseMove={(e) => {
-            if (tool === "select") return;
+            if (isBarTool(tool)) return;
             setShift(e.evt.shiftKey);
             const p = paperPoint(e.target.getStage());
             if (p) setPointer(p);
@@ -133,12 +143,24 @@ export default function CircuitCanvas({ studio }: { studio: CircuitStudioState }
             <Rect width={config.width} height={config.height} fill="#ffffff" onClick={onBackgroundClick} />
             <DotGrid width={config.width} height={config.height} />
 
-            {/* the wires */}
+            {/* the wires: a click selects the section under the mouse (it lights up under it), a drag of the selected wire moves it */}
             {scene.wires.map((w) => {
               const isSelected = w.id === selectedWire?.id;
+              const hovered = selecting && hoverSection?.id === w.id ? hoverSection : null;
               return (
-                <Group key={`${w.id}-${dragVersion}`}>
-                  {isSelected && <Line points={w.points} stroke={ACCENT} strokeWidth={WIRE_STROKE + 6} opacity={0.3} lineCap="round" lineJoin="round" listening={false} />}
+                <Group
+                  key={`${w.id}-${dragVersion}`}
+                  draggable={selecting && isSelected}
+                  onDragEnd={(e) => {
+                    studio.moveWireBy(w.id, e.target.x(), e.target.y());
+                    setDragVersion((v) => v + 1);
+                  }}
+                >
+                  {isSelected && <Line points={w.points} stroke={ACCENT} strokeWidth={WIRE_STROKE + 6} opacity={0.2} lineCap="round" lineJoin="round" listening={false} />}
+                  {hovered && !(isSelected && selectedSection && selectedSection.a === hovered.a && selectedSection.b === hovered.b) && (
+                    <Line points={subPath(w.points, hovered.a, hovered.b)} stroke={HOVER} strokeWidth={WIRE_STROKE + 6} opacity={0.45} lineCap="round" lineJoin="round" listening={false} />
+                  )}
+                  {isSelected && selectedSection && <Line points={subPath(w.points, selectedSection.a, selectedSection.b)} stroke={ACCENT} strokeWidth={WIRE_STROKE + 6} opacity={0.55} lineCap="round" lineJoin="round" listening={false} />}
                   <Line
                     points={w.points}
                     stroke={INK}
@@ -147,18 +169,19 @@ export default function CircuitCanvas({ studio }: { studio: CircuitStudioState }
                     lineJoin="round"
                     hitStrokeWidth={HIT_WIDTH}
                     listening={selecting}
-                    draggable={selecting && isSelected}
                     onClick={(e) => {
                       e.cancelBubble = true;
-                      studio.selectWire(w.id);
+                      if (e.evt.button === 0) studio.selectWire(w.id, sectionUnder(w, e.target.getStage()));
                     }}
-                    onDragStart={() => studio.selectWire(w.id)}
-                    onDragEnd={(e) => {
-                      studio.moveWireBy(w.id, e.target.x(), e.target.y());
-                      setDragVersion((v) => v + 1);
+                    onMouseMove={(e) => {
+                      const sec = sectionUnder(w, e.target.getStage());
+                      setHoverSection((h) => (sec ? (h?.id === w.id && h.a === sec.a && h.b === sec.b ? h : { id: w.id, ...sec }) : null));
                     }}
                     onMouseEnter={(e) => setCursor(isSelected ? "move" : "pointer")(e)}
-                    onMouseLeave={(e) => setCursor("")(e)}
+                    onMouseLeave={(e) => {
+                      setHoverSection(null);
+                      setCursor("")(e);
+                    }}
                   />
                 </Group>
               );
@@ -240,9 +263,6 @@ export default function CircuitCanvas({ studio }: { studio: CircuitStudioState }
               <Circle key={i} x={j.x} y={j.y} radius={JUNCTION_RADIUS} fill={INK} listening={false} />
             ))}
 
-            {/* the shapes drawn over the circuit */}
-            <StudioShapes shapes={config.shapes ?? []} selectedId={studio.selectedShape?.id ?? null} interactive={selecting} scale={scale} onSelect={studio.selectShape} onChange={studio.changeShape} />
-
             {/* with the wire tool the places a wire can end are shown, and the one it would go to is filled */}
             {tool === "wire" &&
               scene.components.flatMap((c) =>
@@ -259,14 +279,36 @@ export default function CircuitCanvas({ studio }: { studio: CircuitStudioState }
 
             {/* the component about to be put, where it would go */}
             {ghost && <Shapes shapes={ghost.shapes} color={ACCENT} opacity={0.6} />}
-
-            {/* with the Shapes tool: drag to draw the shape chosen in the gallery */}
-            {tool === "shape" && <ShapeDrawSurface width={config.width} height={config.height} shape={studio.shapeKind} snap={GRID / 2} onDraw={studio.drawShape} />}
           </Layer>
         </Stage>
+
+        {/* the drawings, shapes and text boxes of the floating bar, over the circuit */}
+        {/* (the wrapper lets the mouse through: the layer itself takes it only with a drawing tool or over a drawing) */}
+        <div className="pointer-events-none absolute left-0 top-0">
+          <TableDrawingLayer
+            width={config.width}
+            rowsHeight={config.height}
+            roomBelow={0}
+            scale={scale}
+            shapes={config.shapes ?? []}
+            tool={isBarTool(tool) ? tool : "select"}
+            shapeKind={studio.shapeKind}
+            ink={ink}
+            textStyle={textStyle}
+            selectedId={studio.selectedShape?.id ?? null}
+            editingId={studio.textId}
+            onSelect={studio.selectShape}
+            onChange={studio.changeShape}
+            onAdd={studio.addDrawing}
+            eraser={eraser}
+            onErase={studio.eraseShapes}
+            onEraseInk={studio.eraseInk}
+            onEdit={studio.editText}
+          />
+        </div>
       </div>
       {percent < 100 && (
-        <p data-testid="circuit-scale-note" className="absolute bottom-2 start-3 rounded-md bg-white/90 px-2 py-1 text-[11px] text-muted shadow-sm">
+        <p data-testid="circuit-scale-note" className="pointer-events-none absolute top-2 start-3 rounded-md bg-white/90 px-2 py-1 text-[11px] text-muted shadow-sm">
           {t("The drawing is shown at {percent}% to fit the window.", { percent })}
         </p>
       )}

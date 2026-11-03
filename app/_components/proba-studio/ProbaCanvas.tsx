@@ -15,7 +15,7 @@ import type { ShapeStyle } from "@/app/_lib/shapes";
 import { useT } from "@/app/_lib/uiLang";
 import { isPlaceTool, type ProbaStudioState } from "./useProbaStudio";
 
-const AREA_PADDING = 24;
+const AREA_PADDING = 16; // (the p-4 around the sheet)
 const ACCENT = "#4f46e5";
 const HOVER = "#6366f1"; // a part of a tree under the mouse
 const PICKED = "#4338ca"; // the selected event and its branch
@@ -265,13 +265,13 @@ export default function ProbaCanvas({ studio, ink, eraser, inlineRequest, onInli
   const height = config.height * scale;
   const dockTool: TableTool = isPlaceTool(tool) ? "select" : tool;
   const textStyle = useMemo<Partial<ShapeStyle>>(() => ({ fontSize: 16, textAlign: "left", textVAlign: "top" }), []);
-  const zoomButton = "grid size-7 place-items-center rounded-md text-muted transition-colors hover:bg-black/5 hover:text-ink disabled:opacity-40";
+  const zoomButton = "grid size-7 place-items-center rounded text-muted enabled:hover:bg-hover enabled:hover:text-ink disabled:opacity-40";
 
   return (
     <div className="relative flex min-h-0 flex-1">
-      <div ref={box} data-testid="proba-canvas" className="min-h-0 flex-1 overflow-auto bg-subtle/60">
-        <div className="flex min-h-full min-w-full items-center justify-center p-6" style={{ width: "max-content", height: "max-content" }}>
-          <div dir="ltr" className="relative shrink-0 shadow-sm" style={{ width, height, cursor: placing ? "crosshair" : undefined }} aria-label={t("Probability drawing area")} role="img">
+      <div ref={box} data-testid="proba-canvas" className="min-h-0 flex-1 overflow-auto bg-canvas">
+        <div className="flex min-h-full min-w-full items-center justify-center p-4" style={{ width: "max-content", height: "max-content" }}>
+          <div dir="ltr" className="relative shrink-0 outline outline-line" style={{ width, height, cursor: placing ? "crosshair" : undefined }} aria-label={t("Probability drawing area")} role="img">
             <Stage
               width={width}
               height={height}
@@ -374,7 +374,7 @@ export default function ProbaCanvas({ studio, ink, eraser, inlineRequest, onInli
                           onMouseEnter={(e) => setCursor("pointer")(e)}
                           onMouseLeave={(e) => setCursor("move")(e)}
                         >
-                          <Circle radius={10} fill={ACCENT} shadowColor="#000000" shadowOpacity={0.2} shadowBlur={3} />
+                          <Circle radius={10} fill={ACCENT} />
                           <Line points={[-5, 0, 5, 0]} stroke="#ffffff" strokeWidth={2} lineCap="round" listening={false} />
                           <Line points={[0, -5, 0, 5]} stroke="#ffffff" strokeWidth={2} lineCap="round" listening={false} />
                         </Group>
@@ -433,7 +433,7 @@ export default function ProbaCanvas({ studio, ink, eraser, inlineRequest, onInli
                     nextInline(e.shiftKey);
                   }
                 }}
-                className="absolute rounded-md border-2 border-accent bg-white px-1 text-center text-ink shadow-md outline-none"
+                className="absolute rounded border border-accent bg-white px-1 text-center text-ink outline-none"
                 style={{
                   left: (inlineBox.box.x + inlineBox.box.w / 2) * scale - Math.max(56, inlineBox.box.w * scale + 16) / 2,
                   top: (inlineBox.box.y + inlineBox.box.h / 2) * scale - 15,
@@ -448,17 +448,17 @@ export default function ProbaCanvas({ studio, ink, eraser, inlineRequest, onInli
       </div>
 
       {/* zoom: − , the percent (a click fits the window), + */}
-      <div data-testid="proba-zoom" className="absolute end-4 top-3 z-20 flex items-center gap-0.5 rounded-lg border border-line bg-white/90 p-1 shadow-sm backdrop-blur" dir="ltr">
+      <div data-testid="proba-zoom" className="absolute end-2 top-2 z-20 flex items-center rounded border border-line bg-white" dir="ltr">
         <button onClick={() => zoomBy(-1)} disabled={scale <= ZOOMS[0] + 0.001} className={zoomButton} title={`${t("Zoom out")} (Ctrl −)`} aria-label={t("Zoom out")} data-testid="zoom-out">
           <Minus size={14} />
         </button>
-        <button onClick={() => setZoom(zoom === null ? 1 : null)} className="min-w-12 rounded-md px-1.5 py-1 text-xs font-medium tabular-nums text-ink hover:bg-black/5" title={zoom === null ? t("Show at 100%") : `${t("Fit to window")} (Ctrl 0)`} data-testid="zoom-value">
+        <button onClick={() => setZoom(zoom === null ? 1 : null)} className="h-7 min-w-12 px-1 text-xs tabular-nums text-ink hover:bg-hover" title={zoom === null ? t("Show at 100%") : `${t("Fit to window")} (Ctrl 0)`} data-testid="zoom-value">
           {percent}%
         </button>
         <button onClick={() => zoomBy(1)} disabled={scale >= ZOOMS[ZOOMS.length - 1] - 0.001} className={zoomButton} title={`${t("Zoom in")} (Ctrl +)`} aria-label={t("Zoom in")} data-testid="zoom-in">
           <Plus size={14} />
         </button>
-        <span aria-hidden className="mx-0.5 h-4 w-px bg-line" />
+        <span aria-hidden className="h-4 w-px bg-line" />
         <button onClick={() => setZoom(null)} aria-pressed={zoom === null} className={`${zoomButton} ${zoom === null ? "text-accent-strong" : ""}`} title={`${t("Fit to window")} (Ctrl 0)`} aria-label={t("Fit to window")} data-testid="zoom-fit">
           <Maximize2 size={13} />
         </button>

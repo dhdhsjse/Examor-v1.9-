@@ -49,17 +49,18 @@ function SvgPrims({ prims }: { prims: Prim[] }) {
 }
 
 /** The little picture of a tile: what it puts on the sheet, shrunk. */
-export function PlaceGlyph({ kind }: { kind: PlaceKind }) {
+export function PlaceGlyph({ kind, width = 56, height = 34 }: { kind: PlaceKind; width?: number; height?: number }) {
   const d = drawItem(newItem(kind, 0, 0));
   const pad = 6;
   return (
-    <svg width="56" height="34" viewBox={`${d.bounds.x - pad} ${d.bounds.y - pad} ${d.bounds.w + 2 * pad} ${d.bounds.h + 2 * pad}`} aria-hidden="true">
+    <svg width={width} height={height} className="shrink-0" viewBox={`${d.bounds.x - pad} ${d.bounds.y - pad} ${d.bounds.w + 2 * pad} ${d.bounds.h + 2 * pad}`} aria-hidden="true">
       <SvgPrims prims={d.prims} />
     </svg>
   );
 }
 
-const tile = (on: boolean) => `flex flex-col items-center justify-center gap-1 rounded-xl border px-1 py-2 text-[11px] font-medium leading-tight transition-colors ${on ? "border-accent bg-accent-soft text-accent-strong ring-1 ring-accent" : "border-line bg-white text-ink hover:border-accent hover:bg-accent-soft"}`;
+// One row of the list: a small picture (or icon) and the name; the tool in hand is tinted.
+const row = (on: boolean) => `flex min-h-8 w-full items-center gap-2 rounded px-2 py-1 text-start text-xs leading-tight ${on ? "bg-accent-soft font-medium text-accent-strong" : "text-ink hover:bg-hover"}`;
 
 // The left panel of the Probability Studio: the things to put on the sheet (a tree, a Venn diagram, an urn…), and the shapes.
 export default function ProbaToolbar({ studio }: { studio: ProbaStudioState }) {
@@ -67,25 +68,24 @@ export default function ProbaToolbar({ studio }: { studio: ProbaStudioState }) {
   const { tool, setTool } = studio;
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto p-4">
-      <section className="flex flex-col gap-2" aria-label={t("Add to the drawing")} data-testid="proba-tiles">
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-faint">{t("Add to the drawing")}</h3>
-        <div className="grid grid-cols-2 gap-2">
-          <button onClick={() => setTool("select")} aria-pressed={tool === "select"} data-tool="select" title={t("Select and move")} className={`${tile(tool === "select")} col-span-2 flex-row`}>
-            <MousePointer2 size={16} />
-            {t("Select and move")}
+    <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-2">
+      <section className="flex flex-col gap-1" aria-label={t("Add to the drawing")} data-testid="proba-tiles">
+        <h3 className="px-2 pb-1 pt-1 text-xs font-semibold text-muted">{t("Add to the drawing")}</h3>
+        <button onClick={() => setTool("select")} aria-pressed={tool === "select"} data-tool="select" title={t("Select and move")} className={row(tool === "select")}>
+          <span className="grid w-8 shrink-0 place-items-center">
+            <MousePointer2 size={14} />
+          </span>
+          {t("Select and move")}
+        </button>
+        {PLACE_KINDS.map((kind) => (
+          <button key={kind} onClick={() => setTool(tool === kind ? "select" : kind)} aria-pressed={tool === kind} data-place={kind} title={t("Click the drawing to put it there · Esc to stop")} className={row(tool === kind)}>
+            <PlaceGlyph kind={kind} width={32} height={20} />
+            {t(PLACE_NAMES[kind])}
           </button>
-          {PLACE_KINDS.map((kind) => (
-            <button key={kind} onClick={() => setTool(tool === kind ? "select" : kind)} aria-pressed={tool === kind} data-place={kind} title={t("Click the drawing to put it there · Esc to stop")} className={tile(tool === kind)}>
-              <PlaceGlyph kind={kind} />
-              {t(PLACE_NAMES[kind])}
-            </button>
-          ))}
-        </div>
+        ))}
       </section>
 
-      <section className="flex flex-col gap-2" aria-label={t("Shapes")} data-testid="proba-shapes">
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-faint">{t("Shapes")}</h3>
+      <section className="flex flex-col gap-1 border-t border-line pt-2" aria-label={t("Shapes")} data-testid="proba-shapes">
         <ShapesMenuButton active={tool === "shape"} current={tool === "shape" ? studio.shapeKind : null} onPick={studio.pickShape} />
       </section>
     </div>

@@ -160,6 +160,10 @@ export const STUDIO_FR: Record<string, string> = {
   "Student view: this is what the students will see": "Vue élève : voici ce que verront les élèves",
   "Masks do not apply to this representation: the students would see all of it. Use the Developed, Skeletal, Lewis or Cram tab.": "Les masques ne s'appliquent pas à cette représentation : les élèves la verraient en entier. Utilisez l'onglet Développée, Topologique, Lewis ou Cram.",
   "Atoms with more bonds than their usual valence: {count}": "Atomes avec plus de liaisons que leur valence habituelle : {count}",
+  "Drag on the paper to draw freely · Esc to stop": "Faites glisser sur le papier pour dessiner librement · Échap pour arrêter",
+  "Drag on the paper to draw a text box, then type in it · Esc to stop": "Faites glisser sur le papier pour tracer une zone de texte, puis tapez · Échap pour arrêter",
+  "Drag over a drawing or a shape to rub it out · Esc to stop": "Passez sur un dessin ou une forme pour l’effacer · Échap pour arrêter",
+  "Text box: drag on the paper to draw one, then type": "Zone de texte : faites glisser sur le papier pour en tracer une, puis tapez",
 };
 
 export const STUDIO_AR: Record<string, string> = {
@@ -317,6 +321,10 @@ export const STUDIO_AR: Record<string, string> = {
   "Student view: this is what the students will see": "عرض التلميذ: هذا ما سيراه التلاميذ",
   "Masks do not apply to this representation: the students would see all of it. Use the Developed, Skeletal, Lewis or Cram tab.": "لا تنطبق الأقنعة على هذا التمثيل: سيراه التلاميذ كاملا. استعمل تبويب المفصّلة أو الهيكلية أو لويس أو كرام.",
   "Atoms with more bonds than their usual valence: {count}": "ذرات لها روابط أكثر من تكافئها المعتاد: {count}",
+  "Drag on the paper to draw freely · Esc to stop": "اسحب على الورقة للرسم بحرية · Esc للإيقاف",
+  "Drag on the paper to draw a text box, then type in it · Esc to stop": "اسحب على الورقة لرسم مربع نص، ثم اكتب فيه · Esc للإيقاف",
+  "Drag over a drawing or a shape to rub it out · Esc to stop": "مرّر فوق رسم أو شكل لمسحه · Esc للتوقف",
+  "Text box: drag on the paper to draw one, then type": "مربع نص: اسحب على الورقة لرسمه، ثم اكتب",
 };
 
 // One line of help for each tool of the Studio, shown over the drawing area (looked up by tool name,
@@ -333,4 +341,7 @@ export const TOOL_HINTS: Record<StudioTool, string> = {
   arrow: "Click the paper to place an arrow · drag its end to resize it, double-click to type the conditions",
   electron: "Click beside an atom to put a single electron (one dot) there · click a dot to take it away · Shift+click: the nearest one",
   pair: "Click beside an atom to put a lone pair there · click a pair to take it away · Shift+click: the nearest one",
+  "draw": "Drag on the paper to draw freely · Esc to stop",
+  "textbox": "Drag on the paper to draw a text box, then type in it · Esc to stop",
+  "eraser": "Drag over a drawing or a shape to rub it out · Esc to stop",
 };

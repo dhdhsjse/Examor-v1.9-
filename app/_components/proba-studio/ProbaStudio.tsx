@@ -109,23 +109,24 @@ export default function ProbaStudio({ editing, onInsert, onUpdate, onClose }: Pr
                 ? t("Double-click an event to rename it · Tab: a branch after the selected event · Delete: remove it")
                 : t("Click something to select it, drag it to move it");
 
-  const iconButton = "grid size-8 place-items-center rounded-lg text-muted enabled:hover:bg-subtle enabled:hover:text-ink disabled:opacity-40";
+  const iconButton = "grid size-7 shrink-0 place-items-center rounded text-muted enabled:hover:bg-hover enabled:hover:text-ink disabled:opacity-40";
   const dockTool: TableTool = isPlaceTool(tool) ? "select" : tool;
+  const header = studioHeaderProps();
 
   return (
     <div data-testid="proba-studio" dir={rtl ? "rtl" : "ltr"} className="fixed inset-0 z-50 flex flex-col bg-white">
-      <header {...studioHeaderProps()}>
-        <h2 className="shrink-0 text-base font-semibold text-ink">{t("Probability Studio")}</h2>
-        <span className="shrink-0 rounded-full bg-accent-soft px-2.5 py-0.5 text-xs font-medium text-accent-strong">{t("Trees & figures")}</span>
+      {/* the shared studio header, slimmer here (40px) */}
+      <header {...header} className={`${header.className} gap-2! py-1.5!`}>
+        <h2 className="shrink-0 text-sm font-semibold text-ink">{t("Probability Studio")}</h2>
 
-        <div className="mx-2 h-5 w-px bg-line" />
+        <div className="mx-1 h-4 w-px bg-line" />
         <button onClick={undo} disabled={!canUndo} title={`${t("Undo")} (Ctrl+Z)`} aria-label={t("Undo")} data-testid="undo" className={iconButton}>
-          <Undo2 size={16} />
+          <Undo2 size={15} />
         </button>
         <button onClick={redo} disabled={!canRedo} title={`${t("Redo")} (Ctrl+Y)`} aria-label={t("Redo")} data-testid="redo" className={iconButton}>
-          <Redo2 size={16} />
+          <Redo2 size={15} />
         </button>
-        <p data-testid="studio-hint" className="hidden min-w-0 flex-1 truncate text-xs text-muted lg:block">
+        <p data-testid="studio-hint" className="ms-2 hidden min-w-0 flex-1 truncate text-xs text-muted lg:block">
           {hint}
         </p>
 
@@ -134,17 +135,17 @@ export default function ProbaStudio({ editing, onInsert, onUpdate, onClose }: Pr
           disabled={empty}
           title={empty ? t("Nothing to insert yet: draw something first.") : undefined}
           data-testid="insert"
-          className="ms-auto shrink-0 rounded-lg bg-accent px-4 py-1.5 text-sm font-medium text-white hover:bg-accent-strong disabled:opacity-40"
+          className="ms-auto h-7 shrink-0 rounded bg-accent px-3 text-xs font-medium text-white hover:bg-accent-strong disabled:opacity-40"
         >
           {editing ? t("Update") : t("Insert")}
         </button>
-        <button onClick={requestClose} className="grid size-8 shrink-0 place-items-center rounded-lg text-muted hover:bg-subtle hover:text-ink" title={t("Close (Esc)")} aria-label={t("Close (Esc)")}>
-          <X size={18} />
+        <button onClick={requestClose} className={iconButton} title={t("Close (Esc)")} aria-label={t("Close (Esc)")}>
+          <X size={16} />
         </button>
       </header>
 
       <div className="flex min-h-0 flex-1">
-        <aside className="flex w-[280px] shrink-0 flex-col border-line bg-white ltr:border-r rtl:border-l">
+        <aside className="flex w-48 shrink-0 flex-col border-line bg-white ltr:border-r rtl:border-l">
           <ProbaToolbar studio={studio} />
         </aside>
 
@@ -154,13 +155,12 @@ export default function ProbaStudio({ editing, onInsert, onUpdate, onClose }: Pr
           <TableToolDock tool={dockTool} onTool={(next) => studio.setTool(next)} ink={ink} eraser={eraser} textboxHint={t("Text box: drag on the drawing to draw one, then type")} />
         </main>
 
-        <aside className="flex w-[300px] shrink-0 flex-col border-line bg-white ltr:border-l rtl:border-r">
-          <div className="flex items-center justify-between gap-2 border-b border-line px-4 py-2">
-            <h3 className="py-1 text-sm font-semibold text-ink">{t("Properties")}</h3>
+        <aside className="flex w-64 shrink-0 flex-col border-line bg-white ltr:border-l rtl:border-r">
+          <div className="flex h-9 shrink-0 items-center justify-between gap-2 border-b border-line ps-3 pe-1">
+            <h3 className="text-xs font-semibold text-ink">{t("Properties")}</h3>
             {selectedItem && (
-              <button onClick={studio.duplicate} title={`${t("Duplicate")} (Ctrl+D)`} data-testid="duplicate" className="flex items-center gap-1.5 rounded-lg border border-line bg-white px-2.5 py-1 text-xs font-medium text-ink transition-colors hover:border-accent hover:bg-accent-soft">
-                <Copy size={13} />
-                {t("Duplicate")}
+              <button onClick={studio.duplicate} title={`${t("Duplicate")} (Ctrl+D)`} aria-label={t("Duplicate")} data-testid="duplicate" className={iconButton}>
+                <Copy size={14} />
               </button>
             )}
           </div>

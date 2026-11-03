@@ -92,6 +92,7 @@ const HEADER_FOOTER_INSPECTOR = "inspector.layout.header-footer"; // where exam 
 const FIND_INSPECTOR = "inspector.home.find"; // Home → Find and replace (Ctrl+F, Ctrl+H)
 const MARGIN_SAVE_DELAY = 500; // ms without a change before typed margins become an undo step
 const SNAPSHOT_EVERY = 3 * 60 * 1000; // automatic copy in the version history
+const CLICK_TEXTBOX_WIDTH = 200; // a text box made by a click (not drawn) with the text box tool
 
 // New blocks of these types start with their text selected on the page, ready to type over.
 const TYPE_ON_ADD: BlockType[] = ["mcq", "truefalse", "blank", "open", "match", "order", "classify", "text", "textbox"];
@@ -179,6 +180,8 @@ export default function Editor() {
     return { questions: questions.length, points: questions.reduce((s, q) => s + q.points, 0), pages: doc.pages.length };
   }, [doc]);
   const selected = doc.blocks.find((b) => b.id === selectedId);
+  // Several blocks selected together (a box dragged over them, Shift+click): those still in the exam.
+  const group = useMemo(() => exam.groupIds.filter((id) => doc.blocks.some((b) => b.id === id)), [exam.groupIds, doc.blocks]);
 
   const notify = (message: string) => {
     setToast(message);
@@ -572,9 +575,14 @@ export default function Editor() {
   };
 
   // Text box tool: the box drawn on the page becomes a text box of that size, ready to type in (its ribbon
-  // opens in the right panel), and the select tool is back.
-  const drawTextbox = ({ pageIndex, x, y, width, height }: DrawnBox) =>
-    runTool({ kind: "block", type: "textbox", preset: { width, height } }, { pageIndex, x, y, corner: true });
+  // opens in the right panel), and the select tool is back. A click makes a small one, one line tall and growing with its text,
+  // its first line on the click (cut at the page's right margin).
+  const drawTextbox = ({ pageIndex, x, y, width, height }: DrawnBox) => {
+    if (width || height) return runTool({ kind: "block", type: "textbox", preset: { width, height } }, { pageIndex, x, y, corner: true });
+    const room = pageSize(doc.pages[pageIndex]).width - pageMargins(doc, pageIndex).right - x;
+    const w = Math.max(80, Math.min(CLICK_TEXTBOX_WIDTH, room));
+    runTool({ kind: "block", type: "textbox", preset: { width: w, height: 0, sizing: "auto-height" } }, { pageIndex, x, y: y - 14, corner: true });
+  };
 
   // Shapes tool: the box (or line) drawn on the page becomes a shape block of that size (a click: of its usual size, centred on the
   // click), and the select tool is back. A line drawn leftwards or upwards is flipped.
@@ -743,9 +751,27 @@ export default function Editor() {
       } else if (mod && key === "d" && selected) {
         e.preventDefault();
         exam.duplicateBlock(selected.id);
+      } else if ((key === "delete" || key === "backspace") && group.length) {
+        e.preventDefault();
+        exam.deleteBlocks(group);
       } else if ((key === "delete" || key === "backspace") && selected) {
         e.preventDefault();
         exam.deleteBlock(selected.id);
+      } else if (group.length && key.startsWith("arrow")) {
+        // Arrow keys nudge the blocks selected together (Shift = 10px), each kept in its page.
+        e.preventDefault();
+        const step = e.shiftKey ? 10 : 1;
+        const dx = key === "arrowleft" ? -step : key === "arrowright" ? step : 0;
+        const dy = key === "arrowup" ? -step : key === "arrowdown" ? step : 0;
+        const changes = doc.blocks
+          .filter((b) => group.includes(b.id))
+          .map((b) => {
+            const size = pageSize(doc.pages.find((p) => p.id === b.layout.pageId));
+            const x = Math.max(0, Math.min(b.layout.x + dx, size.width - b.layout.width));
+            const y = Math.max(0, Math.min(b.layout.y + dy, size.height - (heights.get(b.id) ?? 0)));
+            return { id: b.id, patch: { layout: { x, y } } };
+          });
+        exam.updateBlocks(changes, { key: "nudge-group" });
       } else if (key === "escape") {
         exam.setSelectedId(null);
         setTool("select");
@@ -983,6 +1009,9 @@ export default function Editor() {
               onTextEditor={setTextEditor}
               onCreateText={createText}
               onSelect={select}
+              groupIds={group}
+              onSelectMany={exam.selectGroup}
+              onMoveMany={exam.moveBlocks}
               onMove={exam.moveBlock}
               onResize={(id, layout) => {
                 // Dragging an edge of an auto-sized text box gives it that size, as in Figma (blockLayout.sizingAfterResize).

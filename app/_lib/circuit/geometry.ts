@@ -197,3 +197,81 @@ export function snapTarget(config: Pick<CircuitConfig, "components" | "wires">, 
   const wire = config.wires.find((w) => w.id !== ignoreWire && onPath(w.points, grid) && Math.hypot(grid.x - raw.x, grid.y - raw.y) <= WIRE_REACH + GRID / 2);
   return { point: grid, connects: !!wire };
 }
+
+// ---- sections of a wire ----
+
+/** A stretch of a wire, from `a` to `b` pixels along it from its first point. */
+export type Section = { a: number; b: number };
+
+/** How long a path is. */
+export function pathLength(points: number[]): number {
+  const ps = pairs(points);
+  let l = 0;
+  for (let i = 1; i < ps.length; i++) l += Math.abs(ps[i].x - ps[i - 1].x) + Math.abs(ps[i].y - ps[i - 1].y);
+  return l;
+}
+
+/** How far along the path the point of it closest to `p` is. */
+export function distanceAlong(points: number[], p: P): number {
+  const ps = pairs(points);
+  let best = { gap: Infinity, at: 0 };
+  let walked = 0;
+  for (let i = 1; i < ps.length; i++) {
+    const a = ps[i - 1];
+    const b = ps[i];
+    const len = Math.abs(b.x - a.x) + Math.abs(b.y - a.y);
+    // (the segment is horizontal or vertical: the closest point is p pushed onto it)
+    const t = len ? Math.min(1, Math.max(0, ((p.x - a.x) * (b.x - a.x) + (p.y - a.y) * (b.y - a.y)) / (len * len))) : 0;
+    const q = { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t };
+    const gap = Math.hypot(p.x - q.x, p.y - q.y);
+    if (gap < best.gap - 1e-9) best = { gap, at: walked + t * len };
+    walked += len;
+  }
+  return best.at;
+}
+
+/** The part of the path from `from` to `to` pixels along it (the corners in between kept). */
+export function subPath(points: number[], from: number, to: number): number[] {
+  const ps = pairs(points);
+  const out: P[] = [];
+  let walked = 0;
+  const at = (a: P, b: P, len: number, d: number): P => (len ? { x: clean(a.x + ((b.x - a.x) * d) / len), y: clean(a.y + ((b.y - a.y) * d) / len) } : a);
+  for (let i = 1; i < ps.length; i++) {
+    const a = ps[i - 1];
+    const b = ps[i];
+    const len = Math.abs(b.x - a.x) + Math.abs(b.y - a.y);
+    const start = walked;
+    const end = walked + len;
+    walked = end;
+    if (end < from - 1e-6 || start > to + 1e-6) continue;
+    if (!out.length) out.push(at(a, b, len, Math.max(0, from - start)));
+    out.push(at(a, b, len, Math.min(len, to - start)));
+  }
+  return simplifyPath(flat(out));
+}
+
+/**
+ * Where a wire can be cut into sections, as distances along it: its two ends, its corners, and the points of its interior where
+ * another wire or a terminal joins it. Two in a row make a section.
+ */
+export function sectionStops(config: Pick<CircuitConfig, "components" | "wires">, wire: Pick<CircuitWire, "id" | "points">): number[] {
+  const ps = pairs(wire.points);
+  const stops: number[] = [0];
+  let walked = 0;
+  for (let i = 1; i < ps.length; i++) {
+    walked += Math.abs(ps[i].x - ps[i - 1].x) + Math.abs(ps[i].y - ps[i - 1].y);
+    stops.push(walked);
+  }
+  const joins = [...config.wires.filter((o) => o.id !== wire.id).flatMap((o) => endsOf(o)), ...config.components.flatMap((c) => terminalsOf(c))];
+  for (const p of joins) if (inInterior(wire.points, p)) stops.push(distanceAlong(wire.points, p));
+  return [...new Set(stops.map((d) => Math.round(d * 100) / 100))].sort((x, y) => x - y);
+}
+
+/** The section of the wire under `p` (the one its closest point is in). */
+export function sectionAt(config: Pick<CircuitConfig, "components" | "wires">, wire: Pick<CircuitWire, "id" | "points">, p: P): Section | null {
+  const stops = sectionStops(config, wire);
+  if (stops.length < 2) return null;
+  const d = distanceAlong(wire.points, p);
+  for (let i = 1; i < stops.length; i++) if (d <= stops[i] + 1e-6) return { a: stops[i - 1], b: stops[i] };
+  return { a: stops[stops.length - 2], b: stops[stops.length - 1] };
+}

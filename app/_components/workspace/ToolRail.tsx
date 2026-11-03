@@ -70,7 +70,7 @@ export default function ToolRail({ tool, onChange, shape, onPickShape, ink, eras
 
   const tip = (label: string, key: string) => (key ? `${t(label)} (${key})` : t(label));
   return (
-    <div className="pointer-events-auto relative flex items-center gap-0.5 rounded-[10px] border border-line bg-surface p-1 shadow-[0_4px_16px_-4px_rgba(0,0,0,0.16)]">
+    <div className="pointer-events-auto relative flex items-center gap-0.5 rounded-md border border-line bg-surface p-1 shadow-sm">
       <button onClick={() => onChange("select")} aria-pressed={tool === "select"} title={tip("Select and move", "V")} className={toolBtn(tool === "select")}>
         <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden>
           <path d="M3 1.5l9.5 7.2-4.3.6 2.6 4.9-1.9 1-2.6-5-3.3 3z" />

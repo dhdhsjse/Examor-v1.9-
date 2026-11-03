@@ -2,8 +2,11 @@
 
 import { Redo2, Undo2, X } from "lucide-react";
 import { useEffect, useState } from "react";
-import { StudioKeyboard, StudioKeyboardButton } from "@/app/_components/math-keyboard/StudioKeyboard";
+import { StudioKeyboard } from "@/app/_components/math-keyboard/StudioKeyboard";
 import DiscardDialog from "@/app/_components/molecule-studio/DiscardDialog";
+import TableToolDock from "@/app/_components/table-studio/TableToolDock";
+import { useEraserTool } from "@/app/_lib/ink/useEraserTool";
+import { useInkTools } from "@/app/_lib/ink/useInkTools";
 import { DEFAULT_GRAPH_CONFIG, type GraphConfig } from "@/app/_lib/graph/types";
 import { useUi } from "@/app/_lib/uiLang";
 import GraphCanvas from "./GraphCanvas";
@@ -23,7 +26,8 @@ interface Props {
 }
 
 // The Graph Studio: a full-screen modal laid out like the Molecule Studio, with the functions and the starting sheets on the left, the graph
-// paper in the middle and the axes and the grid on the right. The graph lives in this Studio only (useGraphStudio, with its
+// paper in the middle (with the floating tool bar of the page: select, draw, text box, eraser, math keyboard) and the axes and the
+// grid on the right. The graph lives in this Studio only (useGraphStudio, with its
 // own undo and redo): the exam's undo history gets one step when the graph is inserted or updated.
 export default function GraphStudio({ editing, onInsert, onUpdate, onClose }: Props) {
   const { t, rtl } = useUi();
@@ -32,6 +36,9 @@ export default function GraphStudio({ editing, onInsert, onUpdate, onClose }: Pr
   const { config, view, setView, masked } = studio;
   const student = view === "student"; // looking at what the students will see: nothing is edited
   const [confirmClose, setConfirmClose] = useState(false);
+  const ink = useInkTools(); // (the page's Draw tool: the same brush, pencil and highlighter, kept between sessions)
+  const eraser = useEraserTool(); // (the page's Eraser)
+  const { inkTool, pickInkTool } = studio;
 
   // Closing with changes asks first.
   const requestClose = () => (dirty ? setConfirmClose(true) : onClose());
@@ -46,7 +53,7 @@ export default function GraphStudio({ editing, onInsert, onUpdate, onClose }: Pr
       const key = e.key.toLowerCase();
       // Esc: puts the tool down, then lets go of the selection, then closes. Delete takes what is selected off the paper.
       if (e.key === "Escape") {
-        if ((tool || shapeTool) && !typing) pickTool(null);
+        if ((tool || shapeTool || inkTool) && !typing) pickTool(null);
         else if ((selected || selectedAnnotation || selectedShape) && !typing) {
           selectFunction(null);
           selectAnnotation(null);
@@ -73,7 +80,7 @@ export default function GraphStudio({ editing, onInsert, onUpdate, onClose }: Pr
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [confirmClose, dirty, student, undo, redo, onClose, selected, selectedAnnotation, selectedShape, shapeTool, tool, pickTool, selectFunction, selectAnnotation, removeFunction, removeAnnotation]);
+  }, [confirmClose, dirty, student, undo, redo, onClose, selected, selectedAnnotation, selectedShape, shapeTool, inkTool, tool, pickTool, selectFunction, selectAnnotation, removeFunction, removeAnnotation]);
 
   const iconButton = "grid size-8 place-items-center rounded-lg text-muted enabled:hover:bg-subtle enabled:hover:text-ink disabled:opacity-40";
 
@@ -90,7 +97,6 @@ export default function GraphStudio({ editing, onInsert, onUpdate, onClose }: Pr
         <button onClick={redo} disabled={!canRedo} title={`${t("Redo")} (Ctrl+Y)`} aria-label={t("Redo")} data-testid="redo" className={iconButton}>
           <Redo2 size={16} />
         </button>
-        <StudioKeyboardButton />
 
         <div className="mx-1 flex rounded-lg bg-subtle p-0.5" role="group" aria-label={t("View")} data-testid="view-toggle">
           {(["teacher", "student"] as const).map((v) => (
@@ -121,8 +127,18 @@ export default function GraphStudio({ editing, onInsert, onUpdate, onClose }: Pr
           <GraphToolbar studio={studio} />
         </aside>
 
-        <main className="flex min-w-0 flex-1 flex-col">
-          <GraphCanvas studio={studio} />
+        <main className="relative flex min-w-0 flex-1 flex-col">
+          <GraphCanvas studio={studio} ink={ink} eraser={eraser} />
+          {/* the floating tool bar of the page: select, draw (brush, pencil, highlighter), text box, eraser, math keyboard */}
+          {!student && (
+            <TableToolDock
+              tool={inkTool ?? (shapeTool ? "shape" : "select")}
+              onTool={(next) => (next === "select" || next === "shape" ? pickInkTool(null) : pickInkTool(next))}
+              ink={ink}
+              eraser={eraser}
+              textboxHint={t("Text box: drag on the paper to draw one, then type")}
+            />
+          )}
         </main>
 
         <aside className={`flex w-[300px] shrink-0 flex-col border-line bg-white ltr:border-l rtl:border-r ${student ? "pointer-events-none opacity-50" : ""}`}>

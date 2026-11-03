@@ -38,7 +38,7 @@ describe("drawing Studio strings", () => {
   });
 
   it("translates the help line of every tool (they are looked up by tool name)", () => {
-    expect(Object.keys(TOOL_HINTS).sort()).toEqual(["arrow", "atom", "bond", "electron", "erase", "pair", "ring", "select", "shape", "template", "text"]);
+    expect(Object.keys(TOOL_HINTS).sort()).toEqual(["arrow", "atom", "bond", "draw", "electron", "erase", "eraser", "pair", "ring", "select", "shape", "template", "text", "textbox"]);
     for (const hint of Object.values(TOOL_HINTS)) {
       expect(STUDIO_FR[hint], `${hint} (fr)`).toBeTruthy();
       expect(STUDIO_AR[hint], `${hint} (ar)`).toBeTruthy();

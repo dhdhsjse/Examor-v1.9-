@@ -7,8 +7,9 @@ import { SHAPE_CATEGORIES, localExtent, paintFill, resolveStyle, shapeDef, shape
 import { useT } from "@/app/_lib/uiLang";
 import { rememberShape, useRecentShapes } from "./recentShapes";
 
-const PREVIEW_FILL = "#dbeafe";
-const PREVIEW_STROKE = "#1e3a8a";
+// (neutral pictures: the accent is kept for what is selected)
+const PREVIEW_FILL = "#e8e8e8";
+const PREVIEW_STROKE = "#1e1e1e";
 
 // A small picture of a shape (a button of the gallery, the name of the shape in a panel).
 export function ShapeThumb({ shape, size = 28, style }: { shape: string; size?: number; style?: Partial<ShapeStyle> }) {
@@ -44,7 +45,7 @@ function Tile({ shape, selected, onPick }: { shape: string; selected?: boolean; 
       aria-pressed={selected}
       data-shape={shape}
       onClick={() => onPick(shape)}
-      className={`grid size-9 place-items-center rounded-md border text-ink transition-colors hover:border-accent hover:bg-accent-soft ${selected ? "border-accent bg-accent-soft" : "border-transparent"}`}
+      className={`grid size-9 place-items-center rounded text-ink ${selected ? "bg-accent-soft" : "hover:bg-hover"}`}
     >
       <ShapeThumb shape={shape} size={26} />
     </button>
@@ -66,10 +67,10 @@ export function ShapeGallery({ onPick, current }: { onPick: (shape: string) => v
     [onPick],
   );
   return (
-    <div data-testid="shape-gallery" className="flex flex-col gap-2.5">
+    <div data-testid="shape-gallery" className="flex flex-col gap-2">
       {recent.length > 0 && (
         <section data-testid="shape-gallery-recent">
-          <h4 className="px-1 pb-1 text-[10px] font-semibold uppercase tracking-wide text-faint">{t("Recently used shapes")}</h4>
+          <h4 className="px-1 pb-1 text-xs font-medium text-muted">{t("Recently used shapes")}</h4>
           <div className="flex flex-wrap gap-0.5">
             {recent.map((id) => (
               <Tile key={id} shape={id} selected={id === current} onPick={pick} />
@@ -79,7 +80,7 @@ export function ShapeGallery({ onPick, current }: { onPick: (shape: string) => v
       )}
       {SHAPE_CATEGORIES.map((category) => (
         <section key={category} data-category={category}>
-          <h4 className="px-1 pb-1 text-[10px] font-semibold uppercase tracking-wide text-faint">{t(category)}</h4>
+          <h4 className="px-1 pb-1 text-xs font-medium text-muted">{t(category)}</h4>
           <div className="flex flex-wrap gap-0.5">
             {shapesIn(category).map((s) => (
               <Tile key={s.id} shape={s.id} selected={s.id === current} onPick={pick} />
@@ -114,7 +115,7 @@ export function ShapesMenuButton({ onPick, onPickImage, label, active, current, 
           title={name}
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => setOpen((o) => !o)}
-          className={`inline-flex h-7 flex-none items-center gap-0.5 rounded-md border px-1.5 transition-colors ${active || open ? "border-indigo-300 bg-indigo-50 text-accent" : "border-transparent text-ink hover:bg-subtle"}`}
+          className={`inline-flex h-7 flex-none items-center gap-0.5 rounded px-1.5 ${active || open ? "bg-accent-soft text-accent-strong" : "text-ink hover:bg-hover"}`}
         >
           <Shapes size={15} />
           <ChevronDown size={11} className="text-muted" />
@@ -128,9 +129,9 @@ export function ShapesMenuButton({ onPick, onPickImage, label, active, current, 
         data-testid={testId}
         title={name}
         onClick={() => setOpen((o) => !o)}
-        className={`flex w-full items-center gap-2 rounded-lg border px-2.5 py-2 text-sm font-medium transition-colors ${active ? "border-accent bg-accent-soft text-accent-strong" : "border-line bg-white text-ink hover:border-accent"}`}
+        className={`flex h-8 w-full items-center gap-2 rounded border px-2 text-xs ${active ? "border-accent bg-accent-soft font-medium text-accent-strong" : "border-line bg-white text-ink hover:bg-hover"}`}
       >
-        <Shapes size={16} />
+        <Shapes size={14} />
         <span className="flex-1 text-start">{name}</span>
         <ChevronDown size={14} className="text-muted" />
       </button>
