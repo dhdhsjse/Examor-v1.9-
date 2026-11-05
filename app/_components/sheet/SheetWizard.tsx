@@ -20,7 +20,7 @@ interface Props {
 
 // The little pictures of the three ways (the lines are the text, the small boxes on the right are the marks)
 const Sketch = ({ children }: { children: ReactNode }) => (
-  <svg viewBox="0 0 120 70" width="100%" height="70" aria-hidden className="rounded-md bg-white ring-1 ring-line">
+  <svg viewBox="0 0 120 70" width="100%" height="70" aria-hidden className="rounded-lg bg-white ring-1 ring-black/5">
     <rect x="8" y="6" width="104" height="58" fill="none" stroke="#9ca3af" strokeWidth="1" />
     <line x1="80" y1="6" x2="80" y2="64" stroke="#9ca3af" strokeWidth="1" />
     <line x1="96" y1="6" x2="96" y2="64" stroke="#9ca3af" strokeWidth="1" />
@@ -61,8 +61,8 @@ const SKETCHES: Record<SheetTemplate, ReactNode> = {
 };
 
 const card = (on: boolean) =>
-  `flex flex-col gap-2 rounded-xl border p-3 text-start transition-colors outline-none focus-visible:ring-2 focus-visible:ring-accent ${
-    on ? "border-emerald-500 bg-emerald-50 ring-1 ring-emerald-500" : "border-line bg-white hover:border-emerald-300 hover:bg-emerald-50/40"
+  `flex flex-col gap-2.5 rounded-2xl p-4 text-start transition-[transform,background-color,box-shadow] duration-150 ease-out outline-none focus-visible:ring-2 focus-visible:ring-accent active:scale-[0.985] ${
+    on ? "bg-white shadow-[0_0_0_2px_#10b981,0_6px_20px_rgba(16,185,129,0.18)]" : "bg-subtle hover:bg-hover"
   }`;
 
 // The window that makes the correction sheet: what it is made from (the questions with their answers, the whole exam with its answers, nothing) and the
@@ -113,22 +113,22 @@ export default function SheetWizard({ rebuild, questions, points, fullMark, init
   };
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-slate-900/40 p-6 backdrop-blur-sm" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div ref={dialog} data-testid="sheet-wizard" role="dialog" aria-modal="true" aria-label={t("Correction sheet")} className="flex max-h-full w-full max-w-3xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
-        <div className="flex items-start justify-between border-b border-line px-6 py-4">
+    <div className="fixed inset-0 z-50 grid place-items-center bg-black/30 p-6 backdrop-blur-md" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+      <div ref={dialog} data-testid="sheet-wizard" role="dialog" aria-modal="true" aria-label={t("Correction sheet")} className="flex max-h-full w-full max-w-3xl flex-col overflow-hidden rounded-[28px] bg-white shadow-[0_24px_80px_rgba(0,0,0,0.28)]">
+        <div className="flex items-start justify-between px-8 pt-7 pb-3">
           <div>
-            <h2 className="text-lg font-semibold text-ink">{rebuild ? t("Make the correction sheet again") : t("Make the correction sheet")}</h2>
-            <p className="text-xs text-muted">{t("Choose what it is made from and the paper it is written on. You can change everything afterwards.")}</p>
+            <h2 className="text-[22px] font-semibold tracking-[-0.02em] text-ink">{rebuild ? t("Make the correction sheet again") : t("Make the correction sheet")}</h2>
+            <p className="mt-1 text-[13px] tracking-[-0.01em] text-muted">{t("Choose what it is made from and the paper it is written on. You can change everything afterwards.")}</p>
           </div>
-          <button type="button" onClick={onClose} className="grid size-8 place-items-center rounded-md text-muted hover:bg-subtle hover:text-ink" title={t("Close (Esc)")} aria-label={t("Close (Esc)")}>
+          <button type="button" onClick={onClose} className="grid size-8 place-items-center rounded-full bg-subtle text-muted transition-[transform,background-color] duration-100 outline-none hover:bg-hover hover:text-ink focus-visible:ring-2 focus-visible:ring-accent active:scale-90" title={t("Close (Esc)")} aria-label={t("Close (Esc)")}>
             ✕
           </button>
         </div>
 
-        <div className="flex flex-col gap-5 overflow-y-auto px-6 py-5">
+        <div className="flex flex-col gap-6 overflow-y-auto px-8 py-4">
           <section aria-label={t("What goes on it?")}>
-            <h3 className="mb-2 text-xs font-semibold text-ink">{t("What goes on it?")}</h3>
-            <div role="radiogroup" aria-label={t("What goes on it?")} className="grid gap-3 sm:grid-cols-3">
+            <h3 className="mb-2.5 text-[13px] font-semibold tracking-[-0.01em] text-ink">{t("What goes on it?")}</h3>
+            <div role="radiogroup" aria-label={t("What goes on it?")} className="grid gap-3.5 sm:grid-cols-3">
               {templates.map((o) => (
                 <button
                   key={o.id}
@@ -143,16 +143,16 @@ export default function SheetWizard({ rebuild, questions, points, fullMark, init
                   className={card(template === o.id)}
                 >
                   {SKETCHES[o.id]}
-                  <span className="text-sm font-semibold text-ink">{o.title}</span>
-                  <span className="text-[11px] leading-snug text-muted">{o.hint}</span>
+                  <span className="text-[15px] font-semibold tracking-[-0.015em] text-ink">{o.title}</span>
+                  <span className="text-xs leading-snug tracking-[-0.005em] text-muted">{o.hint}</span>
                 </button>
               ))}
             </div>
           </section>
 
           <section aria-label={t("Paper")}>
-            <h3 className="mb-2 text-xs font-semibold text-ink">{t("Paper")}</h3>
-            <div role="radiogroup" aria-label={t("Paper")} className="grid gap-3 sm:grid-cols-2">
+            <h3 className="mb-2.5 text-[13px] font-semibold tracking-[-0.01em] text-ink">{t("Paper")}</h3>
+            <div role="radiogroup" aria-label={t("Paper")} className="grid gap-3.5 sm:grid-cols-2">
               {papers.map((o) => (
                 <button
                   key={o.id}
@@ -166,37 +166,45 @@ export default function SheetWizard({ rebuild, questions, points, fullMark, init
                   onKeyDown={(e) => arrows(e, papers.map((x) => x.id), paper, setPaper)}
                   className={card(paper === o.id)}
                 >
-                  <span className="text-sm font-semibold text-ink">{o.title}</span>
-                  <span className="text-[11px] leading-snug text-muted">{o.hint}</span>
+                  <span className="text-[15px] font-semibold tracking-[-0.015em] text-ink">{o.title}</span>
+                  <span className="text-xs leading-snug tracking-[-0.005em] text-muted">{o.hint}</span>
                 </button>
               ))}
             </div>
           </section>
 
-          <label className={`flex items-start gap-2 text-xs ${fromExam ? "text-ink" : "text-faint"}`}>
-            <input type="checkbox" data-testid="wizard-marks" checked={fromExam && marks} disabled={!fromExam} onChange={(e) => setMarks(e.target.checked)} className="mt-0.5 accent-accent" />
-            <span className="flex flex-col gap-0.5">
+          <label className={`flex cursor-pointer items-center justify-between gap-4 rounded-2xl bg-subtle px-4 py-3 ${fromExam ? "text-ink" : "text-faint"}`}>
+            <span className="flex flex-col gap-0.5 text-[15px] font-medium tracking-[-0.015em]">
               {t("Put the marks of the questions")}
-              <span className="text-[11px] leading-snug text-muted">{t("The points of each question become a mark beside its answer, with a total when it has several.")}</span>
+              <span className="text-xs leading-snug font-normal tracking-[-0.005em] text-muted">{t("The points of each question become a mark beside its answer, with a total when it has several.")}</span>
             </span>
+            <input
+              type="checkbox"
+              role="switch"
+              data-testid="wizard-marks"
+              checked={fromExam && marks}
+              disabled={!fromExam}
+              onChange={(e) => setMarks(e.target.checked)}
+              className="relative h-[26px] w-[44px] shrink-0 cursor-pointer appearance-none rounded-full bg-slate-300 transition-colors duration-200 outline-none before:absolute before:top-[2px] before:left-[2px] before:size-[22px] before:rounded-full before:bg-white before:shadow before:transition-transform before:duration-200 before:content-[''] checked:bg-emerald-500 checked:before:translate-x-[18px] focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-default disabled:opacity-40 rtl:before:right-[2px] rtl:before:left-auto rtl:checked:before:-translate-x-[18px]"
+            />
           </label>
 
           {fromExam && questions > 0 && (
-            <p className="text-xs text-muted tabular-nums" data-testid="wizard-count">
+            <p className="px-1 text-[13px] text-muted tabular-nums" data-testid="wizard-count">
               {t("{count} question(s) · {points} pts", { count: questions, points: formatMark(points) })}
             </p>
           )}
           {mismatch && (
-            <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-900 ring-1 ring-amber-200" data-testid="wizard-mismatch">
+            <p className="rounded-2xl bg-amber-50 px-4 py-3 text-[13px] text-amber-900" data-testid="wizard-mismatch">
               {t("The questions add up to {points} pts and the exam is out of {out}.", { points: formatMark(points), out: formatMark(fullMark) })}
             </p>
           )}
-          {fromExam && questions === 0 && <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-900 ring-1 ring-amber-200">{t("The exam has no questions yet: the sheet will only have its title.")}</p>}
-          {rebuild && <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-900 ring-1 ring-amber-200">{t("This replaces the correction sheet you have (the settings of its frame are kept). Ctrl+Z brings the old one back.")}</p>}
+          {fromExam && questions === 0 && <p className="rounded-2xl bg-amber-50 px-4 py-3 text-[13px] text-amber-900">{t("The exam has no questions yet: the sheet will only have its title.")}</p>}
+          {rebuild && <p className="rounded-2xl bg-amber-50 px-4 py-3 text-[13px] text-amber-900">{t("This replaces the correction sheet you have (the settings of its frame are kept). Ctrl+Z brings the old one back.")}</p>}
         </div>
 
-        <div className="flex items-center justify-end gap-2 border-t border-line px-6 py-4">
-          <button type="button" data-testid="wizard-cancel" onClick={onClose} className="rounded-md border border-line px-3 py-2 text-xs font-medium text-ink hover:bg-subtle">
+        <div className="flex items-center justify-end gap-2.5 px-8 pt-3 pb-7">
+          <button type="button" data-testid="wizard-cancel" onClick={onClose} className="h-10 rounded-full bg-subtle px-5 text-[13px] font-medium tracking-[-0.01em] text-ink transition-[transform,background-color] duration-100 outline-none hover:bg-hover focus-visible:ring-2 focus-visible:ring-accent active:scale-[0.97]">
             {t("Cancel")}
           </button>
           <button
@@ -204,7 +212,7 @@ export default function SheetWizard({ rebuild, questions, points, fullMark, init
             data-testid="wizard-make"
             title="Ctrl+Enter"
             onClick={() => onMake({ template, paper, marks: fromExam && marks })}
-            className="rounded-md bg-emerald-600 px-4 py-2 text-xs font-semibold text-white shadow-sm outline-none transition-colors hover:bg-emerald-700 focus-visible:ring-2 focus-visible:ring-accent"
+            className="h-10 rounded-full bg-emerald-600 px-6 text-[13px] font-semibold tracking-[-0.01em] text-white shadow-[0_1px_2px_rgba(5,150,105,0.4)] transition-[transform,background-color] duration-100 outline-none hover:bg-emerald-700 focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 active:scale-[0.97]"
           >
             {rebuild ? t("Replace the correction sheet") : t("Make the correction sheet")}
           </button>

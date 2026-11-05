@@ -38,6 +38,7 @@ interface Props {
   onOpenCorrection: () => void; // the Correction tab (the exam's settings have a button for it)
   fullMark: number; // what the exam is graded out of
   onFullMark: (value: number) => void;
+  onGoTo: (id: string) => void; // select a block on the page and show it
   onChange: (id: string, patch: BlockPatch, field: string) => void;
   onLatex: (block: Block, latex: string) => void;
   onDelete: (id: string) => void;
@@ -70,6 +71,7 @@ export default function Inspector(props: Props) {
         scores={props.sheet.scores}
         full={props.stats.full ?? 20}
         onFullMark={props.onFullMark}
+        onGoTo={props.onGoTo}
         meta={props.meta}
         report={props.sheetReport ?? null}
         fix={props.sheetFix}

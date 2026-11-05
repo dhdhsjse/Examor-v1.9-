@@ -46,6 +46,7 @@ describe("the interface strings of the correction sheet", () => {
     "Correction sheet made from the exam — check it and move what you want",
     "Make the correction sheet first",
     "Open the correction sheet",
+    "This row already has a total.",
     "Make the correction sheet…",
     "Model answer: Properties panel",
   ];

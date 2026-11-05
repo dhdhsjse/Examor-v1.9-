@@ -8,6 +8,7 @@ import { pageMargins } from "@/app/_lib/onboarding/applyOnboarding";
 import { pageSize } from "@/app/_lib/pageFormats";
 import { focusMathfield } from "@/app/_lib/activeMathfield";
 import { examFullMark } from "@/app/_lib/examMark";
+import { rowHasTotalAt } from "@/app/_lib/sheet/marks";
 import {
   BLOCK_TYPE_NAMES,
   MAX_OPTIONS,
@@ -366,8 +367,15 @@ export default function Editor() {
   };
 
   // The Stamp tool: a click on the page puts the sticker in hand there (and the tool stays in hand: a barème is many marks)
+  // A total is not put in a row that has one already (one at a time: the row's marks add up to it)
+  const totalTaken = (action: ToolAction, at?: DropPoint) => {
+    if (exam.part !== "sheet" || !at || action.kind !== "block" || action.type !== "mark" || (action.preset as { kind?: string } | undefined)?.kind !== "total") return false;
+    if (!rowHasTotalAt(doc, at.pageIndex, at.y)) return false;
+    notify(tr("This row already has a total."));
+    return true;
+  };
   const placeStamp = (at: DropPoint) => {
-    if (!stamp || stamp.kind !== "block" || exam.part !== "sheet") return;
+    if (!stamp || stamp.kind !== "block" || exam.part !== "sheet" || totalTaken(stamp, at)) return;
     const block = exam.addBlock(stamp.type, stamp.preset, at);
     setTab("properties");
     setActiveInspectorId(inspectorFor(block));
@@ -394,6 +402,7 @@ export default function Editor() {
     }
     switch (action.kind) {
       case "block": {
+        if (totalTaken(action, at)) return;
         // A new exercise title follows the ones already in the exam ("Exercice 2 :", ...).
         const textPreset = action.type === "text" ? (action.preset as { style?: string; text?: string } | undefined) : undefined;
         const preset =

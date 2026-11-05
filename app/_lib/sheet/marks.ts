@@ -87,7 +87,8 @@ export interface SheetRow {
   score: number;
 }
 
-export type SheetIssue = { kind: "two-totals"; row: number } | { kind: "typed-differs"; row: number; typed: number; auto: number };
+// (`id`: the sticker to look at: the second total of a row, or the total that was typed)
+export type SheetIssue = { kind: "two-totals"; row: number; id: string } | { kind: "typed-differs"; row: number; typed: number; auto: number; id: string };
 
 export interface SheetScores {
   rows: SheetRow[];
@@ -144,6 +145,13 @@ export function rowGroups(doc: Counted): RowGroup[] {
   return groups;
 }
 
+/** Does the row that a point of a page falls in (between two lines) already have a total? */
+export function rowHasTotalAt(doc: Counted, pageIndex: number, y: number): boolean {
+  const pageOf = new Map(doc.pages.map((p, i) => [p.id, i]));
+  const above = doc.blocks.filter((b) => isRule(b) && ((pageOf.get(b.layout.pageId) ?? 0) < pageIndex || ((pageOf.get(b.layout.pageId) ?? 0) === pageIndex && b.layout.y + RULE_HEIGHT / 2 < y))).length;
+  return rowGroups(doc).some((g) => g.index === above && g.totals.length > 0);
+}
+
 /** The rows of a sheet (the stickers between two lines), the total each sticker shows, and what it all adds up to */
 export function sheetScores(doc: Counted): SheetScores {
   const groups = rowGroups(doc);
@@ -153,9 +161,9 @@ export function sheetScores(doc: Counted): SheetScores {
     const auto = evaluate(g.marks.map((m): Item => (m.kind === "op" ? { op: m.op ?? "+" } : { n: m.value ?? 0 })));
     const hasNumbers = g.marks.some((m) => m.kind === "number");
     for (const t of g.totals) shown.set(t.id, t.manual ? snapMark(t.value ?? 0) : auto);
-    if (g.totals.length > 1) issues.push({ kind: "two-totals", row: g.index });
+    if (g.totals.length > 1) issues.push({ kind: "two-totals", row: g.index, id: g.totals[1].id });
     const first = g.totals[0];
-    if (first?.manual && hasNumbers && Math.abs((shown.get(first.id) ?? 0) - auto) > 1e-9) issues.push({ kind: "typed-differs", row: g.index, typed: shown.get(first.id) ?? 0, auto });
+    if (first?.manual && hasNumbers && Math.abs((shown.get(first.id) ?? 0) - auto) > 1e-9) issues.push({ kind: "typed-differs", row: g.index, typed: shown.get(first.id) ?? 0, auto, id: first.id });
     return { index: g.index, marks: g.marks, totals: g.totals, auto, score: first ? (shown.get(first.id) ?? 0) : auto };
   });
   return { rows, shown, total: round6(rows.reduce((s, r) => s + r.score, 0)), issues };

@@ -24,6 +24,7 @@ export const inspectorPanel: Feature = {
         stats={shell.stats}
         fullMark={examFullMark(shell.fullDoc)}
         onFullMark={shell.setFullMark}
+        onGoTo={shell.selectBlock}
         onChange={shell.updateBlock}
         onLatex={shell.onLatex}
         onDelete={shell.deleteBlock}

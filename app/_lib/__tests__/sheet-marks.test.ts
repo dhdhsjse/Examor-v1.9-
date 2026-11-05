@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createBlock } from "../blocks";
-import { MARK_STEP, RULE_HEIGHT, evaluate, formatMark, markHeight, sheetScores, snapMark, type Item } from "../sheet/marks";
+import { MARK_STEP, RULE_HEIGHT, evaluate, formatMark, markHeight, rowHasTotalAt, sheetScores, snapMark, type Item } from "../sheet/marks";
 import type { Block, ExamMeta, MarkBlock, Page, RuleBlock } from "../types";
 
 const meta: ExamMeta = { title: "", lang: "fr", templateId: "" };
@@ -137,15 +137,25 @@ describe("the rows of a sheet", () => {
     expect(s.shown.get("t")).toBe(2);
     expect(s.rows[0].score).toBe(2);
     expect(s.total).toBe(2);
-    expect(s.issues).toEqual([{ kind: "typed-differs", row: 0, typed: 2, auto: 1.5 }]);
+    expect(s.issues).toMatchObject([{ kind: "typed-differs", row: 0, typed: 2, auto: 1.5 }]);
     const same = sheetScores(sheet([num("a", "p1", 100, 1), num("b", "p1", 150, 1), total("t", "p1", 120, { manual: true, value: 2 })]));
     expect(same.issues).toEqual([]);
+  });
+
+  it("tells which row a point falls in, and whether it has a total already", () => {
+    const d = sheet([num("a", "p1", 100, 1), total("t", "p1", 110), rule("r", "p1", 200), num("b", "p1", 300, 2)]);
+    expect(rowHasTotalAt(d, 0, 150)).toBe(true);
+    expect(rowHasTotalAt(d, 0, 350)).toBe(false);
+    expect(rowHasTotalAt(d, 0, 50)).toBe(true); // (above the marks, still in the first row)
+    const two = sheet([num("a", "p1", 100, 1), total("t", "p1", 110), rule("r", "p1", 200), num("b", "p1", 300, 2)], [page("p1"), page("p2")]);
+    expect(rowHasTotalAt(two, 1, 100)).toBe(false); // (the row of page 2 is the one under the line)
   });
 
   it("says when a row has two totals, and counts the first one", () => {
     const blocks = [num("a", "p1", 100, 1), total("t1", "p1", 120), total("t2", "p1", 160, { manual: true, value: 5 })];
     const s = sheetScores(sheet(blocks));
-    expect(s.issues).toEqual([{ kind: "two-totals", row: 0 }]);
+    expect(s.issues).toMatchObject([{ kind: "two-totals", row: 0 }]);
+    expect(s.issues[0]).toHaveProperty("id", "t2");
     expect(s.rows[0].score).toBe(1);
   });
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { Minus, Plus, TriangleAlert } from "lucide-react";
+import { ChevronRight, Minus, Plus, TriangleAlert } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { DEFAULT_SIZE } from "@/app/_lib/blockLayout";
 import type { SheetFix, SheetReport } from "@/app/_lib/sheet/links";
@@ -28,11 +28,12 @@ const Hint = ({ children }: { children: ReactNode }) => <p className="text-[11px
 
 // The right panel while the correction sheet is shown and nothing is selected: its paper (free, or bordered like an official answer key with a column
 // of marks and a column of totals), what it adds up to, and its look. The columns and the edges of the frame are dragged on the page (FrameHandles).
-export default function SheetSettings({ sheet, scores, full, onFullMark, meta, report, fix, onChange, onMeta, onDelete }: {
+export default function SheetSettings({ sheet, scores, full, onFullMark, onGoTo, meta, report, fix, onChange, onMeta, onDelete }: {
   sheet: SheetConfig;
   scores: SheetScores;
   full: number;
   onFullMark: (value: number) => void;
+  onGoTo: (id: string) => void;
   meta: ExamMeta;
   report: SheetReport | null;
   fix: SheetFix;
@@ -106,12 +107,22 @@ export default function SheetSettings({ sheet, scores, full, onFullMark, meta, r
             </span>
           </div>
           {scores.issues.map((issue, i) => (
-            <p key={i} className="flex items-start gap-1.5 rounded-[5px] bg-amber-50 px-2 py-1 text-[11px] leading-snug text-amber-900 ring-1 ring-amber-200">
+            <button
+              key={i}
+              type="button"
+              data-testid="sheet-issue"
+              title={t("Show")}
+              onClick={() => onGoTo(issue.id)}
+              className="flex w-full items-start gap-1.5 rounded-xl bg-amber-50 px-2.5 py-2 text-start text-[11px] leading-snug text-amber-900 ring-1 ring-amber-200 transition-[transform,background-color] duration-100 outline-none hover:bg-amber-100 focus-visible:ring-2 focus-visible:ring-accent active:scale-[0.985]"
+            >
               <TriangleAlert size={12} strokeWidth={2} aria-hidden className="mt-px shrink-0" />
-              {issue.kind === "two-totals"
-                ? t("Two totals in the same row: only the first counts.")
-                : t("The total you typed ({typed}) is not the marks of its row ({auto}).", { typed: formatMark(issue.typed, sheet.pad), auto: formatMark(issue.auto, sheet.pad) })}
-            </p>
+              <span className="min-w-0 flex-1">
+                {issue.kind === "two-totals"
+                  ? t("Two totals in the same row: only the first counts.")
+                  : t("The total you typed ({typed}) is not the marks of its row ({auto}).", { typed: formatMark(issue.typed, sheet.pad), auto: formatMark(issue.auto, sheet.pad) })}
+              </span>
+              <ChevronRight size={13} strokeWidth={2} aria-hidden className="mt-px shrink-0 rtl:rotate-180" />
+            </button>
           ))}
           {noTotal > 0 && (
             <div className="flex flex-col gap-1.5 rounded-[5px] bg-amber-50 px-2 py-1.5 text-[11px] leading-snug text-amber-900 ring-1 ring-amber-200" data-testid="rows-without-total">
