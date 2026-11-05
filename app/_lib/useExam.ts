@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type SetStateAction } from "react";
-import { DEFAULT_MARGINS, PAGE_MARGIN } from "./a4";
-import { blockHeight, fitTextboxes } from "./blockLayout";
+import { useCallback, useEffect, useMemo, useRef, useState, type SetStateAction } from "react";
+import { DEFAULT_MARGINS } from "./a4";
+import { blockHeight } from "./blockLayout";
 import { reorderBlock, type BlockOrder } from "./blockOrder";
 import { blockHeights, createBlock, firstFreeY, nextFreeY, pageBottom, pushDownOverlaps, type BlockPreset } from "./blocks";
 import { newId } from "./id";
@@ -23,8 +23,15 @@ import {
   syncChrome,
   type ChromeKind,
 } from "./pageChrome";
+import { withFullMark } from "./examMark";
+import { contentBounds } from "./sheet/frame";
+import { generateCorrection } from "./sheet/generate";
+import { rebuildSheet } from "./sheet/links";
+import type { SheetChoice, SheetConfig } from "./sheet/model";
+import { createCorrection, dropCorrection, mergeView, partChanged, readCorrection, viewOf, withCorrection, withSheetChrome, type Part } from "./sheet/part";
+import { settleSheet } from "./sheet/settle";
 import { saveAutosave } from "./storage";
-import { moveSlotTo, removeBlock, stepSlot, syncEmbedded } from "./textboxSlots";
+import { moveSlotTo, removeBlock, settleTextboxes, stepSlot } from "./textboxSlots";
 import { buildDoc, type Template } from "./templates";
 import type { Block, BlockData, BlockLayout, BlockType, EquationBlock, ExamDoc, ExamMeta, HeaderFooterConfig, Page, PageFormat, PageMargins } from "./types";
 import type { T } from "./uiLang";
@@ -74,34 +81,31 @@ const looseMeta = (b: Block): Block["meta"] => {
   return Object.keys(rest).length ? rest : undefined;
 };
 
-// Text boxes and the blocks in their text depend on each other: a box's size follows its text (whose rooms are as tall as its blocks),
-// and its blocks follow the box's place and width. Repeated until nothing moves (in practice 1–2 rounds), so a block is never left
-// where the box was a moment before (an auto-sized box that grew or shrank after its blocks were placed).
-function settleTextboxes(d: ExamDoc): ExamDoc {
-  let cur = d;
-  for (let i = 0; i < 4; i++) {
-    const next = fitTextboxes(syncEmbedded(cur));
-    if (next === cur) break;
-    cur = next;
-  }
-  return cur;
-}
-
 // New svg + size for an equation, keeping its current zoom (pixels per "ex").
 export function equationPatch(b: EquationBlock, r: RenderedEquation): BlockPatch {
   const pxPerEx = b.layout.height / Math.max(0.1, b.exH);
   return { ...r, layout: { width: r.exW * pxPerEx, height: r.exH * pxPerEx } } as BlockPatch;
 }
 
-// All exam data + every action that changes it (with undo/redo and autosave).
+// A document just read (a file, the autosave, a template): exam headers that are plain blocks become their page's header settings (see
+// adoptHeaders), and the settings of its correction sheet that an older version lacks get their usual value.
+const prepare = (d: ExamDoc) => readCorrection(adoptHeaders(d));
+
+// All exam data + every action that changes it (with undo/redo and autosave). The history holds the whole file (the exam and its correction sheet);
+// the editor works on one of them at a time (`part`): `doc` is that one, as an ordinary document, and every action changes it.
 export function useExam(initial: ExamDoc, t?: T) {
   // Latest translator, for the header/footer text of pages added later.
   const tRef = useRef<T | undefined>(t);
   useEffect(() => {
     tRef.current = t;
   });
-  // Exam headers that are plain blocks become their page's header settings (see adoptHeaders).
-  const [hist, setHist] = useState<History>(() => ({ past: [], present: adoptHeaders(initial), future: [] }));
+  const [hist, setHist] = useState<History>(() => ({ past: [], present: prepare(initial), future: [] }));
+  const histRef = useRef(hist);
+  useEffect(() => {
+    histRef.current = hist;
+  });
+  const [partState, setPartState] = useState<Part>("exam");
+  const partRef = useRef<Part>("exam");
   const [selectedId, setSelectedIdRaw] = useState<string | null>(null);
   // Several blocks selected at once (a box dragged over them with the Select tool, or Shift+click): moved and deleted together.
   // Selecting one block (or none) lets go of them.
@@ -117,50 +121,81 @@ export function useExam(initial: ExamDoc, t?: T) {
   const [activePage, setActivePage] = useState(0); // page currently in view
   const [reveal, setReveal] = useState<RevealRequest | null>(null);
   const [save, setSave] = useState<SaveState>({ status: "saved", at: null });
-  const doc = hist.present;
+  const full = hist.present; // the whole file: the exam and its correction sheet
+  // The document shown: the correction sheet only while there is one
+  const part: Part = partState === "sheet" && full.correction ? "sheet" : "exam";
+  const doc = useMemo(() => viewOf(full, part), [full, part]);
 
   const revealPage = (pageId: string) => setReveal((r) => ({ pageId, n: (r?.n ?? 0) + 1 }));
 
-  // Apply a change. Edits with the same `key` within 1s become ONE undo step (typing).
-  // `silent` changes never create an undo step (e.g. equation re-render). A change that changes nothing starts no step: the next one
+  // Show the exam or its correction sheet: what was selected (it belongs to the other one) is let go, and the first page is in view.
+  const setPart = useCallback(
+    (next: Part) => {
+      if (partRef.current === next) return;
+      partRef.current = next;
+      setPartState(next);
+      setSelectedIdRaw(null);
+      setGroupIds([]);
+      setActivePage(0);
+    },
+    [],
+  );
+
+  // Apply a change to the document shown (`whole`: to the whole file, e.g. a new exam). Edits with the same `key` within 1s become ONE undo step
+  // (typing). `silent` changes never create an undo step (e.g. equation re-render). A change that changes nothing starts no step: the next one
   // with its key is a step of its own, not a part of the step before (an eraser that first touches nothing, then cuts a stroke).
-  const commit = useCallback((update: (d: ExamDoc) => ExamDoc, opts: { key?: string; silent?: boolean } = {}) => {
+  const commit = useCallback((update: (d: ExamDoc) => ExamDoc, opts: { key?: string; silent?: boolean; whole?: boolean } = {}) => {
     const now = Date.now();
+    const shown: Part = opts.whole ? "exam" : partRef.current;
     setHist((h) => {
+      const view = viewOf(h.present, shown);
       // (text boxes with an automatic size follow their text in the same step: typing, a font, a margin…)
-      // (and the blocks placed in a text box follow its text)
-      const next = settleTextboxes(update(h.present));
-      if (next === h.present) return h;
+      // (and the blocks placed in a text box follow its text; on a correction sheet the stickers and lines follow its frame)
+      const changed = settleTextboxes(update(view));
+      const next = shown === "sheet" && changed.sheet ? settleSheet(changed) : changed;
+      if (next === view) return h;
+      const merged = mergeView(h.present, next, shown);
+      if (merged === h.present) return h;
       const merge = opts.silent || (opts.key !== undefined && h.last?.key === opts.key && now - h.last.time < 1000);
       const last = opts.silent ? h.last : opts.key ? { key: opts.key, time: now } : null;
-      if (merge) return { ...h, present: next, last };
-      return { past: [...h.past.slice(-99), h.present], present: next, future: [], last };
+      if (merge) return { ...h, present: merged, last };
+      return { past: [...h.past.slice(-99), h.present], present: merged, future: [], last };
     });
   }, []);
 
+  // Undo and redo take you to the part they change (the exam or its correction sheet), as a spreadsheet goes to the sheet that changed.
   const undo = useCallback(() => {
-    setHist((h) => (h.past.length ? { past: h.past.slice(0, -1), present: h.past[h.past.length - 1], future: [h.present, ...h.future] } : h));
-  }, []);
+    const h = histRef.current;
+    if (!h.past.length) return;
+    const target = h.past[h.past.length - 1];
+    const to = partChanged(h.present, target);
+    if (to) setPart(to === "sheet" && !target.correction ? "exam" : to); // (undoing the making of the sheet leaves nothing to show of it)
+    setHist((cur) => (cur.past.length ? { past: cur.past.slice(0, -1), present: cur.past[cur.past.length - 1], future: [cur.present, ...cur.future] } : cur));
+  }, [setPart]);
   const redo = useCallback(() => {
-    setHist((h) => (h.future.length ? { past: [...h.past, h.present], present: h.future[0], future: h.future.slice(1) } : h));
-  }, []);
+    const h = histRef.current;
+    if (!h.future.length) return;
+    const to = partChanged(h.present, h.future[0]);
+    if (to) setPart(to === "sheet" && !h.future[0].correction ? "exam" : to);
+    setHist((cur) => (cur.future.length ? { past: [...cur.past, cur.present], present: cur.future[0], future: cur.future.slice(1) } : cur));
+  }, [setPart]);
 
   // Autosave shortly after each change (the top bar shows "Saving…" then "Saved ✓").
   // Compared with what was saved last (not with the opened exam): undoing back to it must be saved too.
-  const savedDoc = useRef(doc);
+  const savedDoc = useRef(full);
   useEffect(() => {
-    if (doc === savedDoc.current) return; // nothing new to save
+    if (full === savedDoc.current) return; // nothing new to save
     const pending = setTimeout(() => setSave((s) => (s.status === "saving" ? s : { ...s, status: "saving" })), 0);
     const t = setTimeout(() => {
-      const ok = saveAutosave(doc);
-      if (ok) savedDoc.current = doc;
+      const ok = saveAutosave(full);
+      if (ok) savedDoc.current = full;
       setSave({ status: ok ? "saved" : "error", at: Date.now() });
     }, 400);
     return () => {
       clearTimeout(pending);
       clearTimeout(t);
     };
-  }, [doc]);
+  }, [full]);
 
   const updateBlock = useCallback(
     (id: string, patch: BlockPatch, opts?: { key?: string; silent?: boolean }) => {
@@ -209,27 +244,33 @@ export function useExam(initial: ExamDoc, t?: T) {
       // Header/footer blocks of a page created here follow the exam's rule.
       const chromeFor = (d: ExamDoc, i: number) => (tRef.current ? pageChromeBlocks(d, i, tRef.current) : []);
 
+      // The room for text on a page: between its margins, or in the answer column of its frame (a bordered correction sheet)
+      const room = (i: number) => contentBounds({ ...doc, pages }, i);
       if (at) {
-        const page = pages[clamp(at.pageIndex, 0, pages.length - 1)];
+        const at0 = clamp(at.pageIndex, 0, pages.length - 1);
+        const page = pages[at0];
         const size = pageSize(page);
         // Wider than the page's text (a free question): from one margin to the other.
-        const left = page.margins?.left ?? PAGE_MARGIN;
-        const room = size.width - left - (page.margins?.right ?? PAGE_MARGIN);
-        const fit = w > room;
+        const bounds = room(at0);
+        const left = bounds.left;
+        const room0 = bounds.right - bounds.left;
+        const fit = w > room0;
         block.layout = {
           ...block.layout,
           pageId: page.id,
-          ...(fit ? { width: room } : {}),
+          ...(fit ? { width: room0 } : {}),
           x: fit ? left : clamp(at.corner ? at.x : at.x - w / 2, 0, size.width - w),
           y: clamp(at.corner ? at.y : at.y - Math.min(h, 40) / 2, 0, size.height - h),
         };
       } else {
         // Narrow blocks (images, equations) are centered; the rest use the margin.
-        const across = (p: Page) => {
-          const pageWidth = pageSize(p).width;
-          const left = p.margins?.left ?? PAGE_MARGIN;
-          const room = pageWidth - left - (p.margins?.right ?? PAGE_MARGIN);
-          return { x: w < room - 1 ? (pageWidth - w) / 2 : left, width: Math.min(w, room) };
+        const across = (i: number) => {
+          const pageWidth = pageSize(pages[i]).width;
+          const bounds = room(i);
+          const left = bounds.left;
+          const width = bounds.right - left;
+          // (centered on the page; on a correction sheet, in its answer column)
+          return { x: w < width - 1 ? (doc.sheet ? left + (width - w) / 2 : (pageWidth - w) / 2) : left, width: Math.min(w, width) };
         };
         const heights = blockHeights(doc);
         let target: { pageId: string; y: number } | null = null;
@@ -238,10 +279,11 @@ export function useExam(initial: ExamDoc, t?: T) {
         // page big enough for it (the top of a page emptied above a block left low on it), before going on to the next page.
         for (let i = clamp(activePage, 0, pages.length - 1); i < pages.length && !target; i++) {
           const onPage = doc.blocks.filter((b) => b.layout.pageId === pages[i].id);
-          const bottom = pageBottom(onPage, pages[i]);
-          const under = nextFreeY(onPage, heights, pages[i].margins?.top);
-          const { x, width } = across(pages[i]);
-          const y = under + h <= bottom ? under : firstFreeY(onPage, heights, pages[i].margins?.top ?? PAGE_MARGIN, bottom, h, x, width);
+          const bounds = room(i);
+          const bottom = Math.min(pageBottom(onPage, pages[i]), bounds.bottom);
+          const under = nextFreeY(onPage, heights, bounds.top);
+          const { x, width } = across(i);
+          const y = under + h <= bottom ? under : firstFreeY(onPage, heights, bounds.top, bottom, h, x, width);
           if (y !== null) {
             target = { pageId: pages[i].id, y };
             pageIdx = i;
@@ -253,9 +295,9 @@ export function useExam(initial: ExamDoc, t?: T) {
           pageIdx = pages.length - 1;
           chrome = chromeFor({ ...doc, pages }, pageIdx);
           const chromeHeights = new Map(chrome.map((b) => [b.id, blockHeight(b, 1, doc.meta)]));
-          target = { pageId: page.id, y: nextFreeY(chrome, chromeHeights, page.margins?.top) };
+          target = { pageId: page.id, y: nextFreeY(chrome, chromeHeights, room(pageIdx).top) };
         }
-        block.layout = { ...block.layout, ...target, ...across(pages[pageIdx]) };
+        block.layout = { ...block.layout, ...target, ...across(pageIdx) };
       }
 
       // A new page changes "Page 1 of N" on the others.
@@ -289,7 +331,9 @@ export function useExam(initial: ExamDoc, t?: T) {
         const others = d.blocks.filter((b) => b.id !== id).map((b) => b.layout.z ?? 0);
         const top = Math.max(0, ...others);
         const z = (cur?.layout.z ?? 0) > top ? cur!.layout.z : top + 1;
-        const moved = { ...d, blocks: d.blocks.map((b) => (b.id === id ? ({ ...b, layout: { ...b.layout, pageId, x, y, z } } as Block) : b)) };
+        // (a total of a correction sheet put somewhere by hand stays there: it is no longer kept in the middle of its row)
+        const stays = cur?.type === "mark" && cur.kind === "total" && (cur.place ?? "center") !== "free" && Math.abs(y - cur.layout.y) > 0.5 ? { place: "free" as const } : {};
+        const moved = { ...d, blocks: d.blocks.map((b) => (b.id === id ? ({ ...b, ...stays, layout: { ...b.layout, pageId, x, y, z } } as Block) : b)) };
         const pageHeight = pageSize(d.pages.find((p) => p.id === pageId)).height;
         return { ...moved, blocks: pushDownOverlaps(moved.blocks, id, blockHeights(moved), pageHeight) };
       }),
@@ -520,23 +564,82 @@ export function useExam(initial: ExamDoc, t?: T) {
     [commit],
   );
 
+  // What the exam is graded out of: the setting, the exam header and the page headers together (examMark.ts). It is the whole file that changes, whichever part is shown.
+  const setFullMark = useCallback((value: number) => commit((d) => withFullMark(d, value, tRef.current), { key: "fullMark", whole: true }), [commit]);
+
+  // The settings of the paper of the correction sheet (its columns, frame, titles…). Changes with the same `key` (dragging an edge) are one undo step.
+  const setSheet = useCallback(
+    (patch: Partial<SheetConfig>, key?: string) => commit((d) => (d.sheet ? { ...d, sheet: { ...d.sheet, ...patch } } : d), { key }),
+    [commit],
+  );
+
+  // Make the correction sheet as the wizard says (from the exam, or empty) and show it. One that is there is replaced, its settings kept (undo brings it back).
+  const makeSheet = useCallback(
+    (opts: SheetChoice) => {
+      commit(
+        (d) => {
+          try {
+            if (opts.template === "blank") return createCorrection(dropCorrection(d), opts.paper);
+            return d.correction ? rebuildSheet(d, { template: opts.template, paper: opts.paper, marks: opts.marks }) : withCorrection(d, generateCorrection(d, { template: opts.template, paper: opts.paper, marks: opts.marks }));
+          } catch (e) {
+            console.error("Correction sheet:", e); // (the exam is left as it is)
+            return d;
+          }
+        },
+        { whole: true },
+      );
+      setPart("sheet");
+      setSelectedId(null);
+      setActivePage(0);
+    },
+    [commit, setPart, setSelectedId],
+  );
+
+  // A change of the sheet that looks at the exam too (links.ts: put in the questions it lacks, make marks again, set points from marks…): the whole file in, the whole file out
+  const fixSheet = useCallback((fix: (full: ExamDoc) => ExamDoc) => commit((d) => withSheetChrome(d, fix(d), tRef.current), { whole: true }), [commit]);
+
+  // Throw the correction sheet away (undo brings it back)
+  const deleteSheet = useCallback(() => {
+    commit((d) => dropCorrection(d), { whole: true });
+    setPart("exam");
+  }, [commit, setPart]);
+
   // Replace the exam (new template or opened file). Undo can bring the old one back.
   const replaceDoc = useCallback(
     (incoming: ExamDoc) => {
-      const next = adoptHeaders(incoming);
-      commit(() => next);
+      const next = prepare(incoming);
+      commit(() => next, { whole: true });
+      setPart("exam");
       setSelectedId(null);
       setActivePage(0);
       // Equations from older files may need their drawing.
       next.blocks.forEach((b) => b.type === "equation" && !b.svg && refreshEquation(b));
     },
-    [commit, refreshEquation, setSelectedId],
+    [commit, refreshEquation, setSelectedId, setPart],
+  );
+
+  // Replace the document shown (the exam, or the correction sheet) with one made from it, e.g. by the page layout wizard: the other one stays
+  const replaceView = useCallback(
+    (next: ExamDoc) => {
+      commit(() => adoptHeaders(next));
+      setSelectedId(null);
+      setActivePage(0);
+    },
+    [commit, setSelectedId],
   );
 
   const newFromTemplate = useCallback((t: Template) => replaceDoc(buildDoc(t)), [replaceDoc]);
 
   return {
     doc,
+    fullDoc: full,
+    part,
+    setPart,
+    hasSheet: !!full.correction,
+    setSheet,
+    makeSheet,
+    fixSheet,
+    deleteSheet,
     selectedId,
     setSelectedId,
     groupIds,
@@ -574,7 +677,9 @@ export function useExam(initial: ExamDoc, t?: T) {
     editChrome,
     chromeScope,
     setMeta,
+    setFullMark,
     replaceDoc,
+    replaceView,
     newFromTemplate,
   };
 }

@@ -224,7 +224,8 @@ export function AddRowButton({ children, onClick }: { children: ReactNode; onCli
 }
 
 // A text box that keeps the styled words (colors, fonts…) of the text. Same look as the inputs.
-export function RichInput({ value, onChange, multiline, rows = 1, placeholder, ref }: {
+export function RichInput({ value, onChange, multiline, rows = 1, placeholder, ref, roomy }: {
+  roomy?: boolean; // larger, rounder (the question editors)
   value: string;
   onChange: (v: string) => void;
   multiline?: boolean;
@@ -239,7 +240,7 @@ export function RichInput({ value, onChange, multiline, rows = 1, placeholder, r
       onChange={onChange}
       multiline={multiline}
       placeholder={placeholder}
-      className={`${inputCls} rich-input relative leading-snug`}
+      className={`${inputCls} rich-input relative leading-snug ${roomy ? "rounded-xl! px-3! py-2! text-[13px]! tracking-[-0.01em]" : ""}`}
       style={{ minHeight: rows > 1 ? `${rows * 1.4 + 0.8}em` : undefined }}
     />
   );

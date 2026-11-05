@@ -135,6 +135,8 @@ function ChromeSection({ ctx, kind, scope, index }: { ctx: Ctx; kind: ChromeKind
     if (value === undefined) delete data[key];
     else data[key] = value;
     change({ data }, key);
+    // (what the whole exam is graded out of follows the header of the exam)
+    if (kind === "header" && global && key === "outOf" && value !== undefined && Number(value) >= 1) shell.setMeta({ fullMark: Math.round(Number(value)) }, "fullMark");
   };
   const defaults = defaultTexts(doc, index, kind, template.id, ctx.t);
   const texts = template.fields?.filter((f) => f.key !== "outOf") ?? [];

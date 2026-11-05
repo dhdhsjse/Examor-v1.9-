@@ -3,15 +3,20 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { blankAnswers } from "@/app/_lib/blockLayout";
 import { isQuestion } from "@/app/_lib/blocks";
+import { examFullMark } from "@/app/_lib/examMark";
+import { linkReport } from "@/app/_lib/sheet/links";
+import { sheetScores } from "@/app/_lib/sheet/marks";
+import { viewOf } from "@/app/_lib/sheet/part";
 import { checkFonts, type FontReport } from "@/app/_lib/fontCheck";
 import type { ExamDoc, HeaderBlock, ViewMode } from "@/app/_lib/types";
 import { useT } from "@/app/_lib/uiLang";
 
 interface Props {
-  doc: ExamDoc;
+  doc: ExamDoc; // the whole file: the exam, and its correction sheet if it has one
   busy: boolean; // a PDF is being written
   renderPages: (mode: ViewMode) => Promise<string[]>; // page images exactly as they go in the PDF
   onExport: (which: ViewMode | "both") => void;
+  onMakeSheet: () => void; // the Correction copy has nothing to show until there is a correction sheet: make it
   onClose: () => void;
 }
 
@@ -26,8 +31,10 @@ const ARABIC_RE = /[؀-ۿݐ-ݿﭐ-﷿ﹰ-﻿]/;
 
 // Print preview: the real pages as they will be in the PDF, plus a checklist
 // (fonts, points, correction answers) before exporting.
-export default function ExportPreview({ doc, busy, renderPages, onExport, onClose }: Props) {
+export default function ExportPreview({ doc, busy, renderPages, onExport, onMakeSheet, onClose }: Props) {
   const t = useT();
+  // The correction sheet as a document of its own (null: there is none, and the correction copy has nothing to show)
+  const sheet = useMemo(() => (doc.correction ? viewOf(doc, "sheet") : null), [doc]);
   const [mode, setMode] = useState<ViewMode>("exam");
   const [pages, setPages] = useState<Partial<Record<ViewMode, string[]>>>({});
   const [fonts, setFonts] = useState<FontReport | null>(null);
@@ -39,7 +46,7 @@ export default function ExportPreview({ doc, busy, renderPages, onExport, onClos
 
   // Draw the pages of the chosen copy (once per copy).
   useEffect(() => {
-    if (pages[mode]) return;
+    if (pages[mode] || (mode === "key" && !sheet)) return;
     let alive = true;
     renderPages(mode)
       .then((imgs) => alive && setPages((p) => ({ ...p, [mode]: imgs })))
@@ -49,7 +56,7 @@ export default function ExportPreview({ doc, busy, renderPages, onExport, onClos
     };
     // renderPages changes on every render of the editor; the doc can't change while this is open.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode, pages]);
+  }, [mode, pages, sheet]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && !busy && onClose();
@@ -101,19 +108,42 @@ export default function ExportPreview({ doc, busy, renderPages, onExport, onClos
       out.push({ status: "info", title: t("{n} questions, {total} pts in all", { n: questions.length, total }) });
     }
 
-    // Correction sheet
-    const noAnswer = questions.filter((q) => q.type === "open" && !(q.parts?.length ? q.parts.every((p) => p.answer.trim()) : q.answer.trim())).length;
-    const noBlanks = questions.filter((q) => q.type === "blank" && blankAnswers(q.content).length === 0).length;
-    if (noAnswer) out.push({ status: "warn", title: t("{n} open question(s) without a model answer", { n: noAnswer }), detail: t("The correction sheet will show empty lines for them.") });
-    if (noBlanks) out.push({ status: "warn", title: t("{n} fill-in-the-blank question(s) without [answers]", { n: noBlanks }) });
-    if (!noAnswer && !noBlanks && questions.length) out.push({ status: "ok", title: t("Every question has its answer for the correction sheet") });
+    // Correction sheet: the marks of its stickers against the full mark of the exam
+    if (sheet) {
+      const scores = sheetScores(sheet);
+      const outOf = examFullMark(doc);
+      const report = linkReport(doc);
+      out.push(
+        scores.rows.length === 0
+          ? { status: "info", title: t("The correction sheet has no marks yet") }
+          : scores.total === outOf
+            ? { status: "ok", title: t("Correction sheet: {total} = graded out of {outOf}", { total: scores.total, outOf }) }
+            : {
+                status: "warn",
+                title: t("The correction sheet adds up to {total} pts, the exam is out of {outOf}", { total: scores.total, outOf }),
+                detail: t("Change the marks of the stickers, or the full mark of the exam."),
+              },
+      );
+      // (made from the exam: its marks against the points of the questions, and the questions it lacks)
+      if (report?.diffs.length) out.push({ status: "warn", title: t("{n} question(s) have other marks in the correction sheet than the points in the exam", { n: report.diffs.length }), detail: t("Open the correction sheet: its settings show which, and how to make them agree.") });
+      if (report?.missing.length) out.push({ status: "warn", title: t("{n} question(s) of the exam are not in the correction sheet", { n: report.missing.length }) });
+      if (report?.stale.length) out.push({ status: "warn", title: t("{n} block(s) of the correction sheet changed in the exam since it was made", { n: report.stale.length }), detail: t("Open the correction sheet: its settings bring them up to date.") });
+    } else {
+      // Correction sheet (the exam with its answers)
+      const noAnswer = questions.filter((q) => q.type === "open" && !(q.parts?.length ? q.parts.every((p) => p.answer.trim()) : q.answer.trim())).length;
+      const noBlanks = questions.filter((q) => q.type === "blank" && blankAnswers(q.content).length === 0).length;
+      if (noAnswer) out.push({ status: "warn", title: t("{n} open question(s) without a model answer", { n: noAnswer }), detail: t("The correction sheet will show empty lines for them.") });
+      if (noBlanks) out.push({ status: "warn", title: t("{n} fill-in-the-blank question(s) without [answers]", { n: noBlanks }) });
+      if (!noAnswer && !noBlanks && questions.length) out.push({ status: "ok", title: t("Every question has its answer for the correction sheet") });
+    }
 
     const emptyEq = doc.blocks.filter((b) => b.type === "equation" && !b.latex.trim()).length;
     if (emptyEq) out.push({ status: "info", title: t("{n} empty equation(s) — not printed", { n: emptyEq }) });
     return out;
-  }, [doc, fonts, t]);
+  }, [doc, sheet, fonts, t]);
 
   const imgs = pages[mode];
+  const printed = mode === "key" && sheet ? sheet.pages : doc.pages; // (the pages of the copy shown)
 
   return (
     <div className="fixed inset-0 z-50 flex bg-slate-900/50 p-4 backdrop-blur-sm sm:p-6" onMouseDown={(e) => e.target === e.currentTarget && !busy && onClose()}>
@@ -135,10 +165,18 @@ export default function ExportPreview({ doc, busy, renderPages, onExport, onClos
                 </button>
               ))}
             </div>
-            <span className="ms-auto text-xs text-muted">{t(doc.pages.every((p) => !p.format || (p.format.size === "A4" && p.format.orientation === "portrait")) ? "{n} A4 page(s)" : "{n} page(s)", { n: doc.pages.length })}</span>
+            <span className="ms-auto text-xs text-muted">{t(printed.every((p) => !p.format || (p.format.size === "A4" && p.format.orientation === "portrait")) ? "{n} A4 page(s)" : "{n} page(s)", { n: printed.length })}</span>
           </div>
           <div className="flex-1 overflow-y-auto p-6">
-            {failed ? (
+            {mode === "key" && !sheet ? (
+              <div className="mx-auto mt-10 flex max-w-sm flex-col items-center gap-3 text-center" data-testid="preview-no-sheet">
+                <p className="text-sm font-semibold text-ink">{t("There is no correction sheet yet")}</p>
+                <p className="text-xs text-muted">{t("Make it first: it is printed here, with the marks beside the answers.")}</p>
+                <button type="button" onClick={onMakeSheet} className="rounded-md bg-emerald-600 px-3 py-2 text-xs font-semibold text-white shadow-sm hover:bg-emerald-700">
+                  {t("Make the correction sheet…")}
+                </button>
+              </div>
+            ) : failed ? (
               <p className="pt-10 text-center text-sm text-red-600">{failed}</p>
             ) : !imgs ? (
               <p className="pt-10 text-center text-sm text-muted">{t("Drawing the pages…")}</p>
@@ -174,14 +212,14 @@ export default function ExportPreview({ doc, busy, renderPages, onExport, onClos
           </ul>
           <div className="flex flex-col gap-2 border-t border-line p-4">
             <button
-              disabled={busy}
+              disabled={busy || (mode === "key" && !sheet)}
               onClick={() => onExport(mode)}
               className="rounded-md bg-accent px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-accent-strong disabled:opacity-60"
             >
               {busy ? t("Exporting…") : mode === "key" ? t("Export the correction sheet") : t("Export the exam")}
             </button>
             <button
-              disabled={busy}
+              disabled={busy || !sheet}
               onClick={() => onExport("both")}
               className="rounded-md border border-line px-3 py-1.5 text-xs font-medium text-ink hover:border-indigo-300 hover:bg-indigo-50 disabled:opacity-60"
             >

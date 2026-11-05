@@ -5,6 +5,7 @@ import { blockHeight } from "./blockLayout";
 import { newId } from "./id";
 import { defaultSize } from "./shapes";
 import { EX_PX } from "./math";
+import { RULE_HEIGHT, markHeight } from "./sheet/marks";
 import { plainText } from "./richText";
 import { fixOrder, mixedOrder, seededRandom } from "./shuffle";
 import type {
@@ -31,6 +32,9 @@ export const isQuestion = (b: Block): b is QuestionBlock => QUESTION_TYPES.inclu
 
 export const MAX_OPTIONS = 8;
 
+// The stickers and lines of a correction sheet lie over the text and over each other: they are never pushed away, never push, and a new block does not stack under them.
+export const FLOATING: ReadonlySet<BlockType> = new Set<BlockType>(["mark", "rule"]);
+
 // Name of each block type (English key, translated where shown).
 export const BLOCK_TYPE_NAMES: Record<BlockType, string> = {
   mcq: "Multiple choice",
@@ -49,6 +53,8 @@ export const BLOCK_TYPE_NAMES: Record<BlockType, string> = {
   textbox: "Text box",
   shape: "Shape",
   divider: "Separator",
+  mark: "Sticker",
+  rule: "Row line",
 };
 
 // Questions start empty, so the teacher types right away instead of deleting sample text first.
@@ -221,6 +227,12 @@ export function createBlock(type: BlockType, lang: Lang, pageId: string, preset:
     layout.width = 320;
     layout.height = 320;
   }
+  // The stickers and lines of a correction sheet: a small box, and a thin one (the sheet puts them in their columns and across its frame)
+  if (type === "mark") {
+    layout.width = width ?? 56;
+    layout.height = height ?? markHeight({ size: (data as { size?: number }).size });
+  }
+  if (type === "rule") layout.height = RULE_HEIGHT;
 
   const base = (() => {
     switch (type) {
@@ -263,6 +275,10 @@ export function createBlock(type: BlockType, lang: Lang, pageId: string, preset:
         return { type, shape: "rect" };
       case "divider":
         return { type, style: "solid" as const, label: defaultDividerLabel(lang) };
+      case "mark":
+        return { type, kind: "number" as const, value: 1 };
+      case "rule":
+        return { type };
     }
   })();
 
@@ -412,7 +428,7 @@ export function screenHeights(doc: ExamDoc, heights: Map<string, number>, select
 export function nextFreeY(blocks: Block[], heights: Map<string, number>, top = PAGE_MARGIN): number {
   const gap = 14;
   // Footers sit at the bottom of the page: they don't count as "content so far".
-  return blocks.filter((b) => b.meta?.role !== "footer").reduce((bottom, b) => Math.max(bottom, b.layout.y + (heights.get(b.id) ?? 0) + gap), top);
+  return blocks.filter((b) => b.meta?.role !== "footer" && !FLOATING.has(b.type)).reduce((bottom, b) => Math.max(bottom, b.layout.y + (heights.get(b.id) ?? 0) + gap), top);
 }
 
 // The highest free spot of a page for a block `h` tall, from `x` to `x + w`: the first gap (from `top` down) between the blocks
@@ -421,7 +437,7 @@ export function nextFreeY(blocks: Block[], heights: Map<string, number>, top = P
 export function firstFreeY(blocks: Block[], heights: Map<string, number>, top: number, bottom: number, h: number, x: number, w: number): number | null {
   const gap = 14;
   const busy = blocks
-    .filter((b) => b.meta?.role !== "footer" && b.layout.x < x + w && b.layout.x + b.layout.width > x)
+    .filter((b) => b.meta?.role !== "footer" && !FLOATING.has(b.type) && b.layout.x < x + w && b.layout.x + b.layout.width > x)
     .map((b) => ({ y0: b.layout.y, y1: b.layout.y + (heights.get(b.id) ?? 0) }))
     .sort((a, c) => a.y0 - c.y0);
   let y = top;
@@ -450,7 +466,7 @@ export function patchPart(parts: OpenPart[], i: number, patch: Partial<OpenPart>
 const LOOSE = new Set<Block["type"]>(["shape", "image"]);
 const loosePair = (a: Block, b: Block) => LOOSE.has(a.type) && (LOOSE.has(b.type) || b.type === "textbox");
 const mayOverlap = (a: Block, b: Block) =>
-  loosePair(a, b) || loosePair(b, a) || (a.type === "image" && b.type === "table") || (b.type === "image" && a.type === "table");
+  FLOATING.has(a.type) || FLOATING.has(b.type) || loosePair(a, b) || loosePair(b, a) || (a.type === "image" && b.type === "table") || (b.type === "image" && a.type === "table");
 
 // After a block is dropped: blocks it covers are pushed down below it (and so on),
 // so nothing overlaps and the reading order (question numbers) matches what you see. Objects placed freely (text boxes, pictures,

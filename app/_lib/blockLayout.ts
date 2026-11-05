@@ -1,4 +1,5 @@
 import { dividerHeight } from "./divider";
+import { RULE_HEIGHT, markHeight } from "./sheet/marks";
 import { fontStack } from "./fonts";
 import { isRtl, optionLabel, words } from "./i18n";
 import { LIST_GAP, listMarkers } from "./lists";
@@ -928,6 +929,10 @@ export function blockHeight(b: Block, n: number, meta: ExamMeta): number {
       return HEADER_HEIGHT[b.style] ?? HEADER_HEIGHT.classic;
     case "divider":
       return dividerHeight(b);
+    case "mark":
+      return markHeight(b, meta.fontSize);
+    case "rule":
+      return RULE_HEIGHT;
     case "image":
       return imageHeight(b, meta);
     case "equation":

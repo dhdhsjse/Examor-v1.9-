@@ -47,7 +47,6 @@ export function BlockFontControls({ b, meta, onChange }: { b: Block; meta: ExamM
           <ColorGrid value={font.color} autoLabel={t("Auto")} onChange={(color) => set({ color })} />
         </>
       )}
-      <p className="text-[10px] leading-snug text-faint">{t("To style only some words: click the text on the page, select the words and use the bar above them.")}</p>
     </div>
   );
 }

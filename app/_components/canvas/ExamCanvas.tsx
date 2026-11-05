@@ -9,7 +9,12 @@ import { eraserCursor, eraserPoints, type EraserSettings } from "@/app/_lib/ink/
 import { DEFAULT_MARGINS, MAX_MARGIN_MM, MIN_MARGIN_MM, mmToPx, pxToMm } from "@/app/_lib/a4";
 import { questionNumbers, totalPoints as sumPoints } from "@/app/_lib/blocks";
 import type { EditField } from "@/app/_lib/editRegions";
+import { isRtl } from "@/app/_lib/i18n";
 import { pageAt, pageBoxes, stackSize, type PageBox } from "@/app/_lib/pageStack";
+import { contentBounds, frameOf, type FrameGeometry } from "@/app/_lib/sheet/frame";
+import { sheetScores } from "@/app/_lib/sheet/marks";
+import type { SheetConfig } from "@/app/_lib/sheet/model";
+import { columnOf } from "@/app/_lib/sheet/settle";
 import { MIN_SHAPE_SIZE, isLine } from "@/app/_lib/shapes";
 import { isFixedTable } from "@/app/_lib/table";
 import { snapBox, type Guide } from "@/app/_lib/snapping";
@@ -17,6 +22,8 @@ import { slotDrop } from "@/app/_lib/textboxSlots";
 import type { Block, BlockLayout, ExamDoc, PageMargins, ViewMode } from "@/app/_lib/types";
 import type { BlockPatch } from "@/app/_lib/useExam";
 import BlockNode, { type ResizeResult } from "./BlockNode";
+import { SheetFrame, type SheetInfo } from "./blocks/SheetViews";
+import FrameHandles from "./FrameHandles";
 
 const SNAP_PX = 6; // snap distance on screen, in pixels
 const GUIDE_COLOR = "#c7d2fe"; // static margin/center guides
@@ -65,6 +72,11 @@ interface Props {
   onMove?: (id: string, pageId: string, x: number, y: number) => void;
   onResize?: (id: string, layout: Partial<BlockLayout>) => void;
   textTool?: boolean;
+  // The stamp tool (a sticker of the correction sheet in hand): a click on a page puts it there, over the blocks (they let the mouse through).
+  stampTool?: boolean;
+  onStamp?: (at: { pageIndex: number; x: number; y: number }) => void;
+  // On a correction sheet: its frame can be dragged (its columns, its edges), as the margins are while they are edited.
+  onSheet?: (patch: Partial<SheetConfig>, key?: string) => void;
   onEdit?: (id: string, field: EditField | null) => void;
   onPatch?: (id: string, patch: BlockPatch) => void;
   onDragging?: (dragging: boolean) => void;
@@ -98,7 +110,7 @@ interface Props {
 export type BlockMover = { move: (id: string, x: number, y: number) => { x: number; y: number }; end: (id: string, x: number, y: number) => void };
 
 // Blocks drawn over all the others (see drawOrder).
-const ON_TOP = new Set<Block["type"]>(["shape", "image", "graph", "equation"]);
+const ON_TOP = new Set<Block["type"]>(["shape", "image", "graph", "equation", "mark", "rule"]);
 
 const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(v, max));
 
@@ -161,6 +173,19 @@ export default function ExamCanvas(props: Props) {
   const boxes = useMemo(() => pageBoxes(pages), [pages]);
   const { width, height } = stackSize(boxes);
   const pageIndex = new Map(pages.map((p, i) => [p.id, i]));
+  // A correction sheet: the frame of each page (bordered paper), and what its stickers and lines need to be drawn (marks, totals, lines)
+  const sheet = doc.sheet;
+  const rtl = isRtl(meta.lang);
+  // (the frame starts under the header of its page and stops over its footer)
+  const geos = useMemo<(FrameGeometry | null)[]>(() => (sheet ? pages.map((_, i) => frameOf(doc, i)) : []), [sheet, pages, doc]);
+  const sheetInfo = useMemo<SheetInfo | undefined>(() => (sheet ? { pad: sheet.pad, shown: sheetScores(doc).shown, line: sheet.line, hideTotals: sheet.paper === "bordered" && !sheet.total } : undefined), [sheet, doc]);
+  // The room for text on a page, as margins: the answer column of its frame (the guides blocks snap to), else the page's margins
+  const snapMargins = (i: number) => {
+    if (!sheet) return pages[i].margins;
+    const b = contentBounds(doc, i);
+    const size = boxes[i];
+    return { left: b.left, right: size.width - b.right, top: b.top, bottom: size.height - b.bottom };
+  };
   const selected = interactive ? blocks.find((b) => b.id === selectedId) : undefined;
 
   // Blocks over each other (a text under a photo…): the selected block takes the clicks even where another block is drawn over
@@ -234,6 +259,7 @@ export default function ExamCanvas(props: Props) {
   const preview = edit?.margins;
   const totalPoints = useMemo(() => sumPoints(blocks), [blocks]);
   const inking = interactive && !!props.ink;
+  const stamping = interactive && !!props.stampTool;
   const drawing = interactive && (!!props.drawBox || inking);
   const erasing = interactive && !!props.eraser;
   const [draft, setDraft] = useState<DrawDraft | null>(null);
@@ -387,9 +413,11 @@ export default function ExamCanvas(props: Props) {
       .map((o) => ({ ...o.layout, height: heights.get(o.id) ?? 0 }));
 
     const box = { x: x - page.left, y: y - page.top, width: b.layout.width, height: h };
-    const snapped = guidesOn ? snapBox(box, others, { ...page, margins: pages[i].margins }, SNAP_PX / zoom) : { ...box, guides: [] };
+    const snapped = guidesOn ? snapBox(box, others, { ...page, margins: snapMargins(i) }, SNAP_PX / zoom) : { ...box, guides: [] };
     setSnap({ page: i, guides: snapped.guides });
-    const pos = { x: clamp(snapped.x, 0, page.width - b.layout.width), y: clamp(snapped.y, 0, page.height - h) };
+    // (a mark or a line held by the frame only moves up and down, in its column)
+    const column = columnOf(b, geos[i] ?? null);
+    const pos = { x: column ? column.x : clamp(snapped.x, 0, page.width - b.layout.width), y: clamp(snapped.y, 0, page.height - h) };
     if (dragAt?.pageId !== pages[i].id || dragAt.y !== pos.y) setDragAt({ id: b.id, pageId: pages[i].id, y: pos.y });
     return { x: page.left + pos.x, y: page.top + pos.y };
   };
@@ -661,6 +689,9 @@ export default function ExamCanvas(props: Props) {
   const media = selected?.type === "image" || selected?.type === "equation" || (selected?.type === "table" && isFixedTable(selected));
   const corners = media || selected?.type === "graph";
   const freeBox = selected?.type === "textbox" || selected?.type === "shape"; // a text box or a shape: every side and corner
+  // A sticker or a line held by the frame has no handles: its column decides its width
+  const held = !!selected && (selected.type === "mark" || selected.type === "rule") && !!columnOf(selected, geos[pageIndex.get(selected.layout.pageId) ?? 0] ?? null);
+  const showFrameHandles = interactive && !!sheet && !!props.onSheet && !selected && !group.size && !drawing && !erasing && !stamping && !props.textTool;
 
   return (
     <Stage
@@ -691,7 +722,7 @@ export default function ExamCanvas(props: Props) {
         if (!e.evt.shiftKey) props.onSelect?.(null);
         const stage = e.target.getStage();
         const p = stage?.getPointerPosition();
-        if (interactive && !drawing && !erasing && !props.textTool && stage && p && e.evt.button === 0) {
+        if (interactive && !drawing && !erasing && !stamping && !props.textTool && stage && p && e.evt.button === 0) {
           e.evt.preventDefault(); // no text selection while dragging the box
           startLasso(stage, p.x, p.y, keep);
         } else if (inking) {
@@ -699,6 +730,10 @@ export default function ExamCanvas(props: Props) {
         } else if (drawing && stage && p && e.target.name() === "paper" && e.evt.button === 0) {
           e.evt.preventDefault(); // no text selection while dragging
           startDraw(stage, p.x, p.y);
+        } else if (stamping && p && e.target.name() === "paper" && e.evt.button === 0) {
+          e.evt.preventDefault();
+          const i = pageAt(p.y, boxes);
+          props.onStamp?.({ pageIndex: i, x: p.x - boxes[i].left, y: p.y - boxes[i].top });
         } else if (props.textTool && p && e.target.name() === "paper") {
           e.evt.preventDefault(); // keep the focus in the new text box
           const i = pageAt(p.y, boxes);
@@ -719,6 +754,9 @@ export default function ExamCanvas(props: Props) {
           />
         ))}
 
+        {/* A bordered correction sheet: the frame of each page (under the blocks) */}
+        {sheet && geos.map((geo, i) => geo && <SheetFrame key={pages[i].id} geo={geo} sheet={sheet} box={boxes[i]} meta={meta} />)}
+
         {/* One list (keys kept), so a block that becomes selected keeps its node: a drag started on it goes on */}
         {[
           ...shown.flatMap((b) => (ghostIds.has(b.id) ? (raised ? [] : [{ b, passive: true }]) : [{ b, passive: false }])),
@@ -738,12 +776,13 @@ export default function ExamCanvas(props: Props) {
             meta={meta}
             mode={mode}
             totalPoints={totalPoints}
+            sheet={sheetInfo}
             zoom={zoom}
             selected={b.id === selectedId}
             grouped={!passive && group.has(b.id)}
             interactive={interactive}
             textTool={!!props.textTool}
-            drawing={drawing || erasing}
+            drawing={drawing || erasing || stamping}
             erasable={erasing && props.eraser?.mode === "stroke" && b.type === "shape"}
             typing={b.id === props.typingId}
             onSelect={(alt, shift) => pick(b, !!alt, !!shift)}
@@ -766,6 +805,11 @@ export default function ExamCanvas(props: Props) {
           pages.map((page, i) => (
             <MarginHandles key={page.id} box={boxes[i]} margins={preview} zoom={zoom} onDrag={(m, done) => props.onMarginDrag?.(m, done)} />
           ))}
+
+        {/* A bordered correction sheet, nothing selected: the columns and the edges of its frame can be dragged */}
+        {showFrameHandles &&
+          sheet &&
+          geos.map((geo, i) => geo && <FrameHandles key={pages[i].id} geo={geo} sheet={sheet} page={pages[i]} pageIndex={i} box={boxes[i]} rtl={rtl} zoom={zoom} onChange={(patch, key) => props.onSheet?.(patch, key)} />)}
 
         {/* The text box being drawn */}
         {draft && props.drawShape === "line" && <Line points={[draft.x0, draft.y0, draft.x1, draft.y1]} stroke={ACCENT} strokeWidth={1.5 / zoom} dash={[4 / zoom, 4 / zoom]} listening={false} />}
@@ -813,7 +857,7 @@ export default function ExamCanvas(props: Props) {
             rotateEnabled={false}
             keepRatio={media}
             enabledAnchors={
-              selected?.type === "header"
+              selected?.type === "header" || held
                 ? []
                 : freeBox
                   ? ["top-left", "top-center", "top-right", "middle-left", "middle-right", "bottom-left", "bottom-center", "bottom-right"]

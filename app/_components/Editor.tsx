@@ -7,6 +7,7 @@ import { CONTENT_WIDTH, PAGE_MARGIN } from "@/app/_lib/a4";
 import { pageMargins } from "@/app/_lib/onboarding/applyOnboarding";
 import { pageSize } from "@/app/_lib/pageFormats";
 import { focusMathfield } from "@/app/_lib/activeMathfield";
+import { examFullMark } from "@/app/_lib/examMark";
 import {
   BLOCK_TYPE_NAMES,
   MAX_OPTIONS,
@@ -34,6 +35,9 @@ import { docParagraphs, richFromDoc, textboxDoc } from "@/app/_lib/textboxDoc";
 import type { StyleMark } from "@/app/_lib/textboxEditor";
 import { BUILTIN_ASSETS, svgUrl, type Asset, type AssetKind } from "@/app/_lib/library";
 import { imagesToPdf, stagePageImages } from "@/app/_lib/pdf";
+import { addMissing, addRowTotals, adoptMarks, linkReport, packRows, refitAnswers, restyleFull, refreshStale, removeOrphans, resetMarks } from "@/app/_lib/sheet/links";
+import { sheetScores } from "@/app/_lib/sheet/marks";
+import { viewOf } from "@/app/_lib/sheet/part";
 import { loadAutosave, loadUserAssets, parseExamFile, pickFile, saveFile, saveUserAssets } from "@/app/_lib/storage";
 import { ALL_CYCLES, type Subject } from "@/app/_lib/subjects";
 import { buildDoc, templateById, type Template } from "@/app/_lib/templates";
@@ -111,7 +115,9 @@ export default function Editor() {
 
   const [subject, setSubject] = useState<Subject>("General");
   const [query, setQuery] = useState("");
-  const [mode, setMode] = useState<ViewMode>("exam");
+  // The Correction tab shows the correction sheet, whose blocks are drawn with their answers (undo can take you to the part it changes)
+  const mode: ViewMode = exam.part === "sheet" ? "key" : "exam";
+  const [sheetWizard, setSheetWizard] = useState({ open: false, rebuild: false }); // the window that makes the correction sheet
   const [tab, setTab] = useState<RightTab>("properties");
   const [activeInspectorId, setActiveInspectorId] = useState<string | null>(null);
   const [marginEdit, setMarginEdit] = useState<MarginEdit | null>(null); // see Shell.marginEdit
@@ -135,6 +141,7 @@ export default function Editor() {
   const toastTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const eqTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const [tool, setTool] = useState<CanvasTool>("select");
+  const [stamp, setStamp] = useState<ToolAction | null>(null); // (the sticker of the correction sheet the Stamp tool puts on the page)
   const [shapeToDraw, setShapeToDraw] = useState<string | null>(null); // (Insert → Shapes: what the Shapes tool draws)
   const ink = useInkTools(); // the Draw tool: its brush, pencil and highlighter and how each draws (kept between sessions)
   const eraser = useEraserTool(); // the Eraser: how it rubs (parts of the drawings, or whole ones) and how big it is (kept between sessions)
@@ -175,10 +182,15 @@ export default function Editor() {
   const heights = useMemo(() => blockHeights(doc), [doc]);
   const numbers = useMemo(() => questionNumbers(doc.blocks, doc.pages), [doc]);
   const drawnHeights = useMemo(() => screenHeights(doc, heights, selectedId), [doc, heights, selectedId]);
+  const fullDoc = exam.fullDoc; // the exam and its correction sheet (what is saved, kept in the history and exported)
+  const scores = useMemo(() => (exam.part === "sheet" ? sheetScores(doc) : null), [doc, exam.part]); // the marks of the correction sheet
+  const sheetReport = useMemo(() => (exam.part === "sheet" ? linkReport(fullDoc) : null), [fullDoc, exam.part]); // the sheet against its exam
   const stats = useMemo(() => {
+    // The correction sheet: the rows that carry a mark, and what they add up to, out of the exam's full mark
+    if (scores) return { questions: scores.rows.length, points: scores.total, pages: doc.pages.length, full: examFullMark(fullDoc), sheet: true };
     const questions = doc.blocks.filter(isQuestion);
     return { questions: questions.length, points: questions.reduce((s, q) => s + q.points, 0), pages: doc.pages.length };
-  }, [doc]);
+  }, [doc, scores, fullDoc]);
   const selected = doc.blocks.find((b) => b.id === selectedId);
   // Several blocks selected together (a box dragged over them, Shift+click): those still in the exam.
   const group = useMemo(() => exam.groupIds.filter((id) => doc.blocks.some((b) => b.id === id)), [exam.groupIds, doc.blocks]);
@@ -243,11 +255,11 @@ export default function Editor() {
 
   // ---- Version history: an automatic copy every few minutes while the exam changes ----
 
-  const docRef = useRef(doc);
-  const snap = useRef({ doc, time: 0 });
+  const docRef = useRef(fullDoc);
+  const snap = useRef({ doc: fullDoc, time: 0 });
   useEffect(() => {
-    docRef.current = doc;
-  }, [doc]);
+    docRef.current = fullDoc;
+  }, [fullDoc]);
   useEffect(() => {
     snap.current.time = Date.now();
     const id = setInterval(() => {
@@ -261,8 +273,8 @@ export default function Editor() {
 
   // Keep a copy of the current exam before it is replaced (open, template, restore).
   const keepCopy = (label: string) => {
-    snap.current = { doc, time: Date.now() };
-    addVersion(doc, "before", label).catch((e) => console.error("Version history:", e));
+    snap.current = { doc: fullDoc, time: Date.now() };
+    addVersion(fullDoc, "before", label).catch((e) => console.error("Version history:", e));
   };
 
   // ---- Images ----
@@ -353,9 +365,17 @@ export default function Editor() {
     setActiveInspectorId(inspectorFor(block));
   };
 
+  // The Stamp tool: a click on the page puts the sticker in hand there (and the tool stays in hand: a barème is many marks)
+  const placeStamp = (at: DropPoint) => {
+    if (!stamp || stamp.kind !== "block" || exam.part !== "sheet") return;
+    const block = exam.addBlock(stamp.type, stamp.preset, at);
+    setTab("properties");
+    setActiveInspectorId(inspectorFor(block));
+  };
+
   const runTool = (action: ToolAction, at?: DropPoint) => {
     // Another tool used meanwhile: no text box or shape is drawn any more.
-    setTool((cur) => (cur === "textbox" || cur === "shape" || cur === "draw" ? "select" : cur));
+    setTool((cur) => (cur === "textbox" || cur === "shape" || cur === "draw" || cur === "stamp" ? "select" : cur));
     // A question type or a table picked while a text box is being typed in is a real block placed in that box's text, at the cursor
     // (textboxSlots.ts). It is then edited like any block, as when added on the page.
     const box = textEditor && !at ? doc.blocks.find((b) => b.id === editing?.id) : undefined;
@@ -561,10 +581,12 @@ export default function Editor() {
     setEditing({ id: block.id, field: { kind: f.kind, i } as EditField });
   };
 
-  // Exam ⇄ correction sheet. Answers can only be typed on the correction sheet, so stop typing.
+  // Exam ⇄ correction sheet. The Correction tab asks how to make the sheet while there is none.
   const changeMode = (m: ViewMode) => {
-    setMode(m);
+    if (m === "key" && !exam.hasSheet) return setSheetWizard({ open: true, rebuild: false });
+    exam.setPart(m === "key" ? "sheet" : "exam");
     setEditing(null);
+    setTool((cur) => (cur === "stamp" ? "select" : cur));
   };
 
   // T tool on empty paper: a new paragraph starting where the teacher clicked (its first line on the click).
@@ -618,7 +640,7 @@ export default function Editor() {
 
   const save = async () => {
     try {
-      const ok = await saveFile(JSON.stringify(doc), `${fileName(doc.meta.title)}.exam.json`, { name: "Exam", extensions: ["json"] });
+      const ok = await saveFile(JSON.stringify(fullDoc), `${fileName(doc.meta.title)}.exam.json`, { name: "Exam", extensions: ["json"] });
       if (ok) notify(tr("Exam saved"));
     } catch (e) {
       notify(tr("Could not save: {error}", { error: String(e) }));
@@ -647,8 +669,12 @@ export default function Editor() {
   };
 
   // Draw a clean copy off-screen (fonts and pictures loaded first) and return its pages as images.
+  // The document that goes out for each way of printing: the exam, or the correction sheet
+  const printed = (m: ViewMode) => viewOf(fullDoc, m === "key" && fullDoc.correction ? "sheet" : "exam");
+
   const renderPages = async (m: ViewMode, pixelRatio: number, quality: number) => {
-    const srcs = doc.blocks.flatMap((b) => (b.type === "image" ? [b.src, ...(b.srcAnswer ? [b.srcAnswer] : [])] : b.type === "equation" && b.svg ? [svgUrl(b.svg)] : b.type === "table" ? picturesOf(b.shapes) : []));
+    const target = printed(m);
+    const srcs = target.blocks.flatMap((b) => (b.type === "image" ? [b.src, ...(b.srcAnswer ? [b.srcAnswer] : [])] : b.type === "equation" && b.svg ? [svgUrl(b.svg)] : b.type === "table" ? picturesOf(b.shapes) : []));
     // The formulas written in the text — of the text boxes, and of every other block (questions, tables, headers…): their drawings
     // (made by MathJax first for those that keep none), loaded before the copy is drawn, else the page is taken without them.
     const mathIn = (v: unknown): InlineMath[] =>
@@ -662,7 +688,7 @@ export default function Editor() {
             ? Object.values(v).flatMap(mathIn)
             : [];
     const formulas = await Promise.all(
-      doc.blocks
+      target.blocks
         .flatMap((b) => [
           ...(b.type === "textbox" ? docParagraphs(textboxDoc(b)).flatMap((p) => p.runs.flatMap((r) => (r.style.math ? [r.style.math] : []))) : []),
           ...(b.type === "image" ? mathIn(b.caption) : b.type === "equation" ? [] : mathIn(b)),
@@ -670,9 +696,9 @@ export default function Editor() {
         .map((m) => inlineMathUrl(m) ?? drawInlineMath(m.latex).then((d) => d.url, () => "")),
     );
     await Promise.all([preloadImages([...srcs, ...formulas]), document.fonts.ready]);
-    const stage = await new Promise<Konva.Stage>((resolve) => setExportJob({ doc, mode: m, resolve }));
+    const stage = await new Promise<Konva.Stage>((resolve) => setExportJob({ doc: target, mode: m, resolve }));
     try {
-      return stagePageImages(stage, doc.pages, pixelRatio, quality);
+      return stagePageImages(stage, target.pages, pixelRatio, quality);
     } finally {
       setExportJob(null);
     }
@@ -681,11 +707,16 @@ export default function Editor() {
   // Turn each page into a PDF page (from the print preview).
   const exportPdf = async (which: ViewMode | "both") => {
     if (busy) return;
+    // (the correction copy is the correction sheet: until it is made there is nothing to print of it)
+    const modes = (which === "both" ? ["exam", "key"] : [which]).filter((m) => m === "exam" || !!fullDoc.correction) as ViewMode[];
+    if (!modes.length) {
+      notify(tr("Make the correction sheet first"));
+      return setSheetWizard({ open: true, rebuild: false });
+    }
     setBusy(true);
     try {
-      const modes: ViewMode[] = which === "both" ? ["exam", "key"] : [which];
       for (const m of modes) {
-        const bytes = await imagesToPdf(await renderPages(m, 3, 0.92), doc.pages);
+        const bytes = await imagesToPdf(await renderPages(m, 3, 0.92), printed(m).pages);
         const name = `${fileName(doc.meta.title)}${m === "key" ? ` - ${tr("correction")}` : ""}.pdf`;
         if (await saveFile(bytes, name, { name: "PDF", extensions: ["pdf"] })) {
           notify(m === "key" ? tr("Correction sheet exported") : tr("Exam exported"));
@@ -739,7 +770,7 @@ export default function Editor() {
         setBarOpen(bar.id);
         return;
       }
-      if (typing || picker.open || preview || history || molecule.open || moleculeLab.open || graphStudio.open || circuitStudio.open || probaStudio.open || tableStudio.open || mathGraphStudio.open || chartStudio.open) return;
+      if (typing || picker.open || sheetWizard.open || preview || history || molecule.open || moleculeLab.open || graphStudio.open || circuitStudio.open || probaStudio.open || tableStudio.open || mathGraphStudio.open || chartStudio.open) return;
 
       if (mod && key === "z") {
         e.preventDefault();
@@ -809,7 +840,7 @@ export default function Editor() {
   // Copy, cut and paste of whole blocks (when no text is being typed in).
   const clipboard = useBlockClipboard({
     selected,
-    active: !(picker.open || preview || history || molecule.open || moleculeLab.open || graphStudio.open || circuitStudio.open || probaStudio.open || tableStudio.open || mathGraphStudio.open || chartStudio.open),
+    active: !(picker.open || sheetWizard.open || preview || history || molecule.open || moleculeLab.open || graphStudio.open || circuitStudio.open || probaStudio.open || tableStudio.open || mathGraphStudio.open || chartStudio.open),
     deleteBlock: exam.deleteBlock,
     pasteBlock: exam.pasteBlock,
     addText: (text) => exam.addBlock("text", { text, style: "body" }),
@@ -823,8 +854,10 @@ export default function Editor() {
     title: doc.meta.title,
     setTitle: (title) => exam.setMeta({ title }, "title"),
     setMeta: exam.setMeta,
+    setFullMark: exam.setFullMark,
     selected,
     numbers,
+    fullDoc,
     stats,
     saveState: exam.save,
     canUndo: exam.canUndo,
@@ -865,7 +898,9 @@ export default function Editor() {
     newExam: () => setPicker({ open: true, mustPick: false }),
     applyDoc: (next, keepOld) => {
       if (keepOld) keepCopy(tr("Before changing the page layout"));
-      exam.replaceDoc(next);
+      // (made from the document shown: the correction sheet's own page layout while it is shown, never the whole file)
+      if (exam.part === "sheet") exam.replaceView(next);
+      else exam.replaceDoc(next);
       setEditing(null);
       setSession((s) => s + 1);
     },
@@ -874,7 +909,49 @@ export default function Editor() {
     showHistory: () => setHistory(true),
     showPreview: () => setPreview(true),
     mode,
-    setMode,
+    setMode: changeMode,
+    sheet: exam.part === "sheet" && doc.sheet && scores ? { config: doc.sheet, scores } : null,
+    hasSheet: exam.hasSheet,
+    sheetWizard,
+    openSheetWizard: (rebuild = false) => setSheetWizard({ open: true, rebuild }),
+    closeSheetWizard: () => setSheetWizard({ open: false, rebuild: false }),
+    makeSheet: (choice) => {
+      exam.makeSheet(choice);
+      setSheetWizard({ open: false, rebuild: false });
+      setEditing(null);
+      setTool("select");
+      notify(choice.template === "blank" ? tr("Correction sheet made") : tr("Correction sheet made from the exam — check it and move what you want"));
+    },
+    sheetReport,
+    sheetFix: {
+      addMissing: (ids) => exam.fixSheet((f) => addMissing(f, ids)),
+      refresh: (ids) => exam.fixSheet((f) => refreshStale(f, ids)),
+      refit: () => exam.fixSheet(refitAnswers),
+      pack: () => exam.fixSheet(packRows),
+      restyle: (look) => exam.fixSheet((f) => restyleFull(f, look)),
+      addTotals: () => exam.fixSheet(addRowTotals),
+      removeOrphans: () => exam.fixSheet(removeOrphans),
+      resetMarks: (ids) => exam.fixSheet((f) => resetMarks(f, ids)),
+      adoptMarks: (ids) => exam.fixSheet((f) => adoptMarks(f, ids)),
+    },
+    deleteSheet: () => {
+      exam.deleteSheet(); // (back to the exam; undo brings the sheet back)
+      setEditing(null);
+      setTool("select");
+    },
+    setSheet: exam.setSheet,
+    stamp,
+    setStamp: (action) => {
+      setStamp(action);
+      setTool(action ? "stamp" : "select");
+      if (action) notify(tr("Click on the page to put the sticker — Esc to stop"));
+    },
+    selectNone: () => {
+      exam.setSelectedId(null);
+      setActiveInspectorId(null);
+      setTab("properties");
+      setTool("select");
+    },
     subject,
     setSubject,
     uiLang,
@@ -979,7 +1056,9 @@ export default function Editor() {
               selectedId={selectedId}
               activePage={exam.activePage}
               reveal={exam.reveal}
-              tool={tool}
+              tool={tool === "stamp" && exam.part !== "sheet" ? "select" : tool}
+              onStamp={(at) => placeStamp(at)}
+              onSheet={exam.setSheet}
               editing={editing}
               marginEdit={marginEdit && { margins: marginEdit.draft ?? pageMargins(doc, exam.activePage), dragging: marginEdit.dragging }}
               onMarginDrag={(m, done) => (done ? saveMargins(m) : draftMargins(m, true))}
@@ -1023,8 +1102,6 @@ export default function Editor() {
               onDeletePage={exam.deletePage}
               onActivePageChange={exam.setActivePage}
               onDropItem={runTool}
-              onMeta={exam.setMeta}
-              onModeChange={changeMode}
             />
             {bars("bottom")}
           </main>

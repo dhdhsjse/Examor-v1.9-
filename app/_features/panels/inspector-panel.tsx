@@ -1,4 +1,5 @@
 import Inspector from "@/app/_components/inspector/Inspector";
+import { examFullMark } from "@/app/_lib/examMark";
 import { canStepSlot } from "@/app/_lib/textboxSlots";
 import type { Feature } from "@/app/_features/core/types";
 
@@ -21,7 +22,8 @@ export const inspectorPanel: Feature = {
         onStepInBox={(dir) => block && shell.stepInBox(block.id, dir)}
         meta={doc.meta}
         stats={shell.stats}
-        hasHeader={doc.blocks.some((b) => b.type === "header")}
+        fullMark={examFullMark(shell.fullDoc)}
+        onFullMark={shell.setFullMark}
         onChange={shell.updateBlock}
         onLatex={shell.onLatex}
         onDelete={shell.deleteBlock}
@@ -34,6 +36,14 @@ export const inspectorPanel: Feature = {
         onOpenChartStudio={() => block && shell.openChartStudio(block.id)}
         onMeta={shell.setMeta}
         onChangeTemplate={shell.openPicker}
+        sheet={shell.sheet}
+        sheetReport={shell.sheetReport}
+        sheetFix={shell.sheetFix}
+        onSheet={shell.setSheet}
+        hasSheet={shell.hasSheet}
+        onOpenCorrection={() => shell.setMode("key")}
+        onDeleteSheet={shell.deleteSheet}
+        onClose={shell.selectNone}
       />
     );
   },

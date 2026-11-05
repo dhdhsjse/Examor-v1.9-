@@ -7,7 +7,8 @@ import { addPart, isQuestion } from "@/app/_lib/blocks";
 import type { EditField } from "@/app/_lib/editRegions";
 import { CANVAS_BOTTOM_SPACE, CANVAS_TOP_GAP, LABEL_HEIGHT, canvasTopPadding, pageAt, pageBoxes, stackSize, type PageBox } from "@/app/_lib/pageStack";
 import { DRAG_MIME, type ToolAction } from "@/app/_lib/tools";
-import type { Block, BlockLayout, ExamDoc, ExamMeta, PageMargins, ViewMode } from "@/app/_lib/types";
+import type { SheetConfig } from "@/app/_lib/sheet/model";
+import type { Block, BlockLayout, ExamDoc, PageMargins, ViewMode } from "@/app/_lib/types";
 import { useT } from "@/app/_lib/uiLang";
 import type { BlockPatch, DropPoint, RevealRequest } from "@/app/_lib/useExam";
 import { useZoom } from "@/app/_lib/useZoom";
@@ -18,7 +19,6 @@ import { DOCKED_HEIGHT_VAR } from "../math-keyboard/FloatingKeyboard";
 import AnswerBar from "./AnswerBar";
 import ChromeBar from "./ChromeBar";
 import DeletePageDialog from "./DeletePageDialog";
-import CorrectionBar from "./CorrectionBar";
 import InlineEditor from "./InlineEditor";
 import PageStrip from "./PageStrip";
 import SubQuestionButton from "./SubQuestionButton";
@@ -75,6 +75,8 @@ interface Props {
   onTextEditor: (editor: TextEditor | null) => void;
   onCreateText: (at: DropPoint) => void;
   onDrawBox: (box: DrawnBox) => void; // a box drawn with the text box tool (or a shape drawn with the Shapes tool)
+  onStamp: (at: DropPoint) => void; // a click with the Stamp tool: the sticker of the correction sheet in hand goes there
+  onSheet: (patch: Partial<SheetConfig>, key?: string) => void; // the frame of the correction sheet dragged on the page
   drawShape?: "box" | "line"; // the Shapes tool is in hand: what it draws
   shapeToDraw: string | null; // (the shape of the Shapes tool)
   onPickShape: (shape: string) => void; // the Shapes button of the tool bar: draw this shape
@@ -88,8 +90,6 @@ interface Props {
   onDeletePage: (pageId: string) => void;
   onActivePageChange: (index: number) => void;
   onDropItem: (action: ToolAction, at: DropPoint) => void;
-  onMeta: (patch: Partial<ExamMeta>, key?: string) => void;
-  onModeChange: (mode: ViewMode) => void;
 }
 
 const ANSWER_BAR_KEY = "examBuilder.answerBarOpen";
@@ -329,7 +329,7 @@ export default function Workspace(props: Props) {
               be scrolled above the floating tools / zoom bar. */}
           <div
             className="mx-auto flex w-fit flex-col items-center gap-4 px-10"
-            style={{ paddingTop: canvasTopPadding(zoom, mode === "key"), paddingBottom: CANVAS_BOTTOM_SPACE }}
+            style={{ paddingTop: canvasTopPadding(zoom), paddingBottom: CANVAS_BOTTOM_SPACE }}
           >
             {/* Takes the zoomed size in the layout... */}
             <div
@@ -358,7 +358,7 @@ export default function Workspace(props: Props) {
                     onDelete={doc.pages.length > 1 ? () => setAskDelete(page.id) : undefined}
                   />
                 ))}
-                <div className={`absolute inset-0 ${props.tool === "textbox" || props.tool === "shape" ? "cursor-crosshair" : ""}`}>
+                <div className={`absolute inset-0 ${props.tool === "textbox" || props.tool === "shape" || props.tool === "stamp" ? "cursor-crosshair" : ""}`}>
                   <ExamCanvas
                     doc={doc}
                     heights={heights}
@@ -370,6 +370,9 @@ export default function Workspace(props: Props) {
                     onMarginDrag={props.onMarginDrag}
                     selectedId={selectedId}
                     textTool={props.tool === "text"}
+                    stampTool={props.tool === "stamp"}
+                    onStamp={(at) => props.onStamp({ ...at })}
+                    onSheet={doc.sheet ? props.onSheet : undefined}
                     onSelect={props.onSelect}
                     groupIds={props.groupIds}
                     onSelectMany={props.onSelectMany}
@@ -496,12 +499,10 @@ export default function Workspace(props: Props) {
                   <AnswerBar
                     block={question}
                     lang={doc.meta.lang}
-                    mode={mode}
                     open={answerOpen}
                     onToggle={toggleAnswerBar}
                     onPatch={(patch, field) => props.onPatch(question.id, patch, field)}
                     onEdit={(field) => props.onEditStart(question.id, field)}
-                    onShowCorrection={() => props.onModeChange("key")}
                   />
                 </div>
               )}
@@ -556,13 +557,6 @@ export default function Workspace(props: Props) {
               setPanning(false);
             }}
           />
-        )}
-
-        {/* Correction sheet: the look of the answers. (Points so far / full mark: status bar of the toolbox.) */}
-        {mode === "key" && (
-          <div className="pointer-events-none absolute end-4 top-3 z-30 flex items-start gap-2">
-            <CorrectionBar meta={doc.meta} onMeta={props.onMeta} />
-          </div>
         )}
 
         {/* Select / Text tools, the math keyboard + zoom (bottom-right, away from the "Page 1 of 2" labels). Sits on the math keyboard

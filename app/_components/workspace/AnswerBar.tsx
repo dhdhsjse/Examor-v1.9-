@@ -5,19 +5,17 @@ import { MAX_OPTIONS, addOrderItem, addPair, insertOption, mcqAnswers, reshuffle
 import type { EditField } from "@/app/_lib/editRegions";
 import { isRtl, optionLabel, words } from "@/app/_lib/i18n";
 import { plainText } from "@/app/_lib/richText";
-import type { BlankBlock, Lang, QuestionBlock, ViewMode } from "@/app/_lib/types";
+import type { BlankBlock, Lang, QuestionBlock } from "@/app/_lib/types";
 import { useT } from "@/app/_lib/uiLang";
 import type { BlockPatch } from "@/app/_lib/useExam";
 
 interface Props {
   block: QuestionBlock;
   lang: Lang;
-  mode: ViewMode;
   open: boolean;
   onToggle: () => void;
   onPatch: (patch: BlockPatch, field: string) => void;
   onEdit: (field: EditField) => void; // start typing a text of the question on the page
-  onShowCorrection: () => void;
 }
 
 const chip = (on: boolean) =>
@@ -39,7 +37,7 @@ function setBlank(b: BlankBlock, n: number, value: string): string {
 
 // Small green bar under the selected question: correct answer, points, and adding
 // options / statements right there on the page (an open question's sub-questions: SubQuestionButton).
-export default function AnswerBar({ block: b, lang, mode, open, onToggle, onPatch, onEdit, onShowCorrection }: Props) {
+export default function AnswerBar({ block: b, lang, open, onToggle, onPatch, onEdit }: Props) {
   const t = words(lang);
   const ui = useT();
   const hasParts = b.type === "open" && !!b.parts?.length;
@@ -117,12 +115,8 @@ export default function AnswerBar({ block: b, lang, mode, open, onToggle, onPatc
               <span className="text-[11px] text-emerald-700">{ui("Click the sentence and put answers in [brackets]")}</span>
             ))}
 
-          {/* Open questions: the model answer is written on the lines of the correction sheet */}
-          {open && b.type === "open" && mode === "exam" && (
-            <button onClick={onShowCorrection} className="rounded-md px-1.5 py-1 text-[11px] text-emerald-700 underline decoration-emerald-300 underline-offset-2 hover:text-emerald-900">
-              {ui("Write the answers in Correction view")}
-            </button>
-          )}
+          {/* Open questions: the model answer is typed in the Properties panel (Model answer); it goes to the correction sheet */}
+          {open && b.type === "open" && <span className="text-[11px] text-emerald-700">{ui("Model answer: Properties panel")}</span>}
 
           {/* "Add" buttons are always there, even when the bar is folded */}
           {(b.type === "match" || b.type === "order") && (

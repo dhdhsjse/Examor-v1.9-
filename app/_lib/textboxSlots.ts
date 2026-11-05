@@ -6,7 +6,7 @@
 
 import type { JSONContent } from "@tiptap/core";
 import { createBlock, questionNumbers, type BlockPreset } from "./blocks";
-import { blockHeight, layoutTextbox, textboxPad } from "./blockLayout";
+import { blockHeight, fitTextboxes, layoutTextbox, textboxPad } from "./blockLayout";
 import { newId } from "./id";
 import { BLOCK_SLOT, slotsOf, textboxDoc, updateSlots } from "./textboxDoc";
 import type { Block, BlockType, ExamDoc, Lang, TextboxBlock } from "./types";
@@ -187,4 +187,19 @@ export function syncEmbedded(d: ExamDoc): ExamDoc {
 
   const same = blocks.length === d.blocks.length && blocks.every((b, i) => b === d.blocks[i]);
   return same ? d : { ...d, blocks };
+}
+
+/**
+ * Text boxes and the blocks in their text depend on each other: a box's size follows its text (whose rooms are as tall as its blocks), and its blocks follow
+ * the box's place and width. Repeated until nothing moves (in practice 1–2 rounds), so a block is never left where the box was a moment before (an
+ * auto-sized box that grew or shrank after its blocks were placed).
+ */
+export function settleTextboxes(d: ExamDoc): ExamDoc {
+  let cur = d;
+  for (let i = 0; i < 4; i++) {
+    const next = fitTextboxes(syncEmbedded(cur));
+    if (next === cur) break;
+    cur = next;
+  }
+  return cur;
 }

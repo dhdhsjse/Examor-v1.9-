@@ -15,6 +15,7 @@ import { DividerView } from "./blocks/DividerView";
 import { HeaderNode } from "./blocks/headerParts";
 import { ClassifyView, MatchView, OrderView } from "./blocks/MoreQuestionViews";
 import { BlankView, McqView, OpenView, TrueFalseView } from "./blocks/QuestionViews";
+import { MarkView, RuleView, type SheetInfo } from "./blocks/SheetViews";
 import { TableHandles } from "./blocks/TableHandles";
 
 export interface ResizeResult {
@@ -33,6 +34,7 @@ interface Props {
   meta: ExamMeta;
   mode: ViewMode;
   totalPoints: number; // for the header score
+  sheet?: SheetInfo; // on a correction sheet: what its stickers and lines need (sheet/marks.ts)
   zoom: number;
   selected: boolean;
   grouped?: boolean; // one of several blocks selected together: outlined
@@ -60,7 +62,7 @@ interface Props {
 }
 
 // What to draw inside the block.
-function Content({ block: real, number, meta, mode, interactive, selected, totalPoints, typing }: Pick<Props, "block" | "number" | "meta" | "mode" | "interactive" | "selected" | "totalPoints" | "typing">) {
+function Content({ block: real, number, meta, mode, interactive, selected, totalPoints, typing, sheet }: Pick<Props, "block" | "number" | "meta" | "mode" | "interactive" | "selected" | "totalPoints" | "typing" | "sheet">) {
   // On screen, empty question texts show a light example (and the selected open question its statement); export draws the real
   // (empty) text.
   const block = interactive ? withHints(real, meta.lang, { statement: selected }) : real;
@@ -96,6 +98,10 @@ function Content({ block: real, number, meta, mode, interactive, selected, total
       return <ShapeView b={block} />;
     case "divider":
       return <DividerView b={block} />;
+    case "mark":
+      return <MarkView b={block} meta={meta} info={sheet} interactive={interactive} />;
+    case "rule":
+      return <RuleView b={block} info={sheet} interactive={interactive} />;
     case "header":
       return <HeaderNode b={block} meta={meta} mode={mode} totalPoints={totalPoints} />;
   }
@@ -120,7 +126,7 @@ export default function BlockNode(props: Props) {
   // The click picked another block (Alt+click on blocks over each other): this one neither moves nor types.
   const passedOn = useRef(false);
   const width = block.layout.width;
-  const media = block.type === "image" || block.type === "equation" || block.type === "shape" || block.type === "divider";
+  const media = block.type === "image" || block.type === "equation" || block.type === "shape" || block.type === "divider" || block.type === "mark" || block.type === "rule";
   const moveCursor = textTool ? "text" : "move";
   const groupRef = useRef<Konva.Group>(null);
 
@@ -201,7 +207,7 @@ export default function BlockNode(props: Props) {
         cornerRadius={4}
         listening={!props.erasable}
       />
-      <Content block={block} number={props.number} meta={props.meta} mode={props.mode} interactive={interactive} selected={selected} totalPoints={props.totalPoints} typing={props.typing} />
+      <Content block={block} number={props.number} meta={props.meta} mode={props.mode} interactive={interactive} selected={selected} totalPoints={props.totalPoints} typing={props.typing} sheet={props.sheet} />
 
       {/* Invisible areas on top of the texts: double-click, click a selected block (or click with
           the T tool) to type there. A text box types on the first click, anywhere inside it. */}

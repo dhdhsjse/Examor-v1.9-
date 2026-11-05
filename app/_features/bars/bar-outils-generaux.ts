@@ -6,6 +6,7 @@ import { mathGroup } from "@/app/_features/groups/group-math";
 import { physicsGroup } from "@/app/_features/groups/group-physics";
 import { navigationGroup } from "@/app/_features/groups/group-navigation";
 import { sciencesGroup } from "@/app/_features/groups/group-sciences";
+import { stickersGroup } from "@/app/_features/groups/group-stickers";
 import { toolboxSearchGroup } from "@/app/_features/groups/group-toolbox-search";
 
 export const outilsGenerauxBar: Bar = {
@@ -16,6 +17,7 @@ export const outilsGenerauxBar: Bar = {
   className: "flex flex-col overflow-y-auto",
   groups: [
     toolboxSearchGroup,
+    stickersGroup,
     mathGroup,
     physicsGroup,
     sciencesGroup,

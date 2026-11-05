@@ -3,6 +3,7 @@ import type { MoleculeGraph } from "@/app/_lib/chemistry/types";
 import type { ChartConfig } from "@/app/_lib/chart/types";
 import type { CircuitConfig } from "@/app/_lib/circuit/types";
 import type { ProbaConfig } from "@/app/_lib/proba/types";
+import type { SheetConfig, SheetTemplate } from "@/app/_lib/sheet/model";
 import type { GraphConfig } from "@/app/_lib/graph/types";
 import type { ListKind } from "@/app/_lib/lists";
 import type { ShapeStyle } from "@/app/_lib/shapes/types";
@@ -69,6 +70,20 @@ export interface BlockMeta {
   templateId?: string;
   field?: string; // a header/footer text block: the text of its settings it shows (HeaderFooterConfig.data key)
   slot?: string; // a block inside a text box (textboxSlots.ts): the id of that box; the box places it and sizes it
+  source?: BlockSource; // a block of the correction sheet made from a block of the exam (sheet/generate.ts)
+}
+
+// The block of the exam a block of the correction sheet was made from: its answer, its copy, its marks. `part`: the sub-question of an open question.
+// It is only a link (a mark is compared with the points of its question, a question that is not in the sheet yet can be added): the blocks are the
+// teacher's own once they are made.
+export interface BlockSource {
+  id: string;
+  part?: number;
+  // A fingerprint of what the block was made from (the exam block's content, or the text of the answer): when the exam block no longer gives it,
+  // the exam changed since (see sheet/fingerprint.ts)
+  sig?: string;
+  // A shape of the exam copied to the sheet: the exam block it lies on
+  host?: string;
 }
 
 // Where a block sits (page pixels, relative to its own page).
@@ -423,7 +438,40 @@ export interface DividerBlock extends BlockBase {
   label?: string; // the text in the middle of the "label" style
 }
 
-export type Block = QuestionBlock | TextBlock | TextboxBlock | ShapeBlock | EquationBlock | ImageBlock | TableBlock | GraphBlock | HeaderBlock | DividerBlock;
+// ---- The correction sheet (app/_lib/sheet): the stickers that carry the marks, and the lines that cut its rows ----
+
+// A sticker of the correction sheet: a mark ("0.5"), the sign between marks ("+", "×"), the total of a row, or a few words. The marks of a row
+// are read as one calculation, top to bottom (sheet/marks.ts); the total sticker shows its result.
+export type MarkKind = "number" | "op" | "total" | "text";
+export type MarkOp = "+" | "×" | "−";
+export type MarkLook = "plain" | "circle" | "box";
+// Where a total sits in its row: in the middle, at the top, at the bottom, or where it was put (free)
+export type TotalPlace = "center" | "top" | "bottom" | "free";
+
+export interface MarkBlock extends BlockBase {
+  type: "mark";
+  kind: MarkKind;
+  value?: number; // a number: its mark (a multiple of 0.125); a total: the mark typed, when `manual`
+  op?: MarkOp;
+  text?: string; // kind "text"
+  manual?: boolean; // a total: it shows `value` and not the result of its row
+  place?: TotalPlace; // a total; missing = "center"
+  look?: MarkLook; // missing = "plain"
+  color?: string; // missing = black
+  size?: number; // text size in px; missing = the exam's
+}
+
+// A line across the sheet that closes a row of marks (the answers of a question): the stickers between two lines make one calculation, and one total.
+// "hidden": it separates the rows without being drawn.
+export type RuleLine = "row" | "exercise" | "hidden";
+
+export interface RuleBlock extends BlockBase {
+  type: "rule";
+  line?: RuleLine; // missing = "row"
+  color?: string;
+}
+
+export type Block = QuestionBlock | TextBlock | TextboxBlock | ShapeBlock | EquationBlock | ImageBlock | TableBlock | GraphBlock | HeaderBlock | DividerBlock | MarkBlock | RuleBlock;
 export type BlockType = Block["type"];
 
 // The editable fields of any one block type, all optional (used for changes and presets).
@@ -455,4 +503,21 @@ export interface ExamDoc {
   // files: `meta.chrome` (the onboarding rule) is used instead, see pageChrome.ts.
   globalHeader?: HeaderFooterConfig;
   globalFooter?: HeaderFooterConfig;
+  // The correction sheet: the answer key, on pages of its own (missing until it is made). The editor edits it as a document of its own
+  // (sheet/part.ts: `viewOf`), where it is `sheet`.
+  correction?: CorrectionDoc;
+  // Only in the document the editor shows while the correction sheet is open: the settings of its paper (the saved file keeps them in `correction`).
+  sheet?: SheetConfig;
+}
+
+// The correction sheet of an exam: its own pages and blocks, header and footer; the language, fonts and the rest of the settings are the exam's.
+export interface CorrectionDoc {
+  sheet: SheetConfig;
+  pages: Page[];
+  blocks: Block[];
+  globalHeader?: HeaderFooterConfig;
+  globalFooter?: HeaderFooterConfig;
+  // What it was made from: "answers" (a row per question: its number, its model answer, its marks), "copy" (the exam with its answers and the marks
+  // beside the questions) or "blank". Missing = blank.
+  template?: SheetTemplate;
 }

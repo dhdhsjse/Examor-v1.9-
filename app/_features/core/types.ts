@@ -6,6 +6,9 @@ import type { ChromeKind } from '@/app/_lib/pageChrome';
 import type { BlockPreset } from '@/app/_lib/blocks';
 import type { BlockOrder } from '@/app/_lib/blockOrder';
 import type { ToolAction } from '@/app/_lib/tools';
+import type { SheetFix, SheetReport } from '@/app/_lib/sheet/links';
+import type { SheetScores } from '@/app/_lib/sheet/marks';
+import type { SheetChoice, SheetConfig } from '@/app/_lib/sheet/model';
 import type { Subject } from '@/app/_lib/subjects';
 import type { T, UiLang } from '@/app/_lib/uiLang';
 import type { BlockPatch, SaveState } from '@/app/_lib/useExam';
@@ -26,9 +29,13 @@ export type Shell = {
   title: string;
   setTitle: (title: string) => void;
   setMeta: (patch: Partial<ExamMeta>, key?: string) => void;
+  setFullMark: (value: number) => void; // what the exam is graded out of (10, 20…): the setting and the headers together
   selected: Block | undefined;
   numbers: Map<string, number>;
-  stats: { questions: number; points: number; pages: number };
+  // The whole file: the exam and its correction sheet (`ctx.doc` is the one shown). For what concerns both: the print preview, the history.
+  fullDoc: ExamDoc;
+  // (on the correction sheet `questions` counts its rows, `points` is what they add up to and `full` the exam's full mark)
+  stats: { questions: number; points: number; pages: number; full?: number; sheet?: boolean };
   saveState: SaveState;
   canUndo: boolean;
   canRedo: boolean;
@@ -91,6 +98,26 @@ export type Shell = {
   // view
   mode: ViewMode;
   setMode: (mode: ViewMode) => void;
+  // The correction sheet (app/_lib/sheet): `sheet` is its paper and its marks while it is the document shown (null while the exam is). `hasSheet`: the
+  // exam has one. Making one shows it; deleting it goes back to the exam (undo brings it back).
+  sheet: { config: SheetConfig; scores: SheetScores } | null;
+  hasSheet: boolean;
+  // The window that makes it: what it is made from (the questions and their answers, the exam with its answers, nothing) and on which paper. It opens
+  // by itself on the Correction tab while there is no sheet; `rebuild`: there is one, and the new one replaces it (its settings kept).
+  sheetWizard: { open: boolean; rebuild: boolean };
+  openSheetWizard: (rebuild?: boolean) => void;
+  closeSheetWizard: () => void;
+  makeSheet: (choice: SheetChoice) => void;
+  // The sheet against the exam it was made from (sheet/links.ts) — the marks that are not the points of the questions, the questions it lacks, what it has
+  // of questions that are gone — and what puts them in step (each is one undo step)
+  sheetReport: SheetReport | null;
+  sheetFix: SheetFix;
+  deleteSheet: () => void;
+  setSheet: (patch: Partial<SheetConfig>, key?: string) => void;
+  // The sticker the Stamp tool puts on the page, one click each (null: the tool is not in hand); choosing one puts the tool in hand
+  stamp: ToolAction | null;
+  setStamp: (action: ToolAction | null) => void;
+  selectNone: () => void; // nothing selected: the right panel shows the settings of the exam (or of the correction sheet)
   subject: Subject;
   setSubject: (subject: Subject) => void;
   uiLang: UiLang;

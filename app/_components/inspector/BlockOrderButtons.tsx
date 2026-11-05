@@ -34,7 +34,6 @@ export default function BlockOrderButtons({ onOrder }: { onOrder: (order: BlockO
           ))}
         </div>
       </div>
-      <p className="text-[10px] leading-snug text-faint">{t("Blocks can lie on top of each other. Alt+click on the page selects the one underneath.")}</p>
     </div>
   );
 }

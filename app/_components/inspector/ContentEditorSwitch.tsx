@@ -1,10 +1,13 @@
 "use client";
 
 import type { BlockPreset } from "@/app/_lib/blocks";
+import type { SheetScores } from "@/app/_lib/sheet/marks";
+import type { SheetConfig } from "@/app/_lib/sheet/model";
 import type { Block, BlockType, ExamMeta, Lang } from "@/app/_lib/types";
 import TablePanel from "@/app/_components/table/TablePanel";
 import { HeaderEditor, ImageEditor, TextboxEditor, TextEditor } from "./ContentEditors";
 import { DividerEditor } from "./DividerEditor";
+import { MarkEditor, RuleEditor } from "./SheetEditors";
 import EquationEditor from "./EquationEditor";
 import { GraphEditor } from "./GraphEditor";
 import { ClassifyEditor, MatchEditor, OrderEditor } from "./MoreQuestionEditors";
@@ -26,10 +29,11 @@ interface Props {
   keyboardOpen: boolean;
   onToggleKeyboard: () => void;
   onInsertBelow: (type: BlockType, preset: BlockPreset) => void; // a new block under this one (an equation's graph or table)
+  sheet?: { config: SheetConfig; scores: SheetScores } | null; // the correction sheet, for its stickers
 }
 
 // Picks the right editor for the selected block type.
-export function ContentEditorSwitch({ block, number, lang, totalPoints, onChange, onLatex, onReplaceImage, examFont, meta, onOpenTableStudio, onOpenGraphStudio, onOpenChartStudio, keyboardOpen, onToggleKeyboard, onInsertBelow }: Props) {
+export function ContentEditorSwitch({ block, number, lang, totalPoints, onChange, onLatex, onReplaceImage, examFont, meta, onOpenTableStudio, onOpenGraphStudio, onOpenChartStudio, keyboardOpen, onToggleKeyboard, onInsertBelow, sheet }: Props) {
   switch (block.type) {
     case "mcq":
       return <McqEditor b={block} onChange={onChange} />;
@@ -59,6 +63,10 @@ export function ContentEditorSwitch({ block, number, lang, totalPoints, onChange
       return <GraphEditor b={block} onChange={onChange} onOpenStudio={onOpenGraphStudio} />;
     case "divider":
       return <DividerEditor b={block} onChange={onChange} />;
+    case "mark":
+      return <MarkEditor b={block} meta={meta ?? { title: "", lang, templateId: "" }} pad={!!sheet?.config.pad} shown={sheet?.scores.shown.get(block.id)} onChange={onChange} />;
+    case "rule":
+      return <RuleEditor b={block} onChange={onChange} />;
     case "header":
       return <HeaderEditor b={block} totalPoints={totalPoints} onChange={onChange} />;
   }

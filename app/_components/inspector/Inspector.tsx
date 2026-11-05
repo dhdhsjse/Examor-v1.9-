@@ -1,12 +1,15 @@
 "use client";
 
-import { ArrowDown, ArrowUp, ChevronDown } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronDown, X } from "lucide-react";
 import type { ReactNode } from "react";
 import { ANSWER_COLOR, DEFAULT_SIZE } from "@/app/_lib/blockLayout";
 import { BLOCK_TYPE_NAMES, type BlockPreset } from "@/app/_lib/blocks";
 import type { BlockOrder } from "@/app/_lib/blockOrder";
 import { DEFAULT_FONT } from "@/app/_lib/fonts";
 import { EXAM_LANGS } from "@/app/_lib/i18n";
+import type { SheetFix, SheetReport } from "@/app/_lib/sheet/links";
+import type { SheetScores } from "@/app/_lib/sheet/marks";
+import type { SheetConfig } from "@/app/_lib/sheet/model";
 import type { Block, BlockType, ExamMeta } from "@/app/_lib/types";
 import { useT } from "@/app/_lib/uiLang";
 import type { BlockPatch } from "@/app/_lib/useExam";
@@ -14,6 +17,7 @@ import { BookmarkIcon, CopyIcon, TrashIcon } from "../icons";
 import InfoTip from "../InfoTip";
 import BlockOrderButtons from "./BlockOrderButtons";
 import { ContentEditorSwitch } from "./ContentEditorSwitch";
+import SheetSettings from "./SheetSettings";
 import { ColorGrid, FontSelect } from "../rich/FormatBar";
 import { BlockFontControls, hasFontControls } from "./FontControls";
 import { iconBtn } from "@/app/_features/core/ui";
@@ -23,8 +27,17 @@ interface Props {
   block: Block | undefined;
   number: number; // question number of the selected block
   meta: ExamMeta;
-  stats: { questions: number; points: number; pages: number };
-  hasHeader: boolean; // the full mark is set in the header then
+  stats: { questions: number; points: number; pages: number; full?: number };
+  // The correction sheet while it is the document shown: its paper and marks (nothing selected: its settings are shown instead of the exam's)
+  sheet?: { config: SheetConfig; scores: SheetScores } | null;
+  onSheet?: (patch: Partial<SheetConfig>, key?: string) => void;
+  onDeleteSheet?: () => void;
+  sheetReport?: SheetReport | null; // the sheet against the exam it was made from
+  sheetFix: SheetFix;
+  hasSheet: boolean; // the exam has a correction sheet
+  onOpenCorrection: () => void; // the Correction tab (the exam's settings have a button for it)
+  fullMark: number; // what the exam is graded out of
+  onFullMark: (value: number) => void;
   onChange: (id: string, patch: BlockPatch, field: string) => void;
   onLatex: (block: Block, latex: string) => void;
   onDelete: (id: string) => void;
@@ -42,6 +55,7 @@ interface Props {
   onInsertBelow: (sourceId: string, type: BlockType, preset: BlockPreset) => void;
   inBox?: { up: boolean; down: boolean }; // the block sits in a text box's text: can it go up / down among the box's blocks?
   onStepInBox: (dir: -1 | 1) => void;
+  onClose: () => void; // leave the selected block's properties: back to the general properties of the page
 }
 
 // Right panel "Properties": edits the selected block, or the exam settings if nothing is selected.
@@ -49,6 +63,22 @@ export default function Inspector(props: Props) {
   const t = useT();
   const { block } = props;
 
+  if (!block && props.sheet && props.onSheet && props.onDeleteSheet) {
+    return (
+      <SheetSettings
+        sheet={props.sheet.config}
+        scores={props.sheet.scores}
+        full={props.stats.full ?? 20}
+        onFullMark={props.onFullMark}
+        meta={props.meta}
+        report={props.sheetReport ?? null}
+        fix={props.sheetFix}
+        onChange={props.onSheet}
+        onMeta={props.onMeta}
+        onDelete={props.onDeleteSheet}
+      />
+    );
+  }
   if (!block) return <ExamSettings {...props} />;
 
   return (
@@ -75,6 +105,9 @@ export default function Inspector(props: Props) {
           <HeaderButton danger label={`${t("Delete")} (Del)`} onClick={() => props.onDelete(block.id)}>
             <TrashIcon />
           </HeaderButton>
+          <HeaderButton label={t("Close")} onClick={props.onClose}>
+            <X size={15} strokeWidth={1.8} aria-hidden />
+          </HeaderButton>
         </div>
       </div>
       <div className="flex flex-col gap-3 p-3">
@@ -95,6 +128,7 @@ export default function Inspector(props: Props) {
         onOpenTableStudio={props.onOpenTableStudio}
         onOpenGraphStudio={props.onOpenGraphStudio}
         onOpenChartStudio={props.onOpenChartStudio}
+        sheet={props.sheet}
       />
       {block.type !== "header" && <BlockOrderButtons onOrder={(order) => props.onOrder(block.id, order)} />}
       {hasFontControls(block) && <BlockFontControls b={block} meta={props.meta} onChange={(patch, field) => props.onChange(block.id, patch, field)} />}
@@ -114,7 +148,7 @@ function HeaderButton({ label, danger, disabled, onClick, children }: { label: s
 
 // Nothing selected: settings of the whole exam. (The exam's name is edited in the top bar; the question,
 // point and page counts are in the toolbox's status bar.)
-function ExamSettings({ meta, hasHeader, onMeta, onChangeTemplate }: Props) {
+function ExamSettings({ meta, fullMark, onFullMark, hasSheet, onMeta, onChangeTemplate, onOpenCorrection }: Props) {
   const t = useT();
   return (
     <div className="flex flex-col">
@@ -150,16 +184,13 @@ function ExamSettings({ meta, hasHeader, onMeta, onChangeTemplate }: Props) {
 
         <Section title={t("Points")}>
           <Toggle checked={!!meta.hidePoints} onChange={(hidePoints) => onMeta({ hidePoints })} label={t("Hide the points on the paper")} />
-          {hasHeader ? (
-            <Hint>{t("The full mark is set in Page layout → Header and footer (“Graded out of”).")}</Hint>
-          ) : (
-            <Row label={t("Full mark")}>
-              <Stepper value={meta.fullMark ?? 20} min={1} max={200} onChange={(fullMark) => onMeta({ fullMark }, "fullMark")} />
-            </Row>
-          )}
+          <Row label={t("Full mark")}>
+            <Stepper value={fullMark} min={1} max={200} onChange={onFullMark} />
+          </Row>
         </Section>
 
         <Section title={t("Correction sheet")}>
+          <SmallButton onClick={onOpenCorrection}>{hasSheet ? t("Open the correction sheet") : t("Make the correction sheet…")}</SmallButton>
           <span className="text-[11px] text-muted">{t("Color of the answers")}</span>
           <ColorGrid value={meta.answerColor} autoLabel={t("Green")} onChange={(answerColor) => onMeta({ answerColor })} />
           <Row label={t("Size of the answers")}>

@@ -10,7 +10,7 @@ import type { AnswerStyle, BlankBlock, Lang, McqBlock, OpenBlock, OpenPart, Ques
 import { useT } from "@/app/_lib/uiLang";
 import type { BlockPatch } from "@/app/_lib/useExam";
 import type { RichHandle } from "../rich/RichEditable";
-import { AddRowButton, ChoiceGrid, Field, NumberInput, RemoveButton, RichInput, Segmented, SmallButton, TextInput, Toggle } from "./fields";
+import { AddRowButton, ChoiceGrid, Field, NumberInput, RemoveButton, RichInput, Segmented, TextInput, Toggle } from "./fields";
 
 export type OnChange = (patch: BlockPatch, field: string) => void;
 
@@ -19,8 +19,8 @@ export function QuestionBasics({ b, onChange, lockPoints }: { b: QuestionBlock; 
   const t = useT();
   return (
     <>
-      <Field label={t("Question")} hint={t("Tip: click the question on the page and type there.")}>
-        <RichInput value={b.text} placeholder={t("Type the question…")} onChange={(text) => onChange({ text }, "text")} rows={3} multiline />
+      <Field label={t("Question")}>
+        <RichInput roomy value={b.text} placeholder={t("Type the question…")} onChange={(text) => onChange({ text }, "text")} rows={3} multiline />
       </Field>
       <Field label={t("Points")} hint={lockPoints ? t("Total of the sub-questions.") : undefined}>
         {lockPoints ? (
@@ -75,31 +75,33 @@ export function McqEditor({ b, onChange }: { b: McqBlock; onChange: OnChange }) 
           <Segmented value={String(b.columns ?? 1)} onChange={(v) => onChange({ columns: Number(v) }, "columns")} options={["1", "2", "3", "4"].map((v) => ({ value: v, label: v }))} />
         </Field>
       </Panel>
-      <Field group
-        label={t("Options")}
-        hint={b.multi ? t("Tick every correct answer — they appear on the correction sheet.") : t("Select the circle of the correct answer — it appears on the correction sheet.")}
-      >
-        <div className="flex flex-col gap-1.5">
+      <Field group label={t("Options")}>
+        <div className="flex flex-col gap-2">
           {b.options.map((opt, i) => (
-            <div key={i} className="flex items-center gap-1.5">
+            <div key={i} className="flex items-center gap-2">
               <input
                 type={b.multi ? "checkbox" : "radio"}
                 name={`correct-${b.id}`}
                 checked={answers.includes(i)}
                 onChange={() => onChange(toggleMcq(b, i), "correct")}
-                className="size-4 shrink-0 accent-emerald-600"
+                className="size-[18px] shrink-0 cursor-pointer accent-emerald-600"
                 title={t("Correct answer")}
               />
-              <RichInput value={opt} placeholder={`${t("Option")} ${i + 1}`} onChange={(v) => setOption(i, v)} />
+              <RichInput roomy value={opt} placeholder={`${t("Option")} ${i + 1}`} onChange={(v) => setOption(i, v)} />
               {b.options.length > 2 && <RemoveButton onClick={() => onChange(removeOption(b, i), "options")} title={t("Remove")} />}
             </div>
           ))}
           {b.options.length < MAX_OPTIONS && <AddRowButton onClick={() => onChange(insertOption(b, b.options.length), "options")}>{t("Add option")}</AddRowButton>}
         </div>
       </Field>
-      <SmallButton onClick={shuffle} title={t("Mix the options (the correct answers follow)")}>
+      <button
+        type="button"
+        onClick={shuffle}
+        title={t("Mix the options (the correct answers follow)")}
+        className="h-9 w-full rounded-xl bg-subtle text-[13px] font-medium tracking-[-0.01em] text-ink transition-[transform,background-color] duration-100 ease-out outline-none hover:bg-hover focus-visible:ring-2 focus-visible:ring-accent active:scale-[0.98]"
+      >
         {t("Shuffle options")}
-      </SmallButton>
+      </button>
     </>
   );
 }
