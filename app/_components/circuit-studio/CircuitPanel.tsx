@@ -192,7 +192,6 @@ export default function CircuitPanel({ studio }: { studio: CircuitStudioState })
           >
             {t("Number the labels (R1, R2…)")}
           </button>
-          <p className="text-xs text-faint">{t("Click a component or a wire to change it.")}</p>
         </Section>
       )}
     </div>

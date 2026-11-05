@@ -24,9 +24,9 @@ const BASE = "grid h-7 flex-none place-items-center border transition-colors dis
 // `collapsible`: its title folds it (closed at first), for the tools used less often.
 export function RibbonGroup({ title, children, aside, collapsible }: { title: string; children: ReactNode; aside?: ReactNode; collapsible?: boolean }) {
   const [open, setOpen] = useState(!collapsible);
-  const heading = <h3 className="text-[12px] font-semibold text-ink">{title}</h3>;
+  const heading = <h3 className="text-[13px] font-semibold tracking-[-0.01em] text-ink">{title}</h3>;
   return (
-    <section className="flex flex-col gap-2 border-b border-line py-3 first:pt-0 last:border-b-0 last:pb-0">
+    <section className="flex flex-col gap-2.5 border-b border-line/70 py-3.5 first:pt-0 last:border-b-0 last:pb-0">
       <div className="flex min-h-5 items-center justify-between gap-2">
         {collapsible ? (
           <button type="button" aria-expanded={open} onMouseDown={keepFocus} onClick={() => setOpen((o) => !o)} className="flex flex-1 items-center gap-1 text-start text-muted hover:text-ink">
@@ -84,7 +84,7 @@ export function RibbonButton({ title, shortcut, icon, label, pressed, disabled, 
       disabled={disabled}
       onMouseDown={keepFocus}
       onClick={onClick}
-      className={`${BASE} rounded-md ${label ? "gap-1.5 px-2 text-[12px] font-medium" : "w-7"} ${label ? "grid-flow-col" : ""} ${toneCls(!!pressed)} ${className}`}
+      className={`${BASE} rounded-lg ${label ? "gap-1.5 px-2 text-[12px] font-medium" : "w-7"} ${label ? "grid-flow-col" : ""} ${toneCls(!!pressed)} ${className}`}
     >
       {icon}
       {label && <span>{label}</span>}
@@ -101,7 +101,7 @@ export function Segmented<V extends string>({ label, value, options, disabled, o
   onChange: (v: V) => void;
 }) {
   return (
-    <div role="group" aria-label={label} className={`flex flex-none rounded-lg bg-subtle p-0.5 ${disabled ? "opacity-40" : ""}`}>
+    <div role="group" aria-label={label} className={`flex flex-none rounded-[10px] bg-subtle p-[3px] ${disabled ? "opacity-40" : ""}`}>
       {options.map((o) => (
         <button
           key={o.value}
@@ -112,7 +112,7 @@ export function Segmented<V extends string>({ label, value, options, disabled, o
           disabled={disabled}
           onMouseDown={keepFocus}
           onClick={() => onChange(o.value)}
-          className={`grid h-6 w-7 place-items-center rounded-md transition-colors disabled:cursor-not-allowed ${value === o.value ? "bg-white text-ink shadow-sm ring-1 ring-line" : "text-muted hover:text-ink"}`}
+          className={`grid h-6 w-7 place-items-center rounded-lg transition-[background-color,color,box-shadow,transform] duration-200 ease-out active:scale-[0.95] disabled:cursor-not-allowed ${value === o.value ? "bg-white text-ink shadow-[0_1px_3px_rgba(0,0,0,0.12)]" : "text-muted hover:text-ink"}`}
         >
           {o.icon}
         </button>
@@ -204,7 +204,7 @@ export function Popover({ anchor, onClose, children, width, byKeyboard }: Popove
       ref={box}
       data-text-format
       onMouseDown={keepFocusExceptFields}
-      className="fixed z-[60] overflow-y-auto rounded-lg border border-line bg-white p-1 shadow-[0_12px_32px_-10px_rgba(16,24,40,0.4)]"
+      className="fixed z-[60] overflow-y-auto rounded-xl border border-line/60 bg-white/95 p-1.5 shadow-[0_16px_40px_-12px_rgba(16,24,40,0.35)] backdrop-blur"
       style={{ left: 0, top: 0, visibility: "hidden", width: width ?? "max-content", minWidth: 150, maxWidth: "calc(100vw - 16px)" }}
     >
       <div ref={content}>{children}</div>
@@ -300,7 +300,7 @@ export function MenuItem({ label, labelStyle, icon, shortcut, checked, disabled,
       disabled={disabled}
       onMouseDown={keepFocus}
       onClick={onSelect}
-      className="flex items-center gap-2 rounded-md px-2 py-1.5 text-start text-[13px] text-ink transition-colors hover:bg-subtle focus:bg-subtle focus:outline-none disabled:opacity-40 disabled:hover:bg-transparent"
+      className="flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-start text-[13px] tracking-[-0.01em] text-ink transition-colors hover:bg-subtle focus:bg-subtle focus:outline-none disabled:opacity-40 disabled:hover:bg-transparent"
     >
       <span className="grid size-4 flex-none place-items-center text-accent">{checked ? <Check size={14} strokeWidth={2.4} /> : icon}</span>
       <span className="min-w-0 flex-1 truncate" style={labelStyle}>
@@ -360,4 +360,4 @@ export function ColorMenu({ title, icon, value, initial, autoLabel, colors, disa
 }
 
 // A text field or a list, as high as the buttons.
-export const fieldCls = "h-7 w-full min-w-0 rounded-md border border-transparent bg-subtle px-1.5 text-[12px] text-ink outline-none hover:border-line focus:border-indigo-400 focus:bg-white";
+export const fieldCls = "h-8 w-full min-w-0 rounded-lg border border-transparent bg-subtle px-2.5 text-[13px] tracking-[-0.01em] text-ink outline-none transition-colors hover:border-line focus:border-accent focus:bg-white";

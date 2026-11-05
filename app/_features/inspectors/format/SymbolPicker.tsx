@@ -32,7 +32,7 @@ export default function SymbolPicker({ t, onPick, disabled }: { t: T; onPick: (s
   );
   return (
     <div className="flex flex-col gap-2 p-1.5">
-      <select value={group} onChange={(e) => setGroup(Number(e.target.value))} aria-label={t("Symbols")} className="h-7 w-full rounded-md border border-line bg-white px-1.5 text-[12.5px] text-ink outline-none focus:border-indigo-400">
+      <select value={group} onChange={(e) => setGroup(Number(e.target.value))} aria-label={t("Symbols")} className="h-8 w-full rounded-lg border border-transparent bg-subtle px-2.5 text-[13px] tracking-[-0.01em] text-ink outline-none transition-colors hover:border-line focus:border-accent focus:bg-white">
         {SYMBOL_GROUPS.map((g, i) => (
           <option key={g.name} value={i}>
             {t(g.name)}

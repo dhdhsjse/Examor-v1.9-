@@ -1,9 +1,9 @@
 "use client";
 
-import { Type } from "lucide-react";
+import { Check, Type } from "lucide-react";
 import { useMemo } from "react";
 import { CONTENT_WIDTH } from "@/app/_lib/a4";
-import { ANNOTATION_HINTS, ANNOTATION_SPECS, ANNOTATION_TYPES, POINTS_HINT } from "@/app/_lib/graph/annotations";
+import { ANNOTATION_SPECS, ANNOTATION_TYPES } from "@/app/_lib/graph/annotations";
 import { PAPER_MARGIN } from "@/app/_lib/graph/grid";
 import { GRAPH_PRESETS, GRAPH_TEMPLATES, GRAPH_TEMPLATE_GROUPS, presetApplies } from "@/app/_lib/graph/presets";
 import { FUNCTION_SPECS, FUNCTION_TYPES } from "@/app/_lib/graph/mathUtils";
@@ -11,6 +11,8 @@ import { plainLabel } from "@/app/_lib/graph/richLabel";
 import type { AnnotationType, FunctionType } from "@/app/_lib/graph/types";
 import { ShapesMenuButton } from "@/app/_components/shapes/ShapeGallery";
 import { useT } from "@/app/_lib/uiLang";
+import Disclosure from "./Disclosure";
+import { Group, SwitchRow } from "./fields";
 import type { GraphStudioState } from "./useGraphStudio";
 
 // A curve of each kind as a small sketch for its button (30 × 18).
@@ -66,141 +68,109 @@ function FunctionGlyph({ type }: { type: FunctionType }) {
   );
 }
 
-const toolButton = "flex flex-col items-center gap-0.5 rounded-xl border px-1 py-2 text-[11px] font-medium leading-tight transition-colors";
+// A tool or a function as a tile: its little drawing and its name. The one in hand is white with a coloured outline; a press shrinks it a little.
+const tile = "flex h-12 flex-col items-center justify-center gap-0.5 rounded-xl text-[11px] font-medium leading-tight tracking-[-0.005em] transition-[transform,background-color,box-shadow] duration-100 ease-out outline-none focus-visible:ring-2 focus-visible:ring-accent active:scale-[0.96]";
+const idle = "bg-subtle text-ink hover:bg-hover";
+const held = "bg-white text-accent-strong shadow-[0_0_0_2px_var(--color-accent,#4f46e5),0_4px_14px_rgba(79,70,229,0.15)]";
+// A row of a list of sheets: its name, and what it plots under it.
+const listRow = (on: boolean) => `flex w-full items-center gap-2 px-3.5 py-2.5 text-start transition-colors outline-none focus-visible:bg-white ${on ? "bg-white text-accent-strong" : "text-ink hover:bg-hover"}`;
 
-// The left panel of the Graph Studio: the functions to plot (one click draws one on the paper, its parameters are on the right),
-// the measured points, the annotation tools, and the sheets a teacher starts from: the few general ones, and the physics sheets
-// (a whole paper with its scales, curves and annotations). A sheet sets the limits, the labels and the grid; a general one keeps
-// the curves, a physics one replaces the whole paper.
+// The left panel of the Graph Studio: the functions to plot (one click draws one on the paper, its parameters are on the right), the measured points, the
+// annotation tools, the shapes, and the sheets a teacher starts from: the few general ones, and the physics sheets (a whole paper with its scales, curves and
+// annotations). A sheet sets the limits, the labels and the grid; a general one keeps the curves, a physics one replaces the whole paper. What a tool in hand
+// asks for is written on the paper itself, over its corner.
 export default function GraphToolbar({ studio }: { studio: GraphStudioState }) {
   const t = useT();
   const { config, applyPreset, applyTemplate, addFunction, addSeries, tool, pickTool, snap, setSnap } = studio;
   // (what each physics sheet is about, written under its name)
   const templates = useMemo(() => GRAPH_TEMPLATES.map((tpl) => ({ tpl, values: tpl.build().values })), []);
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto p-4">
-      <section className="flex flex-col gap-2" aria-label={t("Functions")} data-testid="graph-functions">
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-faint">{t("Functions")}</h3>
-        <p className="text-xs text-muted">{t("Click a function to draw it on the paper, then change its parameters on the right.")}</p>
+    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+      <Disclosure title={t("Functions")} testId="graph-functions">
         <div className="grid grid-cols-2 gap-2">
           {FUNCTION_TYPES.map((type) => (
-            <button
-              key={type}
-              onClick={() => addFunction(type)}
-              title={FUNCTION_SPECS[type].formula}
-              data-function={type}
-              className="flex flex-col items-center gap-0.5 rounded-xl border border-line bg-white px-1 py-2 text-[11px] font-medium leading-tight text-ink transition-colors hover:border-accent hover:bg-accent-soft"
-            >
+            <button key={type} onClick={() => addFunction(type)} title={FUNCTION_SPECS[type].formula} data-function={type} className={`${tile} ${idle}`}>
               <FunctionGlyph type={type} />
               {t(FUNCTION_SPECS[type].name)}
             </button>
           ))}
         </div>
-      </section>
+      </Disclosure>
 
-      <section className="flex flex-col gap-2" aria-label={t("Measurements")} data-testid="graph-measurements">
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-faint">{t("Measurements")}</h3>
-        <p className="text-xs text-muted" data-testid="points-hint">
-          {tool === "points" ? t(POINTS_HINT) : t("Plot measured values as points, and join them if you want a line.")}
-        </p>
+      <Disclosure title={t("Measurements")} testId="graph-measurements">
         <div className="grid grid-cols-2 gap-2">
-          <button onClick={addSeries} data-testid="new-series" className={`${toolButton} border-line bg-white text-ink hover:border-accent hover:bg-accent-soft`}>
+          <button onClick={addSeries} data-testid="new-series" className={`${tile} ${idle}`}>
             <FunctionGlyph type="data" />
             {t("New series")}
           </button>
-          <button
-            onClick={() => pickTool("points")}
-            aria-pressed={tool === "points"}
-            data-testid="points-tool"
-            className={`${toolButton} ${tool === "points" ? "border-accent bg-accent-soft text-accent-strong ring-1 ring-accent" : "border-line bg-white text-ink hover:border-accent hover:bg-accent-soft"}`}
-          >
+          <button onClick={() => pickTool("points")} aria-pressed={tool === "points"} data-testid="points-tool" className={`${tile} ${tool === "points" ? held : idle}`}>
             <svg width="30" height="18" viewBox="0 0 30 18" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.6">
               <circle cx="15" cy="9" r="4" />
             </svg>
             {t("Add points")}
           </button>
         </div>
-      </section>
+      </Disclosure>
 
-      <section className="flex flex-col gap-2" aria-label={t("Annotations")} data-testid="graph-annotation-tools">
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-faint">{t("Annotations")}</h3>
-        <p className="text-xs text-muted" data-testid="annotation-tool-hint">
-          {tool && tool !== "points" ? t(ANNOTATION_HINTS[tool]) : t("Pick a tool, then click the paper (or a curve). Drag the handles of a selected annotation to move it.")}
-        </p>
+      <Disclosure title={t("Annotations")} testId="graph-annotation-tools">
         <div className="grid grid-cols-2 gap-2">
           {ANNOTATION_TYPES.map((type) => (
-            <button
-              key={type}
-              onClick={() => pickTool(type)}
-              aria-pressed={tool === type}
-              data-annotation-tool={type}
-              className={`${toolButton} ${tool === type ? "border-accent bg-accent-soft text-accent-strong ring-1 ring-accent" : "border-line bg-white text-ink hover:border-accent hover:bg-accent-soft"}`}
-            >
+            <button key={type} onClick={() => pickTool(type)} aria-pressed={tool === type} data-annotation-tool={type} className={`${tile} ${tool === type ? held : idle}`}>
               <AnnotationGlyph type={type} />
               {t(ANNOTATION_SPECS[type].name)}
             </button>
           ))}
         </div>
-        <label className="flex items-center gap-2 text-sm text-ink">
-          <input type="checkbox" checked={snap} onChange={(e) => setSnap(e.target.checked)} data-testid="snap" className="size-4 accent-indigo-600" />
-          {t("Snap to the grid")}
-        </label>
-      </section>
+        <Group>
+          <SwitchRow label={t("Snap to the grid")} checked={snap} onChange={setSnap} testId="snap" />
+        </Group>
+      </Disclosure>
 
-      <section className="flex flex-col gap-2" aria-label={t("Shapes")} data-testid="graph-shapes">
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-faint">{t("Shapes")}</h3>
-        <p className="text-xs text-muted">{studio.shapeTool ? t("Drag on the paper to draw the shape (Shift: a square or a 45° line, Alt: from the centre), or click to put it at its usual size · Esc to stop") : t("Boxes, arrows, braces, callouts… drawn over the paper.")}</p>
-        <ShapesMenuButton active={!!studio.shapeTool} current={studio.shapeTool} onPick={studio.pickShape} />
-      </section>
+      {/* (the button is its own title: no section around it) */}
+      <div data-testid="graph-shapes" className="border-b border-line/70 px-4 py-3">
+        <ShapesMenuButton variant="row" active={!!studio.shapeTool} current={studio.shapeTool} onPick={studio.pickShape} />
+      </div>
 
-      <section className="flex flex-col gap-2" aria-label={t("Examples")} data-testid="graph-presets">
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-faint">{t("Examples")}</h3>
-        <p className="text-xs text-muted">{t("Choose a sheet to start from: it sets the limits, the labels and the grid.")}</p>
-        <div className="flex flex-col gap-1.5">
+      <Disclosure title={t("Examples")} testId="graph-presets" defaultOpen={false}>
+        <Group>
           {GRAPH_PRESETS.map((p) => {
             const on = presetApplies(config, p);
             return (
-              <button
-                key={p.id}
-                onClick={() => applyPreset(p)}
-                aria-pressed={on}
-                data-preset={p.id}
-                className={`flex flex-col items-start rounded-xl border px-3 py-2 text-start transition-colors ${on ? "border-accent bg-accent-soft text-accent-strong ring-1 ring-accent" : "border-line bg-white text-ink hover:border-accent hover:bg-accent-soft"}`}
-              >
-                <span className="text-sm font-medium">{t(p.name)}</span>
-                <span className="text-[11px] text-muted tabular-nums" dir="ltr">
-                  {p.values.xLabel} / {p.values.yLabel} · {p.values.xMin}→{p.values.xMax}, {p.values.yMin}→{p.values.yMax}
+              <button key={p.id} onClick={() => applyPreset(p)} aria-pressed={on} data-preset={p.id} className={listRow(on)}>
+                <span className="flex min-w-0 flex-1 flex-col">
+                  <span className="text-[13px] font-medium tracking-[-0.01em]">{t(p.name)}</span>
+                  <span className="text-[11px] text-muted tabular-nums" dir="ltr">
+                    {p.values.xLabel} / {p.values.yLabel} · {p.values.xMin}→{p.values.xMax}, {p.values.yMin}→{p.values.yMax}
+                  </span>
                 </span>
+                {on && <Check size={15} strokeWidth={2.4} aria-hidden className="shrink-0" />}
               </button>
             );
           })}
-        </div>
-      </section>
+        </Group>
+      </Disclosure>
 
-      <section className="flex flex-col gap-2" aria-label={t("Physics sheets")} data-testid="graph-templates">
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-faint">{t("Physics sheets")}</h3>
-        <p className="text-xs text-muted">{t("A whole sheet with its scales, curves and annotations, like the figures of an exam. It replaces the paper; everything can be changed afterwards (Ctrl+Z undoes it).")}</p>
+      <Disclosure title={t("Physics sheets")} testId="graph-templates" defaultOpen={false}>
         {GRAPH_TEMPLATE_GROUPS.map((group) => (
           <div key={group} className="flex flex-col gap-1.5">
-            <h4 className="text-[11px] font-semibold text-muted">{t(group)}</h4>
-            {templates
-              .filter((x) => x.tpl.group === group)
-              .map(({ tpl, values }) => (
-                <button
-                  key={tpl.id}
-                  onClick={() => applyTemplate(tpl, CONTENT_WIDTH - 2 * PAPER_MARGIN)}
-                  data-template={tpl.id}
-                  className="flex flex-col items-start rounded-xl border border-line bg-white px-3 py-2 text-start text-ink transition-colors hover:border-accent hover:bg-accent-soft"
-                >
-                  <span className="text-sm font-medium">{t(tpl.name)}</span>
-                  <span className="text-[11px] text-muted" dir="ltr">
-                    {plainLabel(values.xLabel ?? "")} / {plainLabel(values.yLabel ?? "")}
-                  </span>
-                </button>
-              ))}
+            <h4 className="px-1 text-[11px] font-medium tracking-[0.01em] text-muted">{t(group)}</h4>
+            <Group>
+              {templates
+                .filter((x) => x.tpl.group === group)
+                .map(({ tpl, values }) => (
+                  <button key={tpl.id} onClick={() => applyTemplate(tpl, CONTENT_WIDTH - 2 * PAPER_MARGIN)} data-template={tpl.id} className={listRow(false)}>
+                    <span className="flex min-w-0 flex-1 flex-col">
+                      <span className="text-[13px] font-medium tracking-[-0.01em]">{t(tpl.name)}</span>
+                      <span className="text-[11px] text-muted" dir="ltr">
+                        {plainLabel(values.xLabel ?? "")} / {plainLabel(values.yLabel ?? "")}
+                      </span>
+                    </span>
+                  </button>
+                ))}
+            </Group>
           </div>
         ))}
-      </section>
+      </Disclosure>
     </div>
   );
 }

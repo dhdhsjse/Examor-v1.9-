@@ -124,7 +124,7 @@ function SizeCombo({ t, target }: { t: T; target: FormatTarget }) {
     if (Number.isFinite(v) && v > 0) target.setSize(Math.max(MIN_SIZE, Math.min(Math.round(v), MAX_SIZE)));
   };
   return (
-    <div ref={anchor} className="flex h-7 flex-none items-center rounded-md border border-transparent bg-subtle hover:border-line focus-within:border-indigo-400 focus-within:bg-white">
+    <div ref={anchor} className="flex h-8 flex-none items-center rounded-lg border border-transparent bg-subtle transition-colors hover:border-line focus-within:border-accent focus-within:bg-white">
       <input
         type="text"
         inputMode="numeric"

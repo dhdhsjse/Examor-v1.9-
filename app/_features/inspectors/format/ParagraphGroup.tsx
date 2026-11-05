@@ -55,7 +55,7 @@ function NumberField({ label, value, min, max, step, decimals = 0, unit, onChang
               apply(value + (e.key === "ArrowUp" ? step : -step));
             }
           }}
-          className="h-7 w-14 rounded-md border border-line bg-white px-1.5 text-end text-[12.5px] tabular-nums outline-none focus:border-indigo-400"
+          className="h-8 w-14 rounded-lg border border-transparent bg-subtle px-2 text-end text-[13px] tabular-nums outline-none transition-colors hover:border-line focus:border-accent focus:bg-white"
         />
         <span className="w-4 text-[11px] text-faint">{unit}</span>
       </span>

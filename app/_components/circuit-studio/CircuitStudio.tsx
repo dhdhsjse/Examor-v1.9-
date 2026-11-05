@@ -101,9 +101,14 @@ export default function CircuitStudio({ editing, onInsert, onUpdate, onClose }: 
           <Redo2 size={16} />
         </button>
 
-        <p data-testid="circuit-tool-hint" className="ms-2 hidden min-w-0 flex-1 truncate text-xs text-muted lg:block">
-          {t(TOOL_HINTS[tool])}
-        </p>
+        {/* (nothing is said while the select tool is in hand; the other tools say what a click or a drag does) */}
+        {tool === "select" ? (
+          <span className="flex-1" />
+        ) : (
+          <p data-testid="circuit-tool-hint" className="ms-2 hidden min-w-0 flex-1 truncate text-xs text-muted lg:block">
+            {t(TOOL_HINTS[tool])}
+          </p>
+        )}
 
         <button
           onClick={() => (editing ? onUpdate(config) : onInsert(config))}

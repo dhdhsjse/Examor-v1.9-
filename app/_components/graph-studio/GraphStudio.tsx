@@ -82,13 +82,12 @@ export default function GraphStudio({ editing, onInsert, onUpdate, onClose }: Pr
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [confirmClose, dirty, student, undo, redo, onClose, selected, selectedAnnotation, selectedShape, shapeTool, inkTool, tool, pickTool, selectFunction, selectAnnotation, removeFunction, removeAnnotation]);
 
-  const iconButton = "grid size-8 place-items-center rounded-lg text-muted enabled:hover:bg-subtle enabled:hover:text-ink disabled:opacity-40";
+  const iconButton = "grid size-8 place-items-center rounded-full text-muted transition-[transform,background-color,color] duration-100 ease-out outline-none enabled:hover:bg-subtle enabled:hover:text-ink enabled:active:scale-90 focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-40";
 
   return (
     <div data-testid="graph-studio" dir={rtl ? "rtl" : "ltr"} className="fixed inset-0 z-50 flex flex-col bg-white">
       <header {...studioHeaderProps()}>
-        <h2 className="shrink-0 text-base font-semibold text-ink">{t("Graph Studio")}</h2>
-        <span className="shrink-0 rounded-full bg-accent-soft px-2.5 py-0.5 text-xs font-medium text-accent-strong">{t("Graph lab")}</span>
+        <h2 className="shrink-0 text-base font-semibold tracking-[-0.01em] text-ink">{t("Graph Studio")}</h2>
 
         <div className="mx-2 h-5 w-px bg-line" />
         <button onClick={undo} disabled={!canUndo} title={`${t("Undo")} (Ctrl+Z)`} aria-label={t("Undo")} data-testid="undo" className={iconButton}>
@@ -98,7 +97,7 @@ export default function GraphStudio({ editing, onInsert, onUpdate, onClose }: Pr
           <Redo2 size={16} />
         </button>
 
-        <div className="mx-1 flex rounded-lg bg-subtle p-0.5" role="group" aria-label={t("View")} data-testid="view-toggle">
+        <div className="mx-2 flex gap-0.5 rounded-[10px] bg-subtle p-[3px]" role="group" aria-label={t("View")} data-testid="view-toggle">
           {(["teacher", "student"] as const).map((v) => (
             <button
               key={v}
@@ -106,19 +105,23 @@ export default function GraphStudio({ editing, onInsert, onUpdate, onClose }: Pr
               aria-pressed={view === v}
               data-view={v}
               title={v === "teacher" ? t("Teacher view: everything is drawn, the hidden parts faded") : t("Student view: this is what the students will see")}
-              className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${view === v ? "bg-white text-accent-strong shadow-sm" : "text-muted hover:text-ink"}`}
+              className={`flex h-7 items-center rounded-[8px] px-3 text-xs tracking-[-0.005em] transition-[background-color,color,box-shadow,transform] duration-200 ease-out outline-none focus-visible:ring-2 focus-visible:ring-accent active:scale-[0.97] ${view === v ? "bg-white font-semibold text-ink shadow-[0_1px_3px_rgba(0,0,0,0.12)]" : "font-medium text-muted hover:text-ink"}`}
             >
               {v === "teacher" ? t("Teacher view") : t("Student view")}
-              {v === "student" && masked > 0 && <span className="ms-1.5 rounded-full bg-accent-soft px-1.5 text-[10px] tabular-nums text-accent-strong">{masked}</span>}
+              {v === "student" && masked > 0 && <span className="ms-1.5 rounded-full bg-accent-soft px-1.5 text-[10px] font-semibold text-accent-strong tabular-nums">{masked}</span>}
             </button>
           ))}
         </div>
 
-        <button onClick={() => (editing ? onUpdate(config, view) : onInsert(config, view))} data-testid="insert" className="ms-auto rounded-lg bg-accent px-4 py-1.5 text-sm font-medium text-white hover:bg-accent-strong">
+        <button
+          onClick={() => (editing ? onUpdate(config, view) : onInsert(config, view))}
+          data-testid="insert"
+          className="ms-auto h-8 rounded-full bg-accent px-5 text-[13px] font-semibold tracking-[-0.01em] text-white transition-[transform,background-color] duration-100 ease-out outline-none hover:bg-accent-strong focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 active:scale-[0.97]"
+        >
           {editing ? t("Update") : t("Insert")}
         </button>
-        <button onClick={requestClose} className="grid size-8 shrink-0 place-items-center rounded-lg text-muted hover:bg-subtle hover:text-ink" title={t("Close (Esc)")} aria-label={t("Close (Esc)")}>
-          <X size={18} />
+        <button onClick={requestClose} className={`${iconButton} shrink-0 bg-subtle`} title={t("Close (Esc)")} aria-label={t("Close (Esc)")}>
+          <X size={16} />
         </button>
       </header>
 
@@ -142,7 +145,6 @@ export default function GraphStudio({ editing, onInsert, onUpdate, onClose }: Pr
         </main>
 
         <aside className={`flex w-[300px] shrink-0 flex-col border-line bg-white ltr:border-l rtl:border-r ${student ? "pointer-events-none opacity-50" : ""}`}>
-          <h3 className="border-b border-line px-4 py-3 text-sm font-semibold text-ink">{t("Properties")}</h3>
           <GraphPanel studio={studio} />
         </aside>
       </div>

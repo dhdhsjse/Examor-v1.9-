@@ -229,8 +229,8 @@ function ExamSettings({ meta, fullMark, onFullMark, hasSheet, onMeta, onChangeTe
 // A group of settings, divided from the next by a line (no card), as in Figma's design panel.
 function Section({ title, children }: { title?: string; children: ReactNode }) {
   return (
-    <section aria-label={title} className="flex flex-col gap-2 px-3 py-3">
-      {title && <h3 className="flex h-5 items-center text-[11px] font-semibold text-ink">{title}</h3>}
+    <section aria-label={title} className="flex flex-col gap-2.5 px-3.5 py-3.5">
+      {title && <h3 className="flex h-5 items-center text-[13px] font-semibold tracking-[-0.01em] text-ink">{title}</h3>}
       {children}
     </section>
   );
@@ -238,8 +238,8 @@ function Section({ title, children }: { title?: string; children: ReactNode }) {
 
 function Row({ label, children }: { label: ReactNode; children: ReactNode }) {
   return (
-    <div className="flex min-h-7 items-center justify-between gap-2">
-      <span className="text-[11px] text-muted">{label}</span>
+    <div className="flex min-h-8 items-center justify-between gap-2">
+      <span className="text-[12px] tracking-[-0.005em] text-muted">{label}</span>
       {children}
     </div>
   );

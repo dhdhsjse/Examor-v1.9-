@@ -97,7 +97,7 @@ export default function MarginsInspector({ ctx }: { ctx: Ctx }) {
 
   return (
     <div className="flex flex-col">
-      <p className="mb-4 text-xs text-muted">{t("Adjust the printable area.")}</p>
+      <p className="mb-4 text-[13px] tracking-[-0.01em] text-muted">{t("Adjust the printable area.")}</p>
 
       <div role="group" aria-label={t("Presets")} className="grid grid-cols-2 gap-2">
         {MARGIN_PRESETS.map((p) => {
@@ -108,8 +108,8 @@ export default function MarginsInspector({ ctx }: { ctx: Ctx }) {
               type="button"
               aria-pressed={on}
               onClick={() => pick(p.margins)}
-              className={`flex flex-col items-center gap-2 rounded-lg border p-2 text-xs transition-colors ${
-                on ? "border-transparent bg-indigo-50 font-semibold text-accent ring-2 ring-indigo-500" : "border-line bg-white text-ink hover:border-indigo-300"
+              className={`flex flex-col items-center gap-2 rounded-2xl p-3 text-xs tracking-[-0.005em] transition-[transform,background-color,box-shadow] duration-150 ease-out outline-none focus-visible:ring-2 focus-visible:ring-accent active:scale-[0.97] ${
+                on ? "bg-white font-semibold text-accent shadow-[0_0_0_2px_#6366f1,0_4px_14px_rgba(79,70,229,0.15)]" : "bg-subtle text-ink hover:bg-hover"
               }`}
             >
               <MiniA4 margins={p.margins} isSelected={on} />
@@ -119,7 +119,7 @@ export default function MarginsInspector({ ctx }: { ctx: Ctx }) {
         })}
       </div>
 
-      <hr className="my-4 border-line" />
+      <hr className="my-5 border-line/70" />
 
       {SIDES.map(({ side, label }) => {
         const mm = pxToMm(shown[side]);
@@ -129,7 +129,7 @@ export default function MarginsInspector({ ctx }: { ctx: Ctx }) {
             <label htmlFor={id} className="min-w-16 whitespace-nowrap text-sm font-medium text-ink">
               {t(label)}
             </label>
-            <div dir="ltr" className="flex items-center overflow-hidden rounded-md border border-line bg-white">
+            <div dir="ltr" className="flex items-center overflow-hidden rounded-[10px] bg-subtle">
               <button type="button" onClick={() => step(side, -1)} disabled={mm <= MIN_MARGIN_MM} aria-label={t("Decrease")} className={stepBtn}>
                 <Minus size={14} strokeWidth={1.8} />
               </button>

@@ -35,7 +35,7 @@ export default function FormattingInspector({ ctx }: { ctx: Ctx }) {
     return (
       <div className="flex flex-col gap-3 text-sm text-muted">
         <p>{t("The header and footer are formatted in Page layout → Header and footer, or with the bar under them on the page.")}</p>
-        <button type="button" onClick={() => ctx.openInspector(HEADER_FOOTER)} className="self-start rounded-md border border-line bg-white px-3 py-1.5 text-xs font-medium text-ink hover:border-indigo-300">
+        <button type="button" onClick={() => ctx.openInspector(HEADER_FOOTER)} className="h-8 self-start rounded-lg bg-subtle px-3.5 text-[13px] font-medium tracking-[-0.01em] text-ink transition-[transform,background-color] duration-100 hover:bg-hover active:scale-[0.98]">
           {t("Header and footer")}
         </button>
       </div>

@@ -96,7 +96,7 @@ export function ShapeGallery({ onPick, current }: { onPick: (shape: string) => v
  * A button that opens the gallery under it (the Studios' toolbars). `icon`: a small square button for a ribbon, not a wide one.
  * `onPickImage` puts an "Image from this computer…" entry above the gallery (the Table Studio), and `label` names the button (default: Shapes).
  */
-export function ShapesMenuButton({ onPick, onPickImage, label, active, current, testId = "shapes-menu", variant = "wide" }: { onPick: (shape: string) => void; onPickImage?: () => void; label?: string; active?: boolean; current?: string | null; testId?: string; variant?: "wide" | "icon" }) {
+export function ShapesMenuButton({ onPick, onPickImage, label, active, current, testId = "shapes-menu", variant = "wide" }: { onPick: (shape: string) => void; onPickImage?: () => void; label?: string; active?: boolean; current?: string | null; testId?: string; variant?: "wide" | "icon" | "row" }) {
   const t = useT();
   const name = label ?? t("Shapes");
   const [open, setOpen] = useState(false);
@@ -129,9 +129,13 @@ export function ShapesMenuButton({ onPick, onPickImage, label, active, current, 
         data-testid={testId}
         title={name}
         onClick={() => setOpen((o) => !o)}
-        className={`flex h-8 w-full items-center gap-2 rounded border px-2 text-xs ${active ? "border-accent bg-accent-soft font-medium text-accent-strong" : "border-line bg-white text-ink hover:bg-hover"}`}
+        className={
+          variant === "row"
+            ? `flex h-11 w-full items-center gap-2.5 rounded-xl px-3.5 text-[13px] font-medium tracking-[-0.01em] transition-[transform,background-color,box-shadow] duration-100 ease-out outline-none focus-visible:ring-2 focus-visible:ring-accent active:scale-[0.98] ${active || open ? "bg-white text-accent-strong shadow-[0_0_0_2px_var(--color-accent,#4f46e5),0_4px_14px_rgba(79,70,229,0.15)]" : "bg-subtle text-ink hover:bg-hover"}`
+            : `flex h-8 w-full items-center gap-2 rounded border px-2 text-xs ${active ? "border-accent bg-accent-soft font-medium text-accent-strong" : "border-line bg-white text-ink hover:bg-hover"}`
+        }
       >
-        <Shapes size={14} />
+        <Shapes size={variant === "row" ? 16 : 14} />
         <span className="flex-1 text-start">{name}</span>
         <ChevronDown size={14} className="text-muted" />
       </button>

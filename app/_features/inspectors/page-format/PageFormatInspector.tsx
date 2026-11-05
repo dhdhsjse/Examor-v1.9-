@@ -29,8 +29,8 @@ function customFormat(width: number, height: number): PageFormat {
 }
 
 const card = (on: boolean) =>
-  `flex items-center gap-2.5 rounded-lg border p-2 text-start text-xs transition-colors ${
-    on ? "border-transparent bg-indigo-50 text-accent ring-2 ring-indigo-500" : "border-line bg-white text-ink hover:border-indigo-300"
+  `flex items-center gap-2.5 rounded-2xl p-3 text-start text-xs tracking-[-0.005em] transition-[transform,background-color,box-shadow] duration-150 ease-out outline-none focus-visible:ring-2 focus-visible:ring-accent active:scale-[0.97] ${
+    on ? "bg-white text-accent shadow-[0_0_0_2px_#6366f1,0_4px_14px_rgba(79,70,229,0.15)]" : "bg-subtle text-ink hover:bg-hover"
   }`;
 
 // Page layout → Page format, in the right panel: orientation and paper size of the page in view only
@@ -82,8 +82,8 @@ export default function PageFormatInspector({ ctx }: { ctx: Ctx }) {
               type="button"
               aria-pressed={on}
               onClick={() => orient(o)}
-              className={`flex flex-col items-center gap-1.5 rounded-lg border px-2 py-2.5 text-xs transition-colors ${
-                on ? "border-transparent bg-indigo-50 font-semibold text-accent ring-2 ring-indigo-500" : "border-line bg-white text-ink hover:border-indigo-300"
+              className={`flex flex-col items-center gap-1.5 rounded-2xl px-2 py-3 text-xs tracking-[-0.005em] transition-[transform,background-color,box-shadow] duration-150 ease-out outline-none focus-visible:ring-2 focus-visible:ring-accent active:scale-[0.97] ${
+                on ? "bg-white font-semibold text-accent shadow-[0_0_0_2px_#6366f1,0_4px_14px_rgba(79,70,229,0.15)]" : "bg-subtle text-ink hover:bg-hover"
               }`}
             >
               <Icon size={22} strokeWidth={1.6} />
@@ -130,7 +130,7 @@ export default function PageFormatInspector({ ctx }: { ctx: Ctx }) {
                 <label htmlFor={id} className="min-w-16 whitespace-nowrap text-sm font-medium text-ink">
                   {t(dim === "width" ? "Width" : "Height")}
                 </label>
-                <div dir="ltr" className="flex items-center overflow-hidden rounded-md border border-line bg-white">
+                <div dir="ltr" className="flex items-center overflow-hidden rounded-[10px] bg-subtle">
                   <input
                     id={id}
                     inputMode="decimal"
