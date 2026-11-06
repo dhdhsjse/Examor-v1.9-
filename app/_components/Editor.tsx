@@ -901,6 +901,7 @@ export default function Editor() {
     draftMargins: (m) => draftMargins(m),
     setMargins: saveMargins,
     setPageFormat: exam.setPageFormat,
+    setPageBorder: exam.setPageBorder,
     setChrome: exam.setChrome,
     resetPageChrome: exam.resetPageChrome,
     adoptHeader: exam.adoptHeader,

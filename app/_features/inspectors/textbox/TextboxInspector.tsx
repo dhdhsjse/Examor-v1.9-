@@ -1,20 +1,20 @@
 "use client";
 
-import { PaintBucket, Square } from "lucide-react";
 import { useState } from "react";
 import BlockOrderButtons from "@/app/_components/inspector/BlockOrderButtons";
 import { Stepper } from "@/app/_components/inspector/fields";
 import FormulaField from "@/app/_components/inspector/FormulaField";
+import BoxBorders from "./BoxBorders";
 import FunctionTools from "@/app/_components/inspector/FunctionTools";
 import { useCurrentFormula } from "@/app/_lib/currentFormula";
 import { BookmarkIcon, CopyIcon, TrashIcon } from "@/app/_components/icons";
 import type { Ctx } from "@/app/_features/core/types";
 import { useFormatTarget } from "@/app/_features/inspectors/format/formatTarget";
 import { SpacingFields } from "@/app/_features/inspectors/format/ParagraphGroup";
-import { ColorMenu, RibbonButton, RibbonGroup } from "@/app/_features/inspectors/format/ribbonUi";
+import { RibbonButton, RibbonGroup } from "@/app/_features/inspectors/format/ribbonUi";
 import TextRibbon from "@/app/_features/inspectors/format/TextRibbon";
 import { TEXTBOX_MAX_PAD, TEXTBOX_PAD, layoutTextbox, sizingAfterResize, textboxPad } from "@/app/_lib/blockLayout";
-import { FILL_COLORS, TEXT_COLORS } from "@/app/_lib/fonts";
+import { normalTurn, turnAboutCentre } from "@/app/_lib/turn";
 import type { TextboxBlock, TextboxSizing } from "@/app/_lib/types";
 
 // The selected text box's ribbon, in place of its Properties (like Word's tab for a selected shape): its name and actions
@@ -57,14 +57,11 @@ export default function TextboxInspector({ ctx }: { ctx: Ctx }) {
             />
           </div>
           <TextboxDimensions ctx={ctx} b={b} />
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-[11px] text-muted">{t("Fill and border")}</span>
-            <div className="flex gap-0.5">
-              <ColorMenu title={t("Fill color")} icon={<PaintBucket size={15} />} value={b.background} initial="#fef08a" autoLabel={t("No fill")} colors={FILL_COLORS} toggle onChange={(background) => shell.updateBlock(b.id, { background }, "background")} />
-              <ColorMenu title={t("Border color")} icon={<Square size={15} />} value={b.border} initial="#111827" autoLabel={t("No border")} colors={TEXT_COLORS} toggle onChange={(border) => shell.updateBlock(b.id, { border }, "border")} />
-            </div>
-          </div>
+          {!ctx.doc.blocks.some((o) => o.meta?.slot === b.id) && <TextboxRotation ctx={ctx} b={b} />}
           <BlockOrderButtons onOrder={(order) => shell.orderBlock(b.id, order)} />
+        </RibbonGroup>
+        <RibbonGroup title={t("Borders")} collapsible>
+          <BoxBorders ctx={ctx} b={b} />
         </RibbonGroup>
       </TextRibbon>
     </div>
@@ -127,6 +124,80 @@ function TextboxResizing({ ctx, b }: { ctx: Ctx; b: TextboxBlock }) {
         ))}
       </div>
     </div>
+  );
+}
+
+// The way the text runs: across, sideways (from the top down, or from the bottom up), or on a slant, or any angle typed in. The box turns about its
+// middle, so it stays where it is. (It can also be turned with the handle over it on the page.)
+const TURNS: { angle: number; label: string; icon: string }[] = [
+  { angle: 0, label: "Horizontal", icon: "→" },
+  { angle: 90, label: "Sideways, top to bottom", icon: "↓" },
+  { angle: -90, label: "Sideways, bottom to top", icon: "↑" },
+  { angle: -45, label: "Diagonal, going up", icon: "↗" },
+  { angle: 45, label: "Diagonal, going down", icon: "↘" },
+];
+function TextboxRotation({ ctx, b }: { ctx: Ctx; b: TextboxBlock }) {
+  const { t, shell, doc } = ctx;
+  const angle = normalTurn(b.layout.rotation);
+  const height = layoutTextbox(b, doc.meta).height;
+  const turn = (to: number) => shell.updateBlock(b.id, { layout: turnAboutCentre(b.layout, b.layout.width, height, to) as Partial<TextboxBlock["layout"]> }, "rotation");
+  return (
+    <div className="flex items-center justify-between gap-2">
+      <span className="text-[11px] text-muted">{t("Rotation")}</span>
+      <div className="flex items-center gap-1.5">
+        <div role="radiogroup" aria-label={t("Rotation")} className="flex rounded-md bg-subtle p-0.5">
+          {TURNS.map((r) => (
+            <button
+              key={r.angle}
+              type="button"
+              role="radio"
+              aria-checked={angle === r.angle}
+              title={t(r.label)}
+              aria-label={t(r.label)}
+              data-testid={`turn-${r.angle}`}
+              onClick={() => turn(r.angle)}
+              className={`grid h-6 w-6 place-items-center rounded text-[13px] leading-none transition-colors ${angle === r.angle ? "bg-white text-ink shadow-sm ring-1 ring-line" : "text-muted hover:text-ink"}`}
+            >
+              {r.icon}
+            </button>
+          ))}
+        </div>
+        <AngleInput label={t("Angle (degrees)")} value={angle} onCommit={turn} />
+      </div>
+    </div>
+  );
+}
+
+// An angle typed in, in degrees: kept when Enter is pressed or the field is left.
+function AngleInput({ label, value, onCommit }: { label: string; value: number; onCommit: (v: number) => void }) {
+  const [draft, setDraft] = useState<string | null>(null);
+  const commit = () => {
+    const v = Number(draft?.replace(",", "."));
+    const had = draft !== null;
+    setDraft(null);
+    if (had && Number.isFinite(v) && normalTurn(v) !== value) onCommit(v);
+  };
+  return (
+    <label title={label} className="flex h-7 w-[58px] items-center gap-0.5 rounded-md bg-subtle px-2 text-xs focus-within:ring-1 focus-within:ring-indigo-300">
+      <input
+        inputMode="decimal"
+        value={draft ?? String(value)}
+        onChange={(e) => setDraft(e.target.value)}
+        onFocus={(e) => e.currentTarget.select()}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") e.currentTarget.blur();
+          if (e.key === "Escape") {
+            setDraft(null);
+            e.currentTarget.blur();
+          }
+        }}
+        aria-label={label}
+        data-testid="turn-angle"
+        className="w-full min-w-0 bg-transparent text-end text-ink outline-none"
+      />
+      <span className="text-faint">°</span>
+    </label>
   );
 }
 

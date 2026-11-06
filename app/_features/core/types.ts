@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import type { Editor as TextEditor } from '@tiptap/core';
 import type Konva from 'konva';
-import type { Block, BlockType, ExamDoc, ExamMeta, HeaderFooterConfig, PageFormat, PageMargins, ViewMode } from '@/app/_lib/types';
+import type { Block, BlockType, ExamDoc, ExamMeta, HeaderFooterConfig, PageBorder, PageFormat, PageMargins, ViewMode } from '@/app/_lib/types';
 import type { ChromeKind } from '@/app/_lib/pageChrome';
 import type { BlockPreset } from '@/app/_lib/blocks';
 import type { BlockOrder } from '@/app/_lib/blockOrder';
@@ -82,6 +82,8 @@ export type Shell = {
   // Page layout → Page format: paper size and orientation of ONE page. Changes with the same `key` are one
   // undo step (typing a custom size). Blocks stay where they are, even outside a page that got smaller.
   setPageFormat: (pageId: string, format: PageFormat, key?: string) => void;
+  // Page layout → Page borders: the border of one page, or of every page (`pageId` null); `border` undefined = none. Same `key` = one undo step (a slider).
+  setPageBorder: (pageId: string | null, border: PageBorder | undefined, key?: string) => void;
   // Page layout → Header and footer: the document's (no `pageId`) or one page's own (`config` undefined =
   // back to the document's). The header/footer blocks of the pages it changes are rebuilt (pageChrome.ts).
   setChrome: (kind: ChromeKind, config: HeaderFooterConfig | undefined, pageId?: string, key?: string) => void;

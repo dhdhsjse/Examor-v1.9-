@@ -18,6 +18,8 @@ const contentWidth = (c: HeaderFooterBuildCtx) => c.pageSize.width - c.margins.l
 // up with the questions, and never closer than 8 mm, where printers leave the paper blank.
 const MIN_HEADER_INSET = mmToPx(8);
 export const headerInset = (m: PageMargins) => ({ left: Math.max(m.left, MIN_HEADER_INSET), right: Math.max(m.right, MIN_HEADER_INSET) });
+// Inside a page border that reaches `edge` px in, the header block starts at the border, so its texts are the margins counted from there.
+export const headerInsetIn = (m: PageMargins, edge: number) => (edge ? { left: Math.max(m.left - edge, 12), right: Math.max(m.right - edge, 12) } : headerInset(m));
 
 // Tag a block so the wizard can find and replace it later. `field`: the text of the settings it shows,
 // so typing it on the page changes the settings (pageChrome.ts).

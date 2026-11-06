@@ -33,7 +33,7 @@ import { settleSheet } from "./sheet/settle";
 import { saveAutosave } from "./storage";
 import { moveSlotTo, removeBlock, settleTextboxes, stepSlot } from "./textboxSlots";
 import { buildDoc, type Template } from "./templates";
-import type { Block, BlockData, BlockLayout, BlockType, EquationBlock, ExamDoc, ExamMeta, HeaderFooterConfig, Page, PageFormat, PageMargins } from "./types";
+import type { Block, BlockData, BlockLayout, BlockType, EquationBlock, ExamDoc, ExamMeta, HeaderFooterConfig, Page, PageBorder, PageFormat, PageMargins } from "./types";
 import type { T } from "./uiLang";
 
 // Ask the workspace to scroll to a page (n changes on every request).
@@ -68,7 +68,7 @@ interface History {
 // A new page with the margins and paper format of the last one.
 const newPageLike = (pages: Page[]): Page => {
   const last = pages[pages.length - 1];
-  return { id: newId(), ...(last?.margins ? { margins: last.margins } : {}), ...(last?.format ? { format: last.format } : {}) };
+  return { id: newId(), ...(last?.margins ? { margins: last.margins } : {}), ...(last?.format ? { format: last.format } : {}), ...(last?.border ? { border: last.border } : {}) };
 };
 
 const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(v, max));
@@ -516,6 +516,29 @@ export function useExam(initial: ExamDoc, t?: T) {
     [commit],
   );
 
+  // The border of the pages (Page layout → Page borders): of one page, or of every page when no `pageId` is given; `border` undefined = none.
+  // Changes with the same `key` (dragging a slider) are one undo step.
+  const setPageBorder = useCallback(
+    (pageId: string | null, border: PageBorder | undefined, key?: string) =>
+      commit(
+        (d) => {
+          const same = (p: Page) => JSON.stringify(p.border ?? null) === JSON.stringify(border ?? null);
+          const targets = d.pages.filter((p) => pageId === null || p.id === pageId);
+          if (targets.every(same)) return d;
+          const set = (p: Page): Page => {
+            const { border: _old, ...rest } = p;
+            void _old;
+            return border ? { ...rest, border: { ...border } } : rest;
+          };
+          const next = { ...d, pages: d.pages.map((p) => (pageId === null || p.id === pageId ? set(p) : p)) };
+          // (the header and the footer are placed inside the border)
+          return tRef.current ? syncChrome(d, next, tRef.current) : next;
+        },
+        { key },
+      ),
+    [commit],
+  );
+
   // Header or footer of the document (no `pageId`) or of one page (Page layout → Header and footer).
   // `config` undefined: the page follows the document again. Changes with the same `key` (typing) are one undo step.
   const setChrome = useCallback(
@@ -671,6 +694,7 @@ export function useExam(initial: ExamDoc, t?: T) {
     deletePage,
     setMargins,
     setPageFormat,
+    setPageBorder,
     setChrome,
     resetPageChrome,
     adoptHeader,
