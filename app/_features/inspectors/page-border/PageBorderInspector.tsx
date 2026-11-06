@@ -60,7 +60,6 @@ export default function PageBorderInspector({ ctx }: { ctx: Ctx }) {
   return (
     <div className="flex flex-col gap-5">
       <Segmented
-        roomy
         value={scope}
         options={[
           { value: "all", label: t("Whole document") },
