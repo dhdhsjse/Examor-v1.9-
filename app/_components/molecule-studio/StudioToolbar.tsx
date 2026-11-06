@@ -1,162 +1,63 @@
 "use client";
 
-import { ArrowRight, CircleDot, Dot, Eraser, MousePointer2, Table2, Type } from "lucide-react";
-import type { HydrogenMode, LonePairMode } from "@/app/_lib/chemistry/types";
+import { ArrowRight, Check, CircleDot, Dot, Eraser, Table2, Type } from "lucide-react";
+import type { HydrogenMode, LonePairMode, BondType } from "@/app/_lib/chemistry/types";
 import type { ReactNode } from "react";
 import { COMMON_ELEMENTS, PERIODIC_TABLE, elementName, textColor } from "@/app/_lib/chemistry/periodicTable";
 import { FRAGMENTS, FRAGMENT_IDS, type FragmentId } from "@/app/_lib/chemistry/fragments";
 import { TOOL_HINTS } from "@/app/_lib/chemistry/strings";
 import type { RingSpec } from "@/app/_lib/chemistry/types";
+import Disclosure from "@/app/_components/graph-studio/Disclosure";
+import { Group, Segmented, held, idle, listRow, softButton, tileBase } from "@/app/_components/graph-studio/fields";
 import { ShapesMenuButton } from "@/app/_components/shapes/ShapeGallery";
 import { useUi } from "@/app/_lib/uiLang";
-import { BOND_GROUPS, useBondGroupNames, useBondNames } from "./bondNames";
+import { ALL_BOND_TYPES, useBondNames } from "./bondNames";
 import { BondGlyph, ChemLabel } from "./glyphs";
 import type { MoleculeStudioState, StudioTool } from "./useMoleculeStudio";
+
+/** Where a new drawing can start from (only before anything is drawn: it would be lost). */
+export interface StudioExamples {
+  items: { id: string; name: string }[];
+  current: string;
+  disabled: boolean;
+  onPick: (id: string) => void;
+}
 
 interface Props {
   studio: MoleculeStudioState;
   onOpenTable: () => void;
+  /** The examples a new drawing can start from; none when a block is being edited. */
+  examples?: StudioExamples;
 }
 
-// The left panel of the Studio: the tools, the elements a teacher uses most, and the whole table.
-export default function StudioToolbar({ studio, onOpenTable }: Props) {
+// The bonds a teacher draws most come first (single, double, triple, wedge, dash), then the others.
+const FIRST_BONDS: BondType[] = ["single", "double", "triple", "wedge", "dash"];
+const BONDS: BondType[] = [...FIRST_BONDS, ...ALL_BOND_TYPES.filter((b) => !FIRST_BONDS.includes(b))];
+
+// The left panel of the Studio, in the order a molecule is drawn: the atoms, the bonds (and the eraser), the rings, the groups. What is
+// used less (the hydrogens, the lone pairs, texts and arrows, the shapes, the examples) is in sections that are closed at first.
+// The help of the tool in hand is written on the paper itself; each button says what it is in its tooltip.
+export default function StudioToolbar({ studio, onOpenTable, examples }: Props) {
   const { t, lang } = useUi();
   const { activeTool, setActiveTool, activeElement, pickElement, activeBondType, pickBond, activeRing, pickRing, activeTemplate, pickTemplate } = studio;
-  const current = PERIODIC_TABLE[activeElement];
-  const modes: { id: HydrogenMode; name: string; hint: string }[] = [
-    { id: "manual", name: t("Manual"), hint: t("Manual: nothing is added, you draw every bond yourself") },
-    { id: "auto", name: t("Auto"), hint: t("Auto: the missing hydrogens are added for you") },
-    { id: "labels", name: t("Labels"), hint: t("Labels: the missing hydrogens are written next to the atom (CH3, OH)") },
-  ];
-  const mode = modes.find((m) => m.id === studio.hydrogenMode) ?? modes[0];
   const bondNames = useBondNames();
-  const groupNames = useBondGroupNames();
-  const pairModes: { id: LonePairMode; name: string; hint: string }[] = [
-    { id: "off", name: t("Off"), hint: t("Off: the lone pairs are not written") },
-    { id: "dots", name: t("Dots"), hint: t("Dots: each lone pair is two dots") },
-    { id: "lines", name: t("Bars"), hint: t("Bars: each lone pair is a short bar") },
+  const hydrogenModes: { value: HydrogenMode; label: string; title: string }[] = [
+    { value: "manual", label: t("Manual"), title: t("Manual: nothing is added, you draw every bond yourself") },
+    { value: "auto", label: t("Auto"), title: t("Auto: the missing hydrogens are added for you") },
+    { value: "labels", label: t("Labels"), title: t("Labels: the missing hydrogens are written next to the atom (CH3, OH)") },
   ];
+  const pairModes: { value: LonePairMode; label: string; title: string }[] = [
+    { value: "off", label: t("Off"), title: t("Off: the lone pairs are not written") },
+    { value: "dots", label: t("Dots"), title: t("Dots: each lone pair is two dots") },
+    { value: "lines", label: t("Bars"), title: t("Bars: each lone pair is a short bar") },
+  ];
+  const pairTools = activeTool === "pair" || activeTool === "electron";
+  const noteTools = activeTool === "text" || activeTool === "arrow" || activeTool === "shape";
+
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto p-4">
-      <section className="flex flex-col gap-2" aria-label={t("Hydrogens")} data-testid="hydrogen-modes">
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-faint">{t("Hydrogens")}</h3>
-        <div className="grid grid-cols-3 gap-2">
-          {modes.map((m) => {
-            const on = m.id === studio.hydrogenMode;
-            return (
-              <button
-                key={m.id}
-                onClick={() => studio.setHydrogenMode(m.id)}
-                aria-pressed={on}
-                title={m.hint}
-                data-hydrogen-mode={m.id}
-                className={`rounded-xl border px-2 py-2 text-xs font-medium transition-colors ${on ? "border-accent bg-accent-soft text-accent-strong ring-1 ring-accent" : "border-line bg-white text-ink hover:border-accent hover:bg-accent-soft"}`}
-              >
-                {m.name}
-              </button>
-            );
-          })}
-        </div>
-        <p className="text-xs text-muted" data-testid="hydrogen-hint">
-          {mode.hint}
-        </p>
-        {studio.hydrogenMode !== "auto" && (
-          <button onClick={studio.addMissingHydrogens} disabled={studio.graph.atoms.length === 0} data-testid="add-hydrogens" className="rounded-xl border border-line bg-white px-3 py-2 text-sm font-medium text-ink transition-colors hover:border-accent hover:bg-accent-soft disabled:opacity-40">
-            {t("Add the missing hydrogens")}
-          </button>
-        )}
-      </section>
-
-      <section className="flex flex-col gap-2" aria-label={t("Tools")}>
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-faint">{t("Tools")}</h3>
-        <div className="grid grid-cols-2 gap-2">
-          <ToolButton tool="select" active={activeTool} onPick={setActiveTool} icon={<MousePointer2 size={16} />} label={t("Select")} hint={t("Select and move atoms")} />
-          <ToolButton tool="erase" active={activeTool} onPick={setActiveTool} icon={<Eraser size={16} />} label={t("Eraser")} hint={t("Click an atom to delete it and its bonds")} />
-        </div>
-      </section>
-
-      <section className="flex flex-col gap-2" aria-label={t("Bonds")}>
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-faint">{t("Bonds")}</h3>
-        {BOND_GROUPS.map((group) => (
-          <div key={group.id} className="flex flex-col gap-1.5" data-bond-group={group.id}>
-            <p className="text-[11px] font-medium text-muted">{groupNames[group.id]}</p>
-            <div className="grid grid-cols-3 gap-1.5">
-              {group.types.map((type) => {
-                const on = activeTool === "bond" && activeBondType === type; // the bond type is only "in hand" with the bond tool
-                return (
-                  <button
-                    key={type}
-                    onClick={() => pickBond(type)}
-                    aria-pressed={on}
-                    title={`${bondNames.full[type]} — ${t("Drag from an atom to draw a bond")}`}
-                    data-bond-type={type}
-                    className={`flex flex-col items-center gap-0.5 rounded-xl border px-1 py-1.5 text-[11px] font-medium leading-tight transition-colors ${on ? "border-accent bg-accent-soft text-accent-strong ring-1 ring-accent" : "border-line bg-white text-ink hover:border-accent hover:bg-accent-soft"}`}
-                  >
-                    <BondGlyph type={type} />
-                    {bondNames.short[type]}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        ))}
-      </section>
-
-      <section className="flex flex-col gap-2" aria-label={t("Lone pairs")} data-testid="lone-pair-modes">
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-faint">{t("Lone pairs")}</h3>
-        <div className="grid grid-cols-3 gap-2">
-          {pairModes.map((m) => {
-            const on = m.id === studio.lonePairMode;
-            return (
-              <button
-                key={m.id}
-                onClick={() => {
-                  studio.setLonePairMode(m.id);
-                  // Dots or Bars: the next clicks put pairs; None: back to Select
-                  if (m.id !== "off") setActiveTool("pair");
-                  else if (activeTool === "pair") setActiveTool("select");
-                }}
-                aria-pressed={on}
-                title={m.hint}
-                data-pair-mode={m.id}
-                className={`rounded-xl border px-2 py-2 text-xs font-medium transition-colors ${on ? "border-accent bg-accent-soft text-accent-strong ring-1 ring-accent" : "border-line bg-white text-ink hover:border-accent hover:bg-accent-soft"}`}
-              >
-                {m.name}
-              </button>
-            );
-          })}
-        </div>
-        <p className="text-xs text-muted" data-testid="pair-hint">
-          {pairModes.find((m) => m.id === studio.lonePairMode)?.hint}
-        </p>
-        <ToolButton
-          tool="pair"
-          active={activeTool}
-          onPick={(tool) => {
-            setActiveTool(tool);
-            if (studio.lonePairMode === "off") studio.setLonePairMode("dots"); // (the pairs are written, or the tool would seem to do nothing)
-          }}
-          icon={<CircleDot size={16} />}
-          label={t("Lone pair")}
-          hint={t(TOOL_HINTS.pair)}
-        />
-        <p className="text-xs text-muted" data-testid="pair-tool-hint">
-          {activeTool === "pair" ? t(TOOL_HINTS.pair) : t("In Select mode, drag a pair to move it round its atom")}
-        </p>
-        <ToolButton tool="electron" active={activeTool} onPick={setActiveTool} icon={<Dot size={16} />} label={t("Single electron")} hint={t(TOOL_HINTS.electron)} />
-        {activeTool === "electron" && (
-          <p className="text-xs text-muted" data-testid="electron-tool-hint">
-            {t(TOOL_HINTS.electron)}
-          </p>
-        )}
-        <button onClick={studio.writeAllPairs} disabled={studio.graph.atoms.length === 0} title={t("Every atom gets the pairs its valence leaves, placed automatically")} data-testid="pairs-write-all" className="rounded-xl border border-line bg-white px-3 py-2 text-sm font-medium text-ink transition-colors hover:border-accent hover:bg-accent-soft disabled:opacity-40">
-          {t("Write them all automatically")}
-        </button>
-      </section>
-
-      <section className="flex flex-col gap-2" aria-label={t("Atoms")}>
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-faint">{t("Atoms")}</h3>
-        <div className="grid grid-cols-4 gap-2" dir="ltr" role="group" aria-label={t("Common elements")}>
+    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto" data-testid="molecule-tools">
+      <Disclosure title={t("Atoms")} testId="molecule-atoms">
+        <div className="grid grid-cols-4 gap-1.5" dir="ltr" role="group" aria-label={t("Common elements")}>
           {COMMON_ELEMENTS.map((symbol) => {
             const e = PERIODIC_TABLE[symbol];
             const on = activeTool === "atom" && symbol === activeElement; // the brush is only "in hand" with the atom tool
@@ -165,51 +66,60 @@ export default function StudioToolbar({ studio, onOpenTable }: Props) {
                 key={symbol}
                 onClick={() => pickElement(symbol)}
                 aria-pressed={on}
-                title={elementName(e, lang)}
+                title={`${elementName(e, lang)} — ${t(TOOL_HINTS.atom)}`}
                 aria-label={`${symbol} — ${elementName(e, lang)}`}
                 data-symbol={symbol}
-                className={`flex aspect-square flex-col items-center justify-center rounded-xl border leading-none transition-colors ${on ? "border-accent bg-accent-soft ring-1 ring-accent" : "border-line bg-white hover:border-accent hover:bg-accent-soft"}`}
+                className={`${tileBase} h-9 text-[15px]! font-bold! ${on ? held : idle}`}
+                style={{ color: on ? undefined : textColor(e.color) }}
               >
-                <span className="text-xl font-bold" style={{ color: textColor(e.color) }}>
-                  {symbol}
-                </span>
-                <span className="mt-1 text-[10px] tabular-nums text-faint">{e.atomicNumber}</span>
+                {symbol}
               </button>
             );
           })}
         </div>
-        <button onClick={onOpenTable} className="flex items-center justify-center gap-2 rounded-xl border border-line bg-white px-3 py-2.5 text-sm font-medium text-ink transition-colors hover:border-accent hover:bg-accent-soft">
-          <Table2 size={16} />
+        {/* an element of the whole table that is in hand shows here, as it is not among the tiles */}
+        <button onClick={onOpenTable} data-testid="all-elements" className={softButton}>
+          <Table2 size={15} aria-hidden />
           {t("All elements")}
+          {activeTool === "atom" && !COMMON_ELEMENTS.includes(activeElement) && (
+            <span className="rounded-full bg-white px-2 text-xs font-bold text-accent-strong shadow-[0_0_0_1px_rgba(0,0,0,0.07)]" data-testid="active-element">
+              {activeElement}
+            </span>
+          )}
         </button>
-      </section>
+      </Disclosure>
 
-      <section className="flex flex-col gap-2" aria-label={t("Rings")}>
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-faint">{t("Rings")}</h3>
-        <div className="grid grid-cols-3 gap-2">
+      <Disclosure title={t("Bonds")} testId="molecule-bonds">
+        <div className="grid grid-cols-4 gap-1.5" dir="ltr">
+          {BONDS.map((type) => {
+            const on = activeTool === "bond" && activeBondType === type; // the bond type is only "in hand" with the bond tool
+            return (
+              <button key={type} onClick={() => pickBond(type)} aria-pressed={on} title={`${bondNames.full[type]} — ${t("Drag from an atom to draw a bond")}`} aria-label={bondNames.full[type]} data-bond-type={type} className={`${tileBase} h-9 ${on ? held : idle}`}>
+                <BondGlyph type={type} />
+              </button>
+            );
+          })}
+          {/* (the eraser of the chemistry: it deletes atoms and bonds; the one of the floating bar rubs out the drawings) */}
+          <ToolTile tool="erase" active={activeTool} onPick={setActiveTool} label={t("Eraser")} hint={t("Click an atom to delete it and its bonds")} icon={<Eraser size={16} />} iconOnly />
+        </div>
+      </Disclosure>
+
+      <Disclosure title={t("Rings")} testId="molecule-rings">
+        <div className="grid grid-cols-3 gap-1.5">
           {RING_BUTTONS.map(({ id, ring }) => {
             const on = activeTool === "ring" && activeRing.sides === ring.sides && activeRing.isAromatic === ring.isAromatic;
             const name = id === "benzene" ? t("Benzene") : id === "cyclohexane" ? t("Cyclohexane") : t("Cyclopentane");
             return (
-              <button
-                key={id}
-                onClick={() => pickRing(ring)}
-                aria-pressed={on}
-                title={`${name} — ${t("Click the paper to place the ring")}`}
-                data-ring={id}
-                className={`flex flex-col items-center gap-1 rounded-xl border px-1 py-2 text-[11px] font-medium leading-tight transition-colors ${on ? "border-accent bg-accent-soft text-accent-strong ring-1 ring-accent" : "border-line bg-white text-ink hover:border-accent hover:bg-accent-soft"}`}
-              >
+              <button key={id} onClick={() => pickRing(ring)} aria-pressed={on} title={`${name} — ${t("Click the paper to place the ring")}`} aria-label={name} data-ring={id} className={`${tileBase} h-10 ${on ? held : idle}`}>
                 <RingGlyph ring={ring} />
-                {name}
               </button>
             );
           })}
         </div>
-      </section>
+      </Disclosure>
 
-      <section className="flex flex-col gap-2" aria-label={t("Functional groups")}>
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-faint">{t("Functional groups")}</h3>
-        <div className="grid grid-cols-3 gap-2" dir="ltr">
+      <Disclosure title={t("Functional groups")} testId="molecule-groups">
+        <div className="grid grid-cols-3 gap-1.5" dir="ltr">
           {FRAGMENT_IDS.map((id) => {
             const on = activeTool === "template" && activeTemplate === id;
             return (
@@ -220,7 +130,7 @@ export default function StudioToolbar({ studio, onOpenTable }: Props) {
                 title={`${GROUP_NAME[id](t)} — ${t(TOOL_HINTS.template)}`}
                 aria-label={`${FRAGMENTS[id].label} — ${GROUP_NAME[id](t)}`}
                 data-template={id}
-                className={`grid h-10 place-items-center rounded-xl border text-sm font-bold transition-colors ${on ? "border-accent bg-accent-soft text-accent-strong ring-1 ring-accent" : "border-line bg-white text-ink hover:border-accent hover:bg-accent-soft"}`}
+                className={`${tileBase} h-9 text-[13px]! font-semibold! ${on ? held : idle}`}
               >
                 <span>
                   <span className="font-normal text-faint">–</span>
@@ -230,41 +140,72 @@ export default function StudioToolbar({ studio, onOpenTable }: Props) {
             );
           })}
         </div>
-      </section>
+      </Disclosure>
 
-      <section className="flex flex-col gap-2" aria-label={t("Annotations")}>
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-faint">{t("Annotations")}</h3>
-        <div className="grid grid-cols-2 gap-2">
-          <ToolButton tool="text" active={activeTool} onPick={setActiveTool} icon={<Type size={16} />} label={t("Text")} hint={t(TOOL_HINTS.text)} />
-          <ToolButton tool="arrow" active={activeTool} onPick={setActiveTool} icon={<ArrowRight size={16} />} label={t("Arrow")} hint={t(TOOL_HINTS.arrow)} />
+      <Disclosure title={t("Hydrogens")} testId="hydrogen-modes" defaultOpen={false}>
+        <Segmented label={t("Hydrogens")} value={studio.hydrogenMode} options={hydrogenModes} onChange={studio.setHydrogenMode} attr="data-hydrogen-mode" />
+        {studio.hydrogenMode !== "auto" && (
+          <button onClick={studio.addMissingHydrogens} disabled={studio.graph.atoms.length === 0} data-testid="add-hydrogens" className={softButton}>
+            {t("Add the missing hydrogens")}
+          </button>
+        )}
+      </Disclosure>
+
+      <Disclosure title={t("Lone pairs")} testId="lone-pair-modes" defaultOpen={false} reveal={pairTools ? activeTool : null}>
+        <Segmented
+          label={t("Lone pairs")}
+          value={studio.lonePairMode}
+          options={pairModes}
+          onChange={(mode) => {
+            studio.setLonePairMode(mode);
+            // Dots or Bars: the next clicks put pairs; Off: back to Select
+            if (mode !== "off") setActiveTool("pair");
+            else if (activeTool === "pair") setActiveTool("select");
+          }}
+          attr="data-pair-mode"
+        />
+        <div className="grid grid-cols-2 gap-1.5">
+          <ToolTile
+            tool="pair"
+            active={activeTool}
+            onPick={(tool) => {
+              setActiveTool(tool);
+              if (studio.lonePairMode === "off") studio.setLonePairMode("dots"); // (the pairs are written, or the tool would seem to do nothing)
+            }}
+            icon={<CircleDot size={16} />}
+            label={t("Lone pair")}
+            hint={`${t(TOOL_HINTS.pair)} · ${t("In Select mode, drag a pair to move it round its atom")}`}
+          />
+          <ToolTile tool="electron" active={activeTool} onPick={setActiveTool} icon={<Dot size={16} />} label={t("Single electron")} hint={t(TOOL_HINTS.electron)} />
         </div>
-      </section>
+        <button onClick={studio.writeAllPairs} disabled={studio.graph.atoms.length === 0} title={t("Every atom gets the pairs its valence leaves, placed automatically")} data-testid="pairs-write-all" className={softButton}>
+          {t("Write them all automatically")}
+        </button>
+      </Disclosure>
 
-      <section className="flex flex-col gap-2" aria-label={t("Shapes")} data-testid="molecule-shapes">
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-faint">{t("Shapes")}</h3>
-        <ShapesMenuButton active={activeTool === "shape"} current={activeTool === "shape" ? studio.shapeKind : null} onPick={studio.pickShape} />
-      </section>
-
-      <section className="flex flex-col gap-2" aria-label={t("Element to draw with")}>
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-faint">{t("Element to draw with")}</h3>
-        <div className="flex items-center gap-3 rounded-xl border border-line bg-subtle p-3" data-testid="active-element">
-          <span className="grid size-14 shrink-0 place-items-center rounded-lg border border-line bg-white text-3xl font-bold" style={{ color: textColor(current.color) }}>
-            {current.symbol}
-          </span>
-          <div className="min-w-0 text-xs text-muted">
-            <p className="truncate text-sm font-semibold text-ink">{elementName(current, lang)}</p>
-            <p className="tabular-nums">
-              {t("Atomic number")}: {current.atomicNumber}
-            </p>
-            <p className="tabular-nums">
-              {t("Atomic mass")}: {current.atomicMass}
-            </p>
-            <p className="tabular-nums">
-              {t("Valence")}: {current.valence || "—"}
-            </p>
-          </div>
+      <Disclosure title={t("Annotations")} testId="molecule-shapes" defaultOpen={false} reveal={noteTools ? activeTool : null}>
+        <div className="grid grid-cols-2 gap-1.5">
+          <ToolTile tool="text" active={activeTool} onPick={setActiveTool} icon={<Type size={16} />} label={t("Text")} hint={t(TOOL_HINTS.text)} />
+          <ToolTile tool="arrow" active={activeTool} onPick={setActiveTool} icon={<ArrowRight size={16} />} label={t("Arrow")} hint={t(TOOL_HINTS.arrow)} />
         </div>
-      </section>
+        <ShapesMenuButton variant="row" active={activeTool === "shape"} current={activeTool === "shape" ? studio.shapeKind : null} onPick={studio.pickShape} />
+      </Disclosure>
+
+      {examples && (
+        <Disclosure title={t("Examples")} testId="start-from" defaultOpen={false}>
+          <Group label={t("Start from")}>
+            {examples.items.map((x) => {
+              const on = x.id === examples.current;
+              return (
+                <button key={x.id} onClick={() => examples.onPick(x.id)} disabled={examples.disabled && !on} aria-pressed={on} data-start={x.id} className={listRow(on)}>
+                  <span className="min-w-0 flex-1 truncate text-[13px] font-medium tracking-[-0.01em]">{x.name}</span>
+                  {on && <Check size={15} strokeWidth={2.4} aria-hidden className="shrink-0" />}
+                </button>
+              );
+            })}
+          </Group>
+        </Disclosure>
+      )}
     </div>
   );
 }
@@ -301,20 +242,13 @@ function RingGlyph({ ring }: { ring: RingSpec }) {
   );
 }
 
-
-
-function ToolButton({ tool, active, onPick, icon, label, hint }: { tool: StudioTool; active: StudioTool; onPick: (t: StudioTool) => void; icon: ReactNode; label: string; hint: string }) {
+// A tool as a tile: its icon and its name (or the icon alone, the name in its tooltip).
+function ToolTile({ tool, active, onPick, icon, label, hint, iconOnly = false }: { tool: StudioTool; active: StudioTool; onPick: (t: StudioTool) => void; icon: ReactNode; label: string; hint: string; iconOnly?: boolean }) {
   const on = tool === active;
   return (
-    <button
-      onClick={() => onPick(tool)}
-      aria-pressed={on}
-      title={hint}
-      data-tool={tool}
-      className={`flex items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-sm font-medium transition-colors ${on ? "border-accent bg-accent-soft text-accent-strong ring-1 ring-accent" : "border-line bg-white text-ink hover:border-accent hover:bg-accent-soft"}`}
-    >
+    <button onClick={() => onPick(tool)} aria-pressed={on} title={hint} aria-label={iconOnly ? label : undefined} data-tool={tool} className={`${tileBase} ${iconOnly ? "h-9" : "h-11"} ${on ? held : idle}`}>
       {icon}
-      {label}
+      {!iconOnly && label}
     </button>
   );
 }

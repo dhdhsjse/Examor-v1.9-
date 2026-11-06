@@ -1,7 +1,7 @@
 // name / formula / SMILES / molfile  ->  a ranked list of candidate molecules.
 import type { ChemEngine } from "../engine/ChemEngine";
 import { DATABASE, type DbEntry, type Lang, findByFormula, findByName, suggest } from "./database";
-import { detectKind } from "./normalize";
+import { detectKind, formulaReadings } from "./normalize";
 import { loadIsomers } from "../isomers/load";
 
 // How many structures of the isomer table the search list shows (the whole table is in the isomer gallery).
@@ -65,14 +65,21 @@ export async function resolve(input: string, ctx: ResolveContext): Promise<Resol
   }
 
   for (const e of findByName(text)) add(out, fromEntry(e, 100));
-  if (kind === "formula") {
-    for (const e of findByFormula(text)) add(out, fromEntry(e, 90));
+  const named = out.length > 0;
+  // A formula as typed, or the formulas that text without capitals can be ("h2o", "co2", "c2h6o"): most likely reading first.
+  const formulas = kind === "formula" ? [text] : formulaReadings(text);
+  let tabled = false;
+  for (const [n, f] of formulas.entries()) {
+    for (const e of findByFormula(f)) add(out, fromEntry(e, 90 - n));
     // The isomer table (school-level structures, simplest first) completes the list: a formula is ambiguous.
-    const table = await loadIsomers(text);
-    table?.entries
+    if (tabled) continue;
+    const table = await loadIsomers(f);
+    if (!table) continue;
+    tabled = true;
+    table.entries
       .filter((e) => e.school)
       .slice(0, MAX_FROM_TABLE)
-      .forEach((e, i) => add(out, { id: `isomer:${e.smiles}`, smiles: e.smiles, formula: table.formula, names: { ar: e.name?.ar, fr: e.name?.fr, en: e.name?.en }, source: "isomer-table", rank: 85 - i / 100 }));
+      .forEach((e, i) => add(out, { id: `isomer:${e.smiles}`, smiles: e.smiles, formula: table.formula, names: { ar: e.name?.ar, fr: e.name?.fr, en: e.name?.en }, source: "isomer-table", rank: 85 - n - i / 100 }));
   }
 
   // SMILES: only when it is not simply a name we already found.
@@ -89,9 +96,11 @@ export async function resolve(input: string, ctx: ResolveContext): Promise<Resol
     }
   }
 
-  if (!out.length) for (const e of suggest(text, 6)) add(out, fromEntry(e, 50));
+  // (a name being typed that also reads as a formula, such as "co" or "but", keeps its suggestions)
+  if (!out.length || (!named && kind !== "formula")) for (const e of suggest(text, 6)) add(out, fromEntry(e, 50));
 
   out.sort((a, b) => b.rank - a.rank);
-  if (!out.length) return { candidates: [], error: kind === "formula" ? "noFormulaMatch" : "noMatch" };
+  const formulaLike = kind === "formula" || (formulas.length > 0 && /\d/.test(text));
+  if (!out.length) return { candidates: [], error: formulaLike ? "noFormulaMatch" : "noMatch" };
   return { candidates: out };
 }

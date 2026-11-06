@@ -50,6 +50,34 @@ export function canonicalFormula(input: string): string | null {
   return counts ? hillFormula(counts) : null;
 }
 
+// The formulas that text typed without capitals can be ("h2o" -> H2O, "co2" -> CO2 and Co2, "nacl" -> NaCl), canonical, one-letter
+// symbols first (so the common reading comes first). Empty when the text has no reading, or already is a formula as typed.
+export function formulaReadings(input: string, max = 6): string[] {
+  const s = normalizeSubscripts(input.trim()).replace(/\s+/g, "");
+  if (s.length > 24 || !/^[a-z][a-z\d]*$/i.test(s) || parseFormula(s)) return [];
+  const out: string[] = [];
+  const walk = (i: number, counts: Record<string, number>) => {
+    if (out.length >= max) return;
+    if (i === s.length) {
+      const f = hillFormula(counts);
+      if (!out.includes(f)) out.push(f);
+      return;
+    }
+    for (const len of [1, 2]) {
+      const part = s.slice(i, i + len);
+      if (part.length < len || /\d/.test(part)) continue;
+      const symbol = part[0].toUpperCase() + part.slice(1).toLowerCase();
+      if (!ELEMENTS.has(symbol)) continue;
+      const digits = /^\d*/.exec(s.slice(i + len))![0];
+      const n = digits ? parseInt(digits, 10) : 1;
+      if (n === 0) continue;
+      walk(i + len + digits.length, { ...counts, [symbol]: (counts[symbol] ?? 0) + n });
+    }
+  };
+  walk(0, {});
+  return out;
+}
+
 export type InputKind = "molfile" | "formula" | "smiles-or-name";
 
 export function detectKind(input: string): InputKind {

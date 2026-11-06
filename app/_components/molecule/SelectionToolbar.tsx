@@ -5,7 +5,7 @@ import { Eye, EyeOff, SquareDashed, Trash2, Type } from "lucide-react";
 import { useT } from "@/app/_lib/uiLang";
 import { isEmpty, type Selection } from "@/app/_molecule/edit/select";
 import type { Visibility } from "@/app/_molecule/model";
-import { ActionButton } from "./ui";
+import { ActionButton, floatingBar } from "./ui";
 
 interface Props {
   container: RefObject<HTMLDivElement | null>; // the drawing area (it is `relative`)
@@ -66,17 +66,17 @@ export default function SelectionToolbar({ container, selection, version, onVisi
       role="toolbar"
       aria-label={t("What to do with the selection")}
       data-testid="selection-toolbar"
-      className="absolute z-20 flex -translate-x-1/2 items-center gap-1 rounded-xl border border-line bg-white p-1 shadow-lg"
+      className={`absolute z-20 -translate-x-1/2 ${floatingBar} shadow-lg!`}
       style={{ left: spot.x, top: spot.y }}
     >
-      <ActionButton icon={<EyeOff size={14} />} label={t("Hide")} hint={t("Hide in the student version")} shortcut="H" onClick={() => onVisibility("hidden")} />
+      <ActionButton icon={<EyeOff size={14} />} label={t("Hide")} hint={t("Hide for the student")} shortcut="H" onClick={() => onVisibility("hidden")} />
       <ActionButton icon={<SquareDashed size={14} />} label={t("Blank")} hint={t("Leave an empty box for the student to fill")} shortcut="B" onClick={() => onVisibility("blank")} disabled={selection.atoms.length + selection.bonds.length === 0} />
       <ActionButton icon={<Eye size={14} />} label={t("Show")} hint={t("Show it again")} shortcut="S" onClick={() => onVisibility("shown")} />
       {canLabel && <ActionButton icon={<Type size={14} />} label={t("Text")} hint={t("Write a text instead of the atom")} onClick={onLabel} iconOnly />}
       {canRemove && (
         <>
           <div className="mx-0.5 h-5 w-px bg-line" />
-          <ActionButton icon={<Trash2 size={14} />} label={t("Remove")} hint={t("Remove from the molecule (both versions)")} shortcut="Del" onClick={onRemove} tone="danger" iconOnly />
+          <ActionButton icon={<Trash2 size={14} />} label={t("Remove")} hint={t("Remove from the molecule")} shortcut="Del" onClick={onRemove} tone="danger" iconOnly />
         </>
       )}
     </div>

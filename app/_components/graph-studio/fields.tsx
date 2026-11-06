@@ -8,8 +8,41 @@ import { useT } from "@/app/_lib/uiLang";
 
 // The controls of the Graph Studio's panels. Settings sit in rounded grey groups, one row each: its name on the left, its control on the right (a
 // white field with a hairline, a switch, a small menu). A text that is long to type is the one exception: its name is over it.
-const control =
+export const control =
   "rounded-lg bg-white px-2.5 text-[13px] text-ink shadow-[0_0_0_1px_rgba(0,0,0,0.07)] outline-none transition-shadow duration-150 placeholder:text-faint focus:shadow-[0_0_0_2px_var(--color-accent,#4f46e5)]";
+// A tool or a choice as a tile (its height is the caller's): grey, and white with a coloured outline when it is the one in hand; a press shrinks it a little.
+export const tileBase =
+  "flex flex-col items-center justify-center gap-0.5 rounded-xl text-[11px] font-medium leading-tight tracking-[-0.005em] transition-[transform,background-color,box-shadow] duration-100 ease-out outline-none focus-visible:ring-2 focus-visible:ring-accent active:scale-[0.96] disabled:opacity-40";
+export const idle = "bg-subtle text-ink hover:bg-hover";
+export const held = "bg-white text-accent-strong shadow-[0_0_0_2px_var(--color-accent,#4f46e5),0_4px_14px_rgba(79,70,229,0.15)]";
+// A row of a list to pick from (a sheet, an example): its name, and what it is under it.
+export const listRow = (on: boolean) => `flex w-full items-center gap-2 px-3.5 py-2.5 text-start transition-colors outline-none focus-visible:bg-white disabled:opacity-50 ${on ? "bg-white text-accent-strong" : "text-ink enabled:hover:bg-hover"}`;
+// A grey button that does something once (fit the paper, write the pairs)
+export const softButton =
+  "flex h-9 w-full items-center justify-center gap-2 rounded-xl bg-subtle text-[13px] font-medium tracking-[-0.01em] text-ink transition-[transform,background-color] duration-100 ease-out outline-none enabled:hover:bg-hover focus-visible:ring-2 focus-visible:ring-accent enabled:active:scale-[0.98] disabled:opacity-40";
+
+/** A choice between two or three things, side by side: the one chosen is white (the Teacher / Student switch of the Studios). `attr` names
+ * the data attribute that carries each value (`data-view`, `data-hydrogen-mode`). */
+export function Segmented<V extends string>({ value, options, onChange, label, testId, attr }: { value: V; options: { value: V; label: ReactNode; title?: string }[]; onChange: (v: V) => void; label: string; testId?: string; attr: `data-${string}` }) {
+  return (
+    <div role="group" aria-label={label} data-testid={testId} className="flex gap-0.5 rounded-[10px] bg-subtle p-[3px]">
+      {options.map((o) => (
+        <button
+          key={o.value}
+          type="button"
+          onClick={() => onChange(o.value)}
+          aria-pressed={value === o.value}
+          title={o.title}
+          {...{ [attr]: o.value }}
+          className={`flex h-7 min-w-0 flex-1 items-center justify-center rounded-[8px] px-2.5 text-xs tracking-[-0.005em] whitespace-nowrap transition-[background-color,color,box-shadow,transform] duration-200 ease-out outline-none focus-visible:ring-2 focus-visible:ring-accent active:scale-[0.97] ${value === o.value ? "bg-white font-semibold text-ink shadow-[0_1px_3px_rgba(0,0,0,0.12)]" : "font-medium text-muted hover:text-ink"}`}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 const bad = "shadow-[0_0_0_2px_#f87171]!";
 // A number as it is written in a field, without the noise a computation leaves (4.800000000000001 → 4.8)
 const written = (n: number) => String(Number(n.toPrecision(10)));
@@ -187,12 +220,13 @@ export function TextField({ label, value, onChange, testId, hint, keyboard }: { 
 }
 
 // A choice between a few things, as a small menu (the labels are already in the app's language).
-export function SelectField({ label, value, options, onChange, testId, title }: { label: string; value: string; options: { value: string; label: string }[]; onChange: (v: string) => void; testId: string; title?: string }) {
+// `stacked`: the menu under its name and as wide as the panel (for a long name).
+export function SelectField({ label, value, options, onChange, testId, title, stacked = false }: { label: string; value: string; options: { value: string; label: string }[]; onChange: (v: string) => void; testId: string; title?: string; stacked?: boolean }) {
   const id = useId();
   return (
-    <Row label={label} htmlFor={id} title={title}>
+    <Row label={label} htmlFor={id} title={title} stacked={stacked}>
       <span className="relative">
-        <select id={id} value={value} title={title} onChange={(e) => onChange(e.target.value)} data-testid={testId} className={`${control} h-8 w-36 max-w-full cursor-pointer appearance-none pe-7`}>
+        <select id={id} value={value} title={title} onChange={(e) => onChange(e.target.value)} data-testid={testId} className={`${control} h-8 ${stacked ? "w-full" : "w-36"} max-w-full cursor-pointer appearance-none pe-7`}>
           {options.map((o) => (
             <option key={o.value} value={o.value}>
               {o.label}
@@ -243,10 +277,10 @@ export function ColorRow({ label, value, onChange, testId }: { label: string; va
 /** A warning: amber, with a "!" in front (what is wrong with the selected thing, a setting that makes the paper impossible to draw) */
 export function Notice({ children, testId }: { children: ReactNode; testId?: string }) {
   return (
-    <p role="status" data-testid={testId} className="flex items-start gap-2 rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-900">
+    <div role="status" data-testid={testId} className="flex items-start gap-2 rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-900">
       <span className="grid size-4 shrink-0 place-items-center rounded-full bg-amber-600 text-[10px] font-bold text-white">!</span>
-      {children}
-    </p>
+      <div className="min-w-0 flex-1">{children}</div>
+    </div>
   );
 }
 

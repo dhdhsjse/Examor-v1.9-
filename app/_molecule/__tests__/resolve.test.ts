@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { canonicalFormula, detectKind, normalizeName, parseFormula } from "../resolve/normalize";
+import { canonicalFormula, detectKind, formulaReadings, normalizeName, parseFormula } from "../resolve/normalize";
 import { DATABASE, findByName, suggest } from "../resolve/database";
 import { resolve } from "../resolve/resolve";
 import { validateDatabase } from "../resolve/validate";
@@ -79,6 +79,16 @@ describe("resolve (acceptance, Phase 1)", () => {
   it("an ambiguous input returns both readings", async () => {
     const r = await resolve("NO", { lang: "en", engine });
     expect(r.candidates.length).toBeGreaterThan(0); // NO is hydroxylamine as SMILES
+  });
+  it("a formula typed without capitals", async () => {
+    expect(formulaReadings("h2o")).toEqual(["H2O"]);
+    expect(formulaReadings("co2")).toEqual(["CO2", "Co2"]);
+    expect(formulaReadings("nacl")).toContain("ClNa");
+    expect(formulaReadings("H2O")).toEqual([]); // already a formula as typed
+    expect(formulaReadings("ethanol")).toEqual([]);
+    expect((await ids("h2o"))[0]).toBe("water");
+    expect(await ids("c2h4o2")).toContain("ethanoic-acid");
+    expect((await ids("ch4"))[0]).toBe((await ids("CH4"))[0]);
   });
   it("molfile", async () => {
     const g = await engine.fromSmiles("CCO");

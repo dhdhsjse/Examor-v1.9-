@@ -509,13 +509,14 @@ export default function StudioCanvas({ studio, student = false, ink, eraser }: P
 
       {editedNote && <AnnotationEditor key={editedNote.id} note={editedNote} view={view} onDone={finishEditing} />}
 
-      <p data-testid="tool-hint" className="pointer-events-none absolute start-3 top-3 rounded-lg bg-white/90 px-2.5 py-1.5 text-xs text-muted shadow-sm">
+      <p data-testid="tool-hint" className="pointer-events-none absolute start-3 top-3 max-w-[min(30rem,calc(100%-1.5rem))] rounded-md border border-line bg-surface/95 px-2 py-1 text-[11px] leading-snug text-muted shadow-sm">
         {student ? t("Student view: this is what the students will see") : t(TOOL_HINTS[activeTool])}
       </p>
 
-      <div className="absolute bottom-4 start-3 flex items-center gap-0.5 rounded-xl border border-line bg-white/95 p-1 shadow-sm">
+      {/* (styled like the floating tool bar of the page, at its height; how the wheel scrolls and zooms is in its tooltip) */}
+      <div title={t("Wheel: scroll · Shift: sideways · Ctrl: zoom")} data-testid="zoom-bar" className="absolute bottom-4 start-3 flex items-center gap-0.5 rounded-md border border-line bg-surface p-1 shadow-sm">
         <ZoomButton label={t("Zoom out")} onClick={() => zoomBy(1 / BUTTON_FACTOR)} icon={<Minus size={15} />} />
-        <button onClick={() => zoomBy(1 / view.scale)} title={t("Zoom to {percent}%", { percent: 100 })} className="min-w-12 rounded-lg px-1.5 py-1 text-center text-xs font-medium tabular-nums text-ink hover:bg-subtle">
+        <button onClick={() => zoomBy(1 / view.scale)} title={t("Zoom to {percent}%", { percent: 100 })} className="h-8 min-w-12 rounded-[5px] px-1.5 text-center text-xs font-medium tabular-nums text-ink transition-colors outline-none hover:bg-hover focus-visible:ring-2 focus-visible:ring-accent">
           {percent}%
         </button>
         <ZoomButton label={t("Zoom in")} onClick={() => zoomBy(BUTTON_FACTOR)} icon={<Plus size={15} />} />
@@ -524,7 +525,6 @@ export default function StudioCanvas({ studio, student = false, ink, eraser }: P
       </div>
       {thumbX && <Scrollbar axis="x" thumb={thumbX} onHold={holdRange} onScroll={(s) => scrollTo("x", s)} onFree={freeRange} label={t("Scroll sideways")} />}
       {thumbY && <Scrollbar axis="y" thumb={thumbY} onHold={holdRange} onScroll={(s) => scrollTo("y", s)} onFree={freeRange} label={t("Scroll up and down")} />}
-      <p className="pointer-events-none absolute bottom-4 end-4 rounded-lg bg-white/90 px-2.5 py-1.5 text-[11px] text-faint">{t("Wheel: scroll · Shift: sideways · Ctrl: zoom")}</p>
     </div>
   );
 }
@@ -567,7 +567,7 @@ function Scrollbar({ axis, thumb: t, onHold, onScroll, onFree, label }: { axis: 
 
 function ZoomButton({ label, onClick, icon }: { label: string; onClick: () => void; icon: ReactNode }) {
   return (
-    <button onClick={onClick} title={label} aria-label={label} className="grid size-7 place-items-center rounded-lg text-muted hover:bg-subtle hover:text-ink">
+    <button onClick={onClick} title={label} aria-label={label} className="grid size-8 place-items-center rounded-[5px] text-ink transition-colors outline-none hover:bg-hover focus-visible:ring-2 focus-visible:ring-accent">
       {icon}
     </button>
   );

@@ -1,8 +1,10 @@
 "use client";
 
+import { ChevronsUpDown } from "lucide-react";
+import { control } from "@/app/_components/graph-studio/fields";
 import { useT } from "@/app/_lib/uiLang";
 import type { Representation } from "@/app/_molecule/model";
-import { REP_CAPTION, REP_LABEL, REP_SHORT } from "@/app/_molecule/strings";
+import { REP_CAPTION, REP_LABEL } from "@/app/_molecule/strings";
 
 interface Props {
   representations: Representation[];
@@ -11,33 +13,31 @@ interface Props {
   onChange: (r: Representation) => void;
 }
 
-// How the molecule is drawn: one short name per tab (the full name is its tooltip), and one line saying what the
-// current one shows, so that a teacher does not have to know the vocabulary to choose.
+// How the molecule is drawn, as one small menu with the full names (the drawing Studio has the same one). What the current one shows is
+// its tooltip, so that a teacher does not have to know the vocabulary to choose.
 export default function RepresentationBar({ representations, value, disabled, onChange }: Props) {
   const t = useT();
   return (
-    <div className="flex flex-col gap-1.5">
-      <div role="tablist" aria-label={t("Representation")} className="flex gap-1 rounded-xl bg-subtle p-1">
-        {representations.map((r) => (
-          <button
-            key={r}
-            role="tab"
-            aria-selected={value === r}
-            aria-label={t(REP_LABEL[r])}
-            title={t(REP_LABEL[r])}
-            disabled={disabled}
-            onClick={() => onChange(r)}
-            className={`min-w-0 flex-1 truncate rounded-lg px-2 py-1.5 text-xs font-semibold transition-colors disabled:opacity-40 ${value === r ? "bg-white text-accent-strong shadow-sm" : "text-muted hover:bg-white/60 hover:text-ink"}`}
-          >
-            {t(REP_SHORT[r])}
-          </button>
-        ))}
-      </div>
-      {value && (
-        <p className="px-1 text-xs text-muted" data-testid="rep-caption">
-          {t(REP_CAPTION[value])}
-        </p>
-      )}
-    </div>
+    <label className="flex shrink-0 items-center gap-2 text-xs text-muted">
+      <span className="hidden xl:inline">{t("Representation")}</span>
+      <span className="relative">
+        <select
+          value={value ?? ""}
+          disabled={disabled}
+          aria-label={t("Representation")}
+          title={value ? t(REP_CAPTION[value]) : undefined}
+          onChange={(e) => onChange(e.target.value as Representation)}
+          data-testid="representation"
+          className={`${control} h-7 w-44 cursor-pointer appearance-none pe-7 disabled:opacity-40`}
+        >
+          {representations.map((r) => (
+            <option key={r} value={r}>
+              {t(REP_LABEL[r])}
+            </option>
+          ))}
+        </select>
+        <ChevronsUpDown size={13} strokeWidth={2} aria-hidden className="pointer-events-none absolute end-2 top-1/2 -translate-y-1/2 text-muted" />
+      </span>
+    </label>
   );
 }

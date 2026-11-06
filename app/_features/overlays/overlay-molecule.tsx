@@ -22,11 +22,6 @@ export const moleculeOverlay: Feature = {
           runTool({ kind: "block", type: "image", preset: moleculePreset(m) });
           closeMolecule();
         }}
-        // The student version and the answer key, the second under the first (it can be moved to another page).
-        onInsertBoth={(student, answer) => {
-          runTool({ kind: "blocks", items: [student, answer].map((m) => ({ type: "image" as const, preset: moleculePreset(m) })) });
-          closeMolecule();
-        }}
         onUpdate={(m) => {
           if (block) {
             const img = moleculeImage(m);

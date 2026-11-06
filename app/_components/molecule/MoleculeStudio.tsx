@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Lightbulb, Search, X } from "lucide-react";
+import { Redo2, Search, Shapes, Undo2, X } from "lucide-react";
+import { Notice, control } from "@/app/_components/graph-studio/fields";
 import { StudioKeyboard, StudioKeyboardButton } from "@/app/_components/math-keyboard/StudioKeyboard";
 import { useUi } from "@/app/_lib/uiLang";
 import { buildBlock } from "@/app/_molecule/block";
-import { formula as hillFormulaOf } from "@/app/_molecule/chem";
+import { displayFormula, formula as hillFormulaOf } from "@/app/_molecule/chem";
 import { moveAtoms } from "@/app/_molecule/edit/ops";
 import { applyVisibility, changedParts, removeSelected } from "@/app/_molecule/edit/selectionOps";
 import { emptySelection, isEmpty } from "@/app/_molecule/edit/select";
@@ -14,15 +15,14 @@ import { hasIsomerTable } from "@/app/_molecule/isomers/load";
 import type { IsomerEntry } from "@/app/_molecule/isomers/types";
 import type { MoleculeBlockData, RenderOptions, Visibility } from "@/app/_molecule/model";
 import { entryName, type DbEntry } from "@/app/_molecule/resolve/database";
-import { detectKind } from "@/app/_molecule/resolve/normalize";
+import { detectKind, formulaReadings } from "@/app/_molecule/resolve/normalize";
 import { type Candidate, type ResolveResult, fromEntry, resolve } from "@/app/_molecule/resolve/resolve";
 import { availableRepresentations, renderMolecule } from "@/app/_molecule/render";
 import { cramCenters } from "@/app/_molecule/render/cram";
 import { layoutPositions } from "@/app/_molecule/render/structural";
 import CanvasBar from "./CanvasBar";
 import EditCanvas from "./EditCanvas";
-import InsertBar, { type InsertKind } from "./InsertBar";
-import InspectorTabs, { type TabId } from "./InspectorTabs";
+import InsertBar from "./InsertBar";
 import IsomerGallery from "./IsomerGallery";
 import MoleculeBrowser from "./MoleculeBrowser";
 import RepresentationBar from "./RepresentationBar";
@@ -30,17 +30,16 @@ import SelectionToolbar from "./SelectionToolbar";
 import Welcome from "./Welcome";
 import DisplayTab from "./tabs/DisplayTab";
 import EditTab from "./tabs/EditTab";
-import ExamTab from "./tabs/ExamTab";
 import GeometryTab from "./tabs/GeometryTab";
 import { EDITABLE, FIXED_LAYOUT } from "./layoutRules";
 import { useChemEngine } from "./useChemEngine";
 import { useMoleculeEditor } from "./useMoleculeEditor";
-import { hasWindowControls } from "@/app/_lib/desktopWindow";
+import { ActionButton, Formula } from "./ui";
+import { studioHeaderProps } from "@/app/_lib/desktopWindow";
 
 interface Props {
   editing: MoleculeBlockData | null; // the molecule of the block being edited (null = a new one)
   onInsert: (molecule: MoleculeBlockData) => void;
-  onInsertBoth: (student: MoleculeBlockData, answer: MoleculeBlockData) => void;
   onUpdate: (molecule: MoleculeBlockData) => void;
   onInsertText: (text: string) => void;
   onClose: () => void;
@@ -48,7 +47,7 @@ interface Props {
 
 // Reads a candidate into block data. The source records what the teacher typed (name, formula, SMILES, molfile).
 async function loadCandidate(engine: ChemEngine, c: Candidate, typed: string, lang: RenderOptions["lang"]): Promise<MoleculeBlockData> {
-  const kind = c.molfile ? "molfile" : c.source === "direct" ? "smiles" : detectKind(typed) === "formula" ? "formula" : "name";
+  const kind = c.molfile ? "molfile" : c.source === "direct" ? "smiles" : detectKind(typed) === "formula" || formulaReadings(typed).length ? "formula" : "name";
   return buildBlock(engine, c, { kind, input: c.molfile ? "" : typed, lang }, lang);
 }
 
@@ -61,9 +60,9 @@ const readTip = () => {
   }
 };
 
-// The Molecule Studio: find a molecule, choose how it is drawn, prepare the student version, put it on the page.
+// The Molecule Studio: find a molecule, choose how it is drawn, hide or blank parts of it for the exercise, put it on the page.
 // Chemistry lives in app/_molecule (no React there); this file only arranges the screen and the flow.
-export default function MoleculeStudio({ editing, onInsert, onInsertBoth, onUpdate, onInsertText, onClose }: Props) {
+export default function MoleculeStudio({ editing, onInsert, onUpdate, onInsertText, onClose }: Props) {
   const { t, lang, rtl } = useUi();
   const chem = useChemEngine();
   const editor = useMoleculeEditor(editing);
@@ -76,7 +75,7 @@ export default function MoleculeStudio({ editing, onInsert, onInsertBoth, onUpda
   const [zoom, setZoom] = useState(1);
   const [failure, setFailure] = useState<string | null>(null);
   const [galleryOpen, setGalleryOpen] = useState(false);
-  const [tab, setTab] = useState<TabId>("display");
+  const [editReveal, setEditReveal] = useState(0); // brings the Edit section in sight (it opens when this changes)
   const [tipSeen, setTipSeen] = useState(readTip);
   const searchRef = useRef<HTMLInputElement>(null);
   const labelInput = useRef<HTMLInputElement>(null);
@@ -86,13 +85,9 @@ export default function MoleculeStudio({ editing, onInsert, onInsertBoth, onUpda
 
   const ready = chem.status === "ready";
   const editable = !!block && EDITABLE.includes(block.representation);
-  const activeTab: TabId = editable ? tab : "display";
   const changed = block ? changedParts(block) : 0;
 
-  const setVisibility = (v: Visibility) => {
-    editor.apply((b) => applyVisibility(b, selection, v), "visibility");
-    setTab("exam"); // the previews of both versions are there
-  };
+  const setVisibility = (v: Visibility) => editor.apply((b) => applyVisibility(b, selection, v), "visibility");
   const removeSelection = () => {
     editor.apply((b) => removeSelected(b, selection));
     editor.setSelection(emptySelection());
@@ -242,16 +237,13 @@ export default function MoleculeStudio({ editing, onInsert, onInsertBoth, onUpda
       return m;
     }
   };
-  const submit = async (kind: InsertKind) => {
-    if (!block) return;
-    const m = await finalized(block);
-    if (kind === "both") onInsertBoth({ ...m, exerciseMode: "student" }, { ...m, exerciseMode: "answer" });
-    else onInsert({ ...m, exerciseMode: kind === "student" ? "student" : "answer" });
+  // The page gets the drawing as prepared: what was hidden stays hidden, blanks stay blank.
+  const prepared = async (b: MoleculeBlockData): Promise<MoleculeBlockData> => ({ ...(await finalized(b)), exerciseMode: changed > 0 ? "student" : "answer" });
+  const submit = async () => {
+    if (block) onInsert(await prepared(block));
   };
   const update = async () => {
-    if (!block) return;
-    const m = await finalized(block);
-    onUpdate({ ...m, exerciseMode: changed > 0 ? "student" : (editing?.exerciseMode ?? "answer") });
+    if (block) onUpdate(await prepared(block));
   };
 
   const dismissTip = () => {
@@ -263,121 +255,135 @@ export default function MoleculeStudio({ editing, onInsert, onInsertBoth, onUpda
     }
   };
   const showTip = !!block && editable && !tipSeen && isEmpty(selection);
+  const header = studioHeaderProps();
+  const iconButton = "grid size-7 shrink-0 place-items-center rounded text-muted enabled:hover:bg-hover enabled:hover:text-ink disabled:opacity-40";
 
+  // Full screen like the other Studios: the header has the search, how the molecule is drawn, the isomers and Insert; the molecules to
+  // browse are on the left, the drawing in the middle (with its floating bar), and what can be changed on the right, one section each.
   return (
-    <div className={`fixed inset-0 z-50 grid place-items-center bg-slate-900/40 p-3 backdrop-blur-sm ${hasWindowControls() ? "pt-12" : ""}`} onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div dir={rtl ? "rtl" : "ltr"} className="relative flex h-[min(860px,100%)] w-full max-w-[1320px] flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
-        <header className="flex items-center gap-4 border-b border-line px-5 py-3">
-          <h2 className="shrink-0 text-base font-semibold text-ink">{t("Molecule Studio")}</h2>
-          <div className="relative min-w-0 flex-1">
-            <Search size={16} className="pointer-events-none absolute start-3 top-1/2 -translate-y-1/2 text-faint" />
-            <input
-              ref={searchRef}
-              value={query}
-              onChange={(e) => search(e.target.value)}
-              placeholder={t("Name, formula (C2H4O2) or SMILES")}
-              aria-label={t("Search a molecule")}
-              dir="auto"
-              className="w-full rounded-xl border border-line bg-subtle py-2.5 pe-9 ps-9 text-sm text-ink outline-none transition-colors focus:border-accent focus:bg-white"
-              style={{ userSelect: "text" }}
-            />
-            {query && (
-              <button onClick={() => (setQuery(""), setTyped(null), searchRef.current?.focus())} aria-label={t("Clear the search")} title={t("Clear the search")} className="absolute end-2 top-1/2 grid size-6 -translate-y-1/2 place-items-center rounded-md text-faint hover:bg-white hover:text-ink">
-                <X size={14} />
-              </button>
-            )}
-          </div>
-          <StudioKeyboardButton />
-          <button onClick={onClose} className="grid size-8 shrink-0 place-items-center rounded-lg text-muted hover:bg-subtle hover:text-ink" title={t("Close (Esc)")} aria-label={t("Close (Esc)")}>
-            <X size={18} />
-          </button>
-        </header>
+    <div dir={rtl ? "rtl" : "ltr"} data-testid="molecule-studio" className="fixed inset-0 z-50 flex flex-col bg-white">
+      <header {...header} className={`${header.className} gap-2! py-1.5!`}>
+        <h2 className="shrink-0 text-sm font-semibold text-ink">{t("Molecule Studio")}</h2>
+        <div className="mx-1 h-5 w-px bg-line" />
+        <button onClick={editor.undo} disabled={!editor.canUndo} title={`${t("Undo")} (Ctrl+Z)`} aria-label={t("Undo")} data-testid="undo" className={iconButton}>
+          <Undo2 size={15} />
+        </button>
+        <button onClick={editor.redo} disabled={!editor.canRedo} title={`${t("Redo")} (Ctrl+Y)`} aria-label={t("Redo")} data-testid="redo" className={iconButton}>
+          <Redo2 size={15} />
+        </button>
 
-        <div className={`grid min-h-0 flex-1 grid-rows-[minmax(0,1fr)] ${block ? "grid-cols-[236px_minmax(0,1fr)_340px]" : "grid-cols-[236px_minmax(0,1fr)]"}`}>
-          <aside className="min-h-0 overflow-hidden border-line ltr:border-r rtl:border-l">
-            <MoleculeBrowser engine={ready ? chem.engine : null} candidates={result?.candidates ?? []} message={message} picked={picked} onPickCandidate={pickCandidate} onPickEntry={pickEntry} />
-          </aside>
-
-          <main className="flex min-h-0 min-w-0 flex-col bg-subtle/60">
-            {block ? (
-              <>
-                <div className="bg-white px-3 pb-2 pt-3">
-                  <RepresentationBar representations={availableRepresentations()} value={block.representation} disabled={false} onChange={editor.setRepresentation} />
-                </div>
-                <CanvasBar
-                  graph={block.graph}
-                  selection={selection}
-                  setSelection={editor.setSelection}
-                  editable={editable}
-                  canUndo={editor.canUndo}
-                  canRedo={editor.canRedo}
-                  onUndo={editor.undo}
-                  onRedo={editor.redo}
-                  zoom={zoom}
-                  setZoom={setZoom}
-                  onIsomers={() => setGalleryOpen(true)}
-                  isomersAvailable={hasIsomerTable(hillFormulaOf(block.graph))}
-                />
-                <div ref={stage} className="relative min-h-0 flex-1" style={{ backgroundImage: "radial-gradient(#d5d9e2 1px, transparent 1px)", backgroundSize: "16px 16px" }} aria-label={t("Print preview of the drawing")}>
-                  {rendered && (
-                    <EditCanvas
-                      svg={rendered.svg}
-                      selection={selection}
-                      onSelection={editor.setSelection}
-                      zoom={zoom}
-                      editable={editable}
-                      movable={!FIXED_LAYOUT.includes(block.representation)}
-                      unit={block.options.bondLength}
-                      positions={positions}
-                      onMove={(to) => editor.apply((b) => moveAtoms(b, to), "drag")}
-                    />
-                  )}
-                  {editable && (
-                    <SelectionToolbar
-                      container={stage}
-                      selection={selection}
-                      version={`${zoom}|${rendered?.svg.length}|${block.representation}`}
-                      onVisibility={setVisibility}
-                      onLabel={() => {
-                        setTab("exam");
-                        setTimeout(() => labelInput.current?.focus(), 60);
-                      }}
-                      onRemove={removeSelection}
-                    />
-                  )}
-                  {showTip && (
-                    <div role="note" className="absolute inset-x-4 bottom-4 mx-auto flex max-w-lg items-start gap-2.5 rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-2.5 text-xs text-amber-900 shadow-sm">
-                      <Lightbulb size={15} className="mt-px shrink-0" />
-                      <p className="flex-1">{t("Tip: click an atom or a bond, then use the toolbar that appears to hide it for the student.")}</p>
-                      <button onClick={dismissTip} aria-label={t("Got it")} title={t("Got it")} className="shrink-0 rounded p-0.5 hover:bg-amber-100">
-                        <X size={13} />
-                      </button>
-                    </div>
-                  )}
-                </div>
-                {warn && <p className="border-t border-line bg-amber-50 px-4 py-2 text-xs text-amber-900">{warn}</p>}
-              </>
-            ) : (
-              <Welcome engine={ready ? chem.engine : null} onPick={pickEntry} />
-            )}
-          </main>
-
-          {block && (
-            <aside className="flex min-h-0 flex-col border-line bg-white ltr:border-l rtl:border-r">
-              <InspectorTabs tab={activeTab} onChange={setTab} atomLevel={editable}>
-                {activeTab === "display" && <DisplayTab block={block} editor={editor} name={title} />}
-                {activeTab === "exam" && <ExamTab block={block} editor={editor} labelInput={labelInput} />}
-                {activeTab === "geometry" && <GeometryTab block={block} selection={selection} onInsertText={onInsertText} onToggleCenter={toggleCenter} />}
-                {activeTab === "edit" && <EditTab block={block} editor={editor} />}
-              </InspectorTabs>
-            </aside>
+        <div className="relative mx-1 w-full max-w-md min-w-40">
+          <Search size={14} aria-hidden className="pointer-events-none absolute start-2.5 top-1/2 -translate-y-1/2 text-muted" />
+          <input
+            ref={searchRef}
+            value={query}
+            onChange={(e) => search(e.target.value)}
+            placeholder={t("Name, formula (C2H4O2) or SMILES")}
+            aria-label={t("Search a molecule")}
+            dir="auto"
+            data-testid="molecule-search"
+            className={`${control} h-7 w-full ps-8 pe-7 bg-subtle! focus:bg-white!`}
+            style={{ userSelect: "text" }}
+          />
+          {query && (
+            <button onClick={() => (setQuery(""), setTyped(null), searchRef.current?.focus())} aria-label={t("Clear the search")} title={t("Clear the search")} className="absolute end-1 top-1/2 grid size-5 -translate-y-1/2 place-items-center rounded text-muted hover:bg-hover hover:text-ink">
+              <X size={13} />
+            </button>
           )}
         </div>
 
-        <InsertBar ready={!!block} editing={!!editing} changed={changed} onInsert={(k) => void submit(k)} onUpdate={() => void update()} />
+        <div className="ms-auto flex shrink-0 items-center gap-2">
+          {block && (
+            <>
+              <RepresentationBar representations={availableRepresentations()} value={block.representation} disabled={false} onChange={editor.setRepresentation} />
+              <ActionButton icon={<Shapes size={14} />} label={t("Isomers")} hint={t("Browse the isomers of this formula")} onClick={() => setGalleryOpen(true)} disabled={!hasIsomerTable(hillFormulaOf(block.graph))} testId="isomers" />
+            </>
+          )}
+          <InsertBar ready={!!block} editing={!!editing} onInsert={() => void submit()} onUpdate={() => void update()} />
+          <StudioKeyboardButton />
+          <button onClick={onClose} className="grid size-7 shrink-0 place-items-center rounded text-muted hover:bg-hover hover:text-ink" title={t("Close (Esc)")} aria-label={t("Close (Esc)")}>
+            <X size={16} />
+          </button>
+        </div>
+      </header>
 
-        {galleryOpen && block && <IsomerGallery engine={chem.engine} formula={hillFormulaOf(block.graph)} smiles={block.smiles} graph={block.graph} onPick={(e) => void pickIsomer(e)} onClose={() => setGalleryOpen(false)} />}
+      <div className={`grid min-h-0 flex-1 grid-rows-[minmax(0,1fr)] ${block ? "grid-cols-[232px_minmax(0,1fr)_256px]" : "grid-cols-[232px_minmax(0,1fr)]"}`}>
+        <aside className="min-h-0 overflow-hidden border-line bg-white ltr:border-r rtl:border-l">
+          <MoleculeBrowser candidates={result?.candidates ?? []} message={message} picked={picked} onPickCandidate={pickCandidate} onPickEntry={pickEntry} />
+        </aside>
+
+        <main className={`relative flex min-h-0 min-w-0 flex-col ${block ? "bg-subtle" : "bg-white"}`}>
+          {block ? (
+            <div ref={stage} className="relative min-h-0 flex-1" aria-label={t("Print preview of the drawing")}>
+              {rendered && (
+                <EditCanvas
+                  svg={rendered.svg}
+                  selection={selection}
+                  onSelection={editor.setSelection}
+                  zoom={zoom}
+                  editable={editable}
+                  movable={!FIXED_LAYOUT.includes(block.representation)}
+                  unit={block.options.bondLength}
+                  positions={positions}
+                  onMove={(to) => editor.apply((b) => moveAtoms(b, to), "drag")}
+                />
+              )}
+              {/* (a small note over the corner: how to hide a part, until the teacher says they know; why the drawing is not the usual one) */}
+              {(showTip || warn) && (
+                <div className="pointer-events-none absolute start-3 top-3 z-10 flex max-w-[min(30rem,calc(100%-1.5rem))] flex-col items-start gap-1.5">
+                  {showTip && (
+                    <p role="note" data-testid="molecule-tip" className="pointer-events-auto flex items-start gap-1.5 rounded-md border border-line bg-surface/95 py-1 ps-2 pe-1 text-[11px] leading-snug text-muted shadow-sm">
+                      <span>{t("Tip: click an atom or a bond, then use the bar that appears to hide it or leave it blank.")}</span>
+                      <button onClick={dismissTip} aria-label={t("Got it")} title={t("Got it")} className="grid size-4 shrink-0 place-items-center rounded text-faint hover:bg-hover hover:text-ink">
+                        <X size={11} />
+                      </button>
+                    </p>
+                  )}
+                  {warn && <Notice testId="molecule-warning">{warn}</Notice>}
+                </div>
+              )}
+              {editable && (
+                <SelectionToolbar
+                  container={stage}
+                  selection={selection}
+                  version={`${zoom}|${rendered?.svg.length}|${block.representation}`}
+                  onVisibility={setVisibility}
+                  onLabel={() => {
+                    setEditReveal((n) => n + 1);
+                    setTimeout(() => labelInput.current?.focus(), 60);
+                  }}
+                  onRemove={removeSelection}
+                />
+              )}
+              <CanvasBar graph={block.graph} selection={selection} setSelection={editor.setSelection} editable={editable} zoom={zoom} setZoom={setZoom} />
+            </div>
+          ) : (
+            <Welcome engine={ready ? chem.engine : null} onPick={pickEntry} />
+          )}
+        </main>
+
+        {block && (
+          <aside className="min-h-0 overflow-y-auto border-line bg-white ltr:border-l rtl:border-r" data-testid="molecule-panel">
+            <div className="border-b border-line/70 px-4 py-3">
+              {title && <p className="truncate text-[13px] font-semibold text-ink">{title}</p>}
+              <p className="text-[11px] text-muted">
+                <Formula text={displayFormula(block.graph)} /> · {t("{n} atoms", { n: block.graph.atoms.length })}
+              </p>
+            </div>
+            <DisplayTab block={block} editor={editor} />
+            {editable ? (
+              <>
+                <EditTab block={block} editor={editor} labelInput={labelInput} reveal={editReveal ? String(editReveal) : null} />
+                <GeometryTab block={block} selection={selection} onInsertText={onInsertText} onToggleCenter={toggleCenter} />
+              </>
+            ) : (
+              <p className="px-4 py-3 text-[11px] text-muted">{t("Choose Developed, Skeletal, Lewis or Cram to use this")}</p>
+            )}
+          </aside>
+        )}
       </div>
+
+      {galleryOpen && block && <IsomerGallery engine={chem.engine} formula={hillFormulaOf(block.graph)} smiles={block.smiles} graph={block.graph} onPick={(e) => void pickIsomer(e)} onClose={() => setGalleryOpen(false)} />}
       <StudioKeyboard />
     </div>
   );

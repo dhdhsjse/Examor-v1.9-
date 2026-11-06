@@ -1,6 +1,7 @@
 "use client";
 
-import { Redo2, Undo2, X } from "lucide-react";
+import { ChevronsUpDown, Redo2, Undo2, X } from "lucide-react";
+import { Notice, Segmented, control } from "@/app/_components/graph-studio/fields";
 import { useEffect, useState } from "react";
 import { SAMPLE_MOLECULES } from "@/app/_lib/chemistry/samples";
 import { maskedCount, type StudioView } from "@/app/_lib/chemistry/masking";
@@ -8,7 +9,7 @@ import type { MoleculeGraph } from "@/app/_lib/chemistry/types";
 import { useUi } from "@/app/_lib/uiLang";
 import type { MoleculeBlockData, Representation } from "@/app/_molecule/model";
 import { availableRepresentations } from "@/app/_molecule/render";
-import { REP_LABEL, REP_SHORT } from "@/app/_molecule/strings";
+import { REP_LABEL } from "@/app/_molecule/strings";
 import { StudioKeyboard } from "@/app/_components/math-keyboard/StudioKeyboard";
 import TableToolDock from "@/app/_components/table-studio/TableToolDock";
 import type { TableTool } from "@/app/_components/table-studio/TableDrawingLayer";
@@ -123,85 +124,82 @@ export default function MoleculeStudio({ editing, onInsert, onUpdate, onInsertMo
     loadGraph(next.graph);
   };
 
-  const iconButton = "grid size-8 place-items-center rounded-lg text-muted enabled:hover:bg-subtle enabled:hover:text-ink disabled:opacity-40";
+  // (the header of the Chart Studio: small buttons, one line)
+  const header = studioHeaderProps();
+  const iconButton = "grid size-7 shrink-0 place-items-center rounded text-muted enabled:hover:bg-hover enabled:hover:text-ink disabled:opacity-40";
+  const examples = editing
+    ? undefined
+    : { items: STARTS.map((s) => ({ id: s.id, name: s.name ? (lang === "fr" ? s.name.fr : s.name.en) : t("Blank page") })), current: start.id, disabled: dirty, onPick: chooseStart };
 
   return (
     <div data-testid="molecule-studio-lab" dir={rtl ? "rtl" : "ltr"} className="fixed inset-0 z-50 flex flex-col bg-white">
-      <header {...studioHeaderProps()}>
-        <h2 className="shrink-0 text-base font-semibold text-ink">{t("Molecule Studio")}</h2>
-        <span className="shrink-0 rounded-full bg-accent-soft px-2.5 py-0.5 text-xs font-medium text-accent-strong">{t("Drawing lab")}</span>
-
-        <div className="mx-2 h-5 w-px bg-line" />
+      <header {...header} className={`${header.className} gap-2! py-1.5!`}>
+        <h2 className="shrink-0 text-sm font-semibold text-ink">{t("Molecule Studio")}</h2>
+        <div className="mx-1 h-5 w-px bg-line" />
         <button onClick={undo} disabled={!canUndo} title={`${t("Undo")} (Ctrl+Z)`} aria-label={t("Undo")} data-testid="undo" className={iconButton}>
-          <Undo2 size={16} />
+          <Undo2 size={15} />
         </button>
         <button onClick={redo} disabled={!canRedo} title={`${t("Redo")} (Ctrl+Y)`} aria-label={t("Redo")} data-testid="redo" className={iconButton}>
-          <Redo2 size={16} />
+          <Redo2 size={15} />
         </button>
 
-        <div className="mx-1 flex rounded-lg bg-subtle p-0.5" role="group" aria-label={t("View")} data-testid="view-toggle">
-          {(["teacher", "student"] as const).map((v) => (
-            <button
-              key={v}
-              onClick={() => setStudioView(v)}
-              aria-pressed={studioView === v}
-              data-view={v}
-              title={v === "teacher" ? t("Teacher view: everything is drawn, the masked parts faded") : t("Student view: this is what the students will see")}
-              className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${studioView === v ? "bg-white text-accent-strong shadow-sm" : "text-muted hover:text-ink"}`}
-            >
-              {v === "teacher" ? t("Teacher view") : t("Student view")}
-              {v === "student" && masked > 0 && <span className="ms-1.5 rounded-full bg-accent-soft px-1.5 text-[10px] tabular-nums text-accent-strong">{masked}</span>}
-            </button>
-          ))}
+        <div className="mx-1">
+          <Segmented
+            label={t("View")}
+            testId="view-toggle"
+            attr="data-view"
+            value={studioView}
+            onChange={setStudioView}
+            options={[
+              { value: "teacher", label: t("Teacher view"), title: t("Teacher view: everything is drawn, the masked parts faded") },
+              {
+                value: "student",
+                title: t("Student view: this is what the students will see"),
+                label: (
+                  <>
+                    {t("Student view")}
+                    {masked > 0 && <span className="ms-1.5 rounded-full bg-accent-soft px-1.5 text-[10px] font-semibold text-accent-strong tabular-nums">{masked}</span>}
+                  </>
+                ),
+              },
+            ]}
+          />
         </div>
 
-        {/* where a new drawing starts from: only before anything is drawn (it would be lost) */}
-        {!editing && (
-          <label className="ms-auto flex items-center gap-2 text-xs text-muted">
-            {t("Start from")}
-            <select value={start.id} onChange={(e) => chooseStart(e.target.value)} disabled={dirty} data-testid="start-from" className="rounded-lg border border-line bg-subtle px-2 py-1.5 text-sm text-ink outline-none focus:border-accent disabled:opacity-50">
-              {STARTS.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name ? (lang === "fr" ? s.name.fr : s.name.en) : t("Blank page")}
+        {/* how the drawing is shown, and inserted: the drawing itself, or one of the school representations made from it */}
+        <label className="ms-auto flex items-center gap-2 text-xs text-muted">
+          {t("Representation")}
+          <span className="relative">
+            <select value={rep ?? ""} onChange={(e) => setRep((e.target.value || null) as Representation | null)} data-testid="representation-bar" className={`${control} h-7 w-40 cursor-pointer appearance-none pe-7`}>
+              {([null, ...availableRepresentations()] as (Representation | null)[]).map((r) => (
+                <option key={r ?? "drawing"} value={r ?? ""}>
+                  {r ? t(REP_LABEL[r]) : t("Drawing")}
                 </option>
               ))}
             </select>
-          </label>
-        )}
+            <ChevronsUpDown size={13} strokeWidth={2} aria-hidden className="pointer-events-none absolute end-2 top-1/2 -translate-y-1/2 text-muted" />
+          </span>
+        </label>
         <button
           onClick={() => (rep ? preview.status === "ready" && onInsertMolecule(preview.block) : editing ? onUpdate(graph, studioView) : onInsert(graph, studioView))}
           disabled={empty || (!!rep && preview.status !== "ready")}
           title={empty ? t("Nothing to insert yet: draw something first.") : undefined}
           data-testid="insert"
-          className={`rounded-lg bg-accent px-4 py-1.5 text-sm font-medium text-white hover:bg-accent-strong disabled:opacity-40 ${editing ? "ms-auto" : ""}`}
+          className="h-7 shrink-0 rounded bg-accent px-3 text-xs font-medium text-white hover:bg-accent-strong disabled:opacity-40"
         >
           {editing && !rep ? t("Update") : t("Insert")}
         </button>
-        <button onClick={requestClose} className="grid size-8 shrink-0 place-items-center rounded-lg text-muted hover:bg-subtle hover:text-ink" title={t("Close (Esc)")} aria-label={t("Close (Esc)")}>
-          <X size={18} />
+        <button onClick={requestClose} className="grid size-7 shrink-0 place-items-center rounded text-muted hover:bg-hover hover:text-ink" title={t("Close (Esc)")} aria-label={t("Close (Esc)")}>
+          <X size={16} />
         </button>
       </header>
 
       <div className="flex min-h-0 flex-1">
-        <aside className={`flex w-[280px] shrink-0 flex-col border-line bg-white ltr:border-r rtl:border-l ${locked ? "pointer-events-none opacity-50" : ""}`}>
-          <StudioToolbar studio={studio} onOpenTable={() => setTableFor("brush")} />
+        <aside className={`flex w-[232px] shrink-0 flex-col border-line bg-white ltr:border-r rtl:border-l ${locked ? "pointer-events-none opacity-50" : ""}`}>
+          <StudioToolbar studio={studio} onOpenTable={() => setTableFor("brush")} examples={examples} />
         </aside>
 
         <main className="flex min-w-0 flex-1 flex-col">
-          <div role="tablist" aria-label={t("Representation")} data-testid="representation-bar" className="m-3 mb-0 flex gap-1 rounded-xl bg-subtle p-1">
-            {([null, ...availableRepresentations()] as (Representation | null)[]).map((r) => (
-              <button
-                key={r ?? "drawing"}
-                role="tab"
-                aria-selected={rep === r}
-                title={r ? t(REP_LABEL[r]) : undefined}
-                onClick={() => setRep(r)}
-                className={`min-w-0 flex-1 truncate rounded-lg px-2 py-1.5 text-xs font-semibold transition-colors ${rep === r ? "bg-white text-accent-strong shadow-sm" : "text-muted hover:bg-white/60 hover:text-ink"}`}
-              >
-                {r ? t(REP_SHORT[r]) : t("Drawing")}
-              </button>
-            ))}
-          </div>
           {/* the canvas stays mounted under a preview, so that the view (zoom, position) is kept */}
           <div className={`relative min-h-0 flex-1 ${rep ? "hidden" : ""}`}>
             <StudioCanvas key={editing ? "editing" : start.id} studio={studio} student={student} ink={ink} eraser={eraser} />
@@ -210,9 +208,9 @@ export default function MoleculeStudio({ editing, onInsert, onUpdate, onInsertMo
           </div>
           {/* these two are text built from the whole molecule: nothing can be masked in them, and the student version would give the answer away */}
           {student && masked > 0 && (rep === "molecular" || rep === "semi-structural") && (
-            <p role="alert" data-testid="mask-unsupported" className="mx-3 mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+            <div className="mx-3 mt-2"><Notice testId="mask-unsupported">
               {t("Masks do not apply to this representation: the students would see all of it. Use the Developed, Skeletal, Lewis or Cram tab.")}
-            </p>
+            </Notice></div>
           )}
           {rep && (
             <div dir="ltr" data-testid="representation-preview" className="relative grid min-h-0 flex-1 place-items-center overflow-auto bg-subtle/60 p-6">
@@ -244,8 +242,7 @@ export default function MoleculeStudio({ editing, onInsert, onUpdate, onInsertMo
           )}
         </main>
 
-        <aside className={`flex w-[300px] shrink-0 flex-col border-line bg-white ltr:border-l rtl:border-r ${locked ? "pointer-events-none opacity-50" : ""}`}>
-          <h3 className="border-b border-line px-4 py-3 text-sm font-semibold text-ink">{t("Properties")}</h3>
+        <aside className={`flex w-64 shrink-0 flex-col border-line bg-white ltr:border-l rtl:border-r ${locked ? "pointer-events-none opacity-50" : ""}`}>
           <PropertiesPanel studio={studio} onOpenTable={() => setTableFor("selection")} />
         </aside>
       </div>

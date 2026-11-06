@@ -12,7 +12,7 @@ import type { AnnotationType, FunctionType } from "@/app/_lib/graph/types";
 import { ShapesMenuButton } from "@/app/_components/shapes/ShapeGallery";
 import { useT } from "@/app/_lib/uiLang";
 import Disclosure from "./Disclosure";
-import { Group, SwitchRow } from "./fields";
+import { Group, SwitchRow, held, idle, listRow, tileBase } from "./fields";
 import type { GraphStudioState } from "./useGraphStudio";
 
 // A curve of each kind as a small sketch for its button (30 × 18).
@@ -68,12 +68,8 @@ function FunctionGlyph({ type }: { type: FunctionType }) {
   );
 }
 
-// A tool or a function as a tile: its little drawing and its name. The one in hand is white with a coloured outline; a press shrinks it a little.
-const tile = "flex h-12 flex-col items-center justify-center gap-0.5 rounded-xl text-[11px] font-medium leading-tight tracking-[-0.005em] transition-[transform,background-color,box-shadow] duration-100 ease-out outline-none focus-visible:ring-2 focus-visible:ring-accent active:scale-[0.96]";
-const idle = "bg-subtle text-ink hover:bg-hover";
-const held = "bg-white text-accent-strong shadow-[0_0_0_2px_var(--color-accent,#4f46e5),0_4px_14px_rgba(79,70,229,0.15)]";
-// A row of a list of sheets: its name, and what it plots under it.
-const listRow = (on: boolean) => `flex w-full items-center gap-2 px-3.5 py-2.5 text-start transition-colors outline-none focus-visible:bg-white ${on ? "bg-white text-accent-strong" : "text-ink hover:bg-hover"}`;
+// A tool or a function as a tile: its little drawing and its name (the styles are shared with the Molecule Studio).
+const tile = `${tileBase} h-12`;
 
 // The left panel of the Graph Studio: the functions to plot (one click draws one on the paper, its parameters are on the right), the measured points, the
 // annotation tools, the shapes, and the sheets a teacher starts from: the few general ones, and the physics sheets (a whole paper with its scales, curves and
