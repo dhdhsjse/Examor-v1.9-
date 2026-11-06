@@ -18,7 +18,7 @@ export default function SectionDetail({ section, ctx, onBack, onLibrary }: { sec
 
   return (
     <div role="region" aria-label={label} className="flex flex-col">
-      <div className="sticky top-0 z-10 flex h-10 items-center gap-1 border-b border-line bg-surface px-2">
+      <div className="sticky top-0 z-10 flex h-9 items-center gap-1 border-b border-line bg-surface px-1.5">
         <button ref={backRef} type="button" onClick={onBack} aria-label={ctx.t("Back")} title={ctx.t("Back")} className={iconBtn}>
           <BackIcon aria-hidden />
         </button>

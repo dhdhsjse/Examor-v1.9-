@@ -37,7 +37,7 @@ function NumberField({ label, value, min, max, step, decimals = 0, unit, onChang
     if (Number.isFinite(n)) onChange(round(n));
   };
   return (
-    <label className="flex items-center justify-between gap-3 rounded-md px-2 py-1 text-[12.5px] text-ink">
+    <label className="flex items-center justify-between gap-3 rounded-md px-2 py-1 text-xs text-ink">
       <span>{label}</span>
       <span className="flex items-center gap-1">
         <input
@@ -55,7 +55,7 @@ function NumberField({ label, value, min, max, step, decimals = 0, unit, onChang
               apply(value + (e.key === "ArrowUp" ? step : -step));
             }
           }}
-          className="h-8 w-14 rounded-lg border border-transparent bg-subtle px-2 text-end text-[13px] tabular-nums outline-none transition-colors hover:border-line focus:border-accent focus:bg-white"
+          className="h-7 w-14 rounded-md border border-line bg-white px-1.5 text-end text-xs tabular-nums outline-none focus:border-accent"
         />
         <span className="w-4 text-[11px] text-faint">{unit}</span>
       </span>

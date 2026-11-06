@@ -3,6 +3,7 @@
 // are generic and still to be read by a teacher.
 
 export const SHEET_FR: Record<string, string> = {
+  "Total": "Total",
   "Stickers": "Autocollants",
   "Sticker": "Autocollant",
   "Marks": "Notes",
@@ -97,6 +98,7 @@ export const SHEET_FR: Record<string, string> = {
 };
 
 export const SHEET_AR: Record<string, string> = {
+  "Total": "المجموع",
   "Stickers": "الملصقات",
   "Sticker": "ملصق",
   "Marks": "العلامات",

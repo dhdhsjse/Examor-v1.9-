@@ -142,7 +142,7 @@ export function ClassifyEditor({ b, onChange }: { b: ClassifyBlock; onChange: On
       <Field group label={t("Categories")} hint={t("One word per line. The correction sheet fills the table.")}>
         <div className="grid grid-cols-[repeat(auto-fill,minmax(130px,1fr))] gap-2">
           {b.groups.map((g, i) => (
-            <div key={i} className="flex flex-col gap-1 rounded-lg border border-line bg-subtle/60 p-1.5">
+            <div key={i} className="flex flex-col gap-1 rounded-[5px] border border-line p-1.5">
               <div className="flex items-center gap-1">
                 <TextInput value={g.name} placeholder={t("Category…")} onChange={(name) => setGroup(i, { name }, "name")} />
                 {b.groups.length > 2 && (
@@ -190,7 +190,7 @@ function BankPreview({ words }: { words: string[] }) {
   return (
     <div className="flex flex-col gap-1">
       <span className="text-[11px] text-muted">{t("Box of words on the page")}</span>
-      <div className="min-h-8 rounded-md border border-dashed border-line bg-white px-2 py-1.5 text-center text-[12px] leading-snug text-ink" aria-live="polite">
+      <div className="min-h-8 rounded-md border border-dashed border-line bg-white px-2 py-1.5 text-center text-xs leading-snug text-ink" aria-live="polite">
         {clean.length ? clean.join(" / ") : <GhostTyping text={`${t("word")} … / ${t("word")} … / ${t("word")} … / ${t("word")} …`} />}
       </div>
       {!clean.length && <span className="text-[10px] leading-snug text-faint">{t("Fill the categories below: their words are gathered here, mixed up.")}</span>}

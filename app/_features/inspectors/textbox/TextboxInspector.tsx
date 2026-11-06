@@ -27,12 +27,12 @@ export default function TextboxInspector({ ctx }: { ctx: Ctx }) {
   const b = shell.selected;
   const target = useFormatTarget(ctx, b);
   const formula = useCurrentFormula();
-  if (b?.type !== "textbox" || !target) return <p className="text-sm text-muted">{t("Select a text box on the page.")}</p>;
+  if (b?.type !== "textbox" || !target) return <p className="text-xs text-muted">{t("Select a text box on the page.")}</p>;
 
   return (
     <div className="flex flex-col gap-3">
       <div className="-mx-1 flex items-center gap-0.5 border-b border-line pb-2.5">
-        <h2 className="flex-1 ps-1 text-[13px] font-semibold text-ink">{t("Text box")}</h2>
+        <h2 className="flex-1 ps-1 text-xs font-semibold text-ink">{t("Text box")}</h2>
         <RibbonButton title={t("Save to my library (reuse it in other exams)")} icon={<BookmarkIcon />} onClick={() => shell.saveToLibrary(b)} />
         <RibbonButton title={t("Duplicate")} shortcut="Ctrl+D" icon={<CopyIcon />} onClick={() => shell.duplicateBlock(b.id)} />
         <RibbonButton title={t("Delete")} shortcut="Del" icon={<TrashIcon />} onClick={() => shell.deleteBlock(b.id)} className="hover:bg-red-50! hover:text-red-600!" />
@@ -120,7 +120,7 @@ function TextboxResizing({ ctx, b }: { ctx: Ctx; b: TextboxBlock }) {
             aria-label={t(s.label)}
             data-testid={`sizing-${s.id}`}
             onClick={() => shell.updateBlock(b.id, { sizing: s.id === "fixed" ? undefined : s.id }, "sizing")}
-            className={`grid h-6 w-8 place-items-center rounded transition-colors ${sizing === s.id ? "bg-white text-ink shadow-sm ring-1 ring-line" : "text-muted hover:text-ink"}`}
+            className={`grid h-6 w-8 place-items-center rounded transition-colors ${sizing === s.id ? "bg-white text-ink ring-1 ring-line" : "text-muted hover:text-ink"}`}
           >
             {s.icon}
           </button>
@@ -156,7 +156,7 @@ function SizeInput({ label, title, value, min, onCommit }: { label: string; titl
     if (draft !== null && Number.isFinite(v) && v !== value) onCommit(Math.max(min, Math.min(5000, v)));
   };
   return (
-    <label title={title} className="flex h-7 w-[72px] items-center gap-1 rounded-md bg-subtle px-2 text-xs focus-within:ring-1 focus-within:ring-indigo-300">
+    <label title={title} className="flex h-7 w-[72px] items-center gap-1 rounded-md bg-subtle px-2 text-xs focus-within:ring-1 focus-within:ring-accent">
       <span className="text-faint">{label}</span>
       <input
         inputMode="numeric"

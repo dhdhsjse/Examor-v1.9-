@@ -11,8 +11,8 @@ export const rightPanelBar: Bar = {
   position: "right",
   order: 30,
   collapse: {
-    width: 300,
-    minWidth: 248,
+    width: 272,
+    minWidth: 240,
     maxWidth: 640,
     label: "Properties panel",
     hide: "Hide properties panel",

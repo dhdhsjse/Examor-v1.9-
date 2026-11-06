@@ -462,9 +462,11 @@ export function patchPart(parts: OpenPart[], i: number, patch: Partial<OpenPart>
 }
 
 // Two blocks that may lie over each other. Shapes and pictures are laid freely on the page: over each other, or over a text box (a picture in a frame, a photo on a
-// colored shape…). Nothing is pushed away for them. A picture may also lie on a table (over it or behind it: its "Position").
+// colored shape…). Nothing is pushed away for them. A picture may also lie on a table (over it or behind it: its "Position"). A graph or a table may lie over
+// a text box too (and a text box over them): they overlap where they are dropped, neither is pushed below the other.
 const LOOSE = new Set<Block["type"]>(["shape", "image"]);
-const loosePair = (a: Block, b: Block) => LOOSE.has(a.type) && (LOOSE.has(b.type) || b.type === "textbox");
+const OVER_BOX = new Set<Block["type"]>(["shape", "image", "graph", "table"]);
+const loosePair = (a: Block, b: Block) => (LOOSE.has(a.type) && LOOSE.has(b.type)) || (OVER_BOX.has(a.type) && b.type === "textbox");
 const mayOverlap = (a: Block, b: Block) =>
   FLOATING.has(a.type) || FLOATING.has(b.type) || loosePair(a, b) || loosePair(b, a) || (a.type === "image" && b.type === "table") || (b.type === "image" && a.type === "table");
 

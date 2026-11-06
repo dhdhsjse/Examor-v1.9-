@@ -6,7 +6,6 @@ import { circuitStudioOverlay } from "@/app/_features/overlays/overlay-circuit-s
 import { probaStudioOverlay } from "@/app/_features/overlays/overlay-proba-studio";
 import { tableStudioOverlay } from "@/app/_features/overlays/overlay-table-studio";
 import { graphStudioOverlay } from "@/app/_features/overlays/overlay-graph-studio";
-import { mathGraphStudioOverlay } from "@/app/_features/overlays/overlay-math-graph-studio";
 import { chartStudioOverlay } from "@/app/_features/overlays/overlay-chart-studio";
 import { moleculeLabOverlay } from "@/app/_features/overlays/overlay-molecule-lab";
 import { pickerOverlay } from "@/app/_features/overlays/overlay-picker";
@@ -21,5 +20,5 @@ export const overlayBar: Bar = {
   order: 40,
   className: "contents",
   groups: [],
-  features: [onboardingOverlay, pickerOverlay, sheetWizardOverlay, previewOverlay, historyOverlay, moleculeOverlay, moleculeLabOverlay, graphStudioOverlay, circuitStudioOverlay, probaStudioOverlay, tableStudioOverlay, mathGraphStudioOverlay, chartStudioOverlay, exportRendererOverlay, toastOverlay],
+  features: [onboardingOverlay, pickerOverlay, sheetWizardOverlay, previewOverlay, historyOverlay, moleculeOverlay, moleculeLabOverlay, graphStudioOverlay, circuitStudioOverlay, probaStudioOverlay, tableStudioOverlay, chartStudioOverlay, exportRendererOverlay, toastOverlay],
 };

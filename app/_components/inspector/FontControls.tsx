@@ -6,14 +6,14 @@ import { isFixedTable } from "@/app/_lib/table";
 import type { Block, BlockFont, ExamMeta } from "@/app/_lib/types";
 import { useT } from "@/app/_lib/uiLang";
 import { ColorGrid, FontSelect } from "../rich/FormatBar";
-import { Stepper } from "./fields";
+import { Stepper, inputCls } from "./fields";
 import type { OnChange } from "./QuestionEditors";
 
 const TEXT_TYPES: Block["type"][] = ["mcq", "truefalse", "blank", "open", "match", "order", "classify", "text", "textbox", "table", "header"];
 // (a table with shapes or pictures is fixed like a picture: its font is changed in the Table Studio)
 export const hasFontControls = (b: Block) => TEXT_TYPES.includes(b.type) && !(b.type === "table" && isFixedTable(b));
 
-const selectCls = "h-9 w-full rounded-xl border border-transparent bg-white px-2.5 text-[13px] font-medium tracking-[-0.01em] text-ink shadow-sm outline-none transition-colors focus:border-accent";
+const selectCls = inputCls;
 
 // "Text style" of the whole block: font, size, color. Single words are styled on the page.
 export function BlockFontControls({ b, meta, onChange }: { b: Block; meta: ExamMeta; onChange: OnChange }) {
@@ -28,11 +28,11 @@ export function BlockFontControls({ b, meta, onChange }: { b: Block; meta: ExamM
   const header = b.type === "header";
 
   return (
-    <div className="flex flex-col gap-2.5 rounded-2xl bg-subtle px-3.5 py-3">
+    <div className="flex flex-col gap-2 border-t border-line pt-2.5">
       <div className="flex items-center justify-between">
-        <span className="text-[11px] font-semibold text-muted">{t("Text style")}</span>
+        <span className="text-[11px] font-semibold text-ink">{t("Text style")}</span>
         {(font.family || font.size || font.color) && (
-          <button type="button" onClick={() => onChange({ font: undefined }, "font")} className="text-[10px] text-indigo-600 hover:underline">
+          <button type="button" onClick={() => onChange({ font: undefined }, "font")} className="text-[11px] text-muted hover:text-ink hover:underline">
             {t("Reset")}
           </button>
         )}

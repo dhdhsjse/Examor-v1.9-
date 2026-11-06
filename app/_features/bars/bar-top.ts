@@ -17,7 +17,7 @@ export const topBar: Bar = {
   position: "top",
   order: 10,
   dragRegion: true,
-  className: "flex h-10 shrink-0 items-center gap-2 border-b border-line bg-surface px-2",
+  className: "flex h-9 shrink-0 items-center gap-1.5 border-b border-line bg-surface px-1.5",
   features: [brandLogoPanel],
   groups: [fileGroup, titleGroup, subjectsGroup, editGroup, viewGroup, panelsGroup, exportGroup, windowGroup],
 };

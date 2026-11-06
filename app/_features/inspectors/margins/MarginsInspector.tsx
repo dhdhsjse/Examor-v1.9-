@@ -97,8 +97,6 @@ export default function MarginsInspector({ ctx }: { ctx: Ctx }) {
 
   return (
     <div className="flex flex-col">
-      <p className="mb-4 text-[13px] tracking-[-0.01em] text-muted">{t("Adjust the printable area.")}</p>
-
       <div role="group" aria-label={t("Presets")} className="grid grid-cols-2 gap-2">
         {MARGIN_PRESETS.map((p) => {
           const on = sameMm(shown, p.margins);
@@ -108,8 +106,8 @@ export default function MarginsInspector({ ctx }: { ctx: Ctx }) {
               type="button"
               aria-pressed={on}
               onClick={() => pick(p.margins)}
-              className={`flex flex-col items-center gap-2 rounded-2xl p-3 text-xs tracking-[-0.005em] transition-[transform,background-color,box-shadow] duration-150 ease-out outline-none focus-visible:ring-2 focus-visible:ring-accent active:scale-[0.97] ${
-                on ? "bg-white font-semibold text-accent shadow-[0_0_0_2px_#6366f1,0_4px_14px_rgba(79,70,229,0.15)]" : "bg-subtle text-ink hover:bg-hover"
+              className={`flex flex-col items-center gap-2 rounded-[5px] border p-2 text-xs transition-colors ${
+                on ? "border-accent font-semibold text-accent" : "border-line bg-white text-ink hover:border-faint"
               }`}
             >
               <MiniA4 margins={p.margins} isSelected={on} />
@@ -119,17 +117,17 @@ export default function MarginsInspector({ ctx }: { ctx: Ctx }) {
         })}
       </div>
 
-      <hr className="my-5 border-line/70" />
+      <hr className="my-4 border-line" />
 
       {SIDES.map(({ side, label }) => {
         const mm = pxToMm(shown[side]);
         const id = `margin-${side}`;
         return (
           <div key={side} className="mb-3 flex items-center justify-between">
-            <label htmlFor={id} className="min-w-16 whitespace-nowrap text-sm font-medium text-ink">
+            <label htmlFor={id} className="min-w-16 whitespace-nowrap text-xs font-medium text-ink">
               {t(label)}
             </label>
-            <div dir="ltr" className="flex items-center overflow-hidden rounded-[10px] bg-subtle">
+            <div dir="ltr" className="flex items-center overflow-hidden rounded-md border border-line bg-white">
               <button type="button" onClick={() => step(side, -1)} disabled={mm <= MIN_MARGIN_MM} aria-label={t("Decrease")} className={stepBtn}>
                 <Minus size={14} strokeWidth={1.8} />
               </button>
@@ -148,7 +146,7 @@ export default function MarginsInspector({ ctx }: { ctx: Ctx }) {
                   else return;
                   e.preventDefault();
                 }}
-                className="w-12 bg-transparent text-center text-sm tabular-nums text-ink outline-none focus:ring-1 focus:ring-indigo-500"
+                className="w-12 bg-transparent text-center text-xs tabular-nums text-ink outline-none focus:ring-1 focus:ring-accent"
               />
               <button type="button" onClick={() => step(side, 1)} disabled={mm >= MAX_MARGIN_MM} aria-label={t("Increase")} className={stepBtn}>
                 <Plus size={14} strokeWidth={1.8} />

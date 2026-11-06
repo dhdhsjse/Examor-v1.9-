@@ -33,7 +33,6 @@ export const inspectorPanel: Feature = {
         onSaveToLibrary={shell.saveToLibrary}
         onReplaceImage={shell.replaceImage}
         onOpenTableStudio={(start) => block && shell.openTableStudio(block.id, start)}
-        onOpenGraphStudio={() => block && shell.openMathGraphStudio(block.id)}
         onOpenChartStudio={() => block && shell.openChartStudio(block.id)}
         onMeta={shell.setMeta}
         onChangeTemplate={shell.openPicker}

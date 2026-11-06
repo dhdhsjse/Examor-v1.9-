@@ -165,12 +165,7 @@ export type Shell = {
   tableStudio: { open: boolean; blockId: string | null; shape?: string };
   openTableStudio: (blockId?: string, shape?: string) => void;
   closeTableStudio: () => void;
-  // The Function Studio (math-graph-studio/): the simple graph of one or more functions, with derivatives, tangents and asymptotes. `blockId` =
-  // the graph block being edited, null = a new graph.
-  mathGraphStudio: { open: boolean; blockId: string | null };
-  openMathGraphStudio: (blockId?: string) => void;
-  closeMathGraphStudio: () => void;
-  // The Chart Studio (chart-studio/): columns, bars, lines, pies, histograms, boxes… made from a table. `blockId` = the image block of the chart being
+  // The Chart Studio (chart-studio/): bars, a line or a pie made from a short list of values. `blockId` = the image block of the chart being
   // edited, null = a new chart.
   chartStudio: { open: boolean; blockId: string | null };
   openChartStudio: (blockId?: string) => void;

@@ -3,6 +3,7 @@
 import { ChartColumn } from "lucide-react";
 import type { ReactNode } from "react";
 import { DEFAULT_ACCENT } from "@/app/_lib/blockLayout";
+import { readChart } from "@/app/_lib/chart/types";
 import { docFromRich } from "@/app/_lib/textboxDoc";
 import { plainText } from "@/app/_lib/richText";
 import type { ExamMeta, HeaderBlock, HeaderFields, HeaderStyle, HeadingDecor, ImageBlock, Lang, TextBlock, TextboxBlock } from "@/app/_lib/types";
@@ -33,7 +34,6 @@ export function TextboxEditor({ b, onChange }: { b: TextboxBlock; onChange: OnCh
           ]}
         />
       </Field>
-      <p className="text-[11px] leading-snug text-faint">{t("Drag the handles of the box to change its size. Font, size and alignment: Home → Formatting.")}</p>
     </>
   );
 }
@@ -66,7 +66,7 @@ export function TextEditor({ b, onChange }: { b: TextBlock; onChange: OnChange }
           )}
         </>
       )}
-      <Field label={t("Text")} hint={t("Tip: click the text on the page and type there.")}>
+      <Field label={t("Text")}>
         <RichInput value={b.text} onChange={(text) => onChange({ text }, "text")} rows={5} multiline={b.style === "body"} />
       </Field>
     </>
@@ -78,16 +78,11 @@ export function ImageEditor({ b, lang, meta, onChange, onReplace, onOpenChartStu
   const hasCaption = !!b.caption && !!plainText(b.caption).trim();
   return (
     <>
-      {b.chartStudio && (
-        <button
-          type="button"
-          onClick={onOpenChartStudio}
-          data-testid="open-chart-studio"
-          className="flex items-center justify-center gap-2 rounded-lg border border-accent bg-accent-soft px-3 py-2 text-sm font-medium text-accent-strong transition-colors hover:bg-white"
-        >
-          <ChartColumn size={16} />
-          {t("Open in Chart Studio")}
-        </button>
+      {readChart(b.chartStudio) && (
+        <SmallButton onClick={onOpenChartStudio}>
+          <ChartColumn size={13} aria-hidden />
+          {t("Edit the chart")}
+        </SmallButton>
       )}
       {/* eslint-disable-next-line @next/next/no-img-element -- local data URL preview */}
       <img src={b.src} alt="" className="max-h-40 w-full rounded-md border border-line bg-subtle object-contain" />
@@ -158,10 +153,10 @@ export function HeaderEditor({ b, totalPoints, onChange }: { b: HeaderBlock; tot
       {text("duration", t("Duration"))}
       {text("year", t("School year"))}
 
-      <div className="flex flex-col gap-1.5 rounded-lg border border-line bg-subtle/60 p-2.5">
-        <span className="text-[11px] font-semibold text-muted">{t("Graded out of")}</span>
+      <div className="flex flex-col gap-1.5 border-t border-line pt-2.5">
+        <span className="text-[11px] font-semibold text-ink">{t("Graded out of")}</span>
         <label className="flex items-center gap-2 text-xs text-ink">
-          <input type="checkbox" checked={auto} onChange={(e) => set("autoOutOf", e.target.checked)} className="accent-indigo-600" />
+          <input type="checkbox" checked={auto} onChange={(e) => set("autoOutOf", e.target.checked)} className="accent-accent" />
           {t("Use the total of the questions ({n} pts)", { n: totalPoints })}
         </label>
         {auto ? (
