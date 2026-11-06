@@ -188,16 +188,16 @@ function ExamSettings({ meta, fullMark, onFullMark, hasSheet, onMeta, onChangeTe
         <Row label={t("Size of the answers")}>
           <Stepper value={meta.answerSize ?? meta.fontSize ?? DEFAULT_SIZE} min={9} max={28} onChange={(answerSize) => onMeta({ answerSize }, "answerSize")} />
         </Row>
-        <span className="text-[11px] text-muted">{t("Color of the answers")}</span>
+        <span className="text-xs text-muted">{t("Color of the answers")}</span>
         <ColorGrid value={meta.answerColor} autoLabel={t("Green")} onChange={(answerColor) => onMeta({ answerColor })} />
-        <p className="text-[11px] text-faint">
+        <p className="text-xs text-faint">
           {t("Preview:")} <span style={{ color: meta.answerColor ?? ANSWER_COLOR, fontWeight: 600 }}>{t("model answer")}</span>
         </p>
       </Disclosure>
 
       {/* A reference, not a setting */}
       <Disclosure title={t("Shortcuts")}>
-        <div className="flex flex-col gap-0.5 text-[11px] leading-snug text-muted">
+        <div className="flex flex-col gap-0.5 text-xs leading-snug text-muted">
           <p>{t("Del — delete · Ctrl+D — duplicate")}</p>
           <p>{t("Ctrl+Z / Ctrl+Y — undo / redo")}</p>
           <p>{t("Ctrl+S — save · Ctrl+P — print preview")}</p>
@@ -214,7 +214,7 @@ function ExamSettings({ meta, fullMark, onFullMark, hasSheet, onMeta, onChangeTe
         <button
           type="button"
           onClick={onChangeTemplate}
-          className="h-6 rounded-[4px] text-[11px] text-muted outline-none hover:text-ink hover:underline focus-visible:ring-2 focus-visible:ring-accent"
+          className="h-6 rounded-[4px] text-xs text-muted outline-none hover:text-ink hover:underline focus-visible:ring-2 focus-visible:ring-accent"
         >
           {t("Start from a template…")}
         </button>
@@ -227,7 +227,7 @@ function ExamSettings({ meta, fullMark, onFullMark, hasSheet, onMeta, onChangeTe
 function Section({ title, children }: { title?: string; children: ReactNode }) {
   return (
     <section aria-label={title} className="flex flex-col gap-1.5 px-3 py-2">
-      {title && <h3 className="flex h-5 items-center text-[11px] font-semibold text-ink">{title}</h3>}
+      {title && <h3 className="flex h-5 items-center text-xs font-semibold text-ink">{title}</h3>}
       {children}
     </section>
   );
@@ -237,7 +237,7 @@ function Section({ title, children }: { title?: string; children: ReactNode }) {
 function Disclosure({ title, children }: { title: string; children: ReactNode }) {
   return (
     <details className="group/more px-3 py-2">
-      <summary className="flex h-5 cursor-pointer list-none items-center justify-between rounded-[4px] text-[11px] font-semibold text-ink outline-none focus-visible:ring-2 focus-visible:ring-accent [&::-webkit-details-marker]:hidden">
+      <summary className="flex h-5 cursor-pointer list-none items-center justify-between rounded-[4px] text-xs font-semibold text-ink outline-none focus-visible:ring-2 focus-visible:ring-accent [&::-webkit-details-marker]:hidden">
         {title}
         <ChevronDown size={12} strokeWidth={2} aria-hidden className="text-muted transition-transform group-open/more:rotate-180" />
       </summary>

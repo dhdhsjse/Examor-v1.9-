@@ -36,7 +36,7 @@ const round2 = (v: number) => Math.round(v * 100) / 100;
 /** A new page like the first one of the sheet */
 export const newPageLike = (pages: Page[]): Page => {
   const first = pages[0];
-  return { id: newId(), ...(first?.margins ? { margins: { ...first.margins } } : {}), ...(first?.format ? { format: { ...first.format } } : {}) };
+  return { id: newId(), ...(first?.margins ? { margins: { ...first.margins } } : {}), ...(first?.format ? { format: { ...first.format } } : {}), ...(first?.border ? { border: { ...first.border } } : {}) };
 };
 
 export const pagerOf = (doc: Pick<ExamDoc, "pages" | "blocks" | "meta" | "sheet">): Pager => ({

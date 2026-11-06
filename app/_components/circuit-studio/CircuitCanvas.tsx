@@ -308,7 +308,7 @@ export default function CircuitCanvas({ studio, ink, eraser }: { studio: Circuit
         </div>
       </div>
       {percent < 100 && (
-        <p data-testid="circuit-scale-note" className="pointer-events-none absolute top-2 start-3 rounded-md bg-white/90 px-2 py-1 text-[11px] text-muted shadow-sm">
+        <p data-testid="circuit-scale-note" className="pointer-events-none absolute top-2 start-3 rounded-md bg-white/90 px-2 py-1 text-xs text-muted shadow-sm">
           {t("The drawing is shown at {percent}% to fit the window.", { percent })}
         </p>
       )}

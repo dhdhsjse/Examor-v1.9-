@@ -271,11 +271,11 @@ export default function TableStudio({ meta, editing, startShape, onInsert, onUpd
         <aside className="flex w-[320px] shrink-0 flex-col gap-4 overflow-y-auto border-line bg-white p-4 ltr:border-l rtl:border-r">
           {shapes.length > 0 && (
             <div role="note" data-testid="table-fixed-warning" className="flex gap-2.5 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2.5 text-[12px] leading-snug text-amber-900">
-              <TriangleAlert size={16} className="mt-0.5 shrink-0 text-amber-600" />
+              <TriangleAlert size={16} className="mt-0.5 shrink-0 text-amber-700" />
               <div className="flex flex-col gap-1.5">
                 <p className="font-semibold">{t("The table will be fixed")}</p>
                 <p>{t("With shapes or images, the table is fixed like a picture once it is inserted: it can no longer be changed from the page or the right panel, only here in the Table Studio. After changing the data, check that the shapes still fit.")}</p>
-                <button type="button" onClick={() => apply({ shapes: undefined }, "remove-all")} data-testid="remove-all-shapes" className="flex w-fit items-center gap-1.5 text-[11px] font-medium text-amber-900 underline">
+                <button type="button" onClick={() => apply({ shapes: undefined }, "remove-all")} data-testid="remove-all-shapes" className="flex w-fit items-center gap-1.5 text-xs font-medium text-amber-900 underline">
                   <Trash2 size={12} />
                   {t("Remove all shapes and images")}
                 </button>

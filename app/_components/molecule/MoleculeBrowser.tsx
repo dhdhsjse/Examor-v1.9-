@@ -27,7 +27,7 @@ function MoleculeRow({ name, formula, on, onPick }: { name: string; formula: str
   return (
     <button onClick={onPick} aria-current={on || undefined} className={`${listRow(on)} py-2!`}>
       <span className={`min-w-0 flex-1 truncate text-[13px] tracking-[-0.01em] ${on ? "font-semibold" : "font-medium"}`}>{name}</span>
-      <span className="shrink-0 text-[11px] text-muted tabular-nums" dir="ltr">
+      <span className="shrink-0 text-xs text-muted tabular-nums" dir="ltr">
         <Formula text={written(formula)} />
       </span>
     </button>

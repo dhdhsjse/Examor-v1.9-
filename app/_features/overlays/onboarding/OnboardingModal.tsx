@@ -163,7 +163,7 @@ export function OnboardingModal({ ctx }: { ctx: Ctx }) {
       ))}
     </div>
   );
-  const linkBtn = "text-sm font-medium text-indigo-600 underline-offset-2 hover:underline";
+  const linkBtn = "text-sm font-medium text-indigo-700 underline-offset-2 hover:underline";
   const primaryBtn = "rounded-xl bg-indigo-600 px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:opacity-40";
 
   let body;
@@ -274,7 +274,7 @@ export function OnboardingModal({ ctx }: { ctx: Ctx }) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-slate-900/40 p-3 backdrop-blur-sm sm:p-6">
+    <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-3 backdrop-blur-sm sm:p-6">
       <div
         role="dialog"
         aria-modal="true"
@@ -291,7 +291,7 @@ export function OnboardingModal({ ctx }: { ctx: Ctx }) {
               <rect x="9" y="15" width="14" height="2.5" rx="1.25" fill="#fff" />
               <rect x="9" y="21" width="9" height="2.5" rx="1.25" fill="#fff" />
             </svg>
-            <span className="text-lg font-bold text-indigo-600">Examor</span>
+            <span className="text-lg font-bold text-indigo-700">Examor</span>
           </div>
           <button
             type="button"

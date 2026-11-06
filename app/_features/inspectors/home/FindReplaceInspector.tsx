@@ -157,7 +157,7 @@ export default function FindReplaceInspector({ ctx }: { ctx: Ctx }) {
                   onClick={() => go(i)}
                   className={`flex w-full flex-col gap-0.5 rounded-md border px-2 py-1.5 text-start transition-colors ${i === current ? "border-accent bg-accent-soft" : "border-line bg-white hover:border-faint"}`}
                 >
-                  <span className="text-[11px] font-semibold text-muted">
+                  <span className="text-xs font-semibold text-muted">
                     {b ? t(BLOCK_TYPE_NAMES[b.type]) : ""}
                     {n ? ` ${n}` : ""} · {fieldLabel(t, m.field)}
                   </span>
@@ -170,7 +170,7 @@ export default function FindReplaceInspector({ ctx }: { ctx: Ctx }) {
               </li>
             );
           })}
-          {matches.length > SHOWN && <li className="px-1 text-[11px] text-faint">{t("Only the first {n} are listed.", { n: SHOWN })}</li>}
+          {matches.length > SHOWN && <li className="px-1 text-xs text-faint">{t("Only the first {n} are listed.", { n: SHOWN })}</li>}
         </ul>
       )}
     </div>

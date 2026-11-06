@@ -54,7 +54,7 @@ function WireGlyph() {
   );
 }
 
-const button = (on: boolean) => `flex flex-col items-center justify-center gap-0.5 rounded-xl border px-1 py-2 text-[11px] font-medium leading-tight transition-colors ${on ? "border-accent bg-accent-soft text-accent-strong ring-1 ring-accent" : "border-line bg-white text-ink hover:border-accent hover:bg-accent-soft"}`;
+const button = (on: boolean) => `flex flex-col items-center justify-center gap-0.5 rounded-xl border px-1 py-2 text-xs font-medium leading-tight transition-colors ${on ? "border-accent bg-accent-soft text-accent-strong ring-1 ring-accent" : "border-line bg-white text-ink hover:border-accent hover:bg-accent-soft"}`;
 
 // The left panel of the Circuit Studio: the components to put on the drawing (the wire first), and the shapes. Select, draw, text
 // box and eraser are on the floating bar of the drawing; R, a right-click or the round handle turns a component.

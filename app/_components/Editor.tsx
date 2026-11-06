@@ -45,6 +45,7 @@ import { ALL_CYCLES, type Subject } from "@/app/_lib/subjects";
 import { buildDoc, templateById, type Template } from "@/app/_lib/templates";
 import { assetToBlock, type ToolAction } from "@/app/_lib/tools";
 import type { Block, BlockType, PageMargins, ViewMode } from "@/app/_lib/types";
+import { useThemeMode } from "@/app/_lib/theme";
 import { UiProvider, loadUiLang, saveUiLang, translate, type UiLang } from "@/app/_lib/uiLang";
 import { useBlockClipboard } from "@/app/_lib/useBlockClipboard";
 import { useExam, type DropPoint } from "@/app/_lib/useExam";
@@ -111,6 +112,7 @@ export default function Editor() {
     return { doc: saved ?? buildDoc(templateById("classic-fr")), fresh: !saved };
   });
   const [uiLang, setUiLang] = useState<UiLang>(loadUiLang);
+  const [themeMode, setThemeMode] = useThemeMode();
   const tr = (text: string, vars?: Record<string, string | number>) => translate(uiLang, text, vars);
   const exam = useExam(initial.doc, tr);
   const { doc, selectedId } = exam;
@@ -896,6 +898,9 @@ export default function Editor() {
     draftMargins: (m) => draftMargins(m),
     setMargins: saveMargins,
     setPageFormat: exam.setPageFormat,
+    setPageBorder: exam.setPageBorder,
+    themeMode,
+    setThemeMode,
     setChrome: exam.setChrome,
     resetPageChrome: exam.resetPageChrome,
     adoptHeader: exam.adoptHeader,

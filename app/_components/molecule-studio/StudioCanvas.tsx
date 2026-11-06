@@ -509,7 +509,7 @@ export default function StudioCanvas({ studio, student = false, ink, eraser }: P
 
       {editedNote && <AnnotationEditor key={editedNote.id} note={editedNote} view={view} onDone={finishEditing} />}
 
-      <p data-testid="tool-hint" className="pointer-events-none absolute start-3 top-3 max-w-[min(30rem,calc(100%-1.5rem))] rounded-md border border-line bg-surface/95 px-2 py-1 text-[11px] leading-snug text-muted shadow-sm">
+      <p data-testid="tool-hint" className="pointer-events-none absolute start-3 top-3 max-w-[min(30rem,calc(100%-1.5rem))] rounded-md border border-line bg-surface/95 px-2 py-1 text-xs leading-snug text-muted shadow-sm">
         {student ? t("Student view: this is what the students will see") : t(TOOL_HINTS[activeTool])}
       </p>
 

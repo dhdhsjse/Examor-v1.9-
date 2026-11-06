@@ -29,7 +29,7 @@ export const statusIndicatorPanel: Feature = {
       <button
         onClick={ctx.shell.showHistory}
         title={look.tip}
-        className={`flex h-6 shrink-0 items-center gap-1 rounded-[5px] px-1.5 text-[11px] whitespace-nowrap transition-colors outline-none focus-visible:ring-2 focus-visible:ring-accent ${look.cls}`}
+        className={`flex h-6 shrink-0 items-center gap-1 rounded-[5px] px-1.5 text-xs whitespace-nowrap transition-colors outline-none focus-visible:ring-2 focus-visible:ring-accent ${look.cls}`}
       >
         {look.icon}
         {look.text}

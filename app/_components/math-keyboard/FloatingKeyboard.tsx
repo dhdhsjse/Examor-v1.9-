@@ -67,7 +67,7 @@ function KeyFace({ latex, className = "max-h-7" }: { latex: string; className?: 
     };
   }, [latex, src]);
   // eslint-disable-next-line @next/next/no-img-element -- small local svg
-  return src ? <img src={src} alt="" className={`pointer-events-none max-w-full object-contain ${className}`} draggable={false} /> : <span className="text-faint">…</span>;
+  return src ? <img src={src} alt="" className={`kb-glyph pointer-events-none max-w-full object-contain ${className}`} draggable={false} /> : <span className="text-faint">…</span>;
 }
 
 interface Props {
@@ -304,7 +304,7 @@ export default function FloatingKeyboard({ where, onClose, openTarget }: Props) 
               </button>
             ))}
           </div>
-          <button onClick={onClose} title={t("Close the keyboard")} aria-label={t("Close the keyboard")} className="grid size-7 shrink-0 cursor-pointer place-items-center rounded-md text-muted hover:bg-red-50 hover:text-red-600">
+          <button onClick={onClose} title={t("Close the keyboard")} aria-label={t("Close the keyboard")} className="grid size-7 shrink-0 cursor-pointer place-items-center rounded-md text-muted hover:bg-red-50 hover:text-red-700">
             <svg width="11" height="11" viewBox="0 0 10 10" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" aria-hidden>
               <path d="M2 2l6 6M8 2L2 8" />
             </svg>
@@ -319,7 +319,7 @@ export default function FloatingKeyboard({ where, onClose, openTarget }: Props) 
             onClick={() => pickTab(CLIPBOARD_TAB)}
             title={t("Your recent and pinned equations")}
             className={`flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors ${
-              onClipboard ? "bg-white text-indigo-600 shadow-sm ring-1 ring-line" : "text-muted hover:text-ink"
+              onClipboard ? "bg-white text-indigo-700 shadow-sm ring-1 ring-line" : "text-muted hover:text-ink"
             }`}
           >
             <ClipboardList size={13} strokeWidth={2} aria-hidden />
@@ -333,7 +333,7 @@ export default function FloatingKeyboard({ where, onClose, openTarget }: Props) 
               aria-pressed={!onClipboard && x.id === tab.id}
               onClick={() => pickTab(x.id)}
               className={`rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors ${
-                !onClipboard && x.id === tab.id ? "bg-white text-indigo-600 shadow-sm ring-1 ring-line" : "text-muted hover:text-ink"
+                !onClipboard && x.id === tab.id ? "bg-white text-indigo-700 shadow-sm ring-1 ring-line" : "text-muted hover:text-ink"
               }`}
             >
               {t(x.label)}
@@ -503,7 +503,7 @@ function ClipboardPanel({
             <button
               onMouseDown={(e) => e.preventDefault()}
               onClick={clearRecentEquations}
-              className="ms-auto rounded px-1.5 py-0.5 text-[11px] font-medium text-muted hover:bg-red-50 hover:text-red-600"
+              className="ms-auto rounded px-1.5 py-0.5 text-[11px] font-medium text-muted hover:bg-red-50 hover:text-red-700"
             >
               {t("Clear recent")}
             </button>
@@ -539,10 +539,10 @@ function MiniButton({
       }}
       className={`grid size-5 place-items-center rounded border bg-white shadow-sm ${
         danger
-          ? "border-line text-muted hover:border-red-200 hover:bg-red-50 hover:text-red-600"
+          ? "border-line text-muted hover:border-red-200 hover:bg-red-50 hover:text-red-700"
           : active
-            ? "border-indigo-200 text-indigo-600 hover:bg-indigo-50"
-            : "border-line text-muted hover:border-indigo-200 hover:text-indigo-600"
+            ? "border-indigo-200 text-indigo-700 hover:bg-indigo-50"
+            : "border-line text-muted hover:border-indigo-200 hover:text-indigo-700"
       }`}
     >
       {children}

@@ -68,7 +68,7 @@ export default function HeaderFooterInspector({ ctx }: { ctx: Ctx }) {
         </div>
       )}
       {scope === "global" && ownCount > 0 && (
-        <p className="mb-3 text-[11px] leading-snug text-faint">{t("{n} page(s) have their own settings and don't follow these.", { n: ownCount })}</p>
+        <p className="mb-3 text-xs leading-snug text-faint">{t("{n} page(s) have their own settings and don't follow these.", { n: ownCount })}</p>
       )}
 
       <ChromeSection ctx={ctx} kind="header" scope={scope} index={index} />
@@ -150,7 +150,7 @@ function ChromeSection({ ctx, kind, scope, index }: { ctx: Ctx; kind: ChromeKind
 
       <div className={`flex flex-col gap-2.5 transition-opacity ${current.enabled ? "" : "pointer-events-none opacity-45"}`} aria-disabled={!current.enabled}>
         <div className="flex flex-col gap-1">
-          <span className="text-[11px] font-semibold text-muted">{t(kind === "header" ? "Header style" : "Template")}</span>
+          <span className="text-xs font-semibold text-muted">{t(kind === "header" ? "Header style" : "Template")}</span>
           <ChoiceGrid<string>
             cols={2}
             value={template.id}
@@ -162,14 +162,14 @@ function ChromeSection({ ctx, kind, scope, index }: { ctx: Ctx; kind: ChromeKind
 
         {colored && (
           <div className="flex flex-col gap-1">
-            <span className="text-[11px] font-semibold text-muted">{t("Color")}</span>
+            <span className="text-xs font-semibold text-muted">{t("Color")}</span>
             <ColorGrid value={current.data.accent || undefined} autoLabel={t("Style's own")} onChange={(accent) => setData("accent", accent)} />
           </div>
         )}
 
         {template.sketch && (
           <div className="flex flex-col gap-1">
-            <span className="text-[11px] font-semibold text-muted">{t("Text style")}</span>
+            <span className="text-xs font-semibold text-muted">{t("Text style")}</span>
             <FontSelect
               value={current.data.fontFamily || undefined}
               onChange={(family) => setData("fontFamily", family)}
@@ -187,7 +187,7 @@ function ChromeSection({ ctx, kind, scope, index }: { ctx: Ctx; kind: ChromeKind
           const mixed = !!value && parseRich(value).length > 1;
           return (
             <label key={f.key} htmlFor={id(f.key)} className="flex flex-col gap-1">
-              <span className="text-[11px] font-semibold text-muted">{t(f.label)}</span>
+              <span className="text-xs font-semibold text-muted">{t(f.label)}</span>
               <input
                 id={id(f.key)}
                 dir="auto"
@@ -204,7 +204,7 @@ function ChromeSection({ ctx, kind, scope, index }: { ctx: Ctx; kind: ChromeKind
         })}
 
         {graded && <GradedOutOf ctx={ctx} data={current.data} fallback={Number(defaults.outOf) || 20} onData={setData} />}
-        {!template.fields?.length && <p className="text-[11px] leading-snug text-faint">{t("Filled in automatically on every page.")}</p>}
+        {!template.fields?.length && <p className="text-xs leading-snug text-faint">{t("Filled in automatically on every page.")}</p>}
       </div>
     </section>
   );
@@ -219,20 +219,20 @@ function GradedOutOf({ ctx, data, fallback, onData }: { ctx: Ctx; data: Record<s
   const mismatch = !auto && total > 0 && total !== outOf;
   return (
     <div className="flex flex-col gap-1.5 border-t border-line pt-2.5">
-      <span className="text-[11px] font-semibold text-muted">{t("Graded out of")}</span>
+      <span className="text-xs font-semibold text-muted">{t("Graded out of")}</span>
       <label className="flex items-center gap-2 text-xs text-ink">
         <input type="checkbox" checked={auto} onChange={(e) => onData("autoOutOf", e.target.checked ? "1" : undefined)} className="accent-accent" />
         {t("Use the total of the questions ({n} pts)", { n: total })}
       </label>
       {auto ? (
-        <p className="text-[10px] leading-snug text-faint">
+        <p className="text-[11px] leading-snug text-faint">
           {total > 0 ? t("The score follows the points of the questions.") : t("No points yet: /{n} is shown until you add questions.", { n: outOf })}
         </p>
       ) : (
         <NumberInput value={outOf} min={1} max={100} onChange={(v) => onData("outOf", String(v))} />
       )}
       {mismatch && (
-        <p className="rounded-md bg-amber-50 px-2 py-1.5 text-[11px] leading-snug text-amber-800 ring-1 ring-amber-200">
+        <p className="rounded-md bg-amber-50 px-2 py-1.5 text-xs leading-snug text-amber-800 ring-1 ring-amber-200">
           {t("The questions add up to {total} pts, not {outOf}.", { total, outOf })}
         </p>
       )}
@@ -288,7 +288,7 @@ function Preview({ ctx, kind, index, config }: { ctx: Ctx; kind: ChromeKind; ind
         ) : b.type === "text" ? (
           <span
             key={b.id}
-            className={`truncate text-slate-700 ${b.style === "title" ? "text-xs font-bold" : b.style === "heading" ? "text-xs font-semibold" : "text-[11px]"} ${
+            className={`truncate text-slate-700 ${b.style === "title" ? "text-xs font-bold" : b.style === "heading" ? "text-xs font-semibold" : "text-xs"} ${
               b.layout.width < full - 1 ? "text-center" : ""
             }`}
           >

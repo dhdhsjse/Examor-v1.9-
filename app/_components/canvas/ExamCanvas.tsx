@@ -18,12 +18,14 @@ import { columnOf } from "@/app/_lib/sheet/settle";
 import { MIN_SHAPE_SIZE, isLine } from "@/app/_lib/shapes";
 import { isFixedTable } from "@/app/_lib/table";
 import { snapBox, type Guide } from "@/app/_lib/snapping";
+import { keepTurnedInside, normalTurn, turnedCentre } from "@/app/_lib/turn";
 import { slotDrop } from "@/app/_lib/textboxSlots";
 import type { Block, BlockLayout, ExamDoc, PageMargins, ViewMode } from "@/app/_lib/types";
 import type { BlockPatch } from "@/app/_lib/useExam";
 import BlockNode, { type ResizeResult } from "./BlockNode";
 import { SheetFrame, type SheetInfo } from "./blocks/SheetViews";
 import FrameHandles from "./FrameHandles";
+import PageBorderView from "./PageBorderView";
 
 const SNAP_PX = 6; // snap distance on screen, in pixels
 const GUIDE_COLOR = "#c7d2fe"; // static margin/center guides
@@ -405,7 +407,8 @@ export default function ExamCanvas(props: Props) {
       setSlotLine(drop && !drop.same ? { left: page.left + drop.x, top: page.top + drop.y, width: drop.width } : null);
       return { x: page.left + b.layout.x, y: page.top + py };
     }
-    const i = pageAt(y + h / 2, boxes);
+    const turn = b.layout.rotation ?? 0;
+    const i = pageAt(turn ? turnedCentre(x, y, b.layout.width, h, turn)[1] : y + h / 2, boxes);
     const page = boxes[i];
     const others = blocks
       // (not to the blocks in its own text, which move with it)
@@ -413,11 +416,12 @@ export default function ExamCanvas(props: Props) {
       .map((o) => ({ ...o.layout, height: heights.get(o.id) ?? 0 }));
 
     const box = { x: x - page.left, y: y - page.top, width: b.layout.width, height: h };
-    const snapped = guidesOn ? snapBox(box, others, { ...page, margins: snapMargins(i) }, SNAP_PX / zoom) : { ...box, guides: [] };
+    const snapped = guidesOn && !turn ? snapBox(box, others, { ...page, margins: snapMargins(i) }, SNAP_PX / zoom) : { ...box, guides: [] };
     setSnap({ page: i, guides: snapped.guides });
     // (a mark or a line held by the frame only moves up and down, in its column)
     const column = columnOf(b, geos[i] ?? null);
-    const pos = { x: column ? column.x : clamp(snapped.x, 0, page.width - b.layout.width), y: clamp(snapped.y, 0, page.height - h) };
+    // (a turned text box is kept inside the page by where it really is, and is not snapped)
+    const pos = turn ? keepTurnedInside(snapped.x, snapped.y, b.layout.width, h, turn, page.width, page.height) : { x: column ? column.x : clamp(snapped.x, 0, page.width - b.layout.width), y: clamp(snapped.y, 0, page.height - h) };
     if (dragAt?.pageId !== pages[i].id || dragAt.y !== pos.y) setDragAt({ id: b.id, pageId: pages[i].id, y: pos.y });
     return { x: page.left + pos.x, y: page.top + pos.y };
   };
@@ -436,7 +440,8 @@ export default function ExamCanvas(props: Props) {
       props.onMove?.(b.id, owner.layout.pageId, b.layout.x, y - boxes[i].top);
       return;
     }
-    const i = pageAt(y + (heights.get(b.id) ?? 0) / 2, boxes);
+    const turn = b.layout.rotation ?? 0;
+    const i = pageAt(turn ? turnedCentre(x, y, b.layout.width, heights.get(b.id) ?? 0, turn)[1] : y + (heights.get(b.id) ?? 0) / 2, boxes);
     setSnap(null);
     setDragAt(null);
     props.onDragging?.(false);
@@ -457,7 +462,8 @@ export default function ExamCanvas(props: Props) {
 
   // Resize end: keep the block inside its page; images/equations keep their shape.
   const handleResize = (b: Block, r: ResizeResult) => {
-    const i = pageAt(r.y + r.height / 2, boxes);
+    const turn = b.type === "textbox" ? normalTurn(r.rotation ?? b.layout.rotation) : 0;
+    const i = pageAt(turn ? turnedCentre(r.x, r.y, r.width, r.height, turn)[1] : r.y + r.height / 2, boxes);
     const page = boxes[i];
     const width = clamp(r.width, b.type === "shape" ? (isLine(b) ? 0 : MIN_SHAPE_SIZE) : 40, page.width);
     const ratio = b.type === "image" ? b.ratio : b.type === "equation" ? b.exW / Math.max(0.1, b.exH) : 0;
@@ -466,10 +472,12 @@ export default function ExamCanvas(props: Props) {
     const h = graph ? clamp(r.height, b.type === "textbox" ? 30 : shape ? (isLine(b) ? 0 : MIN_SHAPE_SIZE) : 80, page.height) : ratio ? width / ratio : (heights.get(b.id) ?? 0);
     // (an image's caption sits under its picture: keep it on the page too)
     const below = b.type === "image" ? Math.max(0, (heights.get(b.id) ?? 0) - b.layout.height) : 0;
+    const place = turn ? keepTurnedInside(r.x - page.left, r.y - page.top, width, h, turn, page.width, page.height) : { x: clamp(r.x - page.left, 0, page.width - width), y: clamp(r.y - page.top, 0, page.height - h - below) };
     props.onResize?.(b.id, {
       pageId: pages[i].id,
-      x: clamp(r.x - page.left, 0, page.width - width),
-      y: clamp(r.y - page.top, 0, page.height - h - below),
+      x: place.x,
+      y: place.y,
+      ...(b.type === "textbox" ? { rotation: turn || undefined } : {}),
       width,
       ...(ratio || graph ? { height: h } : {}),
     });
@@ -689,6 +697,8 @@ export default function ExamCanvas(props: Props) {
   const media = selected?.type === "image" || selected?.type === "equation" || (selected?.type === "table" && isFixedTable(selected));
   const corners = media || selected?.type === "graph";
   const freeBox = selected?.type === "textbox" || selected?.type === "shape"; // a text box or a shape: every side and corner
+  // A text box can be turned with the handle over it (written sideways or on a slant), unless blocks sit in its text: they are placed by the box, not turned with it.
+  const turnable = selected?.type === "textbox" && !blocks.some((o) => o.meta?.slot === selected.id);
   // A sticker or a line held by the frame has no handles: its column decides its width
   const held = !!selected && (selected.type === "mark" || selected.type === "rule") && !!columnOf(selected, geos[pageIndex.get(selected.layout.pageId) ?? 0] ?? null);
   const showFrameHandles = interactive && !!sheet && !!props.onSheet && !selected && !group.size && !drawing && !erasing && !stamping && !props.textTool;
@@ -753,6 +763,9 @@ export default function ExamCanvas(props: Props) {
             zoom={zoom}
           />
         ))}
+
+        {/* The border of each page (Page layout → Page borders), under everything */}
+        {pages.map((page, i) => page.border && <PageBorderView key={page.id} box={boxes[i]} border={page.border} />)}
 
         {/* A bordered correction sheet: the frame of each page (under the blocks) */}
         {sheet && geos.map((geo, i) => geo && <SheetFrame key={pages[i].id} geo={geo} sheet={sheet} box={boxes[i]} meta={meta} />)}
@@ -854,7 +867,10 @@ export default function ExamCanvas(props: Props) {
           <Transformer
             ref={trRef}
             onMouseDown={() => props.onHandleDown?.()}
-            rotateEnabled={false}
+            rotateEnabled={turnable}
+            rotationSnaps={[0, 45, 90, 135, 180, -135, -90, -45]}
+            rotationSnapTolerance={5}
+            rotateAnchorOffset={26 / zoom}
             keepRatio={media}
             enabledAnchors={
               selected?.type === "header" || held

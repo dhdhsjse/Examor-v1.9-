@@ -47,7 +47,7 @@ export function RibbonGroup({ title, children, aside, collapsible }: { title: st
 export function RibbonLine({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="flex items-center gap-2">
-      <span className="w-[4.5rem] flex-none truncate text-[11px] text-muted">{label}</span>
+      <span className="w-[4.5rem] flex-none truncate text-xs text-muted">{label}</span>
       <div className="flex min-w-0 flex-1 flex-wrap items-center gap-0.5">{children}</div>
     </div>
   );
@@ -278,7 +278,7 @@ export function Menu({ children, label }: { children: ReactNode; label?: string 
   );
 }
 
-export const MenuHeading = ({ children }: { children: ReactNode }) => <p className="px-2 pt-1.5 pb-1 text-[11px] font-semibold text-faint">{children}</p>;
+export const MenuHeading = ({ children }: { children: ReactNode }) => <p className="px-2 pt-1.5 pb-1 text-xs font-semibold text-faint">{children}</p>;
 export const MenuSeparator = () => <hr className="my-1 border-line" />;
 
 interface ItemProps {
@@ -306,7 +306,7 @@ export function MenuItem({ label, labelStyle, icon, shortcut, checked, disabled,
       <span className="min-w-0 flex-1 truncate" style={labelStyle}>
         {label}
       </span>
-      {shortcut && <span className="ps-3 text-[11px] text-faint">{shortcut}</span>}
+      {shortcut && <span className="ps-3 text-xs text-faint">{shortcut}</span>}
     </button>
   );
 }

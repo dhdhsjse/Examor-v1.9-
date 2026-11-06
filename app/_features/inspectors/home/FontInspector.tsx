@@ -49,7 +49,7 @@ export default function FontInspector({ ctx }: { ctx: Ctx }) {
           <span className="truncate text-base text-ink" style={{ fontFamily: fontStack(examFont) }}>
             {t("Exam font")} ({examFont})
           </span>
-          <span className="text-[10px] text-faint">{t("The font chosen for the whole exam")}</span>
+          <span className="text-[11px] text-faint">{t("The font chosen for the whole exam")}</span>
         </span>
         {!current && <Check size={16} className="shrink-0 text-accent" />}
       </button>
@@ -59,7 +59,7 @@ export default function FontInspector({ ctx }: { ctx: Ctx }) {
         if (!fonts.length) return null;
         return (
           <section key={cat.id} className="flex flex-col gap-1.5">
-            <h3 className="text-[11px] font-semibold text-muted">{t(cat.label)}</h3>
+            <h3 className="text-xs font-semibold text-muted">{t(cat.label)}</h3>
             {fonts.map((f) => {
               const on = current === f.value;
               const missing = !!installed && !installed.has(f.value);
@@ -80,7 +80,7 @@ export default function FontInspector({ ctx }: { ctx: Ctx }) {
                     <span className="truncate text-xs text-muted" dir="auto" style={{ fontFamily: fontStack(f.value) }}>
                       {f.script === "latin" ? SAMPLE.latin : SAMPLE.arabic}
                     </span>
-                    {missing && <span className="text-[10px] text-faint">{t("Not installed on this computer")}</span>}
+                    {missing && <span className="text-[11px] text-faint">{t("Not installed on this computer")}</span>}
                   </span>
                   {on && <Check size={16} className="shrink-0 text-accent" />}
                 </button>

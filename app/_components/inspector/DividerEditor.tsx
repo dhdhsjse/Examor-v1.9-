@@ -69,7 +69,7 @@ export function DividerEditor({ b, onChange }: { b: DividerBlock; onChange: OnCh
                 aria-pressed={on}
                 // (another look starts at its own thickness)
                 onClick={() => onChange({ style: s.id, thickness: undefined }, "style")}
-                className={`flex flex-col items-stretch gap-1 rounded-[6px] border px-2 pt-1.5 pb-1 text-[10px] transition-colors outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+                className={`flex flex-col items-stretch gap-1 rounded-[6px] border px-2 pt-1.5 pb-1 text-[11px] transition-colors outline-none focus-visible:ring-2 focus-visible:ring-accent ${
                   on ? "border-accent bg-accent-soft text-accent" : "border-line bg-white text-muted hover:border-accent/50 hover:text-ink"
                 }`}
               >
@@ -92,11 +92,11 @@ export function DividerEditor({ b, onChange }: { b: DividerBlock; onChange: OnCh
       </Field>
 
       <div className="flex min-h-7 items-center justify-between gap-2">
-        <span className="text-[11px] text-muted">{t("Thickness")}</span>
+        <span className="text-xs text-muted">{t("Thickness")}</span>
         <Stepper value={Math.round(dividerThickness(b))} min={1} max={10} onChange={(v) => onChange({ thickness: v }, "thickness")} />
       </div>
       <div className="flex min-h-7 items-center justify-between gap-2">
-        <span className="text-[11px] text-muted">{t("Space above and below")}</span>
+        <span className="text-xs text-muted">{t("Space above and below")}</span>
         <Stepper value={dividerSpace(b)} min={0} max={60} onChange={(v) => onChange({ space: v }, "space")} />
       </div>
     </>

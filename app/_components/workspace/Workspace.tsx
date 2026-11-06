@@ -511,7 +511,7 @@ export default function Workspace(props: Props) {
             {/* Small "add page" below the last page */}
             <button
               onClick={props.onAddPage}
-              className="flex items-center gap-1.5 rounded-full border border-slate-300/80 bg-white/70 px-3 py-1 text-xs font-medium text-muted backdrop-blur transition-colors hover:border-indigo-300 hover:text-indigo-600"
+              className="flex items-center gap-1.5 rounded-full border border-slate-300/80 bg-white/70 px-3 py-1 text-xs font-medium text-muted backdrop-blur transition-colors hover:border-indigo-300 hover:text-indigo-700"
             >
               <span className="text-sm leading-none">+</span> {t("Add page")}
             </button>
@@ -612,7 +612,7 @@ function PageFrame({ index, box, total, zoom, active, keyMode, onClick, onDelete
       <button
         onClick={onClick}
         className={`absolute z-10 rounded font-medium transition-colors hover:bg-white/70 ${
-          active ? "text-indigo-600" : "text-muted"
+          active ? "text-indigo-700" : "text-muted"
         }`}
         style={{
           top,
@@ -624,13 +624,13 @@ function PageFrame({ index, box, total, zoom, active, keyMode, onClick, onDelete
         }}
       >
         {t("Page")} {index + 1} <span className="text-muted">{t("of {n}", { n: total })}</span>
-        {keyMode && <span className="text-emerald-600"> · {t("Correction")}</span>}
+        {keyMode && <span className="text-emerald-700"> · {t("Correction")}</span>}
       </button>
       {onDelete && (
         <button
           onClick={onDelete}
           title={t("Delete page")}
-          className="absolute z-10 flex items-center rounded font-medium text-muted transition-colors hover:bg-red-50 hover:text-red-600"
+          className="absolute z-10 flex items-center rounded font-medium text-muted transition-colors hover:bg-red-50 hover:text-red-700"
           style={{
             top,
             left: left + box.width,

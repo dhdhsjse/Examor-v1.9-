@@ -56,7 +56,7 @@ export default function FeatureRow({ feature, ctx, onLibrary }: Props) {
       <span className={`ui-icon grid size-4 shrink-0 place-items-center ${open ? "text-accent" : "text-muted"}`}>{feature.icon}</span>
       <span className="min-w-0 flex-1 truncate">{label}</span>
       {intoText && <CornerDownRight size={12} strokeWidth={2} aria-label={intoTextTip} className="shrink-0 text-accent rtl:-scale-x-100" />}
-      {feature.hotkey && <span className="text-[11px] text-faint">{feature.hotkey}</span>}
+      {feature.hotkey && <span className="text-xs text-faint">{feature.hotkey}</span>}
       {inspector && (
         <SlidersHorizontal
           size={12}

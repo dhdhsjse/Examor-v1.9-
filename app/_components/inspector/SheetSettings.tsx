@@ -18,13 +18,13 @@ const round = (n: number) => Math.round(n * 1000) / 1000;
 function Section({ title, children }: { title?: string; children: ReactNode }) {
   return (
     <section aria-label={title} className="flex flex-col gap-2 px-3 py-3">
-      {title && <h3 className="flex h-5 items-center text-[11px] font-semibold text-ink">{title}</h3>}
+      {title && <h3 className="flex h-5 items-center text-xs font-semibold text-ink">{title}</h3>}
       {children}
     </section>
   );
 }
 
-const Hint = ({ children }: { children: ReactNode }) => <p className="text-[11px] leading-snug text-faint">{children}</p>;
+const Hint = ({ children }: { children: ReactNode }) => <p className="text-xs leading-snug text-faint">{children}</p>;
 
 // The right panel while the correction sheet is shown and nothing is selected: its paper (free, or bordered like an official answer key with a column
 // of marks and a column of totals), what it adds up to, and its look. The columns and the edges of the frame are dragged on the page (FrameHandles).
@@ -113,7 +113,7 @@ export default function SheetSettings({ sheet, scores, full, onFullMark, onGoTo,
               data-testid="sheet-issue"
               title={t("Show")}
               onClick={() => onGoTo(issue.id)}
-              className="flex w-full items-start gap-1.5 rounded-xl bg-amber-50 px-2.5 py-2 text-start text-[11px] leading-snug text-amber-900 ring-1 ring-amber-200 transition-[transform,background-color] duration-100 outline-none hover:bg-amber-100 focus-visible:ring-2 focus-visible:ring-accent active:scale-[0.985]"
+              className="flex w-full items-start gap-1.5 rounded-xl bg-amber-50 px-2.5 py-2 text-start text-xs leading-snug text-amber-900 ring-1 ring-amber-200 transition-[transform,background-color] duration-100 outline-none hover:bg-amber-100 focus-visible:ring-2 focus-visible:ring-accent active:scale-[0.985]"
             >
               <TriangleAlert size={12} strokeWidth={2} aria-hidden className="mt-px shrink-0" />
               <span className="min-w-0 flex-1">
@@ -125,7 +125,7 @@ export default function SheetSettings({ sheet, scores, full, onFullMark, onGoTo,
             </button>
           ))}
           {noTotal > 0 && (
-            <div className="flex flex-col gap-1.5 rounded-[5px] bg-amber-50 px-2 py-1.5 text-[11px] leading-snug text-amber-900 ring-1 ring-amber-200" data-testid="rows-without-total">
+            <div className="flex flex-col gap-1.5 rounded-[5px] bg-amber-50 px-2 py-1.5 text-xs leading-snug text-amber-900 ring-1 ring-amber-200" data-testid="rows-without-total">
               <p className="flex items-start gap-1.5">
                 <TriangleAlert size={12} strokeWidth={2} aria-hidden className="mt-px shrink-0" />
                 {noTotal === 1 ? t("One row has several marks and no total.") : t("{n} rows have several marks and no total.", { n: noTotal })}
@@ -135,7 +135,7 @@ export default function SheetSettings({ sheet, scores, full, onFullMark, onGoTo,
                   type="button"
                   data-testid="add-totals"
                   onClick={fix.addTotals}
-                  className="h-6 rounded-[5px] bg-white px-2 text-[11px] font-medium text-ink ring-1 ring-amber-300 transition-colors outline-none hover:bg-amber-100 focus-visible:ring-2 focus-visible:ring-accent"
+                  className="h-6 rounded-[5px] bg-white px-2 text-xs font-medium text-ink ring-1 ring-amber-300 transition-colors outline-none hover:bg-amber-100 focus-visible:ring-2 focus-visible:ring-accent"
                 >
                   {t("Add the totals")}
                 </button>
@@ -159,7 +159,7 @@ export default function SheetSettings({ sheet, scores, full, onFullMark, onGoTo,
         {report?.linked && (
           <Section title={t("Answers")}>
             <div className="flex flex-col gap-1.5">
-              <span className="px-0.5 text-[11px] font-medium tracking-[-0.005em] text-muted">{t("Color of the answers")}</span>
+              <span className="px-0.5 text-xs font-medium tracking-[-0.005em] text-muted">{t("Color of the answers")}</span>
               <ColorGrid
                 value={meta.answerColor}
                 autoLabel={report.template === "answers" ? t("Black") : t("Green")}
@@ -242,7 +242,7 @@ export default function SheetSettings({ sheet, scores, full, onFullMark, onGoTo,
               {sheet.headings !== "none" && (
                 <div className="flex flex-col gap-3 pt-1">
                   <label className="flex flex-col gap-1.5">
-                    <span className="px-0.5 text-[11px] font-medium tracking-[-0.005em] text-muted">{t("Title of the answers")}</span>
+                    <span className="px-0.5 text-xs font-medium tracking-[-0.005em] text-muted">{t("Title of the answers")}</span>
                     <input
                       dir="auto"
                       value={sheet.answerTitle}
@@ -253,7 +253,7 @@ export default function SheetSettings({ sheet, scores, full, onFullMark, onGoTo,
                   </label>
                   {sheet.marks && sheet.total && (
                   <label className="flex flex-col gap-1.5">
-                    <span className="px-0.5 text-[11px] font-medium tracking-[-0.005em] text-muted">{t("Title over both columns")}</span>
+                    <span className="px-0.5 text-xs font-medium tracking-[-0.005em] text-muted">{t("Title over both columns")}</span>
                     <input
                       dir="auto"
                       value={sheet.markTitle}

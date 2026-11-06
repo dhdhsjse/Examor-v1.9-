@@ -44,7 +44,7 @@ export default function EditTab({ block, editor, labelInput, reveal }: Props) {
 
   return (
     <Disclosure title={t("Edit")} testId="molecule-edit" reveal={reveal}>
-      {none && <p className="px-1 text-[11px] text-muted">{t("Select an atom or a bond on the drawing to change it.")}</p>}
+      {none && <p className="px-1 text-xs text-muted">{t("Select an atom or a bond on the drawing to change it.")}</p>}
 
       {(sel.atoms.length > 0 || sel.bonds.length > 0) && (
         <Group>

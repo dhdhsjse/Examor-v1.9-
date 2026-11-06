@@ -27,7 +27,7 @@ export default function PeriodicTableDialog({ selected, onPick, onClose }: Props
   }, [onClose]);
 
   return (
-    <div className="absolute inset-0 z-20 grid place-items-center bg-slate-900/40 p-4 backdrop-blur-sm" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+    <div className="absolute inset-0 z-20 grid place-items-center bg-black/40 p-4 backdrop-blur-sm" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div role="dialog" aria-modal="true" aria-label={t("Periodic table")} dir="ltr" className="flex max-h-full w-full max-w-[1180px] flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
         <header className="flex items-center gap-4 border-b border-line px-5 py-3" dir={rtl ? "rtl" : "ltr"}>
           <h3 className="shrink-0 text-base font-semibold text-ink">{t("Periodic table")}</h3>
@@ -81,7 +81,7 @@ function Tile({ element: e, lang, active, onPick, onHover }: { element: ElementD
 
 function Marker({ row, label }: { row: number; label: string }) {
   return (
-    <div style={{ gridRow: row, gridColumn: 3 }} className="grid place-items-center rounded-md border border-dashed border-line text-[10px] tabular-nums text-faint">
+    <div style={{ gridRow: row, gridColumn: 3 }} className="grid place-items-center rounded-md border border-dashed border-line text-[11px] tabular-nums text-faint">
       {label}
     </div>
   );
@@ -89,7 +89,7 @@ function Marker({ row, label }: { row: number; label: string }) {
 
 function RowLabel({ row, label }: { row: number; label: string }) {
   return (
-    <div style={{ gridRow: row, gridColumn: "1 / 3" }} className="flex items-center justify-end pe-2 text-[11px] font-medium text-muted">
+    <div style={{ gridRow: row, gridColumn: "1 / 3" }} className="flex items-center justify-end pe-2 text-xs font-medium text-muted">
       {label}
     </div>
   );

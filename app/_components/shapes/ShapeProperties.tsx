@@ -284,7 +284,7 @@ export default function ShapeProperties({ item, onChange, geometry, size, onOrde
               </button>
             )}
             {onDelete && (
-              <button type="button" onClick={onDelete} data-testid="shape-delete" className={`${textBtn} text-red-600 hover:bg-red-50`}>
+              <button type="button" onClick={onDelete} data-testid="shape-delete" className={`${textBtn} text-red-700 hover:bg-red-50`}>
                 <Trash2 size={14} />
                 {t("Delete")}
               </button>

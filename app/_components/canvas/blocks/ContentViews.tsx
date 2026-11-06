@@ -1,7 +1,8 @@
 "use client";
 
 import { Fragment } from "react";
-import { Group, Image as KImage, Line, Rect, Shape } from "react-konva";
+import { Group, Image as KImage, Line, Path, Rect, Shape } from "react-konva";
+import { boxFillPath, boxLines } from "@/app/_lib/boxBorder";
 import StudioShapes from "@/app/_components/shapes/StudioShapes";
 import { isRtl } from "@/app/_lib/i18n";
 import { DEFAULT_ACCENT, layoutImageCaption, layoutTable, layoutText, layoutTextbox, tableFrame, type ListMarker, type ParagraphBox } from "@/app/_lib/blockLayout";
@@ -75,11 +76,23 @@ export function TextboxView({ b, meta, interactive, frameOnly }: { b: TextboxBlo
   const L = layoutTextbox(b, meta, hint);
   return (
     <>
-      {b.background && <Rect width={b.layout.width} height={L.height} fill={b.background} listening={false} />}
+      {b.background && <Path data={boxFillPath(b, b.layout.width, L.height)} fill={b.background} listening={false} />}
       {b.border ? (
-        <Rect x={0.5} y={0.5} width={b.layout.width - 1} height={L.height - 1} stroke={b.border} strokeWidth={1} listening={false} />
+        boxLines(b, b.layout.width, L.height).map((l, i) => (
+          <Path
+            key={i}
+            data={l.d}
+            fill={l.fill ? b.border : undefined}
+            stroke={l.w ? b.border : undefined}
+            strokeWidth={l.w}
+            dash={l.dash}
+            lineCap={l.round ? "round" : "butt"}
+            opacity={l.o ?? 1}
+            listening={false}
+          />
+        ))
       ) : (
-        interactive && <Rect width={b.layout.width} height={L.height} stroke="#cbd5e1" strokeWidth={1} dash={[4, 3]} listening={false} />
+        interactive && <Path data={boxFillPath(b, b.layout.width, L.height)} stroke="#cbd5e1" strokeWidth={1} dash={[4, 3]} listening={false} />
       )}
       {!frameOnly && L.paragraphs.map((p, k) => p.slot ? null : (
         <Fragment key={k}>

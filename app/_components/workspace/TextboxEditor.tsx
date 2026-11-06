@@ -12,6 +12,8 @@ import { isRtl } from "@/app/_lib/i18n";
 import type { StylePatch } from "@/app/_lib/richText";
 import { BLOCK_SLOT, slotsOf, textboxDoc } from "@/app/_lib/textboxDoc";
 import * as cmd from "@/app/_lib/textboxEditor";
+import { boxFillPath, boxLines } from "@/app/_lib/boxBorder";
+import { turnedBounds } from "@/app/_lib/turn";
 import type { ExamMeta, TextboxBlock } from "@/app/_lib/types";
 import FormatBar from "../rich/FormatBar";
 
@@ -222,6 +224,8 @@ export default function TextboxEditor({ block, meta, zoom, box, selectAll, keepO
   // See-through: the page draws the box's fill and border under the editor (not its words), so shapes, images… over the box stay
   // in sight while typing. While the box is dragged by its edge the page does not draw it: the editor has the fill then, except
   // where a block sits in the text (the page draws that block, and it must show through).
+  // (a turned box: the bar goes over the highest point of the box, not over its corner)
+  const aabb = block.layout.rotation ? turnedBounds(0, 0, box.width, box.height, block.layout.rotation) : { left: 0, top: 0, right: box.width };
   const layout = layoutTextbox(block, meta);
   const holes = layout.paragraphs.flatMap((p) => (p.slot ? [`M${p.x} ${layout.y + p.y}h${p.width}v${p.slot.height}h${-p.width}Z`] : []));
   return (
@@ -233,7 +237,7 @@ export default function TextboxEditor({ block, meta, zoom, box, selectAll, keepO
       onMouseDown={(e) => e.stopPropagation()}
     >
       {/* Format bar just above the box, at screen size (lined up on the right in Arabic) */}
-      <div className="absolute z-30 h-0" style={{ [rtl ? "right" : "left"]: 0, top: -8 / zoom }}>
+      <div className="absolute z-30 h-0" style={{ [rtl ? "right" : "left"]: rtl ? box.width - aabb.right : aabb.left, top: aabb.top - 8 / zoom }}>
         <div className={`absolute bottom-0 ${rtl ? "right-0 origin-bottom-right" : "left-0 origin-bottom-left"}`} style={{ transform: `scale(${1 / zoom})` }}>
           <FormatBar
             style={{
@@ -257,6 +261,8 @@ export default function TextboxEditor({ block, meta, zoom, box, selectAll, keepO
         </div>
       </div>
 
+      {/* A turned box (written sideways or on a slant): its editor turns with it, about the corner the page turns it about; the bar above stays upright */}
+      <div style={block.layout.rotation ? { transform: `rotate(${block.layout.rotation}deg)`, transformOrigin: "0 0" } : undefined}>
       <div
         dir={rtl ? "rtl" : "ltr"}
         // A click in the box but outside the text types at its end.
@@ -270,7 +276,6 @@ export default function TextboxEditor({ block, meta, zoom, box, selectAll, keepO
           minHeight: box.height,
           padding: textboxPad(block),
           justifyContent: JUSTIFY[block.valign ?? "top"],
-          boxShadow: moved && block.border ?`inset 0 0 0 1px ${block.border}` : undefined,
           fontFamily: s.font.family,
           fontSize: s.font.size,
           lineHeight: s.line / s.font.size,
@@ -286,13 +291,23 @@ export default function TextboxEditor({ block, meta, zoom, box, selectAll, keepO
           <div
             aria-hidden
             className="pointer-events-none absolute inset-0 -z-10"
-            style={{ background: block.background ?? "#ffffff", clipPath: holes.length ? `path(evenodd, "M0 0H100000V100000H0Z ${holes.join(" ")}")` : undefined }}
-          />
+            style={{
+              clipPath: holes.length ? `path(evenodd, "M0 0H100000V100000H0Z ${holes.join(" ")}")` : undefined,
+            }}
+          >
+            <svg width={box.width} height={box.height} className="absolute inset-0 overflow-visible">
+              <path d={boxFillPath(block, box.width, box.height)} fill={block.background ?? "#ffffff"} />
+              {boxLines(block, box.width, box.height).map((l, i) => (
+                <path key={i} d={l.d} fill={l.fill ? block.border : "none"} stroke={l.w ? block.border : "none"} strokeWidth={l.w} strokeDasharray={l.dash?.join(" ")} strokeLinecap={l.round ? "round" : "butt"} opacity={l.o} />
+              ))}
+            </svg>
+          </div>
         )}
         <EditorContent editor={editor} />
         {bands.map((style, i) => (
           <div key={i} aria-hidden onMouseDown={startMove} className="absolute z-10 cursor-move" style={style} />
         ))}
+      </div>
       </div>
     </div>
   );

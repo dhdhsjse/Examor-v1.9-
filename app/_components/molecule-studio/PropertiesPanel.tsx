@@ -119,7 +119,7 @@ function Overview({ studio }: { studio: MoleculeStudioState }) {
           {molecules.length > MAX_LISTED && <li className="px-3.5 py-2 text-xs text-muted">{t("+ {count} more", { count: molecules.length - MAX_LISTED })}</li>}
         </ul>
       </Group>
-      <p className="px-1 text-[11px] text-muted tabular-nums" data-testid="graph-stats">
+      <p className="px-1 text-xs text-muted tabular-nums" data-testid="graph-stats">
         {counts.join(" · ")}
       </p>
     </Disclosure>
@@ -150,7 +150,7 @@ function TypedText({ label, value, onChange, onFocus, onBlur, testId, placeholde
   return (
     <Row label={label} htmlFor={id} stacked>
       <input id={id} value={value} placeholder={placeholder} dir="auto" maxLength={maxLength} data-testid={testId} onFocus={onFocus} onBlur={onBlur} onChange={(e) => onChange(e.target.value)} onKeyDown={leaveOnEnter} className={`${control} h-9 w-full`} style={{ userSelect: "text" }} />
-      {hint && <span className="text-[11px] text-muted">{hint}</span>}
+      {hint && <span className="text-xs text-muted">{hint}</span>}
     </Row>
   );
 }
@@ -212,7 +212,7 @@ function AtomSection({ studio, atoms, onOpenTable, lang }: { studio: MoleculeStu
         <SwitchRow label={t("Hide them from the students")} checked={pairsHidden === atoms.length} onChange={(on) => setPairsHiddenOf(ids, on)} testId="pairs-hide" />
       </Group>
       {placed > 0 && (
-        <p className="-mt-1 px-1 text-[11px] text-muted" data-testid="pairs-placed">
+        <p className="-mt-1 px-1 text-xs text-muted" data-testid="pairs-placed">
           {t("Placed by hand: {count}", { count: placed })}
         </p>
       )}

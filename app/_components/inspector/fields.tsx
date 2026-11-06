@@ -13,9 +13,9 @@ export function Field({ label, hint, children, group }: { label: string; hint?: 
   const Tag = group ? "div" : "label";
   return (
     <Tag className="flex flex-col gap-1" role={group ? "group" : undefined} aria-label={group ? label : undefined}>
-      <span className="text-[11px] text-muted">{label}</span>
+      <span className="text-xs text-muted">{label}</span>
       {children}
-      {hint && <span className="text-[11px] leading-snug text-faint">{hint}</span>}
+      {hint && <span className="text-xs leading-snug text-faint">{hint}</span>}
     </Tag>
   );
 }
@@ -27,7 +27,7 @@ export function Toggle({ checked, onChange, label, hint }: { checked: boolean; o
       <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className="mt-0.5 accent-accent" />
       <span className="flex flex-col gap-0.5">
         {label}
-        {hint && <span className="text-[11px] leading-snug text-faint">{hint}</span>}
+        {hint && <span className="text-xs leading-snug text-faint">{hint}</span>}
       </span>
     </label>
   );
@@ -170,7 +170,7 @@ export function Segmented<T extends string>(props: { value: T; options: { value:
           type="button"
           onClick={() => props.onChange(o.value)}
           aria-pressed={o.value === props.value}
-          className={`h-6 flex-1 rounded-[4px] px-2 text-[11px] transition-colors outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+          className={`h-6 flex-1 rounded-[4px] px-2 text-xs transition-colors outline-none focus-visible:ring-2 focus-visible:ring-accent ${
             o.value === props.value ? "bg-white font-semibold text-ink ring-1 ring-line" : "text-muted hover:text-ink"
           }`}
         >
@@ -256,11 +256,11 @@ export function ChoiceGrid<T extends string>(props: { value: T; options: { value
           type="button"
           onClick={() => props.onChange(o.value)}
           aria-pressed={o.value === props.value}
-          className={`flex flex-col items-stretch gap-1 rounded-[5px] border p-1.5 text-[11px] transition-colors outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+          className={`flex flex-col items-stretch gap-1 rounded-[5px] border p-1.5 text-xs transition-colors outline-none focus-visible:ring-2 focus-visible:ring-accent ${
             o.value === props.value ? "border-accent font-semibold text-ink" : "border-line text-muted hover:border-faint hover:text-ink"
           }`}
         >
-          <span className="pointer-events-none flex h-8 items-center justify-center overflow-hidden rounded bg-white">{o.preview}</span>
+          <span data-paper="" className="pointer-events-none flex h-8 items-center justify-center overflow-hidden rounded-lg bg-white">{o.preview}</span>
           {o.label}
         </button>
       ))}

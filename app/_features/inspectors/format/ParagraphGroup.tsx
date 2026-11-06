@@ -57,7 +57,7 @@ function NumberField({ label, value, min, max, step, decimals = 0, unit, onChang
           }}
           className="h-7 w-14 rounded-md border border-line bg-white px-1.5 text-end text-xs tabular-nums outline-none focus:border-accent"
         />
-        <span className="w-4 text-[11px] text-faint">{unit}</span>
+        <span className="w-4 text-xs text-faint">{unit}</span>
       </span>
     </label>
   );
@@ -142,7 +142,7 @@ function SpacingMenu({ t, para }: { t: T; para: ParagraphTarget }) {
               <NumberField label={t("After")} value={para.spaceAfter} min={0} max={MAX_SPACE} step={2} unit="px" onChange={(v) => para.setSpace({ after: v })} />
             </>
           ) : (
-            <p className="px-2 pb-1.5 text-[11px] leading-snug text-faint">{t("The space between paragraphs is set in text boxes.")}</p>
+            <p className="px-2 pb-1.5 text-xs leading-snug text-faint">{t("The space between paragraphs is set in text boxes.")}</p>
           )}
         </div>
       )}
@@ -155,7 +155,7 @@ function StepField({ label, value, title, onDown, onUp }: { label: string; value
   const btn = "grid size-7 place-items-center rounded-md text-xs font-semibold text-ink hover:bg-white disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:bg-transparent";
   return (
     <div className="flex items-center justify-between gap-2">
-      <span className="text-[11px] text-muted">{label}</span>
+      <span className="text-xs text-muted">{label}</span>
       <div className="flex items-center rounded-md bg-subtle ring-1 ring-line" title={title}>
         <button type="button" aria-label={`${label} −`} disabled={!onDown} onMouseDown={keepFocus} onClick={onDown} className={btn}>
           −
@@ -271,7 +271,7 @@ export default function ParagraphGroup({ ctx, b, para, ownSpacing }: { ctx: Ctx;
   return (
     <RibbonGroup title={box ? t("Alignment") : t("Paragraph")}>
       <div className="flex flex-col gap-1.5">
-        {!box && <span className="text-[11px] text-muted">{t("Alignment")}</span>}
+        {!box && <span className="text-xs text-muted">{t("Alignment")}</span>}
         {/* Two columns as wide as the alignment buttons: the buttons of the rows under them sit under their buttons. */}
         <div className="grid grid-cols-[repeat(2,max-content)] items-center gap-x-2 gap-y-1.5">
           <Segmented

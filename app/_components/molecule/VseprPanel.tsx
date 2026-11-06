@@ -31,7 +31,7 @@ export default function VseprPanel({ block, selection, onInsertText, cram }: Pro
 
   if (!a) {
     return (
-      <p className="px-1 text-[11px] text-muted">
+      <p className="px-1 text-xs text-muted">
         {cram ? t("Wedges and hashes are drawn around the Cram centres (dashed rings). Click an atom to choose another.") : t("Click an atom to see the geometry around it.")}
       </p>
     );

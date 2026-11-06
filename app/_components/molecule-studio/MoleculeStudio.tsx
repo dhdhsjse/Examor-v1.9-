@@ -158,7 +158,7 @@ export default function MoleculeStudio({ editing, onInsert, onUpdate, onInsertMo
                 label: (
                   <>
                     {t("Student view")}
-                    {masked > 0 && <span className="ms-1.5 rounded-full bg-accent-soft px-1.5 text-[10px] font-semibold text-accent-strong tabular-nums">{masked}</span>}
+                    {masked > 0 && <span className="ms-1.5 rounded-full bg-accent-soft px-1.5 text-[11px] font-semibold text-accent-strong tabular-nums">{masked}</span>}
                   </>
                 ),
               },
@@ -223,7 +223,7 @@ export default function MoleculeStudio({ editing, onInsert, onUpdate, onInsertMo
                     <div className="absolute start-3 top-3 flex flex-col gap-1.5" data-testid="representation-notes">
                       {preview.notes.map((note) => (
                         <p key={note} role="status" className="flex max-w-xs items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-xs text-amber-900">
-                          <span className="grid size-4 shrink-0 place-items-center rounded-full bg-amber-600 text-[10px] font-bold text-white">!</span>
+                          <span className="grid size-4 shrink-0 place-items-center rounded-full bg-amber-600 text-[11px] font-bold text-white">!</span>
                           {note === "unchecked" ? t("Shown as drawn: the engine could not check this sketch (a bond count it does not accept, for example).") : t("Some masks could not be matched to this representation.")}
                         </p>
                       ))}

@@ -135,7 +135,7 @@ export default function GraphToolbar({ studio }: { studio: GraphStudioState }) {
               <button key={p.id} onClick={() => applyPreset(p)} aria-pressed={on} data-preset={p.id} className={listRow(on)}>
                 <span className="flex min-w-0 flex-1 flex-col">
                   <span className="text-[13px] font-medium tracking-[-0.01em]">{t(p.name)}</span>
-                  <span className="text-[11px] text-muted tabular-nums" dir="ltr">
+                  <span className="text-xs text-muted tabular-nums" dir="ltr">
                     {p.values.xLabel} / {p.values.yLabel} · {p.values.xMin}→{p.values.xMax}, {p.values.yMin}→{p.values.yMax}
                   </span>
                 </span>
@@ -149,7 +149,7 @@ export default function GraphToolbar({ studio }: { studio: GraphStudioState }) {
       <Disclosure title={t("Physics sheets")} testId="graph-templates" defaultOpen={false}>
         {GRAPH_TEMPLATE_GROUPS.map((group) => (
           <div key={group} className="flex flex-col gap-1.5">
-            <h4 className="px-1 text-[11px] font-medium tracking-[0.01em] text-muted">{t(group)}</h4>
+            <h4 className="px-1 text-xs font-medium tracking-[0.01em] text-muted">{t(group)}</h4>
             <Group>
               {templates
                 .filter((x) => x.tpl.group === group)
@@ -157,7 +157,7 @@ export default function GraphToolbar({ studio }: { studio: GraphStudioState }) {
                   <button key={tpl.id} onClick={() => applyTemplate(tpl, CONTENT_WIDTH - 2 * PAPER_MARGIN)} data-template={tpl.id} className={listRow(false)}>
                     <span className="flex min-w-0 flex-1 flex-col">
                       <span className="text-[13px] font-medium tracking-[-0.01em]">{t(tpl.name)}</span>
-                      <span className="text-[11px] text-muted" dir="ltr">
+                      <span className="text-xs text-muted" dir="ltr">
                         {plainLabel(values.xLabel ?? "")} / {plainLabel(values.yLabel ?? "")}
                       </span>
                     </span>

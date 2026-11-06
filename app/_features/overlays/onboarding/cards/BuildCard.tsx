@@ -27,7 +27,7 @@ export default function BuildCard({ ctx, name, description, recommended, selecte
       <div className="flex flex-col gap-1 px-4 py-3">
         <span className="flex flex-wrap items-center gap-2">
           <span className="text-sm font-semibold text-ink">{ctx.t(name)}</span>
-          {recommended && <span className="rounded bg-indigo-600 px-2 py-0.5 text-[10px] font-semibold text-white">{ctx.t("Recommended")}</span>}
+          {recommended && <span className="rounded bg-indigo-600 px-2 py-0.5 text-[11px] font-semibold text-white">{ctx.t("Recommended")}</span>}
         </span>
         <span className="text-xs text-muted">{ctx.t(description)}</span>
       </div>

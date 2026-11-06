@@ -41,7 +41,7 @@ export default function GroupRenderer({ group, ctx }: { group: Group; ctx: Ctx }
   if (!label) return list;
   return (
     <section aria-label={label} className="border-b border-line p-2">
-      <h3 className="flex h-7 items-center px-1.5 text-[11px] font-semibold text-ink">{label}</h3>
+      <h3 className="flex h-7 items-center px-1.5 text-xs font-semibold text-ink">{label}</h3>
       {list}
     </section>
   );

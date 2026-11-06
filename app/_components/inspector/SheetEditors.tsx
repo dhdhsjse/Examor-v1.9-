@@ -47,7 +47,7 @@ function MarkField({ value, pad, onChange }: { value: number; pad: boolean; onCh
         <button type="button" className={step} aria-label={t("Increase")} onClick={() => onChange(snapMark(value + MARK_STEP))}>
           <Plus size={12} strokeWidth={2} aria-hidden />
         </button>
-        <span className="ms-1 text-[11px] text-muted tabular-nums">{formatMark(value, pad)}</span>
+        <span className="ms-1 text-xs text-muted tabular-nums">{formatMark(value, pad)}</span>
       </div>
       <div className="flex gap-1">
         {QUICK.map((q) => (
@@ -55,7 +55,7 @@ function MarkField({ value, pad, onChange }: { value: number; pad: boolean; onCh
             key={q}
             type="button"
             onClick={() => onChange(q)}
-            className={`h-6 flex-1 rounded-[5px] text-[11px] tabular-nums transition-colors outline-none focus-visible:ring-2 focus-visible:ring-accent ${value === q ? "bg-emerald-600 font-semibold text-white" : "bg-subtle text-ink hover:bg-hover"}`}
+            className={`h-6 flex-1 rounded-[5px] text-xs tabular-nums transition-colors outline-none focus-visible:ring-2 focus-visible:ring-accent ${value === q ? "bg-emerald-600 font-semibold text-white" : "bg-subtle text-ink hover:bg-hover"}`}
           >
             {formatMark(q, pad)}
           </button>
@@ -113,7 +113,7 @@ export function MarkEditor({ b, meta, pad, shown, onChange }: { b: MarkBlock; me
 
       {b.kind === "total" && (
         <>
-          <p className="text-[11px] leading-snug text-muted">
+          <p className="text-xs leading-snug text-muted">
             {b.manual ? t("The total you typed.") : t("The total of the marks of its row: {total}", { total: formatMark(shown ?? 0, pad) })}
           </p>
           <Toggle checked={!!b.manual} onChange={(manual) => onChange({ manual, ...(manual ? { value: shown ?? b.value ?? 0 } : {}) }, "manual")} label={t("Type the total myself")} />
@@ -141,7 +141,7 @@ export function MarkEditor({ b, meta, pad, shown, onChange }: { b: MarkBlock; me
         <ColorGrid value={b.color} autoLabel={t("Black")} onChange={(color) => onChange({ color }, "color")} />
       </Field>
       <div className="flex min-h-7 items-center justify-between gap-2">
-        <span className="text-[11px] text-muted">{t("Size")}</span>
+        <span className="text-xs text-muted">{t("Size")}</span>
         <Stepper value={b.size ?? meta.fontSize ?? 14} min={9} max={40} onChange={(size) => onChange({ size }, "size")} />
       </div>
     </>
@@ -161,7 +161,7 @@ export function RuleEditor({ b, onChange }: { b: RuleBlock; onChange: OnChange }
       <Field label={t("Line")} group>
         <Segmented value={b.line ?? "row"} options={lines} onChange={(line) => onChange({ line }, "line")} />
       </Field>
-      <p className="text-[11px] leading-snug text-muted">{t("The marks above it and under it are two rows, each with its own total.")}</p>
+      <p className="text-xs leading-snug text-muted">{t("The marks above it and under it are two rows, each with its own total.")}</p>
       <Field label={t("Color")} group>
         <ColorGrid value={b.color} autoLabel={t("Sheet color")} onChange={(color) => onChange({ color }, "color")} />
       </Field>

@@ -36,7 +36,7 @@ function targetOf(b: Block, editing: EditField | null, meta: ExamMeta): { keys: 
 }
 
 const btn = (on = false) =>
-  `grid size-7 place-items-center rounded-md transition-colors disabled:opacity-35 ${on ? "bg-indigo-600 text-white" : "text-slate-600 hover:bg-slate-100"}`;
+  `grid size-7 place-items-center rounded-md transition-colors disabled:opacity-35 ${on ? "bg-indigo-600 text-white" : "text-slate-700 hover:bg-slate-100"}`;
 
 // Floating bar under a page's header or footer (screen size): where it shows (every page, or only this
 // one) and the look of its text. Changes go to its settings, so a header shown on every page changes on
@@ -90,7 +90,7 @@ export default function ChromeBar({ block, own, data, editing, meta, onData, onS
         </button>
       </div>
       <span className="mx-1 h-5 w-px bg-slate-200" />
-      <span className="max-w-28 truncate px-1 text-[11px] text-muted" title={t(label)}>
+      <span className="max-w-28 truncate px-1 text-xs text-muted" title={t(label)}>
         {t(label)}
       </span>
       <button type="button" onClick={() => resize(-1)} title={t("Smaller")} className={btn()}>

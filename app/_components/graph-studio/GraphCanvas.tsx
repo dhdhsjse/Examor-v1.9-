@@ -354,12 +354,12 @@ export default function GraphCanvas({ studio, ink, eraser }: { studio: GraphStud
       )}
       {notice && (
         <p role="status" data-testid="graph-notice" className="absolute start-3 top-14 flex max-w-sm items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-xs text-amber-900 shadow-sm">
-          <span className="grid size-4 shrink-0 place-items-center rounded-full bg-amber-600 text-[10px] font-bold text-white">!</span>
+          <span className="grid size-4 shrink-0 place-items-center rounded-full bg-amber-600 text-[11px] font-bold text-white">!</span>
           {notice}
         </p>
       )}
       {percent < 100 && (
-        <p data-testid="graph-scale-note" className="pointer-events-none absolute top-2 end-3 rounded-md bg-white/90 px-2 py-1 text-[11px] text-muted shadow-sm">
+        <p data-testid="graph-scale-note" className="pointer-events-none absolute top-2 end-3 rounded-md bg-white/90 px-2 py-1 text-xs text-muted shadow-sm">
           {t("The graph paper is shown at {percent}% to fit the window.", { percent })}
         </p>
       )}

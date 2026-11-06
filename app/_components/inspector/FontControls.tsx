@@ -30,9 +30,9 @@ export function BlockFontControls({ b, meta, onChange }: { b: Block; meta: ExamM
   return (
     <div className="flex flex-col gap-2 border-t border-line pt-2.5">
       <div className="flex items-center justify-between">
-        <span className="text-[11px] font-semibold text-ink">{t("Text style")}</span>
+        <span className="text-xs font-semibold text-ink">{t("Text style")}</span>
         {(font.family || font.size || font.color) && (
-          <button type="button" onClick={() => onChange({ font: undefined }, "font")} className="text-[11px] text-muted hover:text-ink hover:underline">
+          <button type="button" onClick={() => onChange({ font: undefined }, "font")} className="text-xs text-muted hover:text-ink hover:underline">
             {t("Reset")}
           </button>
         )}
@@ -41,7 +41,7 @@ export function BlockFontControls({ b, meta, onChange }: { b: Block; meta: ExamM
       {!header && (
         <>
           <div className="flex items-center justify-between gap-2">
-            <span className="text-[11px] text-muted">{t("Size")}</span>
+            <span className="text-xs text-muted">{t("Size")}</span>
             <Stepper value={size} min={8} max={60} onChange={(v) => set({ size: v })} title={t("Font size")} />
           </div>
           <ColorGrid value={font.color} autoLabel={t("Auto")} onChange={(color) => set({ color })} />

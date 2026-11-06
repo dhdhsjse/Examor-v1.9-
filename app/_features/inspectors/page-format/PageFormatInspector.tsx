@@ -69,7 +69,7 @@ export default function PageFormatInspector({ ctx }: { ctx: Ctx }) {
   if (!page) return null;
   return (
     <div className="flex flex-col">
-      <p className="mb-2 text-[11px] text-muted">{t("Paper and orientation of page {n} only.", { n: index + 1 })}</p>
+      <p className="mb-2 text-xs text-muted">{t("Paper and orientation of page {n} only.", { n: index + 1 })}</p>
 
       <Heading>{t("Orientation")}</Heading>
       <div role="group" aria-label={t("Orientation")} className="mb-3 grid grid-cols-2 gap-2">
@@ -103,7 +103,7 @@ export default function PageFormatInspector({ ctx }: { ctx: Ctx }) {
               <Sheet width={s.width} height={s.height} on={on} />
               <span className="flex min-w-0 flex-col">
                 <span className="font-semibold">{STANDARD_SIZES[size].name}</span>
-                <span className={`whitespace-nowrap text-[10px] tabular-nums ${on ? "text-accent" : "text-faint"}`}>
+                <span className={`whitespace-nowrap text-[11px] tabular-nums ${on ? "text-accent" : "text-faint"}`}>
                   {Math.round(s.width)} × {Math.round(s.height)} mm
                 </span>
               </span>
@@ -114,7 +114,7 @@ export default function PageFormatInspector({ ctx }: { ctx: Ctx }) {
           <Sheet width={mm.width} height={mm.height} on={format.size === "custom"} dashed />
           <span className="flex min-w-0 flex-col">
             <span className="font-semibold">{t("Custom")}</span>
-            <span className={`whitespace-nowrap text-[10px] tabular-nums ${format.size === "custom" ? "text-accent" : "text-faint"}`}>
+            <span className={`whitespace-nowrap text-[11px] tabular-nums ${format.size === "custom" ? "text-accent" : "text-faint"}`}>
               {format.size === "custom" ? `${Math.round(mm.width)} × ${Math.round(mm.height)} mm` : "…"}
             </span>
           </span>
@@ -155,7 +155,7 @@ export default function PageFormatInspector({ ctx }: { ctx: Ctx }) {
         </div>
       )}
 
-      <p className="mt-2 text-[11px] leading-snug text-faint">
+      <p className="mt-2 text-xs leading-snug text-faint">
         {t("Custom: from {min} to {max} mm. Blocks stay where they are.", { min: MIN_PAGE_MM, max: MAX_PAGE_MM })}
       </p>
     </div>
@@ -163,7 +163,7 @@ export default function PageFormatInspector({ ctx }: { ctx: Ctx }) {
 }
 
 function Heading({ children }: { children: ReactNode }) {
-  return <h3 className="mb-2 text-[11px] font-semibold text-muted">{children}</h3>;
+  return <h3 className="mb-2 text-xs font-semibold text-muted">{children}</h3>;
 }
 
 // The shape of a sheet, to scale with the others (A3 fills the preview).
@@ -172,7 +172,7 @@ function Sheet({ width, height, on, dashed = false }: { width: number; height: n
   return (
     <span aria-hidden className="grid size-[34px] shrink-0 place-items-center">
       <span
-        className={`block rounded-[2px] border bg-white ${dashed ? "border-dashed" : ""} ${on ? "border-accent" : "border-slate-400"}`}
+        data-paper="" className={`block rounded-[2px] border bg-white ${dashed ? "border-dashed" : ""} ${on ? "border-accent" : "border-slate-400"}`}
         style={{ width: Math.max(4, width * k), height: Math.max(4, height * k) }}
       />
     </span>

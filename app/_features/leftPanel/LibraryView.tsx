@@ -30,10 +30,10 @@ export default function LibraryView({ ctx, feature, onBack, onChoose }: Props) {
           <BackIcon aria-hidden />
         </button>
         <span className="truncate text-xs font-semibold text-ink">{label}</span>
-        <span className="truncate text-[11px] text-faint">· {ctx.t("Choose a template")}</span>
+        <span className="truncate text-xs text-faint">· {ctx.t("Choose a template")}</span>
       </div>
       {templates.length === 0 ? (
-        <p className="p-3 text-[11px] text-faint">{ctx.t("No templates available")}</p>
+        <p className="p-3 text-xs text-faint">{ctx.t("No templates available")}</p>
       ) : (
         <div className="grid grid-cols-2 gap-2 p-2">
           {templates.map((tpl) => (

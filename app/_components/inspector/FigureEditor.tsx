@@ -37,7 +37,7 @@ export function FigureEditor({ b, figure, lang, onChange }: { b: ImageBlock; fig
   return (
     <div className="flex flex-col gap-2.5 rounded-[5px] border border-line p-2.5">
       <div className="flex items-center justify-between gap-2">
-        <span className="flex items-center gap-1.5 text-[11px] font-semibold text-ink">
+        <span className="flex items-center gap-1.5 text-xs font-semibold text-ink">
           <SlidersHorizontal size={12} strokeWidth={2} aria-hidden className="text-muted" />
           {t(def.name)}
         </span>
@@ -50,7 +50,7 @@ export function FigureEditor({ b, figure, lang, onChange }: { b: ImageBlock; fig
           <RotateCcw size={13} aria-hidden />
         </button>
       </div>
-      {def.hint && <p className="text-[11px] leading-snug text-faint">{t(def.hint)}</p>}
+      {def.hint && <p className="text-xs leading-snug text-faint">{t(def.hint)}</p>}
       {rows.map((row) =>
         row.length > 1 ? (
           <div key={row[0].key} className="grid gap-2" style={{ gridTemplateColumns: `repeat(${row.length}, minmax(0, 1fr))` }}>
@@ -70,7 +70,7 @@ function Control({ p, params, set, compact }: { p: FigureParam; params: Params; 
   const t = useT();
   const label = t(p.label, p.vars?.(params));
   const value = params[p.key];
-  const caption = <span className={`text-[11px] font-semibold text-muted ${compact ? "truncate" : ""}`}>{label}</span>;
+  const caption = <span className={`text-xs font-semibold text-muted ${compact ? "truncate" : ""}`}>{label}</span>;
 
   switch (p.kind) {
     case "bool":
@@ -79,7 +79,7 @@ function Control({ p, params, set, compact }: { p: FigureParam; params: Params; 
       return (
         <label className="flex min-w-0 flex-col gap-1" title={label}>
           {caption}
-          <span className="flex items-center gap-1 text-[11px] text-muted [&_input]:w-full [&_input]:min-w-0">
+          <span className="flex items-center gap-1 text-xs text-muted [&_input]:w-full [&_input]:min-w-0">
             <NumberInput value={Number(value) || 0} min={p.min} max={p.max} step={p.step} onChange={(v) => set(p.key, v)} />
             {p.unit}
           </span>

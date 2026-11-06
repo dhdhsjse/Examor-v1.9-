@@ -23,6 +23,15 @@ export interface Page {
   format?: PageFormat; // missing = A4 portrait
   header?: HeaderFooterConfig; // this page's own header (Page layout → Header and footer); missing = the document's
   footer?: HeaderFooterConfig;
+  border?: PageBorder; // a border around the whole page (Page layout → Page borders); missing = none
+}
+
+// A border around a page: one of the designs of pageBorder.ts, drawn in `color`, `width` px thick, `inset` px from the edge of the paper.
+export interface PageBorder {
+  style: string; // BorderStyle of pageBorder.ts (an unknown one is drawn as nothing)
+  color: string;
+  width: number;
+  inset: number;
 }
 
 // A header or footer: a template of the header/footer library (onboarding/headerFooterLibrary.ts) and
@@ -98,6 +107,8 @@ export interface BlockLayout {
   // Stacking order among the blocks of its layer (higher = drawn over). Set when the block is dragged, so the
   // last block moved stays on top — on screen and in the PDF alike. Missing = 0 (then the exam's order decides).
   z?: number;
+  // Degrees, clockwise, about the top-left corner (x, y): a text box written sideways or on a slant (turn.ts). Missing = upright. Only text boxes turn.
+  rotation?: number;
 }
 
 // Font of a whole block (missing = the exam's default font).
@@ -410,6 +421,11 @@ export interface TextboxBlock extends BlockBase {
   dir?: "ltr" | "rtl"; // writing direction of the paragraphs that do not have their own; missing = the exam's
   background?: string; // fill color of the box, printed (missing = none)
   border?: string; // color of a line around the box, printed (missing = none)
+  borderWidth?: number; // thickness of that line, px (missing = 1)
+  borderStyle?: TextboxBorderStyle; // missing = solid
+  corner?: "square" | "round" | "chamfer" | "scoop" | "leaf"; // the corners (boxBorder.ts); missing = rounded when there is a radius, else square
+  radius?: number; // size of the corners, px; the fill and the line follow them
+  sides?: string; // the sides that have the line, some of "trbl" (top, right, bottom, left); missing = all four
   padding?: number; // room between the box's edge and its text, px (missing = TEXTBOX_PAD)
   // How the box follows its text (Figma's "Resizing"): "auto-width" = as wide and as tall as the text, on one line per paragraph;
   // "auto-height" = the width it was given, as tall as the text (no empty room under it); missing = "fixed": the size it was given,
@@ -418,6 +434,7 @@ export interface TextboxBlock extends BlockBase {
 }
 
 export type TextboxSizing = "auto-width" | "auto-height" | "fixed";
+export type TextboxBorderStyle = "solid" | "dashed" | "dotted" | "double" | "thick-thin" | "triple" | "shadow";
 
 // A shape (Insert → Shapes): a line, an arrow, a box, a callout… drawn on the page in the block's box, with its own fill, outline and
 // text (ShapeStyle). A line runs from one corner of the box to the opposite one, so its height can be 0.

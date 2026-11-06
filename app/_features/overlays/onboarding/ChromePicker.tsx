@@ -27,7 +27,7 @@ export default function ChromePicker({ ctx, label, items, value, onChange }: Pro
               type="button"
               aria-pressed={on}
               onClick={() => onChange(it.id)}
-              className={`flex flex-col gap-1.5 rounded-lg border p-2 text-start text-[11px] transition-colors ${
+              className={`flex flex-col gap-1.5 rounded-lg border p-2 text-start text-xs transition-colors ${
                 on ? "border-indigo-500 bg-indigo-50/60 font-semibold text-indigo-700 ring-1 ring-indigo-200" : "border-line text-muted hover:border-indigo-300 hover:text-ink"
               }`}
             >

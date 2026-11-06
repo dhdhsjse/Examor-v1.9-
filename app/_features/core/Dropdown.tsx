@@ -69,12 +69,12 @@ export default function Dropdown({ trigger, items, alignEnd, className }: { trig
         <div
           ref={menu}
           role="menu"
-          className={`absolute top-full z-50 mt-1 w-max min-w-52 max-w-72 rounded-md bg-neutral-900 p-1 text-white shadow-lg ${alignEnd ? "end-0" : "start-0"}`}
+          className={`absolute top-full z-50 mt-1 w-max min-w-52 max-w-72 rounded-md bg-pop p-1 text-white shadow-lg ${alignEnd ? "end-0" : "start-0"}`}
         >
           {items.map((it) => (
             <div key={it.label}>
               {it.separator && <div className="-mx-1 my-1 h-px bg-white/15" />}
-              {it.heading && <p className="px-2 pt-1 pb-0.5 text-[11px] font-semibold text-white/60">{it.heading}</p>}
+              {it.heading && <p className="px-2 pt-1 pb-0.5 text-xs font-semibold text-white/60">{it.heading}</p>}
               <button
                 type="button"
                 role={it.checked === undefined ? "menuitem" : "menuitemcheckbox"}
@@ -86,7 +86,7 @@ export default function Dropdown({ trigger, items, alignEnd, className }: { trig
                 className={`flex h-7 w-full items-center justify-between gap-3 rounded-[5px] px-2 text-start text-xs outline-none hover:bg-accent focus-visible:bg-accent ${it.checked ? "font-semibold" : ""}`}
               >
                 {it.label}
-                {it.checked ? <Check size={12} strokeWidth={2.5} aria-hidden /> : it.hint && <span className="text-[11px] text-white/60" dir="ltr">{it.hint}</span>}
+                {it.checked ? <Check size={12} strokeWidth={2.5} aria-hidden /> : it.hint && <span className="text-xs text-white/60" dir="ltr">{it.hint}</span>}
               </button>
             </div>
           ))}

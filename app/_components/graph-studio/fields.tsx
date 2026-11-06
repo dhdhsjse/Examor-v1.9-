@@ -103,7 +103,7 @@ export function Row({ label, htmlFor, title, info, stacked = false, children }: 
 }
 
 const ErrorText = ({ id, children }: { id: string; children: ReactNode }) => (
-  <p role="alert" data-testid={`${id}-error`} className="max-w-48 text-end text-[11px] leading-snug text-red-600">
+  <p role="alert" data-testid={`${id}-error`} className="max-w-48 text-end text-xs leading-snug text-red-700">
     {children}
   </p>
 );
@@ -278,7 +278,7 @@ export function ColorRow({ label, value, onChange, testId }: { label: string; va
 export function Notice({ children, testId }: { children: ReactNode; testId?: string }) {
   return (
     <div role="status" data-testid={testId} className="flex items-start gap-2 rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-900">
-      <span className="grid size-4 shrink-0 place-items-center rounded-full bg-amber-600 text-[10px] font-bold text-white">!</span>
+      <span className="grid size-4 shrink-0 place-items-center rounded-full bg-amber-600 text-[11px] font-bold text-white">!</span>
       <div className="min-w-0 flex-1">{children}</div>
     </div>
   );
@@ -290,7 +290,7 @@ export function DeleteButton({ label, onClick, testId }: { label: string; onClic
     <button
       onClick={onClick}
       data-testid={testId}
-      className="flex h-9 w-full items-center justify-center gap-2 rounded-xl bg-subtle text-[13px] font-medium tracking-[-0.01em] text-red-600 transition-[transform,background-color] duration-100 ease-out outline-none hover:bg-red-50 focus-visible:ring-2 focus-visible:ring-accent active:scale-[0.98]"
+      className="flex h-9 w-full items-center justify-center gap-2 rounded-xl bg-subtle text-[13px] font-medium tracking-[-0.01em] text-red-700 transition-[transform,background-color] duration-100 ease-out outline-none hover:bg-red-50 focus-visible:ring-2 focus-visible:ring-accent active:scale-[0.98]"
     >
       <Trash2 size={14} />
       {label}

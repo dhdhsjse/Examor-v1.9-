@@ -24,6 +24,7 @@ export interface ResizeResult {
   y: number;
   width: number;
   height: number;
+  rotation?: number; // (a text box that was turned with its handle)
 }
 
 interface Props {
@@ -177,7 +178,7 @@ export default function BlockNode(props: Props) {
     const sy = node.scaleY();
     node.scale({ x: 1, y: 1 });
     props.onResizing?.(null);
-    onResize({ x: node.x(), y: node.y(), width: width * sx, height: height * sy });
+    onResize({ x: node.x(), y: node.y(), width: width * sx, height: height * sy, ...(block.type === "textbox" ? { rotation: node.rotation() } : {}) });
     setSettled((n) => n + 1);
   };
 
@@ -187,6 +188,7 @@ export default function BlockNode(props: Props) {
       id={props.passive ? undefined : block.id}
       x={x}
       y={y}
+      rotation={block.type === "textbox" ? (block.layout.rotation ?? 0) : 0}
       opacity={props.ghost ? 0 : 1}
       draggable={interactive && !textTool && !drawing && !props.passive && !explore}
       listening={interactive && (!drawing || !!props.erasable) && !props.passive}

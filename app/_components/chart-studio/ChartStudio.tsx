@@ -211,7 +211,7 @@ export default function ChartStudio({ editing, onInsert, onUpdate, onClose }: Pr
                   title={t(k.label)}
                   data-testid={`kind-${k.kind}`}
                   onClick={() => change({ kind: k.kind })}
-                  className={`flex min-h-[3.25rem] min-w-0 flex-col items-center justify-center gap-1 rounded-[5px] border px-0.5 py-1.5 text-center text-[10px] leading-tight transition-colors ${chart.kind === k.kind ? "border-accent font-semibold text-accent" : "border-line text-ink hover:border-faint"}`}
+                  className={`flex min-h-[3.25rem] min-w-0 flex-col items-center justify-center gap-1 rounded-[5px] border px-0.5 py-1.5 text-center text-[11px] leading-tight transition-colors ${chart.kind === k.kind ? "border-accent font-semibold text-accent" : "border-line text-ink hover:border-faint"}`}
                 >
                   {k.icon}
                   <span className="w-full break-words">{t(k.label)}</span>
@@ -225,7 +225,7 @@ export default function ChartStudio({ editing, onInsert, onUpdate, onClose }: Pr
           </Section>
 
           <Section title={t("Values")}>
-            <div className="grid grid-cols-[1fr_5rem_1.5rem] items-center gap-1 text-[11px] text-muted">
+            <div className="grid grid-cols-[1fr_5rem_1.5rem] items-center gap-1 text-xs text-muted">
               <span>{t("Name")}</span>
               <span>{t("Value")}</span>
               <span />
@@ -254,11 +254,11 @@ export default function ChartStudio({ editing, onInsert, onUpdate, onClose }: Pr
 
           {axes && (
             <Section title={t("Axes")}>
-              <label className="flex flex-col gap-1 text-[11px] text-muted">
+              <label className="flex flex-col gap-1 text-xs text-muted">
                 {t("Horizontal axis")}
                 <input value={chart.xTitle} onChange={(e) => change({ xTitle: e.target.value })} placeholder={t("No title")} className={inputCls} />
               </label>
-              <label className="flex flex-col gap-1 text-[11px] text-muted">
+              <label className="flex flex-col gap-1 text-xs text-muted">
                 {t("Vertical axis")}
                 <input value={chart.yTitle} onChange={(e) => change({ yTitle: e.target.value })} placeholder={t("No title")} className={inputCls} />
               </label>
@@ -339,7 +339,7 @@ export default function ChartStudio({ editing, onInsert, onUpdate, onClose }: Pr
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section aria-label={title} className="flex flex-col gap-2 px-3 py-2.5">
-      <h3 className="text-[11px] font-semibold text-ink">{title}</h3>
+      <h3 className="text-xs font-semibold text-ink">{title}</h3>
       {children}
     </section>
   );
@@ -422,7 +422,7 @@ function Size({ label, value, onChange }: { label: string; value: number; onChan
     if (ok !== value) onChange(ok);
   };
   return (
-    <label className="flex flex-col gap-1 text-[11px] text-muted">
+    <label className="flex flex-col gap-1 text-xs text-muted">
       {label}
       <input
         value={draft}

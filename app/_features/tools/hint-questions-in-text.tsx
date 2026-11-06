@@ -13,7 +13,7 @@ export const hintQuestionsInText: Feature = {
       <p
         data-text-format=""
         onMouseDown={(e) => e.preventDefault()}
-        className="mx-1 mb-1 flex items-start gap-2 rounded-md bg-accent-soft px-2 py-1.5 text-[11px] leading-snug text-accent"
+        className="mx-1 mb-1 flex items-start gap-2 rounded-md bg-accent-soft px-2 py-1.5 text-xs leading-snug text-accent"
       >
         <CornerDownRight size={13} strokeWidth={1.8} aria-hidden className="mt-px shrink-0 rtl:-scale-x-100" />
         {ctx.t("Typing in a text box: the questions and tables marked with an arrow are placed inside it, at the cursor.")}

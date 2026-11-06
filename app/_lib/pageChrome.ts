@@ -1,8 +1,9 @@
 import { DEFAULT_MARGINS } from "./a4";
 import { blockHeight } from "./blockLayout";
-import { chromeTextField, headerInset, defaultFooterId, defaultHeaderId, footerById, headerById, headerTemplateForStyle } from "./onboarding/headerFooterLibrary";
+import { chromeTextField, headerInsetIn, defaultFooterId, defaultHeaderId, footerById, headerById, headerTemplateForStyle } from "./onboarding/headerFooterLibrary";
 import { encodeStyle, parseRich, plainText } from "./richText";
 import { scopePages } from "./onboarding/pageScope";
+import { borderReach } from "./pageBorder";
 import { pageSize } from "./pageFormats";
 import type { Block, BlockFont, ChromeRule, ExamDoc, HeaderBlock, HeaderFields, HeaderFooterConfig, Page, PageScope } from "./types";
 import type { T } from "./uiLang";
@@ -86,7 +87,7 @@ export function chromeRuleOf(doc: ExamDoc): ChromeRule | undefined {
 export function buildChrome(doc: ExamDoc, i: number, kind: ChromeKind, t: T, c = chromeConfig(doc, i, kind)): Block[] {
   const page = doc.pages[i];
   if (!page || !c?.enabled) return [];
-  return chromeTemplate(kind, c.templateId).build({
+  const blocks = chromeTemplate(kind, c.templateId).build({
     pageId: page.id,
     pageIndex: i,
     pageCount: doc.pages.length,
@@ -97,6 +98,29 @@ export function buildChrome(doc: ExamDoc, i: number, kind: ChromeKind, t: T, c =
     examTitle: doc.meta.title,
     t,
     data: c.data ?? {},
+  });
+  return fitInBorder(blocks, kind, page, doc.meta);
+}
+
+// A page with a border (Page layout → Page borders): the header and the footer stay inside it. The exam header block goes from border to
+// border (its bands too), its texts at the margins counted from there; the whole header is moved down, the whole footer up, when the border
+// is nearer to the edge of the paper than the margin is; a text line is kept between the sides of the border.
+const EDGE_PAD = 4;
+function fitInBorder(blocks: Block[], kind: ChromeKind, page: Page, meta: ExamDoc["meta"]): Block[] {
+  const r = borderReach(page.border);
+  if (!r || !blocks.length) return blocks;
+  const { width, height } = pageSize(page);
+  const m = page.margins ?? DEFAULT_MARGINS;
+  const dy =
+    kind === "header"
+      ? Math.max(0, r - Math.min(...blocks.map((b) => b.layout.y)))
+      : Math.min(0, height - r - Math.max(...blocks.map((b) => b.layout.y + blockHeight(b, 1, meta))));
+  return blocks.map((b) => {
+    const layout = { ...b.layout, y: b.layout.y + dy };
+    if (b.type === "header") return { ...b, inset: headerInsetIn(m, r), layout: { ...layout, x: r, width: width - 2 * r } } as Block;
+    const left = Math.max(layout.x, r + EDGE_PAD);
+    const right = Math.min(layout.x + layout.width, width - r - EDGE_PAD);
+    return { ...b, layout: { ...layout, x: left, width: Math.max(40, right - left) } } as Block;
   });
 }
 
@@ -116,18 +140,21 @@ export function syncChrome(before: ExamDoc, after: ExamDoc, t: T, opts: { pageCo
     for (const kind of CHROME_KINDS) {
       const now = chromeConfig(after, i, kind);
       const counts = opts.pageCount && now?.enabled && chromeTemplate(kind, now.templateId).countsPages;
-      if (!counts && shown(now) === shown(chromeConfig(before, j, kind))) continue;
+      // (a border that comes, goes or changes moves the header and the footer: they are placed again)
+      const reach = borderReach(page.border);
+      const edged = reach !== borderReach(before.pages[j].border);
+      if (!counts && !edged && shown(now) === shown(chromeConfig(before, j, kind))) continue;
       const old = blocks.filter((b) => b.layout.pageId === page.id && b.meta?.role === kind);
       // A rebuilt block of the same type keeps its id and height on the page: text being typed on the
       // page stays in its box, the selection stays, and a header moved down stays there.
       const fresh = buildChrome({ ...after, blocks }, i, kind, t).map((b, k) =>
-        old[k]?.type === b.type ? ({ ...b, id: old[k].id, layout: { ...b.layout, y: old[k].layout.y } } as Block) : b,
+        old[k]?.type === b.type ? ({ ...b, id: old[k].id, layout: { ...b.layout, y: edged ? b.layout.y : old[k].layout.y } } as Block) : b,
       );
       blocks = [...blocks.filter((b) => !old.includes(b)), ...fresh];
       if (kind !== "header") continue;
       // The body starts under the header (or at the top margin): keep the same room above it.
-      const top = (list: Block[]) => (list.length ? Math.max(...list.map((b) => b.layout.y + blockHeight(b, 1, after.meta))) + GAP : (page.margins ?? DEFAULT_MARGINS).top);
-      const shift = top(fresh) - top(old);
+      const top = (list: Block[], r: number) => (list.length ? Math.max(...list.map((b) => b.layout.y + blockHeight(b, 1, after.meta))) + GAP : Math.max((page.margins ?? DEFAULT_MARGINS).top, r));
+      const shift = top(fresh, reach) - top(old, borderReach(before.pages[j].border));
       if (shift) blocks = blocks.map((b) => (b.layout.pageId === page.id && !b.meta?.role ? { ...b, layout: { ...b.layout, y: Math.max(0, b.layout.y + shift) } } : b));
     }
   });
@@ -189,10 +216,11 @@ export function stretchHeaders(doc: ExamDoc): ExamDoc {
     const page = doc.pages.find((p) => p.id === b.layout.pageId);
     if (!page) return b;
     const width = pageSize(page).width;
-    const inset = headerInset(page.margins ?? DEFAULT_MARGINS);
-    if (b.layout.x === 0 && b.layout.width === width && b.inset?.left === inset.left && b.inset.right === inset.right) return b;
+    const r = borderReach(page.border);
+    const inset = headerInsetIn(page.margins ?? DEFAULT_MARGINS, r);
+    if (b.layout.x === r && b.layout.width === width - 2 * r && b.inset?.left === inset.left && b.inset.right === inset.right) return b;
     changed = true;
-    return { ...b, inset, layout: { ...b.layout, x: 0, width } };
+    return { ...b, inset, layout: { ...b.layout, x: r, width: width - 2 * r } };
   });
   return changed ? { ...doc, blocks } : doc;
 }

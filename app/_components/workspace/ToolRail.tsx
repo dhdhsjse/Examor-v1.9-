@@ -102,7 +102,7 @@ export default function ToolRail({ tool, onChange, shape, onPickShape, ink, eras
           <ChevronDown size={12} strokeWidth={2} aria-hidden />
         </button>
         {menu && (
-          <div role="menu" className="absolute bottom-full start-0 mb-2 w-44 rounded-md bg-neutral-900 p-1 text-xs text-white shadow-lg">
+          <div role="menu" className="absolute bottom-full start-0 mb-2 w-44 rounded-md bg-pop p-1 text-xs text-white shadow-lg">
             {QUICK_SHAPES.map((s) => (
               <button
                 key={s.id}
@@ -117,7 +117,7 @@ export default function ToolRail({ tool, onChange, shape, onPickShape, ink, eras
                 <Check size={12} className={shapeOn && s.id === quick.id ? "" : "invisible"} aria-hidden />
                 <s.Icon size={16} strokeWidth={1.5} aria-hidden />
                 <span className="flex-1">{t(s.label)}</span>
-                <span className="text-[11px] text-white/60">{s.key}</span>
+                <span className="text-xs text-white/60">{s.key}</span>
               </button>
             ))}
           </div>

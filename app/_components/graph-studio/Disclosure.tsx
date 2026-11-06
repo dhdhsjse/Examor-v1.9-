@@ -47,7 +47,7 @@ export default function Disclosure({
           className="flex h-9 w-full items-center gap-2 px-4 text-start outline-none transition-colors hover:bg-subtle/70 focus-visible:bg-subtle disabled:cursor-default disabled:hover:bg-transparent"
         >
           <span className={`text-[13px] font-semibold tracking-[-0.01em] ${empty ? "text-muted" : "text-ink"}`}>{title}</span>
-          {!!count && <span className="rounded-full bg-subtle px-1.5 text-[11px] font-medium text-muted tabular-nums">{count}</span>}
+          {!!count && <span className="rounded-full bg-subtle px-1.5 text-xs font-medium text-muted tabular-nums">{count}</span>}
           {!empty && <ChevronDown size={15} strokeWidth={2} aria-hidden className={`ms-auto text-muted transition-transform ${slide} ${shown ? "" : "-rotate-90 rtl:rotate-90"}`} />}
         </button>
       </h3>

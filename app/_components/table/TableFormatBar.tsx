@@ -84,7 +84,7 @@ export default function TableFormatBar({ table, range, active, actions, examFont
             actions.setFont(family);
             backToGrid();
           }} defaultLabel={`${t("Exam font")} (${examFont ?? DEFAULT_FONT})`} className={`${fieldCls} !w-36 flex-none`} />
-        <span data-testid="table-font-scope" title={t("The font and the formatting go to each selected cell; with the whole table selected, or no cell, to the whole table")} className="flex-none rounded bg-subtle px-1.5 py-0.5 text-[10px] font-medium text-muted">
+        <span data-testid="table-font-scope" title={t("The font and the formatting go to each selected cell; with the whole table selected, or no cell, to the whole table")} className="flex-none rounded bg-subtle px-1.5 py-0.5 text-[11px] font-medium text-muted">
           {actions.fontForTable ? t("Whole table") : t("Selected cells")}
         </span>
         <Divider />

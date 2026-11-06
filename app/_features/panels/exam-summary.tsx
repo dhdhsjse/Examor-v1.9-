@@ -21,7 +21,7 @@ export const examSummaryPanel: Feature = {
     const report = sheet ? ctx.shell.sheetReport : null;
     const todo = report ? report.stale.length + report.missing.length + report.diffs.length + report.orphans.length : 0;
     return (
-      <div className="flex h-8 items-center justify-between gap-2 border-t border-line bg-surface px-3 text-[11px] whitespace-nowrap text-muted" data-testid="exam-summary">
+      <div className="flex h-8 items-center justify-between gap-2 border-t border-line bg-surface px-3 text-xs whitespace-nowrap text-muted" data-testid="exam-summary">
         <span>
           <b className="font-semibold text-ink">{questions}</b> {sheet ? (questions === 1 ? t("row") : t("rows")) : questions === 1 ? t("question") : t("questions")}
         </span>

@@ -59,7 +59,7 @@ function SizeField({ label, value, onCommit, testId }: { label: string; value: n
         className={`${input} tabular-nums ${bad ? "border-red-400" : ""}`}
       />
       {bad && (
-        <p role="alert" data-testid={`${testId}-error`} className="text-[11px] text-red-600">
+        <p role="alert" data-testid={`${testId}-error`} className="text-xs text-red-700">
           {t("The size must be between {min} and {max} px.", { min: MIN_AREA, max: MAX_AREA })}
         </p>
       )}
@@ -132,7 +132,7 @@ export default function CircuitPanel({ studio }: { studio: CircuitStudioState })
               </button>
             </div>
           </div>
-          <button onClick={deleteSelected} data-testid="delete-selected" className="flex items-center justify-center gap-2 rounded-lg border border-line bg-white px-3 py-1.5 text-sm font-medium text-red-600 transition-colors hover:border-red-300 hover:bg-red-50">
+          <button onClick={deleteSelected} data-testid="delete-selected" className="flex items-center justify-center gap-2 rounded-lg border border-line bg-white px-3 py-1.5 text-sm font-medium text-red-700 transition-colors hover:border-red-300 hover:bg-red-50">
             <Trash2 size={14} />
             {t("Delete")}
           </button>
@@ -146,14 +146,14 @@ export default function CircuitPanel({ studio }: { studio: CircuitStudioState })
           </p>
           <p className="text-xs text-muted">{t("Drag it to move it. It is connected to a terminal when its end is on it.")}</p>
           {section ? (
-            <button onClick={deleteSelected} data-testid="remove-section" title={`${t("Remove this section")} (Delete)`} className="flex items-center justify-center gap-2 rounded-lg border border-line bg-white px-3 py-1.5 text-sm font-medium text-red-600 transition-colors hover:border-red-300 hover:bg-red-50">
+            <button onClick={deleteSelected} data-testid="remove-section" title={`${t("Remove this section")} (Delete)`} className="flex items-center justify-center gap-2 rounded-lg border border-line bg-white px-3 py-1.5 text-sm font-medium text-red-700 transition-colors hover:border-red-300 hover:bg-red-50">
               <Scissors size={14} />
               {t("Remove this section")}
             </button>
           ) : (
             <p className="text-xs text-faint">{t("Click a part of the wire to select only that section, then remove it.")}</p>
           )}
-          <button onClick={() => studio.deleteWire(wire.id)} data-testid="delete-selected" className="flex items-center justify-center gap-2 rounded-lg border border-line bg-white px-3 py-1.5 text-sm font-medium text-red-600 transition-colors hover:border-red-300 hover:bg-red-50">
+          <button onClick={() => studio.deleteWire(wire.id)} data-testid="delete-selected" className="flex items-center justify-center gap-2 rounded-lg border border-line bg-white px-3 py-1.5 text-sm font-medium text-red-700 transition-colors hover:border-red-300 hover:bg-red-50">
             <Trash2 size={14} />
             {t("Delete the whole wire")}
           </button>

@@ -37,7 +37,7 @@ export function QuestionBasics({ b, onChange, lockPoints }: { b: QuestionBlock; 
 export function Panel({ title, children }: { title?: string; children: ReactNode }) {
   return (
     <div className="flex flex-col gap-2 border-t border-line pt-2.5">
-      {title && <span className="text-[11px] font-semibold text-ink">{title}</span>}
+      {title && <span className="text-xs font-semibold text-ink">{title}</span>}
       {children}
     </div>
   );
@@ -180,7 +180,7 @@ export function BlankEditor({ b, onChange }: { b: BlankBlock; onChange: OnChange
         {t("Make blank from selection")}
       </button>
       {answers.length > 0 && (
-        <p className="text-[11px] text-muted">
+        <p className="text-xs text-muted">
           {t("Answers:")} <span className="font-medium text-emerald-700">{answers.join(" · ")}</span>
         </p>
       )}
@@ -259,14 +259,14 @@ export function OpenEditor({ b, onChange, number, lang }: { b: OpenBlock; onChan
       <section aria-label={t("Sub-questions")} className="-mx-3 flex flex-col gap-2 border-y border-line px-3 py-3">
         <div className="flex h-5 items-center gap-1.5">
           <ListTree size={16} strokeWidth={1.5} aria-hidden className="text-muted" />
-          <span className="text-[11px] font-semibold text-ink">{t("Sub-questions")}</span>
-          {parts.length > 0 && <span className="rounded bg-hover px-1 text-[10px] font-semibold tabular-nums text-ink">{parts.length}</span>}
+          <span className="text-xs font-semibold text-ink">{t("Sub-questions")}</span>
+          {parts.length > 0 && <span className="rounded bg-hover px-1 text-[11px] font-semibold tabular-nums text-ink">{parts.length}</span>}
         </div>
-        <span className="text-[11px] leading-snug text-faint">{t("Split the question into parts: 1a), 1b)… Each part has its own lines, points and answer.")}</span>
+        <span className="text-xs leading-snug text-faint">{t("Split the question into parts: 1a), 1b)… Each part has its own lines, points and answer.")}</span>
         <div className="flex flex-col gap-2">
           {parts.length > 0 && (
             <div className="flex flex-col gap-1">
-              <span className="text-[11px] text-muted">{t("Numbering")}</span>
+              <span className="text-xs text-muted">{t("Numbering")}</span>
               <Segmented value={b.partNumbering ?? "1a"} onChange={(partNumbering) => onChange({ partNumbering }, "numbering")} options={PART_NUMBERINGS} />
             </div>
           )}
@@ -311,11 +311,11 @@ export function OpenEditor({ b, onChange, number, lang }: { b: OpenBlock; onChan
                 <div className="w-16 shrink-0" title={t("Points")}>
                   <NumberInput value={p.points} min={0} max={100} step={0.25} onChange={(points) => setPart(i, { points }, "points")} />
                 </div>
-                <span className="text-[11px] text-muted">{t("pts")}</span>
+                <span className="text-xs text-muted">{t("pts")}</span>
                 <RemoveButton title={t("Remove")} onClick={() => onChange(removePart(b, i), "parts")} />
               </div>
               <RichInput value={p.text} placeholder={t("Sub-question…")} onChange={(text) => setPart(i, { text }, "text")} rows={2} multiline />
-              <div className="flex items-center gap-2 text-[11px] text-muted">
+              <div className="flex items-center gap-2 text-xs text-muted">
                 {t("Answer lines")}
                 <div className="w-16">
                   <NumberInput value={p.lines} min={0} max={20} onChange={(lines) => setPart(i, { lines }, "lines")} />
@@ -350,7 +350,7 @@ export function OpenEditor({ b, onChange, number, lang }: { b: OpenBlock; onChan
               type="button"
               onClick={() => onChange({ lines: n }, "lines")}
               aria-pressed={b.lines === n}
-              className={`h-7 min-w-7 rounded-[5px] px-2 text-[11px] tabular-nums transition-colors outline-none focus-visible:ring-2 focus-visible:ring-accent ${b.lines === n ? "bg-hover font-semibold text-ink" : "text-muted hover:bg-subtle hover:text-ink"}`}
+              className={`h-7 min-w-7 rounded-[5px] px-2 text-xs tabular-nums transition-colors outline-none focus-visible:ring-2 focus-visible:ring-accent ${b.lines === n ? "bg-hover font-semibold text-ink" : "text-muted hover:bg-subtle hover:text-ink"}`}
             >
               {n}
             </button>

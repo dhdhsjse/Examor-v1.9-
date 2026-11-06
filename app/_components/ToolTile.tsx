@@ -8,7 +8,7 @@ import { useT } from "@/app/_lib/uiLang";
 export type Tone = "indigo" | "amber" | "emerald";
 
 const TONES: Record<Tone, string> = {
-  indigo: "text-indigo-600",
+  indigo: "text-indigo-700",
   amber: "text-amber-700",
   emerald: "text-emerald-700",
 };
@@ -39,7 +39,7 @@ export default function ToolTile({ icon, label, tone, action, onUse }: Props) {
       className="flex h-10 min-w-0 items-center gap-2 rounded-[5px] bg-subtle px-2 text-start transition-colors hover:bg-hover active:bg-line focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none"
     >
       <span className={`ui-icon grid size-4 shrink-0 place-items-center ${TONES[tone]}`}>{icon}</span>
-      <span className="line-clamp-2 min-w-0 text-[11px] leading-tight break-words text-ink">{label}</span>
+      <span className="line-clamp-2 min-w-0 text-xs leading-tight break-words text-ink">{label}</span>
     </button>
   );
 }

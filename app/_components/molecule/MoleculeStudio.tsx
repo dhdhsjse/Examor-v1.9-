@@ -332,7 +332,7 @@ export default function MoleculeStudio({ editing, onInsert, onUpdate, onInsertTe
               {(showTip || warn) && (
                 <div className="pointer-events-none absolute start-3 top-3 z-10 flex max-w-[min(30rem,calc(100%-1.5rem))] flex-col items-start gap-1.5">
                   {showTip && (
-                    <p role="note" data-testid="molecule-tip" className="pointer-events-auto flex items-start gap-1.5 rounded-md border border-line bg-surface/95 py-1 ps-2 pe-1 text-[11px] leading-snug text-muted shadow-sm">
+                    <p role="note" data-testid="molecule-tip" className="pointer-events-auto flex items-start gap-1.5 rounded-md border border-line bg-surface/95 py-1 ps-2 pe-1 text-xs leading-snug text-muted shadow-sm">
                       <span>{t("Tip: click an atom or a bond, then use the bar that appears to hide it or leave it blank.")}</span>
                       <button onClick={dismissTip} aria-label={t("Got it")} title={t("Got it")} className="grid size-4 shrink-0 place-items-center rounded text-faint hover:bg-hover hover:text-ink">
                         <X size={11} />
@@ -366,7 +366,7 @@ export default function MoleculeStudio({ editing, onInsert, onUpdate, onInsertTe
           <aside className="min-h-0 overflow-y-auto border-line bg-white ltr:border-l rtl:border-r" data-testid="molecule-panel">
             <div className="border-b border-line/70 px-4 py-3">
               {title && <p className="truncate text-[13px] font-semibold text-ink">{title}</p>}
-              <p className="text-[11px] text-muted">
+              <p className="text-xs text-muted">
                 <Formula text={displayFormula(block.graph)} /> · {t("{n} atoms", { n: block.graph.atoms.length })}
               </p>
             </div>
@@ -377,7 +377,7 @@ export default function MoleculeStudio({ editing, onInsert, onUpdate, onInsertTe
                 <GeometryTab block={block} selection={selection} onInsertText={onInsertText} onToggleCenter={toggleCenter} />
               </>
             ) : (
-              <p className="px-4 py-3 text-[11px] text-muted">{t("Choose Developed, Skeletal, Lewis or Cram to use this")}</p>
+              <p className="px-4 py-3 text-xs text-muted">{t("Choose Developed, Skeletal, Lewis or Cram to use this")}</p>
             )}
           </aside>
         )}

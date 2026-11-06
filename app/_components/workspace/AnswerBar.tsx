@@ -27,7 +27,7 @@ const input =
 const pointsInput =
   "w-12 rounded-md border border-emerald-200 bg-white px-1.5 py-0.5 text-end text-xs outline-none focus:border-emerald-400 disabled:opacity-60";
 const addBtn =
-  "shrink-0 rounded-md border border-dashed border-emerald-300 px-2 py-1 text-[11px] font-semibold text-emerald-700 transition-colors hover:border-emerald-500 hover:bg-white";
+  "shrink-0 rounded-md border border-dashed border-emerald-300 px-2 py-1 text-xs font-semibold text-emerald-700 transition-colors hover:border-emerald-500 hover:bg-white";
 
 // Change the n-th [answer] of a fill-in-the-blank text.
 function setBlank(b: BlankBlock, n: number, value: string): string {
@@ -72,7 +72,7 @@ export default function AnswerBar({ block: b, lang, open, onToggle, onPatch, onE
     >
       <div className="flex items-center gap-2 px-2.5 py-1.5">
         <button onClick={onToggle} className="flex shrink-0 items-center gap-1.5 text-xs font-semibold" title={open ? ui("Hide") : ui("Show")}>
-          <span className="grid size-4 place-items-center rounded-full bg-emerald-600 text-[10px] text-white">✓</span>
+          <span className="grid size-4 place-items-center rounded-full bg-emerald-600 text-[11px] text-white">✓</span>
           {ui("Answer")}
           <svg width="8" height="8" viewBox="0 0 8 8" fill="currentColor" className={`transition-transform ${open ? "" : "-rotate-90"}`}>
             <path d="M1 2.5h6L4 6z" />
@@ -91,7 +91,7 @@ export default function AnswerBar({ block: b, lang, open, onToggle, onPatch, onE
           {open &&
             b.type === "truefalse" &&
             b.statements.map((s, i) => (
-              <span key={i} className="flex items-center gap-0.5 rounded-md bg-white/70 py-0.5 ps-1.5 pe-0.5 text-[11px] ring-1 ring-emerald-100">
+              <span key={i} className="flex items-center gap-0.5 rounded-md bg-white/70 py-0.5 ps-1.5 pe-0.5 text-xs ring-1 ring-emerald-100">
                 {i + 1}
                 {[true, false].map((v) => (
                   <button
@@ -112,11 +112,11 @@ export default function AnswerBar({ block: b, lang, open, onToggle, onPatch, onE
                 <input key={i} dir="auto" value={a} onChange={(e) => onPatch({ content: setBlank(b, i, e.target.value) }, `blank${i}`)} className={`${input} w-24!`} />
               ))
             ) : (
-              <span className="text-[11px] text-emerald-700">{ui("Click the sentence and put answers in [brackets]")}</span>
+              <span className="text-xs text-emerald-700">{ui("Click the sentence and put answers in [brackets]")}</span>
             ))}
 
           {/* Open questions: the model answer is typed in the Properties panel (Model answer); it goes to the correction sheet */}
-          {open && b.type === "open" && <span className="text-[11px] text-emerald-700">{ui("Model answer: Properties panel")}</span>}
+          {open && b.type === "open" && <span className="text-xs text-emerald-700">{ui("Model answer: Properties panel")}</span>}
 
           {/* "Add" buttons are always there, even when the bar is folded */}
           {(b.type === "match" || b.type === "order") && (
@@ -150,7 +150,7 @@ export default function AnswerBar({ block: b, lang, open, onToggle, onPatch, onE
           )}
         </div>
 
-        <label className="ms-auto flex shrink-0 items-center gap-1 text-[11px]" title={hasParts ? ui("Total of the sub-questions.") : ui("Points")}>
+        <label className="ms-auto flex shrink-0 items-center gap-1 text-xs" title={hasParts ? ui("Total of the sub-questions.") : ui("Points")}>
           <input
             type="number"
             min={0}

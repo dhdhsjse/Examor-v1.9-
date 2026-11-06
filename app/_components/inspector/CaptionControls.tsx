@@ -56,7 +56,7 @@ export function CaptionControls({ b, meta, onChange }: { b: ImageBlock; meta?: E
         <ToggleIcon icon={AlignCenter} label={t("Center")} on={align === "center"} onClick={() => set({ align: undefined })} />
         <ToggleIcon icon={AlignRight} label={t("Align right")} on={align === "right"} onClick={() => set({ align: "right" })} />
         {changed && (
-          <button type="button" onClick={() => onChange({ captionStyle: undefined }, "captionStyle")} className="ms-auto text-[11px] text-muted hover:text-ink hover:underline">
+          <button type="button" onClick={() => onChange({ captionStyle: undefined }, "captionStyle")} className="ms-auto text-xs text-muted hover:text-ink hover:underline">
             {t("Reset")}
           </button>
         )}
