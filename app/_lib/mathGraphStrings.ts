@@ -1,66 +1,38 @@
-// Interface strings of the Function Studio (graphs of functions: Insert → Function graph) and of the button in the panel of a graph. The key
-// is the English text (see app/_lib/uiLang.tsx); these are merged into the app's dictionaries at the end of app/_lib/uiStrings.ts. Words
-// the app already translates (Functions, Remove, Color, Undo, Show grid, x from…) are not repeated here. The Arabic words are generic and
-// still to be read by a teacher.
+// Interface strings of the panel of a function graph (its curve options, its window) and of other screens that share them. The key is the
+// English text (see app/_lib/uiLang.tsx); these are merged into the app's dictionaries at the end of app/_lib/uiStrings.ts. Words the app
+// already translates (Functions, Remove, Color, Show grid, x from…) are not repeated here. The Arabic words are generic and still to be read
+// by a teacher.
 
 export const MATHGRAPH_FR: Record<string, string> = {
-  "Function Studio": "Studio de fonctions",
   "Curves": "Courbes",
-  "Open in Function Studio": "Ouvrir dans le studio de fonctions",
-  "Add a function": "Ajouter une fonction",
   "Examples": "Exemples",
-  "Show this function": "Afficher cette fonction",
-  "Hide this function": "Masquer cette fonction",
-  "Remove this function": "Supprimer cette fonction",
+  "Curve options": "Options de la courbe",
   "Derivative": "Dérivée",
-  "Draw the curve of the derivative, dashed": "Tracer la courbe de la dérivée, en pointillés",
   "Asymptotes": "Asymptotes",
-  "Draw the lines the curve gets closer to": "Tracer les droites dont la courbe se rapproche",
   "No asymptote found in this window": "Aucune asymptote trouvée dans cette fenêtre",
-  "Tangents": "Tangentes",
+  "Tangent at": "Tangente en",
   "Add a tangent": "Ajouter une tangente",
   "No tangent here": "Pas de tangente ici",
-  "Tangent by click": "Tangente au clic",
-  "Click the graph to put a tangent there": "Cliquez sur le graphique pour y mettre une tangente",
-  "Drag to move · wheel to zoom · double-click to reset": "Glissez pour déplacer · molette pour zoomer · double-clic pour revenir",
-  "Graph of the functions": "Graphique des fonctions",
-  "Window": "Fenêtre",
   "Fit to the curves": "Ajuster aux courbes",
+  "Choose y so that the curves fit": "Choisir y pour que les courbes tiennent",
   "Usual window": "Fenêtre habituelle",
   "Size on the page": "Taille sur la page",
   "Height (px)": "Hauteur (px)",
-  "Lines of your own": "Vos propres droites",
-  "Kind of line": "Type de droite",
-  "Add a line": "Ajouter une droite",
 };
 
 export const MATHGRAPH_AR: Record<string, string> = {
-  "Function Studio": "استوديو الدوال",
   "Curves": "منحنيات",
-  "Open in Function Studio": "فتح في استوديو الدوال",
-  "Add a function": "إضافة دالة",
   "Examples": "أمثلة",
-  "Show this function": "إظهار هذه الدالة",
-  "Hide this function": "إخفاء هذه الدالة",
-  "Remove this function": "حذف هذه الدالة",
+  "Curve options": "خيارات المنحنى",
   "Derivative": "الدالة المشتقة",
-  "Draw the curve of the derivative, dashed": "رسم منحنى المشتقة بخط متقطع",
   "Asymptotes": "المقاربات",
-  "Draw the lines the curve gets closer to": "رسم المستقيمات التي يقترب منها المنحنى",
   "No asymptote found in this window": "لا توجد مقاربات في هذه النافذة",
-  "Tangents": "المماسات",
+  "Tangent at": "المماس عند",
   "Add a tangent": "إضافة مماس",
   "No tangent here": "لا يوجد مماس هنا",
-  "Tangent by click": "مماس بالنقر",
-  "Click the graph to put a tangent there": "انقر على الرسم لوضع مماس هناك",
-  "Drag to move · wheel to zoom · double-click to reset": "اسحب للتحريك · العجلة للتكبير · النقر المزدوج للإعادة",
-  "Graph of the functions": "التمثيل البياني للدوال",
-  "Window": "النافذة",
   "Fit to the curves": "ملاءمة المنحنيات",
+  "Choose y so that the curves fit": "اختيار y لتظهر المنحنيات كاملة",
   "Usual window": "النافذة المعتادة",
   "Size on the page": "الحجم في الصفحة",
   "Height (px)": "الارتفاع (px)",
-  "Lines of your own": "مستقيماتك الخاصة",
-  "Kind of line": "نوع المستقيم",
-  "Add a line": "إضافة مستقيم",
 };

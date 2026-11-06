@@ -10,7 +10,7 @@ import { buildPattern, findAll, replaceAll, replaceOne, type FindOptions, type M
 import type { T } from "@/app/_lib/uiLang";
 
 const SHOWN = 200; // matches listed (all of them are replaced)
-const ACTION = "inline-flex items-center gap-1.5 rounded-md border border-line bg-white px-2.5 py-1.5 text-[12px] font-medium text-ink transition-colors hover:border-indigo-300 disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:border-line";
+const ACTION = "inline-flex items-center gap-1.5 rounded-md border border-line bg-white px-2.5 py-1.5 text-xs font-medium text-ink transition-colors hover:border-faint disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:border-line";
 
 function fieldLabel(t: T, f: EditField): string {
   switch (f.kind) {
@@ -155,13 +155,13 @@ export default function FindReplaceInspector({ ctx }: { ctx: Ctx }) {
                 <button
                   type="button"
                   onClick={() => go(i)}
-                  className={`flex w-full flex-col gap-0.5 rounded-md border px-2 py-1.5 text-start transition-colors ${i === current ? "border-indigo-300 bg-indigo-50" : "border-line bg-white hover:border-indigo-200"}`}
+                  className={`flex w-full flex-col gap-0.5 rounded-md border px-2 py-1.5 text-start transition-colors ${i === current ? "border-accent bg-accent-soft" : "border-line bg-white hover:border-faint"}`}
                 >
                   <span className="text-[11px] font-semibold text-muted">
                     {b ? t(BLOCK_TYPE_NAMES[b.type]) : ""}
                     {n ? ` ${n}` : ""} · {fieldLabel(t, m.field)}
                   </span>
-                  <span className="text-[12.5px] leading-snug break-words text-ink">
+                  <span className="text-xs leading-snug break-words text-ink">
                     {m.before}
                     <mark className="rounded-sm bg-yellow-200 px-px text-ink">{m.hit}</mark>
                     {m.after}

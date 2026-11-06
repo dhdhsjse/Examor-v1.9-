@@ -24,7 +24,6 @@ interface Props {
   examFont?: string;
   meta?: ExamMeta; // the exam settings (an image caption's default font and size)
   onOpenTableStudio: (shape?: string) => void;
-  onOpenGraphStudio: () => void;
   onOpenChartStudio: () => void;
   keyboardOpen: boolean;
   onToggleKeyboard: () => void;
@@ -33,7 +32,7 @@ interface Props {
 }
 
 // Picks the right editor for the selected block type.
-export function ContentEditorSwitch({ block, number, lang, totalPoints, onChange, onLatex, onReplaceImage, examFont, meta, onOpenTableStudio, onOpenGraphStudio, onOpenChartStudio, keyboardOpen, onToggleKeyboard, onInsertBelow, sheet }: Props) {
+export function ContentEditorSwitch({ block, number, lang, totalPoints, onChange, onLatex, onReplaceImage, examFont, meta, onOpenTableStudio, onOpenChartStudio, keyboardOpen, onToggleKeyboard, onInsertBelow, sheet }: Props) {
   switch (block.type) {
     case "mcq":
       return <McqEditor b={block} onChange={onChange} />;
@@ -60,7 +59,7 @@ export function ContentEditorSwitch({ block, number, lang, totalPoints, onChange
     case "image":
       return <ImageEditor b={block} lang={lang} meta={meta} onChange={onChange} onReplace={onReplaceImage} onOpenChartStudio={onOpenChartStudio} />;
     case "graph":
-      return <GraphEditor b={block} onChange={onChange} onOpenStudio={onOpenGraphStudio} />;
+      return <GraphEditor b={block} onChange={onChange} />;
     case "divider":
       return <DividerEditor b={block} onChange={onChange} />;
     case "mark":

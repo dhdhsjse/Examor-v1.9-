@@ -124,7 +124,7 @@ export default function CollapsibleBar({ bar, collapse, ctx, children }: { bar: 
         >
           <span
             className={`pointer-events-none absolute inset-y-0 start-1/2 w-0.5 -translate-x-1/2 transition-colors rtl:translate-x-1/2 ${
-              drag ? (drag.closing ? "bg-red-400" : "bg-indigo-500") : "bg-transparent group-hover:bg-indigo-300 group-focus-visible:bg-indigo-500"
+              drag ? (drag.closing ? "bg-red-400" : "bg-accent") : "bg-transparent group-hover:bg-line group-focus-visible:bg-accent"
             }`}
           />
         </div>

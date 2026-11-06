@@ -1,252 +1,121 @@
 import { describe, expect, it } from "vitest";
-import { FAMILIES, defaultChart } from "../catalog";
-import { renderChartSvg } from "../render";
-import type { ChartConfig } from "../types";
+import { chartNumber, renderChartSvg, valueScale } from "../render";
+import { CHART_KINDS, newChart, readChart, type ChartConfig } from "../types";
 
+const chart = (patch: Partial<ChartConfig> = {}): ChartConfig => ({ ...newChart(), ...patch });
 const count = (svg: string, re: RegExp) => (svg.match(re) ?? []).length;
-const svgOf = (c: ChartConfig, o?: Parameters<typeof renderChartSvg>[1]) => renderChartSvg(c, o).svg;
-const chart = (family: ChartConfig["family"], variant?: string, mutate: (c: ChartConfig) => void = () => {}) => {
-  const c = defaultChart(family, variant);
-  mutate(c);
-  return c;
-};
 
-describe("every kind of chart", () => {
-  for (const f of FAMILIES)
-    for (const v of f.variants)
-      it(`${f.id}/${v.id} draws a picture of its size, with no broken number`, () => {
-        const c = defaultChart(f.id, v.id);
-        const { svg, width, height } = renderChartSvg(c);
-        expect(width).toBe(c.width);
-        expect(height).toBe(c.height);
-        expect(svg.startsWith("<svg ")).toBe(true);
-        expect(svg.endsWith("</svg>")).toBe(true);
-        expect(svg).toContain(`width="${c.width}"`);
-        expect(svg).not.toMatch(/NaN|undefined|Infinity/);
-        expect(svg).toContain("Titre du graphique");
-        // every thumbnail of the gallery draws too, with no text
-        const mini = renderChartSvg({ ...c, width: 80, height: 60 }, { mini: true }).svg;
-        expect(mini).not.toMatch(/NaN|undefined|Infinity/);
-        expect(mini).not.toContain("<text");
-      });
-});
-
-describe("the shapes", () => {
-  it("a clustered column chart has a bar for every value, in the colors of the series", () => {
-    const svg = svgOf(chart("column"));
-    expect(count(svg, /<rect [^>]*data-series=/g)).toBe(12);
-    expect(svg).toContain('fill="#156082"');
-    expect(svg).toContain('fill="#e97132"');
-    expect(svg).toContain("Catégorie 1");
-    expect(svg).toContain("Série 3");
+describe("the picture of a chart", () => {
+  it("is an SVG of the chart's own size", () => {
+    const svg = renderChartSvg(chart({ width: 500, height: 300 }));
+    expect(svg.startsWith("<svg")).toBe(true);
+    expect(svg).toContain('width="500" height="300"');
   });
 
-  it("stacked bars are as tall as the sum, and 100 % stacked ones fill the axis", () => {
-    const stacked = svgOf(chart("column", "stacked"));
-    expect(stacked).toContain(">15<"); // the axis goes up to 15 (4.5 + 2.8 + 5 = 12.3)
-    const full = svgOf(chart("column", "stacked100"));
-    expect(full).toContain("100 %");
-    expect(full).toContain("0 %");
+  it("draws a bar per value (an empty value has no bar) and a name under each", () => {
+    const svg = renderChartSvg(chart({ rows: [{ label: "Lundi", value: 3 }, { label: "Mardi", value: null }, { label: "Mercredi", value: 5 }] }));
+    // (the white background is a rect too)
+    expect(count(svg, /<rect /g)).toBe(1 + 2);
+    expect(svg).toContain(">Lundi<");
+    expect(svg).toContain(">Mardi<");
   });
 
-  it("a pie has a slice for every category, a doughnut a ring", () => {
-    expect(count(svgOf(chart("pie")), /<path [^>]*data-series=/g)).toBe(4);
-    const ring = svgOf(chart("pie", "doughnut"));
-    expect(count(ring, /<path [^>]*data-series=/g)).toBe(4);
+  it("draws a line through the values and a dot at each, cut where one is missing", () => {
+    const svg = renderChartSvg(chart({ kind: "line", rows: [{ label: "a", value: 1 }, { label: "b", value: 2 }, { label: "c", value: null }, { label: "d", value: 4 }, { label: "e", value: 3 }] }));
+    expect(count(svg, /<polyline /g)).toBe(2);
+    expect(count(svg, /<circle /g)).toBe(4);
   });
 
-  it("a line chart has a line for every series and markers when asked", () => {
-    const plain = svgOf(chart("line", "line"));
-    expect(count(plain, /<path [^>]*data-series=/g)).toBe(3);
-    expect(plain).not.toContain("<circle");
-    expect(svgOf(chart("line", "markers"))).toContain("<circle");
+  it("draws a slice per positive value of a pie, with its legend", () => {
+    const svg = renderChartSvg(chart({ kind: "pie", rows: [{ label: "Rouge", value: 1 }, { label: "Vert", value: 3 }, { label: "Rien", value: 0 }] }));
+    expect(count(svg, /<path /g)).toBe(2);
+    expect(svg).toContain(">Rouge<");
+    expect(svg).not.toContain(">Rien<");
   });
 
-  it("a histogram has a bar for every class, a box chart a box for every series", () => {
-    expect(count(svgOf(chart("histogram", "classes")), /<rect [^>]*data-series=/g)).toBe(5);
-    expect(count(svgOf(chart("box")), /<rect [^>]*data-series=/g)).toBe(3);
-    expect(count(svgOf(chart("waterfall")), /<rect [^>]*data-series=/g)).toBe(5);
-    expect(count(svgOf(chart("funnel")), /<rect [^>]*data-series=/g)).toBe(4);
+  it("writes the percentages of the slices when asked", () => {
+    const svg = renderChartSvg(chart({ kind: "pie", showValues: true, rows: [{ label: "a", value: 1 }, { label: "b", value: 3 }] }));
+    expect(svg).toContain(">25 %<");
+    expect(svg).toContain(">75 %<");
   });
 
-  it("a combination draws columns and a line, and a second axis when asked", () => {
-    const combo = svgOf(chart("combo", "columnLine"));
-    expect(count(combo, /<rect [^>]*data-series=/g)).toBe(8);
-    expect(count(combo, /<path [^>]*data-series=/g)).toBe(1);
-    const second = svgOf(chart("combo", "columnLineSecondary", (c) => (c.axes.y2.title = "Autre")));
-    expect(second).toContain('data-part="axis-y2"');
-    expect(second).toContain("Autre");
-  });
-});
-
-describe("what is around the plot", () => {
-  it("writes the title, or not", () => {
-    expect(svgOf(chart("column", "clustered", (c) => (c.title.text = "Mes <notes> & co")))).toContain("Mes &lt;notes&gt; &amp; co");
-    expect(svgOf(chart("column", "clustered", (c) => (c.title.show = false)))).not.toContain("Titre du graphique");
+  it("writes the values on the bars when asked, with the decimal mark of the exam", () => {
+    const rows = [{ label: "a", value: 2.75 }];
+    expect(renderChartSvg(chart({ showValues: true, rows }))).toContain(">2,75<");
+    expect(renderChartSvg(chart({ showValues: true, rows }), { decimal: "." })).toContain(">2.75<");
+    expect(renderChartSvg(chart({ showValues: false, rows }))).not.toContain(">2,75<");
   });
 
-  it("puts the legend where it is asked, or leaves it out", () => {
-    const bottom = svgOf(chart("column"));
-    const right = svgOf(chart("column", "clustered", (c) => (c.legend.position = "right")));
-    const none = svgOf(chart("column", "clustered", (c) => (c.legend.show = false)));
-    expect(bottom).toContain("Série 1");
-    expect(right).toContain("Série 1");
-    expect(none).not.toContain("Série 1");
-    // (the legend at the bottom is under the plot: its text is lower than the one at the right)
-    const y = (svg: string) => Number(/<text x="[\d.]+" y="([\d.]+)"[^>]*>Série 1</.exec(svg)?.[1]);
-    expect(y(bottom)).toBeGreaterThan(y(right));
+  it("writes the title and the names of the axes", () => {
+    const svg = renderChartSvg(chart({ title: "Notes du groupe", xTitle: "Élèves", yTitle: "Note" }));
+    expect(svg).toContain(">Notes du groupe<");
+    expect(svg).toContain(">Élèves<");
+    expect(svg).toContain(">Note<");
   });
 
-  it("writes the titles of the axes, the numbers with the decimal mark, and the data table", () => {
-    const svg = svgOf(
-      chart("column", "clustered", (c) => {
-        c.axes.x.title = "Matières";
-        c.axes.y.title = "Notes";
-        c.axes.y.unit = 0.5;
-        c.dataTable = true;
-      }),
-    );
-    expect(svg).toContain("Matières");
-    expect(svg).toContain("Notes");
-    expect(svg).toContain(">0,5<");
-    expect(svg).toContain(">4,3<"); // (the table of the numbers: 4,3 for the first bar)
-    const dot = svgOf(chart("column", "clustered", (c) => ((c.axes.y.unit = 0.5), (c.decimalMark = "."))));
-    expect(dot).toContain(">0.5<");
+  it("escapes what the teacher types", () => {
+    const svg = renderChartSvg(chart({ title: 'a < b & "c"', rows: [{ label: "<x>", value: 1 }] }));
+    expect(svg).toContain("a &lt; b &amp; &quot;c&quot;");
+    expect(svg).toContain("&lt;x&gt;");
+    expect(svg).not.toContain("<x>");
   });
 
-  it("uses the colors of the palette, and hatchings for black and white", () => {
-    expect(svgOf(chart("column", "clustered", (c) => (c.palette = "gray")))).toContain('fill="#262626"');
-    const hatched = svgOf(chart("column", "clustered", (c) => (c.patterns = true)));
-    expect(hatched).toContain("<pattern");
-    expect(hatched).toContain('fill="url(#p0-');
-    expect(count(hatched, /<pattern /g)).toBe(3);
+  it("still draws something with no value at all", () => {
+    for (const kind of CHART_KINDS) expect(renderChartSvg(chart({ kind, rows: [{ label: "a", value: null }] }))).toContain("</svg>");
   });
 
-  it("writes in the font of the chart", () => {
-    expect(svgOf(chart("column", "clustered", (c) => (c.fontFamily = "Georgia")))).toContain("Georgia");
+  it("draws horizontal bars with the names on their left", () => {
+    const svg = renderChartSvg(chart({ kind: "hbar", rows: [{ label: "Lundi", value: 3 }, { label: "Mardi", value: null }, { label: "Mercredi", value: 5 }] }));
+    expect(count(svg, /<rect /g)).toBe(1 + 2);
+    expect(svg).toContain('text-anchor="end">Lundi<');
+  });
+
+  it("draws a stick per value, and the bars of a histogram side by side", () => {
+    const rows = [{ label: "1", value: 2 }, { label: "2", value: null }, { label: "3", value: 4 }];
+    expect(count(renderChartSvg(chart({ kind: "stick", grid: false, rows })), /stroke-width="3"/g)).toBe(2);
+    const hist = renderChartSvg(chart({ kind: "histogram", rows: [{ label: "[0;10[", value: 2 }, { label: "[10;20[", value: 4 }] }));
+    const [a, b] = [...hist.matchAll(/<rect x="([\d.]+)" y="[\d.]+" width="([\d.]+)"[^>]*stroke=/g)].map((m) => [Number(m[1]), Number(m[2])]);
+    expect(a[0] + a[1]).toBeCloseTo(b[0], 0); // (the second starts where the first ends)
+  });
+
+  it("fills the room under the line of an area chart", () => {
+    const svg = renderChartSvg(chart({ kind: "area", rows: [{ label: "a", value: 1 }, { label: "b", value: 3 }, { label: "c", value: 2 }] }));
+    expect(count(svg, /<polygon /g)).toBe(1);
+    expect(count(svg, /<polyline /g)).toBe(1);
+  });
+
+  it("draws a half pie: its slices share half a turn", () => {
+    const svg = renderChartSvg(chart({ kind: "halfpie", showValues: true, rows: [{ label: "a", value: 1 }, { label: "b", value: 1 }] }));
+    expect(count(svg, /<path /g)).toBe(2);
+    expect(svg).toContain(">50 %<");
+  });
+
+  it("puts what was drawn over the chart in its picture", () => {
+    const shapes = [{ id: "s1", shape: "rect", x: 10, y: 10, w: 40, h: 20, fill: "#ff0000", stroke: null, strokeWidth: 1, rotation: 0 }];
+    const svg = renderChartSvg(chart({ shapes: shapes as unknown as ChartConfig["shapes"] }));
+    expect(svg.length).toBeGreaterThan(renderChartSvg(chart()).length);
+    expect(svg).toContain("#ff0000");
+  });
+
+  it("goes below 0 for negative values", () => {
+    const s = valueScale([-3, 7]);
+    expect(s.min).toBeLessThanOrEqual(-3);
+    expect(s.max).toBeGreaterThanOrEqual(7);
+    expect(valueScale([4, 9]).min).toBe(0);
   });
 });
 
-describe("what a series can have", () => {
-  it("shows the value labels, with the number format", () => {
-    const labels = svgOf(chart("column", "clustered", (c) => ((c.labels.show = true), (c.labels.format = { decimals: 2 }))));
-    expect(labels).toContain(">4,30<");
-    expect(count(labels, /<text [^>]*>\d,\d\d</g)).toBeGreaterThanOrEqual(12);
-    const pie = svgOf(chart("pie", "pie", (c) => ((c.labels.show = true), (c.labels.value = false), (c.labels.percent = true))));
-    expect(pie).toContain("59 %"); // 8,2 / 14
+describe("numbers and saved charts", () => {
+  it("writes at most two decimals", () => {
+    expect(chartNumber(1 / 3)).toBe("0,33");
+    expect(chartNumber(2, ".")).toBe("2");
   });
 
-  it("draws the trendline of a scatter with its equation and R²", () => {
-    const svg = svgOf(
-      chart("scatter", "markers", (c) => {
-        c.series = [{ trendline: { kind: "linear", order: 2, period: 2, forward: 0, backward: 0, equation: true, r2: true, color: null, dash: "dashed" } }];
-      }),
-    );
-    expect(svg).toContain("R² = 0,");
-    expect(svg).toMatch(/y = 0,\d+x \+ 0,\d+/);
-    expect(svg).toContain("Linéaire");
-  });
-
-  it("draws error bars, a second color for a point, and a hidden series not at all", () => {
-    const bars = svgOf(chart("column", "clustered", (c) => (c.series = [{ error: { kind: "fixed", value: 0.5, direction: "both", cap: true } }])));
-    expect(count(bars, /<line /g)).toBeGreaterThan(count(svgOf(chart("column")), /<line /g) + 8);
-    const point = svgOf(chart("column", "clustered", (c) => (c.series = [{ points: { 1: { color: "#ff00aa" } } }])));
-    expect(count(point, /fill="#ff00aa"/g)).toBe(1);
-    const hidden = svgOf(chart("column", "clustered", (c) => (c.series = [{ hidden: true }])));
-    expect(count(hidden, /<rect [^>]*data-series=/g)).toBe(8);
-    expect(hidden).not.toContain("Série 1");
-  });
-
-  it("uses the name given to a series, and the style of a line", () => {
-    const svg = svgOf(chart("line", "line", (c) => (c.series = [{ name: "Garçons", dash: "dashed", width: 4, smooth: true }])));
-    expect(svg).toContain("Garçons");
-    expect(svg).toContain("stroke-dasharray");
-    expect(svg).toContain('stroke-width="4"');
-    expect(svg).toContain("C"); // (a smooth line is made of curves)
-  });
-});
-
-describe("the picture for the students", () => {
-  it("keeps the frame, the scale and the names, and has none of the data", () => {
-    const full = svgOf(chart("column"));
-    const blank = svgOf(chart("column"), { blank: true });
-    expect(blank).toContain("Catégorie 1");
-    expect(blank).toContain("Titre du graphique");
-    expect(blank).not.toContain("data-series");
-    expect(blank).not.toContain("Série 1"); // (no legend: nothing to explain)
-    expect(count(full, /data-series/g)).toBeGreaterThan(0);
-    expect(svgOf(chart("column", "clustered", (c) => (c.blank = true)))).not.toContain("data-series");
-    expect(svgOf(chart("pie"), { blank: true })).not.toContain("data-series");
-    expect(svgOf(chart("scatter"), { blank: true })).not.toContain("data-series");
-  });
-});
-
-describe("a chart with nothing to draw, or with odd data", () => {
-  it("draws the frame and does not break", () => {
-    const empty = chart("column", "clustered", (c) => (c.data = { cells: [[""]], header: true, labels: true, calc: true }));
-    for (const f of FAMILIES) {
-      const c = { ...empty, family: f.id, variant: f.variants[0].id };
-      const svg = svgOf(c);
-      expect(svg, f.id).not.toMatch(/NaN|undefined|Infinity/);
-    }
-  });
-
-  it("copes with one category, negative numbers, a log scale, gaps and huge numbers", () => {
-    const odd = (cells: string[][], mutate: (c: ChartConfig) => void = () => {}) =>
-      chart("column", "clustered", (c) => {
-        c.data = { cells, header: true, labels: true, calc: true };
-        mutate(c);
-      });
-    for (const family of ["column", "bar", "line", "area", "scatter", "radar", "waterfall", "funnel", "pie"] as const) {
-      for (const cells of [
-        [["", "A"], ["x", "3"]],
-        [["", "A", "B"], ["x", "-3", "2"], ["y", "4", "-1"], ["z", "", "5"]],
-        [["", "A"], ["x", "1e9"], ["y", "2e9"], ["z", "3.5e9"]],
-        [["", "A"], ["x", "0"], ["y", "0"], ["z", "0"]],
-      ]) {
-        const svg = svgOf({ ...odd(cells), family, variant: family === "pie" || family === "waterfall" || family === "funnel" || family === "radar" ? defaultChart(family).variant : defaultChart(family).variant });
-        expect(svg, `${family} ${JSON.stringify(cells)}`).not.toMatch(/NaN|undefined|Infinity/);
-      }
-    }
-    const log = svgOf(odd([["", "A"], ["x", "1"], ["y", "100"], ["z", "10000"]], (c) => (c.axes.y.log = true)));
-    expect(log).toContain(">10000<");
-    expect(log).not.toMatch(/NaN|Infinity/);
-  });
-});
-
-describe("telling the parts of a pie apart without colors", () => {
-  const pie = () => defaultChart("pie", "pie", "fr");
-  const svgOf = (identify?: "color" | "number" | "name") => renderChartSvg({ ...pie(), legend: { ...pie().legend, identify } }, { lang: "fr" }).svg;
-
-  it("writes a number in each slice and lists them in the legend", () => {
-    const svg = svgOf("number");
-    expect(svg).toContain(">1<");
-    expect(svg).toContain(">3<");
-    expect(svg).toContain("1. Catégorie 1");
-    expect(svg).not.toMatch(/<rect [^>]*width="12" height="10"/);
-  });
-
-  it("writes the name in each slice and draws no legend", () => {
-    const svg = svgOf("name");
-    expect((svg.match(/>Catégorie \d</g) ?? []).length).toBe(4);
-  });
-
-  it("keeps the colors and their legend by default", () => {
-    expect(svgOf()).toMatch(/<rect [^>]*width="12" height="10"/);
-  });
-});
-
-describe("a text of your own in each slice", () => {
-  it("writes it in the slice, with no legend, on plain slices when asked", () => {
-    const c = defaultChart("pie", "pie", "fr");
-    c.legend = { ...c.legend, identify: "text" };
-    c.series = [{ points: { 0: { text: "Agriculture" }, 1: { text: "Industrie" } } }];
-    c.pie = { ...c.pie, plain: true };
-    const svg = renderChartSvg(c, { lang: "fr" }).svg;
-    expect(svg).toContain(">Agriculture<");
-    expect(svg).toContain(">Industrie<");
-    expect(svg).not.toContain("Catégorie 1");
-    expect(svg).not.toMatch(/<rect [^>]*width="12" height="10"/);
-    expect((svg.match(/fill="#ffffff"/g) ?? []).length).toBeGreaterThan(4);
+  it("reads a chart saved on a block, and nothing from what is not one", () => {
+    const saved = JSON.parse(JSON.stringify(chart({ title: "x" })));
+    expect(readChart(saved)?.title).toBe("x");
+    expect(readChart({ family: "column", data: {} })).toBeNull(); // (a chart of the older Chart Studio)
+    expect(readChart(undefined)).toBeNull();
+    expect(readChart({ kind: "bar", rows: [{ label: 1, value: "x" }] })?.rows[0]).toEqual({ label: "1", value: null });
   });
 });

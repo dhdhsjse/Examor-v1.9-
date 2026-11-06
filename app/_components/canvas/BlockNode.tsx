@@ -1,7 +1,7 @@
 "use client";
 
 import type Konva from "konva";
-import { useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Group, Rect } from "react-konva";
 import { withHints } from "@/app/_lib/blocks";
 import { clickTargets, editRegions, type EditField } from "@/app/_lib/editRegions";
@@ -9,6 +9,7 @@ import { isFixedTable } from "@/app/_lib/table";
 import type { Block, ExamMeta, ViewMode } from "@/app/_lib/types";
 import type { BlockPatch } from "@/app/_lib/useExam";
 import { EquationView, ImageView, TableView, TextboxView, TextView } from "./blocks/ContentViews";
+import { GraphExplorer } from "./blocks/GraphExplorer";
 import { GraphView } from "./blocks/GraphView";
 import { ShapeView } from "./blocks/ShapeView";
 import { DividerView } from "./blocks/DividerView";
@@ -118,7 +119,17 @@ export default function BlockNode(props: Props) {
   const { block, x, y, height, selected, interactive, textTool, drawing, onSelect, onDragMove, onDragEnd, onResize, onEdit } = props;
   const [hoverHere, setHoverHere] = useState(false);
   const hover = props.passive ? !!props.hovered : hoverHere;
+  // (Konva may tell a block the mouse is over it before React has finished putting it on the page: a block just added or selected
+  // under the mouse. It is not hovered yet then; the next move of the mouse says so.)
+  const mounted = useRef(false);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
   const setHover = (h: boolean) => {
+    if (!mounted.current) return;
     setHoverHere(h);
     props.onHover?.(h);
   };
@@ -130,6 +141,24 @@ export default function BlockNode(props: Props) {
   const media = block.type === "image" || block.type === "equation" || block.type === "shape" || block.type === "divider" || block.type === "mark" || block.type === "rule";
   const moveCursor = textTool ? "text" : "move";
   const groupRef = useRef<Konva.Group>(null);
+
+  // A graph double-clicked is looked around in: dragging moves its window and the wheel zooms (GraphExplorer), instead of moving the
+  // block. Double-click again, Esc, or selecting something else ends it.
+  const [exploring, setExploring] = useState(false);
+  const [wasPicked, setWasPicked] = useState(selected);
+  if (wasPicked !== selected) {
+    setWasPicked(selected);
+    if (!selected) setExploring(false);
+  }
+  const explore = exploring && selected && interactive && !textTool && block.type === "graph";
+  useEffect(() => {
+    if (!explore) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setExploring(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [explore]);
 
   // After a drag or a resize, the node is put back where the exam says the block is. React only moves it when x/y change, and
   // a drop that lands where the block already was (pushed back, kept in its page…) changes nothing: the node would stay where
@@ -161,7 +190,7 @@ export default function BlockNode(props: Props) {
       y={y}
       rotation={block.type === "textbox" ? (block.layout.rotation ?? 0) : 0}
       opacity={props.ghost ? 0 : 1}
-      draggable={interactive && !textTool && !drawing && !props.passive}
+      draggable={interactive && !textTool && !drawing && !props.passive && !explore}
       listening={interactive && (!drawing || !!props.erasable) && !props.passive}
       onMouseDown={(e) => {
         if (props.erasable) return; // (the eraser rubs it, it does not pick it)
@@ -173,7 +202,9 @@ export default function BlockNode(props: Props) {
         onSelect();
       }}
       onDblClick={() => {
-        if (!passedOn.current) onEdit(null);
+        if (passedOn.current) return;
+        if (block.type === "graph" && interactive && !textTool) setExploring((on) => !on);
+        else onEdit(null);
       }}
       // (the canvas draws the dragged block over the others: ExamCanvas's drawOrder)
       onDragStart={(e) => {
@@ -209,7 +240,11 @@ export default function BlockNode(props: Props) {
         cornerRadius={4}
         listening={!props.erasable}
       />
-      <Content block={block} number={props.number} meta={props.meta} mode={props.mode} interactive={interactive} selected={selected} totalPoints={props.totalPoints} typing={props.typing} sheet={props.sheet} />
+      {explore && block.type === "graph" ? (
+        <GraphExplorer b={block} height={height} zoom={props.zoom} onPatch={props.onPatch} />
+      ) : (
+        <Content block={block} number={props.number} meta={props.meta} mode={props.mode} interactive={interactive} selected={selected} totalPoints={props.totalPoints} typing={props.typing} sheet={props.sheet} />
+      )}
 
       {/* Invisible areas on top of the texts: double-click, click a selected block (or click with
           the T tool) to type there. A text box types on the first click, anywhere inside it. */}

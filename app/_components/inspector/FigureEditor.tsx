@@ -50,7 +50,7 @@ export function FigureEditor({ b, figure, lang, onChange }: { b: ImageBlock; fig
           <RotateCcw size={13} aria-hidden />
         </button>
       </div>
-      {def.hint && <p className="text-[11px] leading-snug text-indigo-900/70">{t(def.hint)}</p>}
+      {def.hint && <p className="text-[11px] leading-snug text-faint">{t(def.hint)}</p>}
       {rows.map((row) =>
         row.length > 1 ? (
           <div key={row[0].key} className="grid gap-2" style={{ gridTemplateColumns: `repeat(${row.length}, minmax(0, 1fr))` }}>

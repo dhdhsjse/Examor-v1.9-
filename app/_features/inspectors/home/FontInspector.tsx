@@ -12,8 +12,8 @@ import type { BlockFont } from "@/app/_lib/types";
 const SAMPLE = { arabic: "أجب عن الأسئلة التالية", latin: "Exercice 1 — Évaluation" };
 
 const card = (on: boolean, missing: boolean) =>
-  `flex w-full items-center justify-between gap-2 rounded-lg border px-3 py-2 text-start transition-colors ${
-    on ? "border-indigo-500 bg-indigo-50 ring-1 ring-indigo-500" : missing ? "border-line bg-subtle/50 opacity-55" : "border-line bg-white hover:border-indigo-300"
+  `flex w-full items-center justify-between gap-2 rounded-[5px] border px-2 py-1.5 text-start transition-colors ${
+    on ? "border-accent bg-accent-soft" : missing ? "border-line bg-subtle/50 opacity-55" : "border-line bg-white hover:border-faint"
   }`;
 
 // Home → Font, in the right panel: every font of the font library (app/_features/libraries/fonts.ts),
@@ -29,7 +29,7 @@ export default function FontInspector({ ctx }: { ctx: Ctx }) {
     return (
       <div className="flex flex-col items-center gap-2 px-4 py-10 text-center">
         <MousePointerClick size={28} strokeWidth={1.4} className="text-faint" />
-        <p className="text-sm text-muted">{b ? t("This block has no text to change the font of.") : t("Select a text block on the page to change its font.")}</p>
+        <p className="text-xs text-muted">{b ? t("This block has no text to change the font of.") : t("Select a text block on the page to change its font.")}</p>
       </div>
     );
   }

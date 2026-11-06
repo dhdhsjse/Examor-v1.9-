@@ -1,7 +1,6 @@
 "use client";
 
-import { ChevronDown } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { useState } from "react";
 import { BookmarkIcon, TrashIcon } from "@/app/_components/icons";
 import { HeaderSketch } from "@/app/_components/HeaderSketch";
 import { COLORED } from "@/app/_components/inspector/ContentEditors";
@@ -22,10 +21,8 @@ type Scope = "global" | "page";
 
 const OFF: HeaderFooterConfig = { enabled: false, templateId: "", data: {} };
 const segment = (on: boolean) =>
-  `h-8 flex-1 rounded-lg px-2 text-[13px] tracking-[-0.01em] transition-[background-color,color,box-shadow,transform] duration-200 ease-out outline-none focus-visible:ring-2 focus-visible:ring-accent active:scale-[0.98] ${on ? "bg-white font-semibold text-ink shadow-[0_1px_3px_rgba(0,0,0,0.12)]" : "font-medium text-muted hover:text-ink"}`;
-const label = "px-0.5 text-[11px] font-medium tracking-[0.01em] text-muted";
-const switchCls =
-  "relative h-[26px] w-[44px] shrink-0 cursor-pointer appearance-none rounded-full bg-slate-300 transition-colors duration-200 outline-none before:absolute before:top-[2px] before:left-[2px] before:size-[22px] before:rounded-full before:bg-white before:shadow before:transition-transform before:duration-200 before:content-[''] checked:bg-emerald-500 checked:before:translate-x-[18px] focus-visible:ring-2 focus-visible:ring-accent rtl:before:right-[2px] rtl:before:left-auto rtl:checked:before:-translate-x-[18px]";
+  `flex-1 rounded-[4px] px-2 py-1 text-xs transition-colors ${on ? "bg-white font-semibold text-ink ring-1 ring-line" : "text-muted hover:text-ink"}`;
+const inputCls = "rounded-[5px] border border-transparent bg-subtle px-2 py-1 text-xs text-ink outline-none hover:border-line focus:border-accent focus:bg-white";
 
 // Page layout → Header and footer, in the right panel: the one place for the exam header and the
 // footer (an exam header selected on the page opens it too). "Whole document" edits what every page
@@ -44,11 +41,11 @@ export default function HeaderFooterInspector({ ctx }: { ctx: Ctx }) {
   const pickedKind = picked?.meta?.role === "footer" ? "footer" : "header";
   const [scope, setScope] = useState<Scope>(() => (picked && (loose || page?.[pickedKind] !== undefined) ? "page" : "global"));
   const own = !!page && (page.header !== undefined || page.footer !== undefined);
+  const ownCount = doc.pages.filter((p) => p.header !== undefined || p.footer !== undefined).length;
 
   return (
     <div className="flex flex-col">
-
-      <div role="radiogroup" aria-label={t("Apply to")} className="mb-4 flex gap-1 rounded-xl bg-subtle p-1">
+      <div role="radiogroup" aria-label={t("Apply to")} className="mb-3 flex gap-0.5 rounded-[5px] bg-subtle p-0.5">
         {(["global", "page"] as const).map((s) => (
           <button key={s} type="button" role="radio" aria-checked={scope === s} onClick={() => setScope(s)} className={segment(scope === s)}>
             {s === "global" ? t("Whole document") : t("This page ({n})", { n: index + 1 })}
@@ -59,20 +56,23 @@ export default function HeaderFooterInspector({ ctx }: { ctx: Ctx }) {
       {selected && <SelectedHeader ctx={ctx} block={selected} loose={loose} index={index} />}
 
       {scope === "page" && own && page && !loose && (
-        <div className="mb-4 flex flex-col gap-2.5 rounded-2xl bg-amber-50 px-3.5 py-3 text-[13px] text-amber-900">
+        <div className="mb-3 flex flex-col gap-2 rounded-[5px] border border-amber-200 bg-amber-50 p-2.5 text-xs text-amber-900">
           {t("This page has its own settings.")}
           <button
             type="button"
             onClick={() => shell.resetPageChrome(page.id)}
-            className="h-8 self-start rounded-full bg-white px-3.5 text-[13px] font-medium text-amber-900 shadow-sm transition-[transform,background-color] duration-100 outline-none hover:bg-amber-100 focus-visible:ring-2 focus-visible:ring-accent active:scale-[0.97]"
+            className="self-start rounded-md border border-amber-300 bg-white px-2 py-1 font-medium text-amber-900 hover:bg-amber-100"
           >
             {t("Reset to the document's settings")}
           </button>
         </div>
       )}
+      {scope === "global" && ownCount > 0 && (
+        <p className="mb-3 text-[11px] leading-snug text-faint">{t("{n} page(s) have their own settings and don't follow these.", { n: ownCount })}</p>
+      )}
 
       <ChromeSection ctx={ctx} kind="header" scope={scope} index={index} />
-      <hr className="my-5 border-line/70" />
+      <hr className="my-4 border-line" />
       <ChromeSection ctx={ctx} kind="footer" scope={scope} index={index} />
     </div>
   );
@@ -88,7 +88,7 @@ function SelectedHeader({ ctx, block, loose, index }: { ctx: Ctx; block: HeaderB
     if (c) shell.setChrome("header", { ...c, enabled: false }, block.layout.pageId);
   };
   return (
-    <div className="mb-4 flex flex-col gap-2.5 rounded-2xl bg-subtle px-3.5 py-3 text-[13px] text-ink">
+    <div className="mb-3 flex flex-col gap-2 rounded-[5px] border border-line p-2.5 text-xs text-ink">
       <div className="flex items-center justify-between gap-2">
         <span className="font-semibold">{t("Exam header of page {n}", { n: index + 1 })}</span>
         <span className="flex gap-1">
@@ -106,7 +106,7 @@ function SelectedHeader({ ctx, block, loose, index }: { ctx: Ctx; block: HeaderB
           <button
             type="button"
             onClick={() => shell.adoptHeader(block.id)}
-            className="self-start rounded-md border border-indigo-300 bg-white px-2 py-1 font-medium text-indigo-800 hover:bg-indigo-100"
+            className="self-start rounded-md border border-line bg-white px-2 py-1 font-medium text-ink hover:bg-hover"
           >
             {t("Use it as this page's header")}
           </button>
@@ -142,17 +142,17 @@ function ChromeSection({ ctx, kind, scope, index }: { ctx: Ctx; kind: ChromeKind
   const id = (key: string) => `chrome-${kind}-${key}`;
 
   return (
-    <section className="flex flex-col gap-3.5">
-      <label className="flex cursor-pointer items-center justify-between gap-3 rounded-2xl bg-subtle px-3.5 py-3 text-[15px] font-semibold tracking-[-0.015em] text-ink">
+    <section className="flex flex-col gap-2.5">
+      <label className="flex items-center gap-2 text-xs font-semibold text-ink">
+        <input type="checkbox" checked={current.enabled} onChange={(e) => change({ enabled: e.target.checked })} className="size-4 accent-accent" />
         {t(kind === "header" ? "Show a header" : "Show a footer")}
-        <input type="checkbox" role="switch" checked={current.enabled} onChange={(e) => change({ enabled: e.target.checked })} className={switchCls} />
       </label>
 
-      <div className={`flex flex-col gap-3.5 transition-opacity duration-200 ${current.enabled ? "" : "pointer-events-none opacity-45"}`} aria-disabled={!current.enabled}>
-        <div className="flex flex-col gap-1.5">
-          <span className={label}>{t(kind === "header" ? "Header style" : "Template")}</span>
-          <TemplateChoices
-            t={t}
+      <div className={`flex flex-col gap-2.5 transition-opacity ${current.enabled ? "" : "pointer-events-none opacity-45"}`} aria-disabled={!current.enabled}>
+        <div className="flex flex-col gap-1">
+          <span className="text-[11px] font-semibold text-muted">{t(kind === "header" ? "Header style" : "Template")}</span>
+          <ChoiceGrid<string>
+            cols={2}
             value={template.id}
             // Another template keeps the texts it shares with this one (same field keys).
             onChange={(templateId) => change({ templateId })}
@@ -161,35 +161,33 @@ function ChromeSection({ ctx, kind, scope, index }: { ctx: Ctx; kind: ChromeKind
         </div>
 
         {colored && (
-          <div className="flex flex-col gap-1.5">
-            <span className={label}>{t("Color")}</span>
+          <div className="flex flex-col gap-1">
+            <span className="text-[11px] font-semibold text-muted">{t("Color")}</span>
             <ColorGrid value={current.data.accent || undefined} autoLabel={t("Style's own")} onChange={(accent) => setData("accent", accent)} />
           </div>
         )}
 
         {template.sketch && (
           <div className="flex flex-col gap-1">
-            <span className="px-0.5 text-[11px] font-medium tracking-[0.01em] text-muted">{t("Text style")}</span>
+            <span className="text-[11px] font-semibold text-muted">{t("Text style")}</span>
             <FontSelect
               value={current.data.fontFamily || undefined}
               onChange={(family) => setData("fontFamily", family)}
               defaultLabel={`${t("Exam font")} (${doc.meta.fontFamily ?? DEFAULT_FONT})`}
-              className="h-10 w-full rounded-xl border border-transparent bg-subtle px-3 text-[14px] font-medium tracking-[-0.01em] text-ink outline-none transition-colors hover:border-line focus:border-accent focus:bg-white"
+              className={inputCls}
             />
           </div>
         )}
 
         {kind === "footer" && <Preview ctx={ctx} kind={kind} index={index} config={{ ...current, enabled: true, templateId: template.id }} />}
 
-        {texts.length > 0 && (
-        <div className="flex flex-col divide-y divide-line/70 overflow-hidden rounded-2xl bg-subtle">
         {texts.map((f) => {
           const value = current.data[f.key];
           // Words styled differently on the page: typed there only (a plain field would lose the styles).
           const mixed = !!value && parseRich(value).length > 1;
           return (
-            <label key={f.key} htmlFor={id(f.key)} className="flex cursor-text flex-col gap-0.5 px-3.5 py-2 transition-colors duration-150 focus-within:bg-white hover:bg-hover/60 focus-within:hover:bg-white">
-              <span className="text-[11px] font-medium tracking-[0.01em] text-muted">{t(f.label)}</span>
+            <label key={f.key} htmlFor={id(f.key)} className="flex flex-col gap-1">
+              <span className="text-[11px] font-semibold text-muted">{t(f.label)}</span>
               <input
                 id={id(f.key)}
                 dir="auto"
@@ -199,52 +197,16 @@ function ChromeSection({ ctx, kind, scope, index }: { ctx: Ctx; kind: ChromeKind
                 value={value !== undefined ? plainText(value) : (defaults[f.key] ?? "")}
                 placeholder={defaults[f.key]}
                 onChange={(e) => setData(f.key, restyled(value, e.target.value))}
-                className="w-full bg-transparent p-0 text-[14px] font-medium tracking-[-0.01em] text-ink outline-none placeholder:font-normal placeholder:text-faint disabled:opacity-50"
+                className={`${inputCls} disabled:bg-subtle`}
               />
             </label>
           );
         })}
-        </div>
-        )}
 
         {graded && <GradedOutOf ctx={ctx} data={current.data} fallback={Number(defaults.outOf) || 20} onData={setData} />}
         {!template.fields?.length && <p className="text-[11px] leading-snug text-faint">{t("Filled in automatically on every page.")}</p>}
       </div>
     </section>
-  );
-}
-
-const FEW = 4; // styles shown at first
-
-// The styles to choose from: the first few, and the rest behind a button that opens them with a smooth, interruptible slide (a grid row that grows from 0
-// to its height: pressing again mid-way turns it round from where it is). Open from the start when the style in use is one of the rest.
-function TemplateChoices({ t, value, options, onChange }: { t: Ctx["t"]; value: string; options: { value: string; label: string; preview: ReactNode }[]; onChange: (v: string) => void }) {
-  const [open, setOpen] = useState(() => options.findIndex((o) => o.value === value) >= FEW);
-  if (options.length <= FEW) return <ChoiceGrid<string> cols={2} value={value} onChange={onChange} options={options} />;
-  return (
-    <div className="flex flex-col">
-      <ChoiceGrid<string> cols={2} value={value} onChange={onChange} options={options.slice(0, FEW)} />
-      <div
-        inert={!open}
-        className={`grid transition-[grid-template-rows,opacity] duration-[380ms] ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none ${open ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}
-      >
-        <div className="min-h-0 overflow-hidden">
-          <div className="pt-2">
-            <ChoiceGrid<string> cols={2} value={value} onChange={onChange} options={options.slice(FEW)} />
-          </div>
-        </div>
-      </div>
-      <button
-        type="button"
-        aria-expanded={open}
-        data-testid="more-styles"
-        onClick={() => setOpen((o) => !o)}
-        className="mt-2 flex h-9 items-center justify-center gap-1.5 rounded-xl bg-subtle text-[13px] font-medium tracking-[-0.01em] text-ink transition-[transform,background-color] duration-100 ease-out outline-none hover:bg-hover focus-visible:ring-2 focus-visible:ring-accent active:scale-[0.98]"
-      >
-        {open ? t("Show fewer styles") : t("Show all {n} styles", { n: options.length })}
-        <ChevronDown size={15} strokeWidth={2} aria-hidden className={`transition-transform duration-[380ms] ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none ${open ? "rotate-180" : ""}`} />
-      </button>
-    </div>
   );
 }
 
@@ -256,10 +218,10 @@ function GradedOutOf({ ctx, data, fallback, onData }: { ctx: Ctx; data: Record<s
   const outOf = Number(data.outOf) >= 1 ? Math.round(Number(data.outOf)) : fallback;
   const mismatch = !auto && total > 0 && total !== outOf;
   return (
-    <div className="flex flex-col gap-2 rounded-2xl bg-subtle px-3.5 py-3">
-      <span className="text-[11px] font-medium tracking-[0.01em] text-muted">{t("Graded out of")}</span>
+    <div className="flex flex-col gap-1.5 border-t border-line pt-2.5">
+      <span className="text-[11px] font-semibold text-muted">{t("Graded out of")}</span>
       <label className="flex items-center gap-2 text-xs text-ink">
-        <input type="checkbox" checked={auto} onChange={(e) => onData("autoOutOf", e.target.checked ? "1" : undefined)} className="accent-indigo-600" />
+        <input type="checkbox" checked={auto} onChange={(e) => onData("autoOutOf", e.target.checked ? "1" : undefined)} className="accent-accent" />
         {t("Use the total of the questions ({n} pts)", { n: total })}
       </label>
       {auto ? (
@@ -316,7 +278,7 @@ function Preview({ ctx, kind, index, config }: { ctx: Ctx; kind: ChromeKind; ind
     <div
       aria-label={ctx.t("Preview")}
       dir={rtl ? "rtl" : "ltr"}
-      className="flex min-h-12 flex-col justify-center gap-1 rounded-md bg-white px-3 py-2 shadow-sm ring-1 ring-black/10"
+      className="flex min-h-12 flex-col justify-center gap-1 rounded-md bg-white px-3 py-2 ring-1 ring-black/10"
     >
       {blocks.map((b) =>
         b.type === "header" ? (
@@ -326,7 +288,7 @@ function Preview({ ctx, kind, index, config }: { ctx: Ctx; kind: ChromeKind; ind
         ) : b.type === "text" ? (
           <span
             key={b.id}
-            className={`truncate text-slate-700 ${b.style === "title" ? "text-sm font-bold" : b.style === "heading" ? "text-xs font-semibold" : "text-[11px]"} ${
+            className={`truncate text-slate-700 ${b.style === "title" ? "text-xs font-bold" : b.style === "heading" ? "text-xs font-semibold" : "text-[11px]"} ${
               b.layout.width < full - 1 ? "text-center" : ""
             }`}
           >

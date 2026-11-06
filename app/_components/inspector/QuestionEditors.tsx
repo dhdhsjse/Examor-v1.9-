@@ -20,28 +20,24 @@ export function QuestionBasics({ b, onChange, lockPoints }: { b: QuestionBlock; 
   return (
     <>
       <Field label={t("Question")}>
-        <RichInput roomy value={b.text} placeholder={t("Type the question…")} onChange={(text) => onChange({ text }, "text")} rows={3} multiline />
+        <RichInput value={b.text} placeholder={t("Type the question…")} onChange={(text) => onChange({ text }, "text")} rows={3} multiline />
       </Field>
-      <label className="flex items-center justify-between gap-3 rounded-2xl bg-subtle px-3.5 py-2">
-        <span className="flex flex-col">
-          <span className="text-[13px] font-medium tracking-[-0.01em] text-ink">{t("Points")}</span>
-          {lockPoints && <span className="text-[11px] text-faint">{t("Total of the sub-questions.")}</span>}
-        </span>
+      <Field label={t("Points")} hint={lockPoints ? t("Total of the sub-questions.") : undefined}>
         {lockPoints ? (
-          <span className="text-[15px] font-semibold tabular-nums text-ink">{b.points}</span>
+          <span className="text-xs font-semibold text-ink">{b.points}</span>
         ) : (
-          <NumberInput inline value={b.points} min={0} max={100} step={0.25} onChange={(points) => onChange({ points }, "points")} />
+          <NumberInput value={b.points} min={0} max={100} step={0.25} onChange={(points) => onChange({ points }, "points")} />
         )}
-      </label>
+      </Field>
     </>
   );
 }
 
-// A framed group of settings inside an editor.
+// A group of settings inside an editor, set off by a hairline (no card).
 export function Panel({ title, children }: { title?: string; children: ReactNode }) {
   return (
-    <div className="flex flex-col gap-3 rounded-2xl bg-subtle px-3.5 py-3">
-      {title && <span className="text-[11px] font-medium tracking-[0.01em] text-muted">{title}</span>}
+    <div className="flex flex-col gap-2 border-t border-line pt-2.5">
+      {title && <span className="text-[11px] font-semibold text-ink">{title}</span>}
       {children}
     </div>
   );
@@ -64,10 +60,9 @@ export function McqEditor({ b, onChange }: { b: McqBlock; onChange: OnChange }) 
   return (
     <>
       <QuestionBasics b={b} onChange={onChange} />
-      <div className="flex flex-col gap-3.5">
+      <Panel>
         <Field group label={t("Correct answers")}>
           <Segmented
-            roomy
             value={b.multi ? "multi" : "one"}
             onChange={(v) => setMulti(v === "multi")}
             options={[
@@ -77,13 +72,13 @@ export function McqEditor({ b, onChange }: { b: McqBlock; onChange: OnChange }) 
           />
         </Field>
         <Field group label={t("Options per row")}>
-          <Segmented roomy value={String(b.columns ?? 1)} onChange={(v) => onChange({ columns: Number(v) }, "columns")} options={["1", "2", "3", "4"].map((v) => ({ value: v, label: v }))} />
+          <Segmented value={String(b.columns ?? 1)} onChange={(v) => onChange({ columns: Number(v) }, "columns")} options={["1", "2", "3", "4"].map((v) => ({ value: v, label: v }))} />
         </Field>
-      </div>
+      </Panel>
       <Field group label={t("Options")}>
-        <div className="flex flex-col divide-y divide-line/70 overflow-hidden rounded-2xl bg-subtle">
+        <div className="flex flex-col gap-2">
           {b.options.map((opt, i) => (
-            <div key={i} className="flex items-center gap-2.5 px-3.5 py-1 transition-colors focus-within:bg-white">
+            <div key={i} className="flex items-center gap-2">
               <input
                 type={b.multi ? "checkbox" : "radio"}
                 name={`correct-${b.id}`}
@@ -92,15 +87,11 @@ export function McqEditor({ b, onChange }: { b: McqBlock; onChange: OnChange }) 
                 className="size-[18px] shrink-0 cursor-pointer accent-emerald-600"
                 title={t("Correct answer")}
               />
-              <RichInput bare value={opt} placeholder={`${t("Option")} ${i + 1}`} onChange={(v) => setOption(i, v)} />
+              <RichInput roomy value={opt} placeholder={`${t("Option")} ${i + 1}`} onChange={(v) => setOption(i, v)} />
               {b.options.length > 2 && <RemoveButton onClick={() => onChange(removeOption(b, i), "options")} title={t("Remove")} />}
             </div>
           ))}
-          {b.options.length < MAX_OPTIONS && (
-            <div className="px-1.5 py-0.5">
-              <AddRowButton onClick={() => onChange(insertOption(b, b.options.length), "options")}>{t("Add option")}</AddRowButton>
-            </div>
-          )}
+          {b.options.length < MAX_OPTIONS && <AddRowButton onClick={() => onChange(insertOption(b, b.options.length), "options")}>{t("Add option")}</AddRowButton>}
         </div>
       </Field>
       <button

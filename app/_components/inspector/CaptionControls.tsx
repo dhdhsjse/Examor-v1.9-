@@ -6,10 +6,10 @@ import { DEFAULT_FONT } from "@/app/_lib/fonts";
 import type { CaptionStyle, ExamMeta, ImageBlock } from "@/app/_lib/types";
 import { useT } from "@/app/_lib/uiLang";
 import { ColorGrid, FontSelect } from "../rich/FormatBar";
-import { Stepper } from "./fields";
+import { Stepper, inputCls } from "./fields";
 import type { OnChange } from "./QuestionEditors";
 
-const selectCls = "min-w-0 flex-1 rounded-md border border-line bg-white px-2 py-1 text-[12px] text-ink outline-none focus:border-indigo-400";
+const selectCls = `${inputCls} min-w-0 flex-1`;
 
 // A small square button that is on or off (bold, italic, an alignment…).
 function ToggleIcon({ icon: Icon, on, label, onClick }: { icon: LucideIcon; on: boolean; label: string; onClick: () => void }) {
@@ -20,7 +20,7 @@ function ToggleIcon({ icon: Icon, on, label, onClick }: { icon: LucideIcon; on: 
       aria-label={label}
       aria-pressed={on}
       onClick={onClick}
-      className={`grid size-7 place-items-center rounded-[5px] outline-none focus-visible:ring-2 focus-visible:ring-accent ${on ? "bg-indigo-100 text-indigo-700" : "text-muted hover:bg-hover hover:text-ink"}`}
+      className={`grid size-7 place-items-center rounded-[5px] outline-none focus-visible:ring-2 focus-visible:ring-accent ${on ? "bg-accent-soft text-accent" : "text-muted hover:bg-hover hover:text-ink"}`}
     >
       <Icon size={14} strokeWidth={2.2} aria-hidden />
     </button>
@@ -42,7 +42,7 @@ export function CaptionControls({ b, meta, onChange }: { b: ImageBlock; meta?: E
   const changed = Object.keys(c).length > 0;
 
   return (
-    <div className="flex flex-col gap-1.5 rounded-lg border border-line bg-subtle/60 p-2">
+    <div className="flex flex-col gap-1.5 border-t border-line pt-2.5">
       <div className="flex items-center gap-1.5">
         <FontSelect value={c.family} onChange={(family) => set({ family })} defaultLabel={`${t("Exam font")} (${meta?.fontFamily ?? DEFAULT_FONT})`} className={selectCls} />
         <Stepper value={size} min={CAPTION_MIN_SIZE} max={CAPTION_MAX_SIZE} onChange={(v) => set({ size: v })} title={t("Font size")} />
@@ -56,7 +56,7 @@ export function CaptionControls({ b, meta, onChange }: { b: ImageBlock; meta?: E
         <ToggleIcon icon={AlignCenter} label={t("Center")} on={align === "center"} onClick={() => set({ align: undefined })} />
         <ToggleIcon icon={AlignRight} label={t("Align right")} on={align === "right"} onClick={() => set({ align: "right" })} />
         {changed && (
-          <button type="button" onClick={() => onChange({ captionStyle: undefined }, "captionStyle")} className="ms-auto text-[10px] text-indigo-600 hover:underline">
+          <button type="button" onClick={() => onChange({ captionStyle: undefined }, "captionStyle")} className="ms-auto text-[11px] text-muted hover:text-ink hover:underline">
             {t("Reset")}
           </button>
         )}

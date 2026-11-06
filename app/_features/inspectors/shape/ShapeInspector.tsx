@@ -9,7 +9,7 @@ import type { BlockPatch } from "@/app/_lib/useExam";
 export default function ShapeInspector({ ctx }: { ctx: Ctx }) {
   const { t, shell } = ctx;
   const b = shell.selected;
-  if (b?.type !== "shape") return <p className="p-4 text-sm text-muted">{t("Select a shape on the page.")}</p>;
+  if (b?.type !== "shape") return <p className="text-xs text-muted">{t("Select a shape on the page.")}</p>;
 
   const change = (patch: Partial<ShapeFields>) => {
     const { w, h, ...style } = patch;

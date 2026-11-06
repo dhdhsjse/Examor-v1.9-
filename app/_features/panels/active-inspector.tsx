@@ -17,13 +17,13 @@ export const activeInspectorPanel: Feature = {
     const label = resolveLabel(feature.label, ctx.t);
     return (
       <section aria-label={label} className="flex flex-col">
-        <div className="flex h-10 items-center justify-between gap-2 border-b border-line ps-3 pe-1.5">
+        <div className="flex h-8 items-center justify-between gap-2 border-b border-line ps-3 pe-1">
           <h2 className="truncate text-xs font-semibold text-ink">{label}</h2>
           <button type="button" onClick={ctx.closeInspector} aria-label={ctx.t("Close")} title={ctx.t("Close")} className={iconBtn}>
             <X aria-hidden />
           </button>
         </div>
-        <div className="flex flex-col gap-3 p-3">{feature.renderInspector({ ctx })}</div>
+        <div className="flex flex-col gap-2.5 px-3 py-2.5">{feature.renderInspector({ ctx })}</div>
       </section>
     );
   },

@@ -4,6 +4,7 @@ import type { Editor as TextEditor, JSONContent } from "@tiptap/core";
 import type Konva from "konva";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CONTENT_WIDTH, PAGE_MARGIN } from "@/app/_lib/a4";
+import { readChart } from "@/app/_lib/chart/types";
 import { pageMargins } from "@/app/_lib/onboarding/applyOnboarding";
 import { pageSize } from "@/app/_lib/pageFormats";
 import { focusMathfield } from "@/app/_lib/activeMathfield";
@@ -135,7 +136,6 @@ export default function Editor() {
   const [circuitStudio, setCircuitStudio] = useState<Shell["circuitStudio"]>({ open: false, blockId: null }); // the Circuit Studio
   const [probaStudio, setProbaStudio] = useState<Shell["probaStudio"]>({ open: false, blockId: null }); // the Probability Studio
   const [tableStudio, setTableStudio] = useState<Shell["tableStudio"]>({ open: false, blockId: null }); // the Table Studio
-  const [mathGraphStudio, setMathGraphStudio] = useState<Shell["mathGraphStudio"]>({ open: false, blockId: null }); // the Function Studio
   const [chartStudio, setChartStudio] = useState<Shell["chartStudio"]>({ open: false, blockId: null }); // the Chart Studio
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
@@ -457,9 +457,6 @@ export default function Editor() {
       case "table-studio":
         setTableStudio({ open: true, blockId: null });
         break;
-      case "math-graph-studio":
-        setMathGraphStudio({ open: true, blockId: null });
-        break;
       case "chart-studio":
         setChartStudio({ open: true, blockId: null });
         break;
@@ -490,9 +487,7 @@ export default function Editor() {
     // A graph paper reopens in the Graph Studio, with its limits, labels and grid.
     if (block?.type === "image" && block.graphStudio) return setGraphStudio({ open: true, blockId: id });
     // A chart reopens in the Chart Studio, with its table and everything it shows.
-    if (block?.type === "image" && block.chartStudio) return setChartStudio({ open: true, blockId: id });
-    // A graph of functions reopens in the Function Studio, with its functions, derivatives, tangents and asymptotes.
-    if (block?.type === "graph") return setMathGraphStudio({ open: true, blockId: id });
+    if (block?.type === "image" && readChart(block.chartStudio)) return setChartStudio({ open: true, blockId: id });
     // A circuit reopens in the Circuit Studio, with its components and wires.
     if (block?.type === "image" && block.circuitStudio) return setCircuitStudio({ open: true, blockId: id });
     // A probability drawing reopens in the Probability Studio, with its trees and figures.
@@ -779,7 +774,7 @@ export default function Editor() {
         setBarOpen(bar.id);
         return;
       }
-      if (typing || picker.open || sheetWizard.open || preview || history || molecule.open || moleculeLab.open || graphStudio.open || circuitStudio.open || probaStudio.open || tableStudio.open || mathGraphStudio.open || chartStudio.open) return;
+      if (typing || picker.open || sheetWizard.open || preview || history || molecule.open || moleculeLab.open || graphStudio.open || circuitStudio.open || probaStudio.open || tableStudio.open || chartStudio.open) return;
 
       if (mod && key === "z") {
         e.preventDefault();
@@ -849,7 +844,7 @@ export default function Editor() {
   // Copy, cut and paste of whole blocks (when no text is being typed in).
   const clipboard = useBlockClipboard({
     selected,
-    active: !(picker.open || sheetWizard.open || preview || history || molecule.open || moleculeLab.open || graphStudio.open || circuitStudio.open || probaStudio.open || tableStudio.open || mathGraphStudio.open || chartStudio.open),
+    active: !(picker.open || sheetWizard.open || preview || history || molecule.open || moleculeLab.open || graphStudio.open || circuitStudio.open || probaStudio.open || tableStudio.open || chartStudio.open),
     deleteBlock: exam.deleteBlock,
     pasteBlock: exam.pasteBlock,
     addText: (text) => exam.addBlock("text", { text, style: "body" }),
@@ -1004,9 +999,6 @@ export default function Editor() {
     openGraphStudio: (blockId) => setGraphStudio({ open: true, blockId: blockId ?? null }),
     closeGraphStudio: () => setGraphStudio({ open: false, blockId: null }),
     tableStudio,
-    mathGraphStudio,
-    openMathGraphStudio: (blockId) => setMathGraphStudio({ open: true, blockId: blockId ?? null }),
-    closeMathGraphStudio: () => setMathGraphStudio({ open: false, blockId: null }),
     chartStudio,
     openChartStudio: (blockId) => setChartStudio({ open: true, blockId: blockId ?? null }),
     closeChartStudio: () => setChartStudio({ open: false, blockId: null }),

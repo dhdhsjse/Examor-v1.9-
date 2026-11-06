@@ -99,9 +99,6 @@ export function DividerEditor({ b, onChange }: { b: DividerBlock; onChange: OnCh
         <span className="text-[11px] text-muted">{t("Space above and below")}</span>
         <Stepper value={dividerSpace(b)} min={0} max={60} onChange={(v) => onChange({ space: v }, "space")} />
       </div>
-      <p className="text-[10px] leading-snug text-faint">
-        {t("Drag its ends to make it shorter or longer.")}
-      </p>
     </>
   );
 }

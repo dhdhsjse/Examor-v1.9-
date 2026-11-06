@@ -69,7 +69,7 @@ export default function EquationEditor({ b, onLatex, keyboardOpen, onToggleKeybo
 
   return (
     <>
-      <Field label={t("Equation")} hint={t("Type here, or use the math keyboard under the pages.")}>
+      <Field label={t("Equation")}>
         <div ref={hostRef} className="equation-host" dir="ltr" />
       </Field>
       <div className="flex gap-1.5">
@@ -98,9 +98,6 @@ export default function EquationEditor({ b, onLatex, keyboardOpen, onToggleKeybo
           {t("Clear")}
         </button>
       </div>
-      <p className="text-[10px] leading-snug text-faint">
-        {t("Tip: double-click the equation on the page to edit it. Resize it with the corner handles.")}
-      </p>
       <FunctionTools latex={b.latex} lang={lang} onInsert={onInsert} />
     </>
   );

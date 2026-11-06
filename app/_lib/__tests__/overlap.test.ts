@@ -49,3 +49,33 @@ describe("dropping a block over another one", () => {
     expect(yOf(out, "photo")).toBeGreaterThanOrEqual(300);
   });
 });
+
+describe("graphs, tables and pictures over a text box", () => {
+  for (const type of ["graph", "table", "image"] as BlockType[]) {
+    it(`a ${type} dropped on a text box stays where it was dropped (and the box does not move)`, () => {
+      const blocks = [at("textbox", "box", 100, 300), at(type, "x", 150)];
+      const out = pushDownOverlaps(blocks, "x", heights(blocks), 1123);
+      expect(yOf(out, "x")).toBe(150);
+      expect(yOf(out, "box")).toBe(100);
+    });
+
+    it(`a text box dropped on a ${type} leaves it where it is`, () => {
+      const blocks = [at(type, "x", 150), at("textbox", "box", 100, 300)];
+      const out = pushDownOverlaps(blocks, "box", heights(blocks), 1123);
+      expect(yOf(out, "x")).toBe(150);
+      expect(yOf(out, "box")).toBe(100);
+    });
+  }
+
+  it("a graph dropped on a question still goes below it", () => {
+    const blocks = [at("open", "q", 100, 200), at("graph", "g", 150)];
+    const out = pushDownOverlaps(blocks, "g", heights(blocks), 1123);
+    expect(yOf(out, "g")).toBeGreaterThanOrEqual(300);
+  });
+
+  it("a table dropped on a graph still goes below it", () => {
+    const blocks = [at("graph", "g", 100, 200), at("table", "t", 150)];
+    const out = pushDownOverlaps(blocks, "t", heights(blocks), 1123);
+    expect(yOf(out, "t")).toBeGreaterThanOrEqual(300);
+  });
+});

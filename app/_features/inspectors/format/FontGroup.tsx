@@ -124,7 +124,7 @@ function SizeCombo({ t, target }: { t: T; target: FormatTarget }) {
     if (Number.isFinite(v) && v > 0) target.setSize(Math.max(MIN_SIZE, Math.min(Math.round(v), MAX_SIZE)));
   };
   return (
-    <div ref={anchor} className="flex h-8 flex-none items-center rounded-lg border border-transparent bg-subtle transition-colors hover:border-line focus-within:border-accent focus-within:bg-white">
+    <div ref={anchor} className="flex h-7 flex-none items-center rounded-md border border-transparent bg-subtle hover:border-line focus-within:border-accent focus-within:bg-white">
       <input
         type="text"
         inputMode="numeric"
@@ -142,7 +142,7 @@ function SizeCombo({ t, target }: { t: T; target: FormatTarget }) {
             set(size + (e.key === "ArrowUp" ? 1 : -1));
           }
         }}
-        className="h-full w-8 rounded-s-md bg-transparent text-center text-[12px] text-ink tabular-nums outline-none"
+        className="h-full w-8 rounded-s-md bg-transparent text-center text-xs text-ink tabular-nums outline-none"
       />
       <button type="button" tabIndex={-1} aria-label={t("Font size")} aria-haspopup="listbox" aria-expanded={open} onMouseDown={keepFocus} onClick={() => setOpen((o) => !o)} className="grid h-full w-5 place-items-center rounded-e-md text-muted hover:bg-subtle">
         <ChevronDown size={12} />
@@ -159,7 +159,7 @@ function SizeCombo({ t, target }: { t: T; target: FormatTarget }) {
                     set(s);
                     close();
                   }}
-                  className={`w-full rounded px-2 py-1 text-center text-[13px] tabular-nums hover:bg-subtle ${s === size ? "font-semibold text-accent" : "text-ink"}`}
+                  className={`w-full rounded px-2 py-1 text-center text-xs tabular-nums hover:bg-subtle ${s === size ? "font-semibold text-accent" : "text-ink"}`}
                 >
                   {s}
                 </button>

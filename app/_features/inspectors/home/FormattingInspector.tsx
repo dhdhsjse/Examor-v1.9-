@@ -25,7 +25,7 @@ export default function FormattingInspector({ ctx }: { ctx: Ctx }) {
         <ClipboardGroup ctx={ctx} clip={target?.clip ?? blockClip(ctx)} />
         <div className="flex flex-col items-center gap-2 px-4 py-8 text-center">
           <MousePointerClick size={28} strokeWidth={1.4} className="text-faint" />
-          <p className="text-sm text-muted">{t("Select a text block on the page to format it.")}</p>
+          <p className="text-xs text-muted">{t("Select a text block on the page to format it.")}</p>
         </div>
       </div>
     );
@@ -33,9 +33,9 @@ export default function FormattingInspector({ ctx }: { ctx: Ctx }) {
   // Headers and footers come from their settings: formatted there.
   if (b.type === "header" || b.meta?.role) {
     return (
-      <div className="flex flex-col gap-3 text-sm text-muted">
+      <div className="flex flex-col gap-3 text-xs text-muted">
         <p>{t("The header and footer are formatted in Page layout → Header and footer, or with the bar under them on the page.")}</p>
-        <button type="button" onClick={() => ctx.openInspector(HEADER_FOOTER)} className="h-8 self-start rounded-lg bg-subtle px-3.5 text-[13px] font-medium tracking-[-0.01em] text-ink transition-[transform,background-color] duration-100 hover:bg-hover active:scale-[0.98]">
+        <button type="button" onClick={() => ctx.openInspector(HEADER_FOOTER)} className="self-start rounded-md border border-line bg-white px-3 py-1.5 text-xs font-medium text-ink hover:border-faint">
           {t("Header and footer")}
         </button>
       </div>

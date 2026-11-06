@@ -1,20 +1,41 @@
 "use client";
 
-import { ChartLine } from "lucide-react";
-import { tryCompile } from "@/app/_lib/graphMath";
-import { MAX_FUNCTIONS, addFunction, colorOf, nameOf, removeFunction, setFormula } from "@/app/_lib/mathGraph";
+import { ChevronDown, Plus, X } from "lucide-react";
+import { useState } from "react";
+import { tryCompile, type Fn } from "@/app/_lib/graphMath";
+import {
+  CURVE_PALETTE,
+  MAX_FUNCTIONS,
+  addFunction,
+  addTangent,
+  asymptoteLines,
+  colorOf,
+  findAsymptotes,
+  fitY,
+  formatNum,
+  lineLabel,
+  moveTangent,
+  nameOf,
+  optionsOf,
+  removeFunction,
+  removeTangent,
+  setCurve,
+  setFormula,
+  tangentAt,
+} from "@/app/_lib/mathGraph";
 import type { GraphBlock } from "@/app/_lib/types";
 import { useT } from "@/app/_lib/uiLang";
-import { AddRowButton, Field, NumberInput, RemoveButton } from "./fields";
+import { AddRowButton, Field, NumberInput, RemoveButton, SmallButton } from "./fields";
 import type { OnChange } from "./QuestionEditors";
 
-// Common functions the teacher can start from.
-const EXAMPLES = ["e^x", "ln(x)", "sqrt(x)", "|x|"];
+export const USUAL_WINDOW = { xMin: -5, xMax: 5, yMin: -4, yMax: 6 };
 
-// Formulas of the curves + the visible window (x and y ranges).
-// The Function Studio has the derivative, the tangents, the asymptotes and the colors of the curves.
-export function GraphEditor({ b, onChange, onOpenStudio }: { b: GraphBlock; onChange: OnChange; onOpenStudio: () => void }) {
+// Formulas of the curves + the visible window (x and y ranges). Each curve has a few more things folded under it (its color, its
+// derivative, its asymptotes, tangents). The window can also be moved and zoomed on the page itself (double-click the graph:
+// canvas/blocks/GraphExplorer.tsx).
+export function GraphEditor({ b, onChange }: { b: GraphBlock; onChange: OnChange }) {
   const t = useT();
+  const [open, setOpen] = useState<number | null>(null); // the curve whose options are unfolded
   // Formula errors, in the app language ("Unexpected “)”" → key "Unexpected “{v}”").
   const errorText = (e: string) => {
     const m = /^(Unknown name|Unexpected|Missing) “(.*)”$/.exec(e);
@@ -26,22 +47,19 @@ export function GraphEditor({ b, onChange, onOpenStudio }: { b: GraphBlock; onCh
     // Keep min < max.
     if (next.xMin < next.xMax && next.yMin < next.yMax) onChange({ [key]: v }, key);
   };
+  const fitToCurves = () => {
+    const fns = b.functions.flatMap((src, i) => (optionsOf(b, i).hidden ? [] : (tryCompile(src).fn ?? [])));
+    const fit = fitY(fns, b.xMin, b.xMax);
+    if (fit) onChange(fit, "window");
+  };
 
   return (
     <>
-      <button
-        type="button"
-        onClick={onOpenStudio}
-        data-testid="open-graph-studio"
-        className="flex items-center justify-center gap-2 rounded-lg border border-accent bg-accent-soft px-3 py-2 text-sm font-medium text-accent-strong transition-colors hover:bg-white"
-      >
-        <ChartLine size={16} />
-        {t("Open in Function Studio")}
-      </button>
-      <Field label={t("Functions")} hint={t("Write the formula with x — e.g. 2x+1, x^2-3, 1/x, sqrt(x), sin(x), e^x, ln(x).")}>
+      <Field label={t("Functions")}>
         <div className="flex flex-col gap-1.5">
-          {b.functions.map((fn, i) => {
-            const { error } = tryCompile(fn);
+          {b.functions.map((src, i) => {
+            const { fn, error } = tryCompile(src);
+            const unfolded = open === i;
             return (
               <div key={i}>
                 <div className="flex items-center gap-1.5">
@@ -51,35 +69,40 @@ export function GraphEditor({ b, onChange, onOpenStudio }: { b: GraphBlock; onCh
                   <input
                     dir="ltr"
                     data-keyboard="formula"
-                    value={fn}
+                    value={src}
                     spellCheck={false}
                     onChange={(e) => setFn(i, e.target.value)}
-                    className={`w-full rounded-md border bg-white px-2.5 py-1.5 font-mono text-[13px] text-ink outline-none focus:ring-2 ${
-                      error ? "border-red-300 focus:ring-red-100" : "border-line focus:border-indigo-400 focus:ring-indigo-100"
+                    className={`w-full rounded-md border bg-white px-2.5 py-1.5 font-mono text-xs text-ink outline-none focus:ring-2 ${
+                      error ? "border-red-300 focus:ring-red-100" : "border-line focus:border-accent focus:ring-accent-soft"
                     }`}
                   />
-                  {b.functions.length > 1 && <RemoveButton title={t("Remove")} onClick={() => onChange(removeFunction(b, i), "functions")} />}
+                  <button
+                    type="button"
+                    onClick={() => setOpen(unfolded ? null : i)}
+                    title={t("Curve options")}
+                    aria-label={t("Curve options")}
+                    aria-expanded={unfolded}
+                    data-testid={`curve-options-${i}`}
+                    className="grid size-7 shrink-0 place-items-center rounded-[5px] text-faint outline-none hover:bg-hover hover:text-ink focus-visible:ring-2 focus-visible:ring-accent"
+                  >
+                    <ChevronDown size={13} strokeWidth={2} aria-hidden className={`transition-transform ${unfolded ? "rotate-180" : ""}`} />
+                  </button>
+                  {b.functions.length > 1 && (
+                    <RemoveButton
+                      title={t("Remove")}
+                      onClick={() => {
+                        onChange(removeFunction(b, i), "functions");
+                        setOpen(null);
+                      }}
+                    />
+                  )}
                 </div>
                 {error && <p className="mt-0.5 ps-12 text-[10px] text-red-600">{errorText(error)}</p>}
+                {unfolded && <CurveOptions b={b} i={i} fn={fn ?? null} onChange={onChange} />}
               </div>
             );
           })}
           {b.functions.length < MAX_FUNCTIONS && <AddRowButton onClick={() => onChange(addFunction(b, "x") ?? {}, "functions")}>{t("Add a curve")}</AddRowButton>}
-        </div>
-      </Field>
-
-      <Field label={t("Examples (replace f)")}>
-        <div className="flex flex-wrap gap-1" dir="ltr">
-          {EXAMPLES.map((ex) => (
-            <button
-              key={ex}
-              type="button"
-              onClick={() => setFn(0, ex)}
-              className="rounded-md border border-line bg-white px-2 py-1 font-mono text-[11px] text-ink hover:border-indigo-300 hover:bg-indigo-50"
-            >
-              {ex}
-            </button>
-          ))}
         </div>
       </Field>
 
@@ -97,12 +120,106 @@ export function GraphEditor({ b, onChange, onOpenStudio }: { b: GraphBlock; onCh
           <NumberInput value={b.yMax} min={-1000} max={1000} onChange={(v) => range("yMax", v)} />
         </Field>
       </div>
+      <div className="flex gap-1.5">
+        <SmallButton onClick={fitToCurves} title={t("Choose y so that the curves fit")}>
+          {t("Fit to the curves")}
+        </SmallButton>
+        <SmallButton onClick={() => onChange(USUAL_WINDOW, "window")}>{t("Usual window")}</SmallButton>
+      </div>
 
       <label className="flex items-center gap-2 text-xs text-ink">
-        <input type="checkbox" checked={b.grid} onChange={(e) => onChange({ grid: e.target.checked }, "grid")} className="accent-indigo-600" />
+        <input type="checkbox" checked={b.grid} onChange={(e) => onChange({ grid: e.target.checked }, "grid")} className="accent-accent" />
         {t("Show grid")}
       </label>
-      <p className="text-[10px] text-faint">{t("Resize the graph with the corner handles on the page.")}</p>
     </>
+  );
+}
+
+// What else a curve shows: its color, its derivative f′ (dashed), its asymptotes, and its tangents at the x chosen.
+function CurveOptions({ b, i, fn, onChange }: { b: GraphBlock; i: number; fn: Fn | null; onChange: OnChange }) {
+  const t = useT();
+  const o = optionsOf(b, i);
+  const color = colorOf(b, i);
+  const name = nameOf(i);
+  const tangents = o.tangents ?? [];
+  const change = (patch: Parameters<typeof setCurve>[2], key: string) => onChange(setCurve(b, i, patch), `curve${i}:${key}`);
+  const found = fn && o.asymptotes ? asymptoteLines(findAsymptotes(fn, b.xMin, b.xMax)).map(lineLabel) : [];
+  const addOne = () => {
+    // the middle of the window, or a whole number near it where the curve has a tangent and there is none yet
+    const mid = Math.round((b.xMin + b.xMax) / 2);
+    const free = [0, 1, -1, 2, -2, 3, -3].map((d) => mid + d).find((a) => !tangents.some((x) => Math.abs(x - a) < 1e-9) && fn && tangentAt(fn, a));
+    const changes = addTangent(b, i, free ?? mid);
+    if (changes) onChange(changes, `curve${i}:tangent`);
+  };
+
+  return (
+    <div className="ms-12 mt-1.5 flex flex-col gap-2 border-s-2 ps-2.5" style={{ borderColor: color }} data-testid={`curve-panel-${i}`}>
+      <div className="flex items-center gap-1" role="group" aria-label={t("Color")}>
+        {CURVE_PALETTE.map((c) => (
+          <button
+            key={c}
+            type="button"
+            onClick={() => change({ color: c === CURVE_PALETTE[i % CURVE_PALETTE.length] ? undefined : c }, "color")}
+            aria-label={`${t("Color")} ${c}`}
+            aria-pressed={c === color}
+            style={{ background: c }}
+            className={`size-4 rounded-full ${c === color ? "ring-2 ring-accent ring-offset-1" : ""}`}
+          />
+        ))}
+      </div>
+      <label className="flex items-center gap-2 text-xs text-ink">
+        <input type="checkbox" checked={!!o.derivative} onChange={(e) => change({ derivative: e.target.checked || undefined }, "derivative")} className="accent-accent" />
+        {t("Derivative")} <span dir="ltr">{name}′</span>
+      </label>
+      <label className="flex items-center gap-2 text-xs text-ink">
+        <input type="checkbox" checked={!!o.asymptotes} onChange={(e) => change({ asymptotes: e.target.checked || undefined }, "asymptotes")} className="accent-accent" />
+        {t("Asymptotes")}
+      </label>
+      {o.asymptotes && (
+        <p className="-mt-1 text-[11px] leading-snug text-muted" dir="ltr">
+          {found.length ? found.join(" · ") : t("No asymptote found in this window")}
+        </p>
+      )}
+      <div className="flex flex-col gap-1">
+        {tangents.map((a, k) => {
+          const tg = fn ? tangentAt(fn, a) : null;
+          return (
+            <div key={k} className="flex items-center gap-1.5">
+              <span className="shrink-0 text-[11px] text-muted">{t("Tangent at")}</span>
+              <span className="shrink-0 text-[11px] text-muted" dir="ltr">
+                x =
+              </span>
+              <div className="w-16 shrink-0">
+                <NumberInput value={a} min={-1000} max={1000} step={0.5} onChange={(v) => onChange(moveTangent(b, i, k, v), `curve${i}:tangent${k}`)} />
+              </div>
+              <button
+                type="button"
+                onClick={() => onChange(removeTangent(b, i, k), `curve${i}:tangent`)}
+                title={t("Remove")}
+                aria-label={t("Remove")}
+                className="grid size-6 shrink-0 place-items-center rounded-[5px] text-faint hover:bg-red-50 hover:text-red-700"
+              >
+                <X size={12} aria-hidden />
+              </button>
+              {!tg && <span className="text-[10px] text-red-600">{t("No tangent here")}</span>}
+              {tg && (
+                <span className="min-w-0 truncate text-[10px] text-faint" dir="ltr">
+                  {name}′({formatNum(a)}) = {formatNum(tg.m)}
+                </span>
+              )}
+            </div>
+          );
+        })}
+        <button
+          type="button"
+          disabled={!fn}
+          onClick={addOne}
+          className="flex h-6 items-center gap-1 self-start rounded-[5px] px-1.5 text-[11px] text-muted hover:bg-hover hover:text-ink disabled:opacity-40"
+        >
+          <Plus size={11} strokeWidth={2} aria-hidden />
+          {t("Add a tangent")}
+        </button>
+      </div>
+    </div>
   );
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { Plus } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { DEFAULT_FONT, FILL_COLORS, FONT_CHOICES, TEXT_COLORS, fontStack, installedFonts } from "@/app/_lib/fonts";
 import type { RunStyle, StylePatch } from "@/app/_lib/richText";
@@ -55,7 +56,7 @@ export function ColorGrid({ value, onChange, autoLabel, colors = TEXT_COLORS }: 
           type="button"
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => onChange(undefined)}
-          className={`h-5 rounded border px-1.5 text-[10px] font-medium ${!value ? "border-indigo-500 text-indigo-600" : "border-line text-muted hover:border-slate-400"}`}
+          className={`h-5 rounded-[3px] border px-1.5 text-[10px] font-medium ${!value ? "border-accent text-accent" : "border-line text-muted hover:border-faint"}`}
         >
           {autoLabel}
         </button>
@@ -67,11 +68,12 @@ export function ColorGrid({ value, onChange, autoLabel, colors = TEXT_COLORS }: 
           title={c}
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => onChange(c)}
-          className={`size-5 rounded-full ring-offset-1 transition-transform hover:scale-110 ${value?.toLowerCase() === c ? "ring-2 ring-indigo-500" : "ring-1 ring-black/10"}`}
+          className={`size-5 rounded-[3px] ring-offset-1 ${value?.toLowerCase() === c ? "ring-2 ring-accent" : "ring-1 ring-black/10 hover:ring-black/30"}`}
           style={{ background: c }}
         />
       ))}
-      <label className="relative grid size-5 cursor-pointer place-items-center rounded-full ring-1 ring-black/10" title={t("Custom color")} style={{ background: "conic-gradient(red, yellow, lime, aqua, blue, magenta, red)" }}>
+      <label className="relative grid size-5 cursor-pointer place-items-center rounded-[3px] text-muted ring-1 ring-line hover:text-ink hover:ring-faint" title={t("Custom color")}>
+        <Plus size={12} strokeWidth={2} aria-hidden />
         <input type="color" value={value ?? colors[0]} onChange={(e) => onChange(e.target.value)} className="absolute inset-0 cursor-pointer opacity-0" />
       </label>
     </div>
@@ -88,7 +90,7 @@ interface Props {
 }
 
 const btn = (on = false) =>
-  `grid h-7 min-w-7 place-items-center rounded-md px-1 text-[13px] transition-colors ${on ? "bg-indigo-600 text-white" : "text-ink hover:bg-black/5"}`;
+  `grid h-7 min-w-7 place-items-center rounded-md px-1 text-[13px] transition-colors ${on ? "bg-accent text-white" : "text-ink hover:bg-black/5"}`;
 
 // Floating bar over the text being typed: style the selected words (nothing selected = all the text).
 export default function FormatBar({ style, baseFont, baseSize, baseColor, onApply, onToggle }: Props) {
@@ -105,7 +107,7 @@ export default function FormatBar({ style, baseFont, baseSize, baseColor, onAppl
         value={style.font}
         onChange={(font) => onApply({ font: font ?? null })}
         defaultLabel={baseFont ?? DEFAULT_FONT}
-        className="h-7 w-32 rounded-md border border-line bg-white px-1 text-xs text-ink outline-none focus:border-indigo-400"
+        className="h-7 w-32 rounded-md border border-line bg-white px-1 text-xs text-ink outline-none focus:border-accent"
       />
       <Sep />
       <button type="button" className={btn()} onMouseDown={keep} onClick={() => onApply({ size: Math.max(8, size - 1) })} title={t("Smaller")}>
