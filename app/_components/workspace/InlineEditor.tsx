@@ -109,7 +109,6 @@ export default function InlineEditor({ block, field, number, meta, mode, zoom, t
             style={sel.style}
             baseFont={block.font?.family ?? meta.fontFamily}
             baseSize={font.size}
-            baseColor={font.color}
             onApply={(p) => ref.current?.apply(p)}
             onToggle={(k) => ref.current?.toggle(k)}
           />

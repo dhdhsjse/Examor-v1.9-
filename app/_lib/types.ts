@@ -212,9 +212,9 @@ export interface ClassifyBlock extends BlockBase {
   bankHint?: string; // on screen only (withHints, never saved): the ghost of the empty box of words, "… / … / …"
 }
 
-// A sub-question of an open question: "1a)", "1b)"...
+// A sub-question of an open question: "a)", "b)"...
 export interface OpenPart {
-  label?: string; // own name instead of the automatic "1a)" (empty = automatic)
+  label?: string; // own name instead of the automatic "a)" (empty = automatic)
   text: string;
   lines: number;
   answer: string;
@@ -228,13 +228,13 @@ export interface OpenBlock extends BlockBase {
   answer: string; // model answer (correction sheet)
   points: number; // total (= sum of the parts when there are parts)
   parts?: OpenPart[]; // missing in files from older versions
-  partNumbering?: PartNumbering; // missing = "1a"
+  partNumbering?: PartNumbering; // missing = "a" (older files may hold the retired "1a" / "1.1", also read as "a")
   context?: string; // statement printed under the question, before the answer (data, a text, a situation…)
   answerStyle?: AnswerStyle; // missing = "dotted"
 }
 
-// How sub-questions are numbered: 1a) · a) · 1.1) · i) · 1) · nothing.
-export type PartNumbering = "1a" | "a" | "1.1" | "i" | "1" | "none";
+// How sub-questions are numbered: a) · i) · 1) · nothing.
+export type PartNumbering = "a" | "i" | "1" | "none";
 
 // ---- Content blocks ----
 

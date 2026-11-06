@@ -259,28 +259,26 @@ export const dottedLineY = (a: AnswerArea, k: number) => a.y + (k + 1) * a.line 
 
 // Numbering styles offered for sub-questions.
 export const PART_NUMBERINGS: { value: PartNumbering; label: string }[] = [
-  { value: "1a", label: "1a)" },
   { value: "a", label: "a)" },
-  { value: "1.1", label: "1.1)" },
   { value: "i", label: "i)" },
   { value: "1", label: "1)" },
   { value: "none", label: "—" },
 ];
 
+// The block's numbering style; missing or retired ones ("1a", "1.1" in older files) read as "a".
+export const partNumberingOf = (b: OpenBlock): PartNumbering =>
+  PART_NUMBERINGS.some((o) => o.value === b.partNumbering) ? b.partNumbering! : "a";
+
 const roman = (n: number) => ["i", "ii", "iii", "iv", "v", "vi", "vii", "viii", "ix", "x", "xi", "xii"][n - 1] ?? String(n);
 
-// "1a)" in French, "1-أ)" in Arabic — or the teacher's own name / numbering style.
+// "a)" in French, "أ)" in Arabic — or the teacher's own name / numbering style.
 export function partLabel(b: OpenBlock, n: number, i: number, lang: Lang): string {
   const own = b.parts?.[i]?.label?.trim();
   if (own) return own;
   const letter = lang === "ar" ? optionLabel(i, lang) : String.fromCharCode(97 + i);
-  switch (b.partNumbering ?? "1a") {
-    case "1a":
-      return lang === "ar" ? `${n}-${letter})` : `${n}${letter})`;
+  switch (partNumberingOf(b)) {
     case "a":
       return `${letter})`;
-    case "1.1":
-      return `${n}.${i + 1})`;
     case "i":
       return `${roman(i + 1)})`;
     case "1":

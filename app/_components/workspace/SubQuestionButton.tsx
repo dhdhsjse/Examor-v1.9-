@@ -34,7 +34,7 @@ export default function SubQuestionButton({ block: b, number, lang, onAdd }: Pro
       {parts.length === 0 && (
         <span className="flex items-center gap-1 font-normal text-indigo-400">
           <CornerDownRight size={11} aria-hidden className="rtl:-scale-x-100" />
-          {t("split it into 1a), 1b)…")}
+          {t("split it into a), b)…")}
         </span>
       )}
     </button>

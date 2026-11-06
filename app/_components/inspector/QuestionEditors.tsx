@@ -2,7 +2,7 @@
 
 import { GripVertical, ListTree, Plus } from "lucide-react";
 import { useRef, useState, type ReactNode } from "react";
-import { PART_NUMBERINGS, blankAnswers, partLabel } from "@/app/_lib/blockLayout";
+import { PART_NUMBERINGS, blankAnswers, partLabel, partNumberingOf } from "@/app/_lib/blockLayout";
 import { MAX_OPTIONS, addPart, insertOption, mcqAnswers, movePart, patchPart, removeOption, removePart, toggleMcq } from "@/app/_lib/blocks";
 import { insertText } from "@/app/_lib/richText";
 import { mixedOrder } from "@/app/_lib/shuffle";
@@ -255,19 +255,19 @@ export function OpenEditor({ b, onChange, number, lang }: { b: OpenBlock; onChan
   return (
     <>
       <QuestionBasics b={b} onChange={onChange} lockPoints={parts.length > 0} />
-      {/* Sub-questions first, in their own band between two lines: splitting a question into 1a), 1b)… is the main choice here */}
+      {/* Sub-questions first, in their own band between two lines: splitting a question into a), b)… is the main choice here */}
       <section aria-label={t("Sub-questions")} className="-mx-3 flex flex-col gap-2 border-y border-line px-3 py-3">
         <div className="flex h-5 items-center gap-1.5">
           <ListTree size={16} strokeWidth={1.5} aria-hidden className="text-muted" />
           <span className="text-xs font-semibold text-ink">{t("Sub-questions")}</span>
           {parts.length > 0 && <span className="rounded bg-hover px-1 text-[11px] font-semibold tabular-nums text-ink">{parts.length}</span>}
         </div>
-        <span className="text-xs leading-snug text-faint">{t("Split the question into parts: 1a), 1b)… Each part has its own lines, points and answer.")}</span>
+        <span className="text-xs leading-snug text-faint">{t("Split the question into parts: a), b)… Each part has its own lines, points and answer.")}</span>
         <div className="flex flex-col gap-2">
           {parts.length > 0 && (
             <div className="flex flex-col gap-1">
               <span className="text-xs text-muted">{t("Numbering")}</span>
-              <Segmented value={b.partNumbering ?? "1a"} onChange={(partNumbering) => onChange({ partNumbering }, "numbering")} options={PART_NUMBERINGS} />
+              <Segmented value={partNumberingOf(b)} onChange={(partNumbering) => onChange({ partNumbering }, "numbering")} options={PART_NUMBERINGS} />
             </div>
           )}
           {parts.map((p, i) => (

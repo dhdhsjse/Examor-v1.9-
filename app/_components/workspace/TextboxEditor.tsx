@@ -254,7 +254,6 @@ export default function TextboxEditor({ block, meta, zoom, box, selectAll, keepO
             }}
             baseFont={block.font?.family ?? meta.fontFamily}
             baseSize={s.font.size}
-            baseColor={s.font.color}
             onApply={apply}
             onToggle={toggle}
           />

@@ -77,7 +77,7 @@ export const FR: Record<string, string> = {
   "Heading": "Titre de section",
   "Task title": "Titre d'exercice",
   "Free question": "Question libre",
-  "split it into 1a), 1b)…": "divisez-la en 1a), 1b)…",
+  "split it into a), b)…": "divisez-la en a), b)…",
   "Adds it in the text box": "S'ajoute dans la zone de texte",
   "Type the question, then pick a question type or a table to place it inside": "Écrivez la question, puis choisissez un type de question ou un tableau à placer dedans",
   "Typing in a text box": "Saisie dans une zone de texte",
@@ -361,7 +361,7 @@ export const FR: Record<string, string> = {
   "Model answer": "Réponse attendue",
   "Shown only on the correction sheet.": "Visible seulement sur le corrigé.",
   "Sub-questions": "Sous-questions",
-  "Split the question into parts: 1a), 1b)… Each part has its own lines, points and answer.": "Découpez la question : 1a), 1b)… Chaque partie a ses lignes, ses points et sa réponse.",
+  "Split the question into parts: a), b)… Each part has its own lines, points and answer.": "Découpez la question : a), b)… Chaque partie a ses lignes, ses points et sa réponse.",
   "Sub-question…": "Sous-question…",
   "Lines": "Lignes",
   "Answer (correction sheet)…": "Réponse (corrigé)…",
@@ -1031,7 +1031,7 @@ export const AR: Record<string, string> = {
   "Heading": "عنوان فرعي",
   "Task title": "عنوان التمرين",
   "Free question": "سؤال حر",
-  "split it into 1a), 1b)…": "قسّمه إلى 1-أ)، 1-ب)…",
+  "split it into a), b)…": "قسّمه إلى أ)، ب)…",
   "Adds it in the text box": "يُضاف داخل مربع النص",
   "Type the question, then pick a question type or a table to place it inside": "اكتب السؤال، ثم اختر نوع سؤال أو جدولاً لوضعه داخله",
   "Typing in a text box": "الكتابة في مربع نص",
@@ -1315,7 +1315,7 @@ export const AR: Record<string, string> = {
   "Model answer": "الإجابة النموذجية",
   "Shown only on the correction sheet.": "تظهر في ورقة التصحيح فقط.",
   "Sub-questions": "الأسئلة الفرعية",
-  "Split the question into parts: 1a), 1b)… Each part has its own lines, points and answer.": "قسّم السؤال إلى أجزاء: 1-أ)، 1-ب)… لكل جزء أسطره ونقطه وإجابته.",
+  "Split the question into parts: a), b)… Each part has its own lines, points and answer.": "قسّم السؤال إلى أجزاء: أ)، ب)… لكل جزء أسطره ونقطه وإجابته.",
   "Sub-question…": "سؤال فرعي…",
   "Lines": "أسطر",
   "Answer (correction sheet)…": "الإجابة (ورقة التصحيح)…",
@@ -1976,6 +1976,7 @@ Object.assign(FR, {
   "Smooth": "Lisse",
   "Extra smooth": "Très lisse",
   "Custom color": "Couleur personnalisée",
+  "More colors": "Plus de couleurs",
 });
 Object.assign(AR, {
   "Draw": "رسم",
@@ -1989,6 +1990,7 @@ Object.assign(AR, {
   "Smooth": "ناعم",
   "Extra smooth": "ناعم جدا",
   "Custom color": "لون مخصص",
+  "More colors": "مزيد من الألوان",
 });
 
 // The study of an equation's function (its graph, its table of variations), the separator, moving a block in a text box, and the
