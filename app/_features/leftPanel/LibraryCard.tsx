@@ -25,10 +25,10 @@ export default function LibraryCard({ ctx, template, onChoose }: Props) {
       </span>
       <span className="flex flex-col gap-0.5 px-2 py-1.5">
         <span className="text-xs font-semibold text-ink">{label}</span>
-        {description && <span className="text-[11px] leading-snug text-muted">{description}</span>}
+        {description && <span className="text-xs leading-snug text-muted">{description}</span>}
       </span>
       {template.recommended && (
-        <span className="absolute end-2 top-2 rounded bg-accent px-1.5 py-0.5 text-[10px] font-semibold text-white">{ctx.t("Recommended")}</span>
+        <span className="absolute end-2 top-2 rounded bg-accent px-1.5 py-0.5 text-[11px] font-semibold text-white">{ctx.t("Recommended")}</span>
       )}
     </button>
   );

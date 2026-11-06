@@ -137,7 +137,7 @@ export default function GraphPanel({ studio }: { studio: GraphStudioState }) {
           <NumberField label={t("Width (px)")} value={config.width} onCommit={(n) => updateConfig({ width: Math.round(n) })} testId="paper-width" />
           <NumberField label={t("Height (px)")} value={config.height} onCommit={(n) => updateConfig({ height: Math.round(n) })} testId="paper-height" />
         </Group>
-        <p className="px-1 text-[11px] text-muted tabular-nums" title={`${MIN_PAPER}–${MAX_PAPER} px`}>
+        <p className="px-1 text-xs text-muted tabular-nums" title={`${MIN_PAPER}–${MAX_PAPER} px`}>
           {t("{w} × {h} cm on the page", { w: round1(config.width / CM_PX), h: round1(config.height / CM_PX) })}
         </p>
         <Group>

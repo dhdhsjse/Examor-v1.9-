@@ -79,7 +79,7 @@ export default function StudioToolbar({ studio, onOpenTable }: Props) {
         <h3 className="text-xs font-semibold uppercase tracking-wide text-faint">{t("Bonds")}</h3>
         {BOND_GROUPS.map((group) => (
           <div key={group.id} className="flex flex-col gap-1.5" data-bond-group={group.id}>
-            <p className="text-[11px] font-medium text-muted">{groupNames[group.id]}</p>
+            <p className="text-xs font-medium text-muted">{groupNames[group.id]}</p>
             <div className="grid grid-cols-3 gap-1.5">
               {group.types.map((type) => {
                 const on = activeTool === "bond" && activeBondType === type; // the bond type is only "in hand" with the bond tool
@@ -90,7 +90,7 @@ export default function StudioToolbar({ studio, onOpenTable }: Props) {
                     aria-pressed={on}
                     title={`${bondNames.full[type]} — ${t("Drag from an atom to draw a bond")}`}
                     data-bond-type={type}
-                    className={`flex flex-col items-center gap-0.5 rounded-xl border px-1 py-1.5 text-[11px] font-medium leading-tight transition-colors ${on ? "border-accent bg-accent-soft text-accent-strong ring-1 ring-accent" : "border-line bg-white text-ink hover:border-accent hover:bg-accent-soft"}`}
+                    className={`flex flex-col items-center gap-0.5 rounded-xl border px-1 py-1.5 text-xs font-medium leading-tight transition-colors ${on ? "border-accent bg-accent-soft text-accent-strong ring-1 ring-accent" : "border-line bg-white text-ink hover:border-accent hover:bg-accent-soft"}`}
                   >
                     <BondGlyph type={type} />
                     {bondNames.short[type]}
@@ -173,7 +173,7 @@ export default function StudioToolbar({ studio, onOpenTable }: Props) {
                 <span className="text-xl font-bold" style={{ color: textColor(e.color) }}>
                   {symbol}
                 </span>
-                <span className="mt-1 text-[10px] tabular-nums text-faint">{e.atomicNumber}</span>
+                <span className="mt-1 text-[11px] tabular-nums text-faint">{e.atomicNumber}</span>
               </button>
             );
           })}
@@ -197,7 +197,7 @@ export default function StudioToolbar({ studio, onOpenTable }: Props) {
                 aria-pressed={on}
                 title={`${name} — ${t("Click the paper to place the ring")}`}
                 data-ring={id}
-                className={`flex flex-col items-center gap-1 rounded-xl border px-1 py-2 text-[11px] font-medium leading-tight transition-colors ${on ? "border-accent bg-accent-soft text-accent-strong ring-1 ring-accent" : "border-line bg-white text-ink hover:border-accent hover:bg-accent-soft"}`}
+                className={`flex flex-col items-center gap-1 rounded-xl border px-1 py-2 text-xs font-medium leading-tight transition-colors ${on ? "border-accent bg-accent-soft text-accent-strong ring-1 ring-accent" : "border-line bg-white text-ink hover:border-accent hover:bg-accent-soft"}`}
               >
                 <RingGlyph ring={ring} />
                 {name}

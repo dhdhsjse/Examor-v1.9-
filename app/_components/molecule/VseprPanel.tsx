@@ -51,7 +51,7 @@ export default function VseprPanel({ block, selection, onInsertText, cram }: Pro
           </div>
           <div className="flex gap-1" role="group" aria-label={t("Language of the justification")}>
             {LANGS.map((l) => (
-              <button key={l} onClick={() => setLang(l)} className={`flex-1 rounded-md border px-1.5 py-1 text-[11px] ${lang === l ? "border-accent bg-accent-soft text-accent-strong" : "border-line text-ink hover:bg-subtle"}`}>
+              <button key={l} onClick={() => setLang(l)} className={`flex-1 rounded-md border px-1.5 py-1 text-xs ${lang === l ? "border-accent bg-accent-soft text-accent-strong" : "border-line text-ink hover:bg-subtle"}`}>
                 {LANG_LABEL[l]}
               </button>
             ))}
@@ -71,7 +71,7 @@ export default function VseprPanel({ block, selection, onInsertText, cram }: Pro
               >
                 {cram.isCenter(atomId) ? t("Cram centre: drawn in perspective") : t("Draw this atom in perspective (Cram centre)")}
               </button>
-              {cram.isCenter(atomId) && a.geometry !== "tetrahedral" && a.geometry !== "trigonal-pyramidal" && <p className="text-[11px] text-amber-800">{t("The geometry around this atom is planar: no wedges are drawn.")}</p>}
+              {cram.isCenter(atomId) && a.geometry !== "tetrahedral" && a.geometry !== "trigonal-pyramidal" && <p className="text-xs text-amber-800">{t("The geometry around this atom is planar: no wedges are drawn.")}</p>}
             </div>
           )}
         </>

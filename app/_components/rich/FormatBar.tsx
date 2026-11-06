@@ -56,7 +56,7 @@ export function ColorGrid({ value, onChange, autoLabel, colors = TEXT_COLORS }: 
           type="button"
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => onChange(undefined)}
-          className={`h-5 rounded-[3px] border px-1.5 text-[10px] font-medium ${!value ? "border-accent text-accent" : "border-line text-muted hover:border-faint"}`}
+          className={`h-5 rounded-[3px] border px-1.5 text-[11px] font-medium ${!value ? "border-accent text-accent" : "border-line text-muted hover:border-faint"}`}
         >
           {autoLabel}
         </button>
@@ -111,7 +111,7 @@ export default function FormatBar({ style, baseFont, baseSize, baseColor, onAppl
       />
       <Sep />
       <button type="button" className={btn()} onMouseDown={keep} onClick={() => onApply({ size: Math.max(8, size - 1) })} title={t("Smaller")}>
-        <span className="text-[11px] font-semibold">A−</span>
+        <span className="text-xs font-semibold">A−</span>
       </button>
       <span className="w-7 text-center text-xs font-semibold tabular-nums text-ink" title={t("Font size")}>
         {size}

@@ -15,7 +15,7 @@ import type { ProbaStudioState } from "./useProbaStudio";
 const input = "h-7 w-full min-w-0 rounded border border-line bg-white px-2 text-sm text-ink outline-none focus:border-accent";
 const textBtn = "flex h-7 items-center justify-center gap-1 rounded border border-line bg-white px-2 text-xs font-medium text-ink hover:bg-hover disabled:opacity-40";
 const iconBtn = "grid size-7 shrink-0 place-items-center rounded text-muted enabled:hover:bg-hover enabled:hover:text-ink disabled:opacity-40";
-const deleteBtn = "grid size-7 shrink-0 place-items-center rounded text-muted enabled:hover:bg-red-50 enabled:hover:text-red-600 disabled:opacity-40";
+const deleteBtn = "grid size-7 shrink-0 place-items-center rounded text-muted enabled:hover:bg-red-50 enabled:hover:text-red-700 disabled:opacity-40";
 const toggle = (on: boolean) => (on ? "border-accent bg-accent-soft text-accent-strong" : "border-line bg-white text-ink hover:bg-hover");
 
 function Section({ title, testId, children }: { title: string; testId: string; children: ReactNode }) {
@@ -146,7 +146,7 @@ function SizeField({ label, value, onCommit, testId }: { label: string; value: n
         className={`${input} tabular-nums ${bad ? "border-red-400" : ""}`}
       />
       {bad && (
-        <p role="alert" className="text-xs text-red-600">
+        <p role="alert" className="text-xs text-red-700">
           {t("The size must be between {min} and {max} px.", { min: MIN_AREA, max: MAX_AREA })}
         </p>
       )}
@@ -194,7 +194,7 @@ function StagesSection({ studio, tree }: { studio: ProbaStudioState; tree: ProbT
                     disabled={events.length < 2}
                     title={t("Remove this event")}
                     aria-label={t("Remove this event")}
-                    className="absolute -start-2 -top-2 hidden size-4 place-items-center rounded-full border border-line bg-white text-muted hover:text-red-600 group-focus-within:grid group-hover:grid disabled:hidden!"
+                    className="absolute -start-2 -top-2 hidden size-4 place-items-center rounded-full border border-line bg-white text-muted hover:text-red-700 group-focus-within:grid group-hover:grid disabled:hidden!"
                   >
                     <X size={10} />
                   </button>
@@ -486,7 +486,7 @@ function CardsPanel({ studio, cards }: { studio: ProbaStudioState; cards: Cards 
       />
       <div className="flex gap-1">
         {["♠", "♥", "♦", "♣"].map((s) => (
-          <button key={s} onClick={() => setText((x) => `${x ?? cards.texts.join(", ")}${s}`)} className={`grid size-7 place-items-center rounded border border-line bg-white text-sm hover:bg-hover ${s === "♥" || s === "♦" ? "text-red-600" : "text-ink"}`}>
+          <button key={s} onClick={() => setText((x) => `${x ?? cards.texts.join(", ")}${s}`)} className={`grid size-7 place-items-center rounded border border-line bg-white text-sm hover:bg-hover ${s === "♥" || s === "♦" ? "text-red-700" : "text-ink"}`}>
             {s}
           </button>
         ))}

@@ -42,7 +42,7 @@ export default function DisplayTab({ block, editor, name }: Props) {
           }}
           className="accent-indigo-600"
         />
-        <div className="flex justify-between text-[11px] text-faint">
+        <div className="flex justify-between text-xs text-faint">
           <span>{t("Small")}</span>
           <span>{t("Large")}</span>
         </div>

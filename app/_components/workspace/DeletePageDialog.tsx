@@ -28,7 +28,7 @@ export default function DeletePageDialog({ page, blocks, onConfirm, onCancel }: 
   }, [onCancel]);
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-slate-900/40 p-4 backdrop-blur-sm" onMouseDown={(e) => e.target === e.currentTarget && onCancel()}>
+    <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4 backdrop-blur-sm" onMouseDown={(e) => e.target === e.currentTarget && onCancel()}>
       <div
         role="alertdialog"
         aria-modal="true"
@@ -38,11 +38,11 @@ export default function DeletePageDialog({ page, blocks, onConfirm, onCancel }: 
         className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-2xl"
       >
         <div className="flex items-start gap-3">
-          <span className="grid size-10 shrink-0 place-items-center rounded-full bg-amber-100 text-amber-600">
+          <span className="grid size-10 shrink-0 place-items-center rounded-full bg-amber-100 text-amber-700">
             <AlertTriangle size={20} strokeWidth={2} />
           </span>
           <div className="flex min-w-0 flex-col gap-1">
-            <span className="text-[11px] font-semibold tracking-wide text-amber-600 uppercase">{t("Warning")}</span>
+            <span className="text-xs font-semibold tracking-wide text-amber-700 uppercase">{t("Warning")}</span>
             <h2 id="delete-page-title" className="text-base font-semibold text-ink">
               {t("Do you really want to delete page {n}?", { n: page })}
             </h2>

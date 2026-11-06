@@ -60,7 +60,7 @@ export function TextEditor({ b, onChange }: { b: TextBlock; onChange: OnChange }
           </Field>
           {(b.decor ?? "plain") !== "plain" && (
             <div className="flex flex-col gap-1">
-              <span className="text-[11px] font-semibold text-muted">{t("Accent color")}</span>
+              <span className="text-xs font-semibold text-muted">{t("Accent color")}</span>
               <ColorGrid value={b.accent ?? DEFAULT_ACCENT} onChange={(accent) => onChange({ accent }, "accent")} />
             </div>
           )}
@@ -141,7 +141,7 @@ export function HeaderEditor({ b, totalPoints, onChange }: { b: HeaderBlock; tot
       </Field>
       {COLORED.includes(b.style) && (
         <div className="flex flex-col gap-1">
-          <span className="text-[11px] font-semibold text-muted">{t("Color")}</span>
+          <span className="text-xs font-semibold text-muted">{t("Color")}</span>
           <ColorGrid value={b.accent} autoLabel={t("Style's own")} onChange={(accent) => onChange({ accent }, "accent")} />
         </div>
       )}
@@ -154,20 +154,20 @@ export function HeaderEditor({ b, totalPoints, onChange }: { b: HeaderBlock; tot
       {text("year", t("School year"))}
 
       <div className="flex flex-col gap-1.5 border-t border-line pt-2.5">
-        <span className="text-[11px] font-semibold text-ink">{t("Graded out of")}</span>
+        <span className="text-xs font-semibold text-ink">{t("Graded out of")}</span>
         <label className="flex items-center gap-2 text-xs text-ink">
           <input type="checkbox" checked={auto} onChange={(e) => set("autoOutOf", e.target.checked)} className="accent-accent" />
           {t("Use the total of the questions ({n} pts)", { n: totalPoints })}
         </label>
         {auto ? (
-          <p className="text-[10px] leading-snug text-faint">
+          <p className="text-[11px] leading-snug text-faint">
             {totalPoints > 0 ? t("The score follows the points of the questions.") : t("No points yet: /{n} is shown until you add questions.", { n: b.fields.outOf })}
           </p>
         ) : (
           <NumberInput value={b.fields.outOf} min={1} max={100} onChange={(v) => set("outOf", v)} />
         )}
         {mismatch && (
-          <p className="rounded-md bg-amber-50 px-2 py-1.5 text-[11px] leading-snug text-amber-800 ring-1 ring-amber-200">
+          <p className="rounded-md bg-amber-50 px-2 py-1.5 text-xs leading-snug text-amber-800 ring-1 ring-amber-200">
             {t("The questions add up to {total} pts, not {outOf}.", { total: totalPoints, outOf: b.fields.outOf })}
           </p>
         )}
@@ -180,14 +180,14 @@ type Tr = ReturnType<typeof useT>;
 
 // The heading looks, each with a small drawing in the chosen accent color.
 function decorOptions(t: Tr, accent: string): { value: HeadingDecor; label: string; preview: ReactNode }[] {
-  const word = <span className="text-[10px] font-bold text-ink">Exercice 1</span>;
+  const word = <span className="text-[11px] font-bold text-ink">Exercice 1</span>;
   return [
     { value: "plain", label: t("Plain"), preview: word },
-    { value: "underline", label: t("Underline"), preview: <span className="border-b-[3px] pb-px text-[10px] font-bold text-ink" style={{ borderColor: accent }}>Exercice 1</span> },
-    { value: "bar", label: t("Side bar"), preview: <span className="border-s-[3px] ps-1 text-[10px] font-bold text-ink" style={{ borderColor: accent }}>Exercice 1</span> },
-    { value: "band", label: t("Band"), preview: <span className="w-full rounded px-1.5 py-1 text-start text-[10px] font-bold text-white" style={{ background: accent }}>Exercice 1</span> },
-    { value: "pill", label: t("Pill"), preview: <span className="rounded-full px-2 py-0.5 text-[10px] font-bold text-white" style={{ background: accent }}>Exercice 1</span> },
-    { value: "boxed", label: t("Box"), preview: <span className="w-full rounded border-[1.5px] px-1.5 py-0.5 text-start text-[10px] font-bold text-ink" style={{ borderColor: accent, background: `${accent}14` }}>Exercice 1</span> },
+    { value: "underline", label: t("Underline"), preview: <span className="border-b-[3px] pb-px text-[11px] font-bold text-ink" style={{ borderColor: accent }}>Exercice 1</span> },
+    { value: "bar", label: t("Side bar"), preview: <span className="border-s-[3px] ps-1 text-[11px] font-bold text-ink" style={{ borderColor: accent }}>Exercice 1</span> },
+    { value: "band", label: t("Band"), preview: <span className="w-full rounded px-1.5 py-1 text-start text-[11px] font-bold text-white" style={{ background: accent }}>Exercice 1</span> },
+    { value: "pill", label: t("Pill"), preview: <span className="rounded-full px-2 py-0.5 text-[11px] font-bold text-white" style={{ background: accent }}>Exercice 1</span> },
+    { value: "boxed", label: t("Box"), preview: <span className="w-full rounded border-[1.5px] px-1.5 py-0.5 text-start text-[11px] font-bold text-ink" style={{ borderColor: accent, background: `${accent}14` }}>Exercice 1</span> },
     {
       value: "rule",
       label: t("Line"),

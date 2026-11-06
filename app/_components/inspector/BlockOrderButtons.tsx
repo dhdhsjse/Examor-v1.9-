@@ -17,7 +17,7 @@ export default function BlockOrderButtons({ onOrder }: { onOrder: (order: BlockO
   return (
     <div className="flex flex-col gap-1.5" data-testid="block-order">
       <div className="flex items-center justify-between gap-2">
-        <span className="text-[11px] text-muted">{t("Arrange")}</span>
+        <span className="text-xs text-muted">{t("Arrange")}</span>
         <div className="flex gap-1">
           {buttons.map(({ order, icon: Icon, label }) => (
             <button

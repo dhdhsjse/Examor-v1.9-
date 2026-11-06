@@ -52,7 +52,7 @@ export default function Welcome({ engine, onPick }: Props) {
             <span className="mt-0.5 text-accent">{icons[i]}</span>
             <div>
               <p className="text-xs font-semibold text-ink">{t(f.title)}</p>
-              <p className="text-[11px] leading-snug text-muted">{t(f.text)}</p>
+              <p className="text-xs leading-snug text-muted">{t(f.text)}</p>
             </div>
           </div>
         ))}

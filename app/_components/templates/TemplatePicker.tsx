@@ -30,7 +30,7 @@ export default function TemplatePicker({ canClose, onPick, onClose }: Props) {
   const tab = (on: boolean) => `rounded-md px-3 py-1.5 text-xs font-semibold transition-colors ${on ? "bg-white text-indigo-700 shadow-sm" : "text-muted hover:text-ink"}`;
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-slate-900/40 p-6 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-6 backdrop-blur-sm">
       <div className="flex max-h-full w-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
         <div className="flex items-start justify-between border-b border-line px-6 py-4">
           <div>
@@ -87,8 +87,8 @@ export default function TemplatePicker({ canClose, onPick, onClose }: Props) {
                     {t.lang === "ar" ? "AR" : "FR"}
                   </span>
                 </div>
-                {t.subject && <span className="text-[10px] font-semibold text-amber-700">{tr(t.subject)}</span>}
-                <span className="text-[11px] leading-snug text-muted">{tr(t.description)}</span>
+                {t.subject && <span className="text-[11px] font-semibold text-amber-700">{tr(t.subject)}</span>}
+                <span className="text-xs leading-snug text-muted">{tr(t.description)}</span>
               </div>
             </button>
           ))}
@@ -117,7 +117,7 @@ function ItemSketch({ item }: { item: TemplateItem }) {
 function MiniPage({ t }: { t: Template }) {
   const tr = useT();
   return (
-    <div dir={t.lang === "ar" ? "rtl" : "ltr"} className="mx-auto flex aspect-[1/1.414] w-full flex-col gap-1.5 overflow-hidden bg-white p-2.5 shadow-sm ring-1 ring-black/5">
+    <div dir={t.lang === "ar" ? "rtl" : "ltr"} data-paper="" className="mx-auto flex aspect-[1/1.414] w-full flex-col gap-1.5 overflow-hidden bg-white p-2.5 shadow-sm ring-1 ring-black/5">
       {t.header && <HeaderSketch style={t.header} accent={t.accent} />}
       <div className="mt-1 space-y-1.5">
         {t.extras.length > 0 ? (

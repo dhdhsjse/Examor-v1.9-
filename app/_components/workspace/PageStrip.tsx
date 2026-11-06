@@ -83,6 +83,7 @@ export default function PageStrip({ pages, blocks, heights, activeIndex, onJump,
             <div key={page.id} className="group relative flex flex-col items-center gap-0.5">
               <button
                 onClick={() => onJump(i)}
+                data-paper=""
                 style={{ width: width * scale, height: height * scale }}
                 className={`relative overflow-hidden rounded-[2px] bg-white shadow-sm ring-1 transition-all ${
                   active ? "ring-2 ring-indigo-500" : "ring-black/10 group-hover:ring-indigo-300"
@@ -90,14 +91,14 @@ export default function PageStrip({ pages, blocks, heights, activeIndex, onJump,
               >
                 <PageBars pageId={page.id} blocks={blocks} heights={heights} scale={scale} />
               </button>
-              <span className={`text-[10px] font-medium ${active ? "text-indigo-600" : "text-muted"}`}>{i + 1}</span>
+              <span className={`text-[11px] font-medium ${active ? "text-indigo-700" : "text-muted"}`}>{i + 1}</span>
 
               {/* Delete page (shown on hover; the last page left always stays). Asks first (Workspace). */}
               {pages.length > 1 && (
                 <button
                   onClick={() => onDeletePage(page.id)}
                   title={t("Delete page")}
-                  className="absolute -top-1.5 -end-1.5 z-40 hidden size-4 place-items-center rounded-full bg-white text-faint shadow ring-1 ring-black/10 group-hover:grid hover:text-red-600"
+                  className="absolute -top-1.5 -end-1.5 z-40 hidden size-4 place-items-center rounded-full bg-white text-faint shadow ring-1 ring-black/10 group-hover:grid hover:text-red-700"
                 >
                   <svg width="8" height="8" viewBox="0 0 8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
                     <path d="M1.5 1.5l5 5M6.5 1.5l-5 5" />
@@ -111,7 +112,7 @@ export default function PageStrip({ pages, blocks, heights, activeIndex, onJump,
         <button
           onClick={onAddPage}
           title={t("Add page")}
-          className="grid h-7 w-10 shrink-0 place-items-center rounded border border-dashed border-slate-300 text-muted transition-colors hover:border-indigo-400 hover:bg-indigo-50 hover:text-indigo-600"
+          className="grid h-7 w-10 shrink-0 place-items-center rounded border border-dashed border-slate-300 text-muted transition-colors hover:border-indigo-400 hover:bg-indigo-50 hover:text-indigo-700"
         >
           <svg width="11" height="11" viewBox="0 0 12 12" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
             <path d="M2.5 6h7M6 2.5v7" />

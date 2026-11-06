@@ -42,7 +42,7 @@ export default function InfoTip({ text, label }: { text: string; label: string }
         id={id}
         role="tooltip"
         hidden={!at}
-        className="pointer-events-none fixed z-50 rounded-md bg-slate-900 px-2.5 py-1.5 text-[11px] leading-snug font-normal text-white shadow-lg"
+        className="pointer-events-none fixed z-50 rounded-md bg-pop px-2.5 py-1.5 text-xs leading-snug font-normal text-white shadow-lg"
         style={{ width: WIDTH, left: at?.left, top: at?.top, transform: at?.above ? "translateY(-100%)" : undefined }}
       >
         {text}

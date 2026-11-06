@@ -13,7 +13,7 @@ const COLORS = ["#1f2937", "#000000", "#1e3a8a", "#7f1d1d", "#14532d", "#92400e"
 const PREVIEW = { w: 300, h: 400, width: 4, inset: 22 };
 
 const card = (on: boolean) =>
-  `flex flex-col items-stretch gap-1.5 rounded-xl p-2 text-[11px] tracking-[-0.005em] transition-[transform,background-color,box-shadow] duration-150 ease-out outline-none focus-visible:ring-2 focus-visible:ring-accent active:scale-[0.97] ${
+  `flex flex-col items-stretch gap-1.5 rounded-xl p-2 text-xs tracking-[-0.005em] transition-[transform,background-color,box-shadow] duration-150 ease-out outline-none focus-visible:ring-2 focus-visible:ring-accent active:scale-[0.97] ${
     on ? "bg-white font-semibold text-ink shadow-[0_0_0_2px_var(--color-accent,#4f46e5),0_4px_14px_rgba(0,0,0,0.08)]" : "bg-subtle text-muted hover:bg-hover hover:text-ink"
   }`;
 
@@ -21,7 +21,7 @@ const card = (on: boolean) =>
 function Mini({ style, color }: { style: string | null; color: string }) {
   const paths = style ? borderPaths({ style, color, width: PREVIEW.width, inset: PREVIEW.inset }, PREVIEW.w, PREVIEW.h) : [];
   return (
-    <svg aria-hidden viewBox={`0 0 ${PREVIEW.w} ${PREVIEW.h}`} className="mx-auto h-[72px] w-[54px] rounded-[2px] bg-white shadow-[0_0_0_1px_rgba(0,0,0,0.1)]">
+    <svg data-paper="" aria-hidden viewBox={`0 0 ${PREVIEW.w} ${PREVIEW.h}`} className="mx-auto h-[72px] w-[54px] rounded-[2px] bg-white shadow-[0_0_0_1px_rgba(0,0,0,0.1)]">
       {paths.map((p, i) => (
         <path
           key={i}
@@ -77,7 +77,7 @@ export default function PageBorderInspector({ ctx }: { ctx: Ctx }) {
 
       {BORDER_GROUPS.map((group) => (
         <section key={group.name} aria-label={t(group.name)} className="flex flex-col gap-2">
-          <h3 className="text-[11px] font-semibold text-muted">{t(group.name)}</h3>
+          <h3 className="text-xs font-semibold text-muted">{t(group.name)}</h3>
           <div className="grid grid-cols-3 gap-2">
             {group.styles.map((s) => {
               const on = border?.style === s.id;
@@ -95,7 +95,7 @@ export default function PageBorderInspector({ ctx }: { ctx: Ctx }) {
       {border && (
         <div className="flex flex-col gap-4 rounded-2xl bg-subtle p-3.5" data-testid="border-settings">
           <div className="flex flex-col gap-2">
-            <span className="text-[11px] font-medium text-muted">{t("Color")}</span>
+            <span className="text-xs font-medium text-muted">{t("Color")}</span>
             <div className="flex flex-wrap items-center gap-1.5">
               {COLORS.map((c) => (
                 <button
@@ -118,14 +118,14 @@ export default function PageBorderInspector({ ctx }: { ctx: Ctx }) {
               />
             </div>
           </div>
-          <label className="flex flex-col gap-1.5 text-[11px] font-medium text-muted">
+          <label className="flex flex-col gap-1.5 text-xs font-medium text-muted">
             <span className="flex justify-between">
               {t("Thickness")}
               <span className="tabular-nums text-ink">{border.width} px</span>
             </span>
             <input type="range" data-testid="border-width" min={MIN_BORDER_WIDTH} max={MAX_BORDER_WIDTH} step={0.5} value={border.width} onChange={(e) => patch({ width: Number(e.target.value) }, "width")} className={slider} />
           </label>
-          <label className="flex flex-col gap-1.5 text-[11px] font-medium text-muted">
+          <label className="flex flex-col gap-1.5 text-xs font-medium text-muted">
             <span className="flex justify-between">
               {t("Distance from the edge")}
               <span className="tabular-nums text-ink">{border.inset} px</span>

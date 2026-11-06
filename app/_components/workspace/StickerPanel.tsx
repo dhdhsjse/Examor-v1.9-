@@ -72,7 +72,7 @@ export default function StickerPanel({ stamp, onPick, pad, onPad, totalOn, textb
     );
   };
   const hint = (label: string) => t("{label} — click, then click on the page (or drag it there)", { label });
-  const heading = (text: string) => <h3 className="mt-5 mb-2 px-1 text-[11px] font-semibold tracking-[0.04em] text-muted uppercase first:mt-0">{text}</h3>;
+  const heading = (text: string) => <h3 className="mt-5 mb-2 px-1 text-xs font-semibold tracking-[0.04em] text-muted uppercase first:mt-0">{text}</h3>;
 
   const typedMark = snapMark(Number(typed));
   const typedOk = typed.trim() !== "" && Number.isFinite(Number(typed)) && Number(typed) > 0;

@@ -27,13 +27,13 @@ export function MatchEditor({ b, onChange }: { b: MatchBlock; onChange: OnChange
         <div className="flex flex-col gap-1.5">
           {b.pairs.map((p, i) => (
             <div key={i} className="flex items-center gap-1">
-              <span className="w-4 shrink-0 text-center text-[11px] font-semibold text-muted">{i + 1}</span>
+              <span className="w-4 shrink-0 text-center text-xs font-semibold text-muted">{i + 1}</span>
               <RichInput value={p.left} placeholder={t("Item…")} onChange={(v) => set(i, "left", v)} />
               <span className="shrink-0 text-faint" aria-hidden>
                 ↔
               </span>
               <RichInput value={p.right} placeholder={t("Match…")} onChange={(v) => set(i, "right", v)} />
-              <span className="w-4 shrink-0 text-center text-[11px] font-semibold text-muted" title={t("Printed as")}>
+              <span className="w-4 shrink-0 text-center text-xs font-semibold text-muted" title={t("Printed as")}>
                 {letter(i)}
               </span>
               {b.pairs.length > 2 && <RemoveButton title={t("Remove")} onClick={() => onChange(removePair(b, i), "pairs")} />}
@@ -94,7 +94,7 @@ export function OrderEditor({ b, onChange }: { b: OrderBlock; onChange: OnChange
             />
           </Field>
           {b.items.length > 1 && (
-            <p className="rounded-md bg-subtle px-2.5 py-1.5 text-[11px] text-muted" dir="auto">
+            <p className="rounded-md bg-subtle px-2.5 py-1.5 text-xs text-muted" dir="auto">
               {order.map((i) => plainText(b.items[i])).join("  /  ")}
             </p>
           )}
@@ -104,7 +104,7 @@ export function OrderEditor({ b, onChange }: { b: OrderBlock; onChange: OnChange
           <div className="flex flex-col gap-1.5">
             {b.items.map((item, i) => (
               <div key={i} className="flex items-center gap-1">
-                <span className="w-4 shrink-0 text-center text-[11px] font-semibold text-muted">{i + 1}</span>
+                <span className="w-4 shrink-0 text-center text-xs font-semibold text-muted">{i + 1}</span>
                 <RichInput value={item} placeholder={t("Item…")} onChange={(v) => onChange({ items: b.items.map((x, k) => (k === i ? v : x)) }, `item${i}`)} />
                 <div className="flex shrink-0 flex-col">
                   <button type="button" onClick={() => move(i, i - 1)} disabled={i === 0} title={t("Move up")} className="h-3.5 px-1 text-[9px] leading-none text-muted hover:text-ink disabled:opacity-30">
@@ -189,11 +189,11 @@ function BankPreview({ words }: { words: string[] }) {
   const clean = words.map((w) => plainText(w).trim()).filter(Boolean);
   return (
     <div className="flex flex-col gap-1">
-      <span className="text-[11px] text-muted">{t("Box of words on the page")}</span>
+      <span className="text-xs text-muted">{t("Box of words on the page")}</span>
       <div className="min-h-8 rounded-md border border-dashed border-line bg-white px-2 py-1.5 text-center text-xs leading-snug text-ink" aria-live="polite">
         {clean.length ? clean.join(" / ") : <GhostTyping text={`${t("word")} … / ${t("word")} … / ${t("word")} … / ${t("word")} …`} />}
       </div>
-      {!clean.length && <span className="text-[10px] leading-snug text-faint">{t("Fill the categories below: their words are gathered here, mixed up.")}</span>}
+      {!clean.length && <span className="text-[11px] leading-snug text-faint">{t("Fill the categories below: their words are gathered here, mixed up.")}</span>}
     </div>
   );
 }

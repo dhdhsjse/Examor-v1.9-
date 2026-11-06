@@ -97,7 +97,7 @@ export function GraphEditor({ b, onChange }: { b: GraphBlock; onChange: OnChange
                     />
                   )}
                 </div>
-                {error && <p className="mt-0.5 ps-12 text-[10px] text-red-600">{errorText(error)}</p>}
+                {error && <p className="mt-0.5 ps-12 text-[11px] text-red-700">{errorText(error)}</p>}
                 {unfolded && <CurveOptions b={b} i={i} fn={fn ?? null} onChange={onChange} />}
               </div>
             );
@@ -176,7 +176,7 @@ function CurveOptions({ b, i, fn, onChange }: { b: GraphBlock; i: number; fn: Fn
         {t("Asymptotes")}
       </label>
       {o.asymptotes && (
-        <p className="-mt-1 text-[11px] leading-snug text-muted" dir="ltr">
+        <p className="-mt-1 text-xs leading-snug text-muted" dir="ltr">
           {found.length ? found.join(" · ") : t("No asymptote found in this window")}
         </p>
       )}
@@ -185,8 +185,8 @@ function CurveOptions({ b, i, fn, onChange }: { b: GraphBlock; i: number; fn: Fn
           const tg = fn ? tangentAt(fn, a) : null;
           return (
             <div key={k} className="flex items-center gap-1.5">
-              <span className="shrink-0 text-[11px] text-muted">{t("Tangent at")}</span>
-              <span className="shrink-0 text-[11px] text-muted" dir="ltr">
+              <span className="shrink-0 text-xs text-muted">{t("Tangent at")}</span>
+              <span className="shrink-0 text-xs text-muted" dir="ltr">
                 x =
               </span>
               <div className="w-16 shrink-0">
@@ -201,9 +201,9 @@ function CurveOptions({ b, i, fn, onChange }: { b: GraphBlock; i: number; fn: Fn
               >
                 <X size={12} aria-hidden />
               </button>
-              {!tg && <span className="text-[10px] text-red-600">{t("No tangent here")}</span>}
+              {!tg && <span className="text-[11px] text-red-700">{t("No tangent here")}</span>}
               {tg && (
-                <span className="min-w-0 truncate text-[10px] text-faint" dir="ltr">
+                <span className="min-w-0 truncate text-[11px] text-faint" dir="ltr">
                   {name}′({formatNum(a)}) = {formatNum(tg.m)}
                 </span>
               )}
@@ -214,7 +214,7 @@ function CurveOptions({ b, i, fn, onChange }: { b: GraphBlock; i: number; fn: Fn
           type="button"
           disabled={!fn}
           onClick={addOne}
-          className="flex h-6 items-center gap-1 self-start rounded-[5px] px-1.5 text-[11px] text-muted hover:bg-hover hover:text-ink disabled:opacity-40"
+          className="flex h-6 items-center gap-1 self-start rounded-[5px] px-1.5 text-xs text-muted hover:bg-hover hover:text-ink disabled:opacity-40"
         >
           <Plus size={11} strokeWidth={2} aria-hidden />
           {t("Add a tangent")}

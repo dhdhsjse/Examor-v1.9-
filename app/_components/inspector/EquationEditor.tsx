@@ -93,7 +93,7 @@ export default function EquationEditor({ b, onLatex, keyboardOpen, onToggleKeybo
             mathCommand("selectAll");
             mathCommand("deleteBackward");
           }}
-          className="rounded-md border border-line px-2.5 py-1.5 text-xs font-medium text-muted hover:border-red-200 hover:bg-red-50 hover:text-red-600"
+          className="rounded-md border border-line px-2.5 py-1.5 text-xs font-medium text-muted hover:border-red-200 hover:bg-red-50 hover:text-red-700"
         >
           {t("Clear")}
         </button>

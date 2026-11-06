@@ -23,9 +23,9 @@ export default function MarginCard({ ctx, template, selected, onSelect }: Props)
       <div className="flex flex-col gap-1 px-3 py-3">
         <span className="flex flex-wrap items-center gap-2">
           <span className="text-sm font-semibold text-ink">{ctx.t(template.nameKey)}</span>
-          {template.recommended && <span className="rounded bg-indigo-50 px-1.5 py-0.5 text-[10px] font-bold text-indigo-700">{ctx.t("Recommended")}</span>}
+          {template.recommended && <span className="rounded bg-indigo-50 px-1.5 py-0.5 text-[11px] font-bold text-indigo-700">{ctx.t("Recommended")}</span>}
         </span>
-        <span className="text-[11px] text-muted" dir="ltr">
+        <span className="text-xs text-muted" dir="ltr">
           {mm(m.top)} · {mm(m.right)} · {mm(m.bottom)} · {mm(m.left)} mm
         </span>
       </div>

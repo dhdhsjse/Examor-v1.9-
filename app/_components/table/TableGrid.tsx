@@ -518,7 +518,7 @@ export default function TableGrid({ table, lang, sel, onSelect, onChange, onUndo
               />
             </div>
           ) : (
-            <span className={`min-w-0 whitespace-pre-wrap ${showsError(text) ? "text-red-600" : ""}`}>
+            <span className={`min-w-0 whitespace-pre-wrap ${showsError(text) ? "text-red-700" : ""}`}>
               <RichSpan text={text} />
             </span>
           )}
@@ -574,7 +574,7 @@ export default function TableGrid({ table, lang, sel, onSelect, onChange, onUndo
             }}
           />
         </div>
-        {isFormula(raw) && !table.calc && <span className="shrink-0 text-[11px] text-amber-700">{t("Formulas are off for this table")}</span>}
+        {isFormula(raw) && !table.calc && <span className="shrink-0 text-xs text-amber-700">{t("Formulas are off for this table")}</span>}
       </div>
 
       <div

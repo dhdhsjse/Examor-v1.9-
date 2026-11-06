@@ -79,7 +79,7 @@ export default function VersionHistory({ current, onRestore, onClose }: Props) {
     v.kind === "manual" ? v.label || t("Saved version") : v.kind === "before" ? v.label || t("Before a change") : t("Automatic copy");
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-slate-900/40 p-6 backdrop-blur-sm" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+    <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-6 backdrop-blur-sm" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div className="flex h-[min(640px,100%)] w-full max-w-4xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
         <div className="flex items-start justify-between border-b border-line px-6 py-4">
           <div>
@@ -108,12 +108,12 @@ export default function VersionHistory({ current, onRestore, onClose }: Props) {
               </button>
             </div>
             <div className="flex-1 overflow-y-auto p-2">
-              {error && <p className="p-3 text-xs text-red-600">{error}</p>}
+              {error && <p className="p-3 text-xs text-red-700">{error}</p>}
               {!versions && !error && <p className="p-3 text-xs text-muted">{t("Loading…")}</p>}
               {versions?.length === 0 && <p className="p-6 text-center text-xs text-faint">{t("No versions yet. The first automatic copy is made a few minutes after you start editing.")}</p>}
               {groups.map((g) => (
                 <section key={g.day} className="mb-2">
-                  <h3 className="px-2 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-faint">{g.day}</h3>
+                  <h3 className="px-2 pt-2 pb-1 text-[11px] font-semibold uppercase tracking-wider text-faint">{g.day}</h3>
                   {g.items.map((v) => {
                     const q = v.doc.blocks.filter(isQuestion);
                     return (
@@ -132,7 +132,7 @@ export default function VersionHistory({ current, onRestore, onClose }: Props) {
                               {kindLabel(v)}
                             </span>
                           </span>
-                          <span className="block truncate text-[11px] text-muted" dir="auto">
+                          <span className="block truncate text-xs text-muted" dir="auto">
                             {v.doc.meta.title} · {t("{q} q. · {p} pts · {n} p.", { q: q.length, p: q.reduce((s, x) => s + x.points, 0), n: v.doc.pages.length })}
                           </span>
                         </span>
@@ -155,7 +155,7 @@ export default function VersionHistory({ current, onRestore, onClose }: Props) {
                   <VersionPages doc={selected.doc} />
                 </div>
                 <div className="flex justify-end gap-2 border-t border-line bg-white p-3">
-                  <button onClick={() => void remove(selected.id)} className="rounded-md border border-red-200 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50">
+                  <button onClick={() => void remove(selected.id)} className="rounded-md border border-red-200 px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50">
                     {t("Delete")}
                   </button>
                   <button onClick={() => onRestore(selected)} className="rounded-md bg-accent px-3 py-1.5 text-xs font-semibold text-white hover:bg-accent-strong">
@@ -186,7 +186,7 @@ function VersionPages({ doc }: { doc: ExamDoc }) {
             <div className="relative overflow-hidden rounded-[2px] bg-white shadow-sm ring-1 ring-black/10" style={{ width: width * scale, height: height * scale }}>
               <PageBars pageId={p.id} blocks={doc.blocks} heights={heights} scale={scale} />
             </div>
-            <span className="text-[10px] text-muted">{i + 1}</span>
+            <span className="text-[11px] text-muted">{i + 1}</span>
           </div>
         );
       })}

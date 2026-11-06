@@ -77,7 +77,7 @@ export default function MoleculeBrowser({ engine, candidates, message, picked, o
                 <Thumb svg={pictures[c.id]} />
                 <span className="min-w-0">
                   <span className="block truncate text-xs font-semibold text-ink">{c.names[lang] ?? c.names.en ?? c.smiles}</span>
-                  <span className="block truncate text-[11px] text-muted">
+                  <span className="block truncate text-xs text-muted">
                     <Formula text={displayFromCounts(parseFormula(c.formula) ?? {}) || c.formula} />
                     {c.names.fr && lang !== "fr" ? ` · ${c.names.fr}` : ""}
                   </span>
@@ -89,7 +89,7 @@ export default function MoleculeBrowser({ engine, candidates, message, picked, o
 
         {view === "browse" && (
           <div className="flex flex-col gap-1">
-            <p className="mb-1 px-1 text-[11px] text-muted">{t("Choose a family, then a molecule.")}</p>
+            <p className="mb-1 px-1 text-xs text-muted">{t("Choose a family, then a molecule.")}</p>
             {FAMILIES.map((f) => {
               const open = family === f.id;
               const list = open ? entries : [];
@@ -106,7 +106,7 @@ export default function MoleculeBrowser({ engine, candidates, message, picked, o
                           <Thumb svg={pictures[e.id]} />
                           <span className="min-w-0">
                             <span className="block truncate text-xs font-semibold text-ink">{entryName(e, lang)}</span>
-                            <span className="block truncate text-[11px] text-muted">
+                            <span className="block truncate text-xs text-muted">
                               <Formula text={displayFromCounts(parseFormula(e.formula) ?? {}) || e.formula} />
                             </span>
                           </span>

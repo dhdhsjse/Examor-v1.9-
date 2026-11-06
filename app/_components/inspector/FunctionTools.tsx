@@ -51,9 +51,9 @@ export default function FunctionTools({ latex, lang, onInsert }: Props) {
 
   return (
     <section className="flex flex-col gap-2 rounded-md border border-line p-2.5" data-text-format="">
-      <h3 className="text-[11px] font-semibold text-ink">{t("Study of the function")}</h3>
+      <h3 className="text-xs font-semibold text-ink">{t("Study of the function")}</h3>
       {error || !fn ? (
-        <p className="text-[11px] leading-snug text-faint">{t("Type a function, e.g. f(x) = x^2 - 2x, to draw its graph or make its table of variations.")}</p>
+        <p className="text-xs leading-snug text-faint">{t("Type a function, e.g. f(x) = x^2 - 2x, to draw its graph or make its table of variations.")}</p>
       ) : (
         <>
           <div className="grid grid-cols-2 gap-1.5">
@@ -61,11 +61,11 @@ export default function FunctionTools({ latex, lang, onInsert }: Props) {
             <ToolButton onClick={makeTable} label={t("Variation table")} icon={<TableGlyph />} disabled={badRange} />
           </div>
           <details className="group/fn">
-            <summary className="cursor-pointer list-none text-[11px] text-muted hover:text-ink [&::-webkit-details-marker]:hidden">
+            <summary className="cursor-pointer list-none text-xs text-muted hover:text-ink [&::-webkit-details-marker]:hidden">
               {t("Options of the table")} ▾
             </summary>
             <div className="mt-2 flex flex-col gap-2">
-              <div className="flex items-center gap-1.5 text-[11px] text-muted">
+              <div className="flex items-center gap-1.5 text-xs text-muted">
                 <span className="shrink-0">{t("Study on")}</span>
                 <input aria-label={t("From")} placeholder="−∞" value={from} onChange={(e) => setFrom(e.target.value)} className={`${inputCls} h-7 w-full min-w-0 text-center`} />
                 <span>…</span>
@@ -75,9 +75,9 @@ export default function FunctionTools({ latex, lang, onInsert }: Props) {
               <Toggle checked={blank} onChange={setBlank} label={t("Blank, for the student to fill")} />
             </div>
           </details>
-          {badRange && <p className="text-[11px] text-red-600">{t("The start of the interval must be before its end.")}</p>}
-          {tooMany && !badRange && <p className="text-[11px] leading-snug text-amber-700">{t("Many changes of direction: choose an interval in the options for a shorter table.")}</p>}
-          <p className="text-[10px] leading-snug text-faint">{t("Each one is added as its own block under the equation.")}</p>
+          {badRange && <p className="text-xs text-red-700">{t("The start of the interval must be before its end.")}</p>}
+          {tooMany && !badRange && <p className="text-xs leading-snug text-amber-700">{t("Many changes of direction: choose an interval in the options for a shorter table.")}</p>}
+          <p className="text-[11px] leading-snug text-faint">{t("Each one is added as its own block under the equation.")}</p>
         </>
       )}
     </section>
@@ -91,7 +91,7 @@ function ToolButton({ onClick, label, icon, disabled }: { onClick: () => void; l
       disabled={disabled}
       onMouseDown={(e) => e.preventDefault()}
       onClick={onClick}
-      className="flex h-14 flex-col items-center justify-center gap-1 rounded-[6px] border border-line bg-white text-[11px] font-medium text-ink transition-colors outline-none hover:border-accent hover:bg-accent-soft hover:text-accent focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-40"
+      className="flex h-14 flex-col items-center justify-center gap-1 rounded-[6px] border border-line bg-white text-xs font-medium text-ink transition-colors outline-none hover:border-accent hover:bg-accent-soft hover:text-accent focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-40"
     >
       {icon}
       {label}

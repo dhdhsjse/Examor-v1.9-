@@ -6,6 +6,9 @@ import { fileReconfigureAction } from "@/app/_features/actions/file-reconfigure"
 import { fileOpenAction } from "@/app/_features/actions/file-open";
 import { filePreviewAction } from "@/app/_features/actions/file-preview";
 import { fileSaveAction } from "@/app/_features/actions/file-save";
+import { themeDarkAction } from "@/app/_features/actions/theme-dark";
+import { themeLightAction } from "@/app/_features/actions/theme-light";
+import { themeSystemAction } from "@/app/_features/actions/theme-system";
 import { langArAction } from "@/app/_features/actions/lang-ar";
 import { langEnAction } from "@/app/_features/actions/lang-en";
 import { langFrAction } from "@/app/_features/actions/lang-fr";
@@ -35,5 +38,8 @@ export const fileGroup: Group = {
     langEnAction,
     langFrAction,
     langArAction,
+    themeLightAction,
+    themeDarkAction,
+    themeSystemAction,
   ],
 };

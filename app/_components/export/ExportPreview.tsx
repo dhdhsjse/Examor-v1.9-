@@ -105,7 +105,7 @@ export default function ExportPreview({ doc, busy, renderPages, onExport, onMake
             },
       );
     } else {
-      out.push({ status: "info", title: t("{n} questions, {total} pts in all", { n: questions.length, total }) });
+      out.push({ status: "info", title: questions.length === 1 ? t("1 question, {total} pts in all", { total }) : t("{n} questions, {total} pts in all", { n: questions.length, total }) });
     }
 
     // Correction sheet: the marks of its stickers against the full mark of the exam
@@ -146,7 +146,7 @@ export default function ExportPreview({ doc, busy, renderPages, onExport, onMake
   const printed = mode === "key" && sheet ? sheet.pages : doc.pages; // (the pages of the copy shown)
 
   return (
-    <div className="fixed inset-0 z-50 flex bg-slate-900/50 p-4 backdrop-blur-sm sm:p-6" onMouseDown={(e) => e.target === e.currentTarget && !busy && onClose()}>
+    <div className="fixed inset-0 z-50 flex bg-black/50 p-4 backdrop-blur-sm sm:p-6" onMouseDown={(e) => e.target === e.currentTarget && !busy && onClose()}>
       <div className="mx-auto flex h-full w-full max-w-6xl overflow-hidden rounded-2xl bg-white shadow-2xl">
         {/* Pages */}
         <div className="flex min-w-0 flex-1 flex-col bg-canvas">
@@ -177,7 +177,7 @@ export default function ExportPreview({ doc, busy, renderPages, onExport, onMake
                 </button>
               </div>
             ) : failed ? (
-              <p className="pt-10 text-center text-sm text-red-600">{failed}</p>
+              <p className="pt-10 text-center text-sm text-red-700">{failed}</p>
             ) : !imgs ? (
               <p className="pt-10 text-center text-sm text-muted">{t("Drawing the pages…")}</p>
             ) : (
@@ -186,7 +186,7 @@ export default function ExportPreview({ doc, busy, renderPages, onExport, onMake
                   <figure key={i} className="flex w-full max-w-[560px] flex-col items-center gap-1.5">
                     {/* eslint-disable-next-line @next/next/no-img-element -- generated page image */}
                     <img src={src} alt={t("Page {n}", { n: i + 1 })} className="paper-shadow w-full bg-white" />
-                    <figcaption className="text-[11px] text-muted">{t("Page {n}", { n: i + 1 })}</figcaption>
+                    <figcaption className="text-xs text-muted">{t("Page {n}", { n: i + 1 })}</figcaption>
                   </figure>
                 ))}
               </div>
@@ -235,17 +235,17 @@ export default function ExportPreview({ doc, busy, renderPages, onExport, onMake
 const ICONS: Record<Status, { icon: string; cls: string }> = {
   ok: { icon: "✓", cls: "bg-emerald-100 text-emerald-700" },
   warn: { icon: "!", cls: "bg-amber-100 text-amber-700" },
-  info: { icon: "i", cls: "bg-slate-100 text-slate-600" },
+  info: { icon: "i", cls: "bg-slate-100 text-slate-700" },
 };
 
 function CheckRow({ status, title, children }: { status: Status; title: string; children?: ReactNode }) {
   const s = ICONS[status];
   return (
     <li className="flex gap-2.5 rounded-lg bg-subtle/70 p-2.5 ring-1 ring-line">
-      <span className={`grid size-5 shrink-0 place-items-center rounded-full text-[11px] font-bold ${s.cls}`}>{s.icon}</span>
+      <span className={`grid size-5 shrink-0 place-items-center rounded-full text-xs font-bold ${s.cls}`}>{s.icon}</span>
       <div className="min-w-0">
         <p className="text-xs font-semibold leading-snug text-ink">{title}</p>
-        {children && <p className="mt-0.5 text-[11px] leading-snug text-muted">{children}</p>}
+        {children && <p className="mt-0.5 text-xs leading-snug text-muted">{children}</p>}
       </div>
     </li>
   );

@@ -108,7 +108,7 @@ export default function GraphStudio({ editing, onInsert, onUpdate, onClose }: Pr
               className={`flex h-7 items-center rounded-[8px] px-3 text-xs tracking-[-0.005em] transition-[background-color,color,box-shadow,transform] duration-200 ease-out outline-none focus-visible:ring-2 focus-visible:ring-accent active:scale-[0.97] ${view === v ? "bg-white font-semibold text-ink shadow-[0_1px_3px_rgba(0,0,0,0.12)]" : "font-medium text-muted hover:text-ink"}`}
             >
               {v === "teacher" ? t("Teacher view") : t("Student view")}
-              {v === "student" && masked > 0 && <span className="ms-1.5 rounded-full bg-accent-soft px-1.5 text-[10px] font-semibold text-accent-strong tabular-nums">{masked}</span>}
+              {v === "student" && masked > 0 && <span className="ms-1.5 rounded-full bg-accent-soft px-1.5 text-[11px] font-semibold text-accent-strong tabular-nums">{masked}</span>}
             </button>
           ))}
         </div>

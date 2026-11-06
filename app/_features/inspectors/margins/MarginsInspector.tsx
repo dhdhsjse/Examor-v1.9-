@@ -156,7 +156,7 @@ export default function MarginsInspector({ ctx }: { ctx: Ctx }) {
           </div>
         );
       })}
-      <p className="text-[11px] leading-snug text-faint">{t("From {min} to {max} mm, on every page. Blocks stay where they are.", { min: MIN_MARGIN_MM, max: MAX_MARGIN_MM })}</p>
+      <p className="text-xs leading-snug text-faint">{t("From {min} to {max} mm, on every page. Blocks stay where they are.", { min: MIN_MARGIN_MM, max: MAX_MARGIN_MM })}</p>
     </div>
   );
 }

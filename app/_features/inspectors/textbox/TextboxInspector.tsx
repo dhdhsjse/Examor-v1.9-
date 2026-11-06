@@ -35,7 +35,7 @@ export default function TextboxInspector({ ctx }: { ctx: Ctx }) {
         <h2 className="flex-1 ps-1 text-xs font-semibold text-ink">{t("Text box")}</h2>
         <RibbonButton title={t("Save to my library (reuse it in other exams)")} icon={<BookmarkIcon />} onClick={() => shell.saveToLibrary(b)} />
         <RibbonButton title={t("Duplicate")} shortcut="Ctrl+D" icon={<CopyIcon />} onClick={() => shell.duplicateBlock(b.id)} />
-        <RibbonButton title={t("Delete")} shortcut="Del" icon={<TrashIcon />} onClick={() => shell.deleteBlock(b.id)} className="hover:bg-red-50! hover:text-red-600!" />
+        <RibbonButton title={t("Delete")} shortcut="Del" icon={<TrashIcon />} onClick={() => shell.deleteBlock(b.id)} className="hover:bg-red-50! hover:text-red-700!" />
       </div>
 
       {/* A formula of the box is being edited: here too, like an equation. */}
@@ -47,7 +47,7 @@ export default function TextboxInspector({ ctx }: { ctx: Ctx }) {
           <TextboxResizing ctx={ctx} b={b} />
           <SpacingFields t={t} para={target.para} />
           <div className="flex items-center justify-between gap-2">
-            <span className="text-[11px] text-muted">{t("Inner margin")}</span>
+            <span className="text-xs text-muted">{t("Inner margin")}</span>
             <Stepper
               value={Math.round(textboxPad(b))}
               min={0}
@@ -105,7 +105,7 @@ function TextboxResizing({ ctx, b }: { ctx: Ctx; b: TextboxBlock }) {
   const sizing = b.sizing ?? "fixed";
   return (
     <div className="flex items-center justify-between gap-2">
-      <span className="text-[11px] text-muted">{t("Resizing")}</span>
+      <span className="text-xs text-muted">{t("Resizing")}</span>
       <div role="radiogroup" aria-label={t("Resizing")} className="flex rounded-md bg-subtle p-0.5">
         {SIZINGS.map((s) => (
           <button
@@ -143,7 +143,7 @@ function TextboxRotation({ ctx, b }: { ctx: Ctx; b: TextboxBlock }) {
   const turn = (to: number) => shell.updateBlock(b.id, { layout: turnAboutCentre(b.layout, b.layout.width, height, to) as Partial<TextboxBlock["layout"]> }, "rotation");
   return (
     <div className="flex items-center justify-between gap-2">
-      <span className="text-[11px] text-muted">{t("Rotation")}</span>
+      <span className="text-xs text-muted">{t("Rotation")}</span>
       <div className="flex items-center gap-1.5">
         <div role="radiogroup" aria-label={t("Rotation")} className="flex rounded-md bg-subtle p-0.5">
           {TURNS.map((r) => (
@@ -211,7 +211,7 @@ function TextboxDimensions({ ctx, b }: { ctx: Ctx; b: TextboxBlock }) {
   };
   return (
     <div className="flex items-center gap-1.5">
-      <span className="me-auto text-[11px] text-muted">{t("Dimensions")}</span>
+      <span className="me-auto text-xs text-muted">{t("Dimensions")}</span>
       <SizeInput label="W" title={t("Width (px)")} value={Math.round(b.layout.width)} min={40} onCommit={(width) => resize({ width })} />
       <SizeInput label="H" title={t("Height (px)")} value={height} min={30} onCommit={(h) => resize({ height: h })} />
     </div>

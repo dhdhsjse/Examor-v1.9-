@@ -241,7 +241,7 @@ function AtomSection({ studio, atoms, onOpenTable, lang }: { studio: MoleculeStu
               className="rounded-lg border border-line bg-white px-2.5 py-1.5 text-sm text-ink outline-none focus:border-accent"
               style={{ userSelect: "text" }}
             />
-            <span className="text-[11px] text-faint">{t("What the students see instead of the symbol")}</span>
+            <span className="text-xs text-faint">{t("What the students see instead of the symbol")}</span>
           </label>
         )}
       </div>

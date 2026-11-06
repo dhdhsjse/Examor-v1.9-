@@ -24,7 +24,7 @@ export default function DiscardDialog({ onKeep, onDiscard }: Props) {
   }, [onKeep]);
 
   return (
-    <div className="absolute inset-0 z-30 grid place-items-center bg-slate-900/40 p-4 backdrop-blur-sm" onMouseDown={(e) => e.target === e.currentTarget && onKeep()}>
+    <div className="absolute inset-0 z-30 grid place-items-center bg-black/40 p-4 backdrop-blur-sm" onMouseDown={(e) => e.target === e.currentTarget && onKeep()}>
       <div role="alertdialog" aria-modal="true" aria-labelledby="discard-title" aria-describedby="discard-text" data-testid="discard-dialog" className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-2xl">
         <h3 id="discard-title" className="text-base font-semibold text-ink">
           {t("Discard this drawing?")}

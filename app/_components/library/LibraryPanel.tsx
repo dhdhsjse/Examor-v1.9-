@@ -21,7 +21,7 @@ interface Props {
 }
 
 const selectCls =
-  "h-7 w-full rounded-md border border-line bg-white px-1.5 text-[11px] text-ink outline-none focus:border-indigo-400";
+  "h-7 w-full rounded-md border border-line bg-white px-1.5 text-xs text-ink outline-none focus:border-indigo-400";
 
 const KINDS: { value: AssetKind | "all"; label: string }[] = [
   { value: "all", label: "All" },
@@ -62,7 +62,7 @@ export default function LibraryPanel({ lang, subject, initialKind, userAssets, o
           <button
             onClick={onImport}
             title={t("Import an image from your computer")}
-            className="h-7 shrink-0 rounded-md bg-indigo-600 px-2.5 text-[11px] font-semibold text-white hover:bg-indigo-700"
+            className="h-7 shrink-0 rounded-md bg-indigo-600 px-2.5 text-xs font-semibold text-white hover:bg-indigo-700"
           >
             + {t("Import")}
           </button>
@@ -111,7 +111,7 @@ export default function LibraryPanel({ lang, subject, initialKind, userAssets, o
             <button
               key={k.value}
               onClick={() => set({ kind: k.value })}
-              className={`rounded-full px-2.5 py-0.5 text-[11px] font-medium transition-colors ${
+              className={`rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors ${
                 filter.kind === k.value ? "bg-amber-100 text-amber-800" : "text-muted hover:bg-subtle"
               }`}
             >
@@ -153,16 +153,16 @@ function AssetCard({ asset, lang, onUse, onDelete }: { asset: Asset; lang: Lang;
         title={t("{label} — click or drag onto the page", { label: name })}
         className="flex w-full flex-col overflow-hidden rounded-lg border border-line bg-white text-start transition hover:-translate-y-0.5 hover:border-amber-300 hover:shadow-md"
       >
-        <div className="relative flex h-20 w-full items-center justify-center overflow-hidden bg-subtle p-2">
+        <div data-paper="" className="relative flex h-20 w-full items-center justify-center overflow-hidden bg-subtle p-2">
           <AssetPreview asset={asset} lang={lang} />
           {/* Figures and ready blocks can be changed after they are added (Properties). */}
           {(asset.figure || asset.block) && (
-            <span title={t("Customizable: change it in Properties after adding it")} className="absolute bottom-1 end-1 grid size-4 place-items-center rounded bg-white/90 text-indigo-600 ring-1 ring-indigo-100">
+            <span title={t("Customizable: change it in Properties after adding it")} className="absolute bottom-1 end-1 grid size-4 place-items-center rounded bg-white/90 text-indigo-700 ring-1 ring-indigo-100">
               <SlidersHorizontal size={10} aria-hidden />
             </span>
           )}
         </div>
-        <span className="truncate px-2 py-1.5 text-[11px] font-medium text-ink" dir="auto">
+        <span className="truncate px-2 py-1.5 text-xs font-medium text-ink" dir="auto">
           {name}
         </span>
       </button>
@@ -170,7 +170,7 @@ function AssetCard({ asset, lang, onUse, onDelete }: { asset: Asset; lang: Lang;
         <button
           onClick={() => onDelete(asset.id)}
           title={t("Remove from library")}
-          className="absolute top-1 end-1 hidden size-5 place-items-center rounded-full bg-white text-faint shadow ring-1 ring-black/10 group-hover:grid hover:text-red-600"
+          className="absolute top-1 end-1 hidden size-5 place-items-center rounded-full bg-white text-faint shadow ring-1 ring-black/10 group-hover:grid hover:text-red-700"
         >
           ×
         </button>

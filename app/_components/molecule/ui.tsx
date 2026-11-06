@@ -29,7 +29,7 @@ export function Group({ title, hint, children }: { title: string; hint?: string;
     <section className="flex flex-col gap-2">
       <div className="flex flex-col gap-0.5">
         <h4 className="text-xs font-semibold text-ink">{title}</h4>
-        {hint && <p className="text-[11px] leading-snug text-muted">{hint}</p>}
+        {hint && <p className="text-xs leading-snug text-muted">{hint}</p>}
       </div>
       {children}
     </section>
@@ -81,7 +81,7 @@ export function ActionButton({
 }
 
 // A keyboard key, for hints.
-export const Kbd = ({ children }: { children: ReactNode }) => <kbd className="rounded border border-line bg-subtle px-1 py-px font-sans text-[10px] font-semibold text-muted">{children}</kbd>;
+export const Kbd = ({ children }: { children: ReactNode }) => <kbd className="rounded border border-line bg-subtle px-1 py-px font-sans text-[11px] font-semibold text-muted">{children}</kbd>;
 
 // A small menu that opens under its button and closes on a click outside or Escape.
 export function Menu({ trigger, children, align = "start", up }: { trigger: (open: boolean, toggle: () => void) => ReactNode; children: (close: () => void) => ReactNode; align?: "start" | "end"; up?: boolean }) {
@@ -118,7 +118,7 @@ export function MenuItem({ children, onClick, disabled, hint }: { children: Reac
   return (
     <button role="menuitem" onClick={onClick} disabled={disabled} className="flex items-center justify-between gap-6 rounded-md px-2.5 py-1.5 text-start text-xs text-ink hover:bg-subtle disabled:cursor-not-allowed disabled:opacity-40">
       <span>{children}</span>
-      {hint && <span className="text-[10px] text-faint">{hint}</span>}
+      {hint && <span className="text-[11px] text-faint">{hint}</span>}
     </button>
   );
 }

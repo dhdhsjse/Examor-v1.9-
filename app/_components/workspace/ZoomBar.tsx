@@ -132,7 +132,7 @@ export default function ZoomBar({ zoom, fitMode, showGuides, onZoom, onFitPage, 
         </button>
 
         {open && (
-          <div className="absolute end-0 bottom-full mb-2 w-36 rounded-md bg-neutral-900 p-1 text-xs text-white shadow-lg">
+          <div className="absolute end-0 bottom-full mb-2 w-36 rounded-md bg-pop p-1 text-xs text-white shadow-lg">
             <MenuItem active={fitMode === "page"} onClick={() => pick(onFitPage)} hint="Ctrl 0">
               {t("Fit page")}
             </MenuItem>
@@ -159,7 +159,7 @@ function MenuItem({ active, onClick, hint, children }: { active: boolean; onClic
       className={`flex h-7 w-full items-center justify-between rounded-[5px] px-2 text-start outline-none hover:bg-accent focus-visible:bg-accent ${active ? "font-semibold" : ""}`}
     >
       {children}
-      {active ? <Check size={12} strokeWidth={2.5} aria-hidden /> : hint && <span className="text-[11px] text-white/60">{hint}</span>}
+      {active ? <Check size={12} strokeWidth={2.5} aria-hidden /> : hint && <span className="text-xs text-white/60">{hint}</span>}
     </button>
   );
 }

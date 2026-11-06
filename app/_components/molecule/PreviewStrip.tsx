@@ -18,7 +18,7 @@ export default function PreviewStrip({ block, vertical }: { block: MoleculeBlock
 
   const card = (title: string, svg: string, id: string) => (
     <figure className="flex min-w-0 flex-1 flex-col gap-1" data-testid={id}>
-      <figcaption className="text-[11px] font-semibold text-muted">{title}</figcaption>
+      <figcaption className="text-xs font-semibold text-muted">{title}</figcaption>
       <div dir="ltr" className="flex h-24 items-center justify-center overflow-hidden rounded-lg border border-line bg-white [&>svg]:h-auto [&>svg]:max-h-24 [&>svg]:w-auto [&>svg]:max-w-full" dangerouslySetInnerHTML={{ __html: svg }} />
     </figure>
   );

@@ -91,12 +91,12 @@ export default function EditTab({ block, editor }: Props) {
         <Group title={t("Checks")} hint={t("These are only warnings: you decide what the exercise needs.")}>
           <div className="flex flex-col gap-1.5" data-testid="warnings">
             {warnings.slice(0, 4).map((w) => (
-              <p key={`v${w.atomId}`} className="rounded-lg bg-amber-50 px-2.5 py-2 text-[11px] text-amber-900">
+              <p key={`v${w.atomId}`} className="rounded-lg bg-amber-50 px-2.5 py-2 text-xs text-amber-900">
                 {t("{element} has {used} bonds (usual: {allowed}).", { element: elementOf(w.atomId), used: w.used, allowed: w.allowed.join(", ") })}
               </p>
             ))}
             {octet.slice(0, 4).map((o) => (
-              <p key={`o${o.atomId}`} className="rounded-lg bg-amber-50 px-2.5 py-2 text-[11px] text-amber-900">
+              <p key={`o${o.atomId}`} className="rounded-lg bg-amber-50 px-2.5 py-2 text-xs text-amber-900">
                 {t("{element}: {n} electrons around it, {expected} expected.", { element: elementOf(o.atomId), n: o.electrons, expected: o.expected })}
               </p>
             ))}

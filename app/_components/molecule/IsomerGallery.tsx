@@ -139,7 +139,7 @@ export default function IsomerGallery({ engine, formula, smiles, graph, onPick, 
         <>
           <div className="flex flex-col gap-2 border-b border-line px-5 py-3">
             <div className="flex flex-wrap items-center gap-1.5">
-              <span className="me-1 text-[11px] font-semibold text-muted">{t("Functional group")}</span>
+              <span className="me-1 text-xs font-semibold text-muted">{t("Functional group")}</span>
               <Chip active={group === "all"} onClick={() => (setGroup("all"), setShown(PAGE))}>
                 {t("All")}
               </Chip>
@@ -150,13 +150,13 @@ export default function IsomerGallery({ engine, formula, smiles, graph, onPick, 
               ))}
             </div>
             <div className="flex flex-wrap items-center gap-1.5">
-              <span className="me-1 text-[11px] font-semibold text-muted">{t("Shape")}</span>
+              <span className="me-1 text-xs font-semibold text-muted">{t("Shape")}</span>
               {(["all", "linear", "branched", "ring"] as Shape[]).map((s) => (
                 <Chip key={s} active={shape === s} onClick={() => (setShape(s), setShown(PAGE))}>
                   {t(s === "all" ? "All" : s === "linear" ? "Linear chain" : s === "branched" ? "Branched chain" : "Ring")}
                 </Chip>
               ))}
-              <span className="ms-4 me-1 text-[11px] font-semibold text-muted">{t("Compared with the current molecule")}</span>
+              <span className="ms-4 me-1 text-xs font-semibold text-muted">{t("Compared with the current molecule")}</span>
               {(["all", "chain", "position", "function"] as const).map((r) => (
                 <Chip key={r} active={rel === r} onClick={() => (setRel(r), setShown(PAGE))}>
                   {r === "all" ? t("All") : t(RELATION_LABEL[r])}
@@ -186,12 +186,12 @@ export default function IsomerGallery({ engine, formula, smiles, graph, onPick, 
                       <span className="min-h-5 text-sm font-medium text-ink">{nameOf(e) ?? ""}</span>
                       <span className="text-xs text-muted">{e.groups.map((id) => t(GROUP_LABEL[id])).join(" · ")}</span>
                       {isCurrent ? (
-                        <span className="text-[11px] font-semibold text-accent-strong">{t("Current molecule")}</span>
+                        <span className="text-xs font-semibold text-accent-strong">{t("Current molecule")}</span>
                       ) : (
                         r &&
-                        r !== "same" && <span className="text-[11px] text-faint">{t(RELATION_LABEL[r])}</span>
+                        r !== "same" && <span className="text-xs text-faint">{t(RELATION_LABEL[r])}</span>
                       )}
-                      {!e.school && e.issues && <span className="text-[11px] text-amber-800">{t("Not school level: {why}", { why: e.issues.map((i) => t(ISSUE_LABEL[i])).join(", ") })}</span>}
+                      {!e.school && e.issues && <span className="text-xs text-amber-800">{t("Not school level: {why}", { why: e.issues.map((i) => t(ISSUE_LABEL[i])).join(", ") })}</span>}
                     </button>
                   );
                 })}

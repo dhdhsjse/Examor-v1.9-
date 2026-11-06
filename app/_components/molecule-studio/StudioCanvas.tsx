@@ -524,7 +524,7 @@ export default function StudioCanvas({ studio, student = false, ink, eraser }: P
       </div>
       {thumbX && <Scrollbar axis="x" thumb={thumbX} onHold={holdRange} onScroll={(s) => scrollTo("x", s)} onFree={freeRange} label={t("Scroll sideways")} />}
       {thumbY && <Scrollbar axis="y" thumb={thumbY} onHold={holdRange} onScroll={(s) => scrollTo("y", s)} onFree={freeRange} label={t("Scroll up and down")} />}
-      <p className="pointer-events-none absolute bottom-4 end-4 rounded-lg bg-white/90 px-2.5 py-1.5 text-[11px] text-faint">{t("Wheel: scroll · Shift: sideways · Ctrl: zoom")}</p>
+      <p className="pointer-events-none absolute bottom-4 end-4 rounded-lg bg-white/90 px-2.5 py-1.5 text-xs text-faint">{t("Wheel: scroll · Shift: sideways · Ctrl: zoom")}</p>
     </div>
   );
 }

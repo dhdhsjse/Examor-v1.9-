@@ -51,7 +51,7 @@ function DataInspector({ studio }: { studio: GraphStudioState }) {
 
       <div className="flex flex-col gap-2 rounded-2xl bg-subtle p-2.5" data-testid="points-table">
         {points.length > 0 && (
-          <div className="grid grid-cols-[1fr_1fr_1.75rem] gap-1.5 px-0.5 text-[11px] font-medium text-muted" dir="ltr">
+          <div className="grid grid-cols-[1fr_1fr_1.75rem] gap-1.5 px-0.5 text-xs font-medium text-muted" dir="ltr">
             <span>x</span>
             <span>y</span>
             <span />
@@ -85,7 +85,7 @@ function DataInspector({ studio }: { studio: GraphStudioState }) {
                 aria-label={t("Remove this point")}
                 title={t("Remove this point")}
                 data-testid={`point-remove-${i}`}
-                className="grid size-8 place-items-center rounded-lg text-muted transition-[transform,background-color,color] duration-100 outline-none hover:bg-red-50 hover:text-red-600 focus-visible:ring-2 focus-visible:ring-accent active:scale-90"
+                className="grid size-8 place-items-center rounded-lg text-muted transition-[transform,background-color,color] duration-100 outline-none hover:bg-red-50 hover:text-red-700 focus-visible:ring-2 focus-visible:ring-accent active:scale-90"
               >
                 <X size={14} />
               </button>
@@ -169,7 +169,7 @@ export default function CurvesPanel({ studio }: { studio: GraphStudioState }) {
                     <TextField label={t("y =")} value={selected.expression ?? ""} onChange={(expression) => updateFunction(selected.id, { expression })} testId="curve-expression" keyboard="formula" />
                   </Group>
                   {formulaError && (
-                    <p role="status" data-testid="curve-expression-error" className="px-1 text-[11px] text-red-600">
+                    <p role="status" data-testid="curve-expression-error" className="px-1 text-xs text-red-700">
                       {errorText(formulaError)}
                     </p>
                   )}
@@ -215,7 +215,7 @@ export default function CurvesPanel({ studio }: { studio: GraphStudioState }) {
                   {t("Equivalence: x = {ve}, pH = {ph} · pH at half of it: {half}", { ve: readout(titration.ve), ph: readout(titration.phE), half: readout(titration.phHalf) })}
                 </p>
               )}
-              {spec.note && <p className="px-1 text-[11px] text-muted">{t(spec.note)}</p>}
+              {spec.note && <p className="px-1 text-xs text-muted">{t(spec.note)}</p>}
 
               <div dir="ltr">
                 <Group>

@@ -20,7 +20,7 @@ interface Props {
   onOpenStudio: (shape?: string) => void;
 }
 
-const btn = "flex h-7 items-center justify-center gap-1.5 rounded-md border border-line px-2 text-[11px] font-medium text-ink transition-colors hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-700 disabled:pointer-events-none disabled:opacity-40";
+const btn = "flex h-7 items-center justify-center gap-1.5 rounded-md border border-line px-2 text-xs font-medium text-ink transition-colors hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-700 disabled:pointer-events-none disabled:opacity-40";
 const btnOn = "border-indigo-300 bg-indigo-50 text-indigo-700";
 const numCls = "h-7 w-full rounded-md border border-line bg-white px-1.5 text-[12px] text-ink outline-none focus:border-indigo-400";
 
@@ -56,11 +56,11 @@ export default function TablePanel({ b, lang, onChange, examFont, onOpenStudio }
     return (
       <div className="flex flex-col gap-3" data-testid="table-panel">
         <div role="note" data-testid="table-locked" className="flex gap-2.5 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2.5 text-[12px] leading-snug text-amber-900">
-          <TriangleAlert size={16} className="mt-0.5 shrink-0 text-amber-600" />
+          <TriangleAlert size={16} className="mt-0.5 shrink-0 text-amber-700" />
           <div className="flex flex-col gap-1">
             <p className="font-semibold">{t("This table is fixed")}</p>
             <p>{t("It has shapes or images on it, so it is fixed like a picture and changing the table is not available in this form. Open it in the Table Studio to change its cells and what is over them.")}</p>
-            <p className="text-[11px] text-amber-800/80">{t("Shapes and images on this table: {count}", { count: b.shapes?.length ?? 0 })}</p>
+            <p className="text-xs text-amber-800/80">{t("Shapes and images on this table: {count}", { count: b.shapes?.length ?? 0 })}</p>
           </div>
         </div>
         <button type="button" onClick={() => onOpenStudio()} data-testid="open-table-studio" className="flex items-center justify-center gap-2 rounded-lg border border-accent bg-accent-soft px-3 py-2 text-sm font-medium text-accent-strong transition-colors hover:bg-white">
@@ -87,8 +87,8 @@ export default function TablePanel({ b, lang, onChange, examFont, onOpenStudio }
   return (
     <div className="flex flex-col gap-2.5" data-testid="table-panel">
       <div className="flex items-center justify-between">
-        <span className="text-[11px] font-semibold text-muted">{t("Table")}</span>
-        <button type="button" onClick={() => onOpenStudio()} data-testid="open-table-studio" className="flex items-center gap-1 text-[11px] font-medium text-indigo-600 hover:text-indigo-800">
+        <span className="text-xs font-semibold text-muted">{t("Table")}</span>
+        <button type="button" onClick={() => onOpenStudio()} data-testid="open-table-studio" className="flex items-center gap-1 text-xs font-medium text-indigo-700 hover:text-indigo-800">
           {t("Open in Table Studio")}
           <SquareArrowOutUpRight size={11} aria-hidden />
         </button>
