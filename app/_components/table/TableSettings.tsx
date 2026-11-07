@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import { Field, NumberInput, Segmented, SmallButton, Toggle } from "@/app/_components/inspector/fields";
-import { MAX_COLS, MAX_ROWS, colsOf, resizeTable, rowsOf, type TableBorders, type TableData, type TablePatch } from "@/app/_lib/table";
+import { MAX_COLS, MAX_ROWS, TABLE_HEADER_FILL, colsOf, resizeTable, rowsOf, type TableBorders, type TableData, type TablePatch } from "@/app/_lib/table";
 import { useT } from "@/app/_lib/uiLang";
 
 const BANDED = "#eef2ff";
@@ -57,14 +57,14 @@ export default function TableSettings({ table, onChange, width, children }: Prop
       </div>
 
       <Toggle checked={table.header} onChange={(header) => set({ header }, "header")} label={t("First row is a header (bold)")} />
-      {table.header && (
+      <Toggle checked={!!table.firstCol} onChange={(on) => set({ firstCol: on || undefined }, "firstCol")} label={t("First column is a header (bold)")} />
+      {(table.header || table.firstCol) && (
         <div className="flex flex-col gap-2 ps-6">
-          <Color label={t("Header fill")} value={table.headerFill ?? "#f3f4f6"} onChange={(headerFill) => set({ headerFill }, "headerFill")} testId="table-header-fill" />
+          <Color label={t("Header fill")} value={table.headerFill ?? TABLE_HEADER_FILL} onChange={(headerFill) => set({ headerFill }, "headerFill")} testId="table-header-fill" />
           <Color label={t("Header text color")} value={table.headerColor ?? "#111827"} onChange={(headerColor) => set({ headerColor }, "headerColor")} />
         </div>
       )}
       <Toggle checked={!!table.flip} onChange={(on) => set({ flip: on || undefined }, "flip")} label={t("Flip the table")} hint={t("The columns in the other order: A B C D… becomes …D C B A. The text keeps its direction.")} />
-      <Toggle checked={!!table.firstCol} onChange={(on) => set({ firstCol: on || undefined }, "firstCol")} label={t("First column in bold")} />
       <Toggle checked={!!table.banded} onChange={(on) => set({ banded: on ? BANDED : undefined }, "banded")} label={t("Shade every second row")} />
       {table.banded && (
         <div className="ps-6">

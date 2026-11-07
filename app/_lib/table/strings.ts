@@ -72,11 +72,16 @@ export const TABLE_FR: Record<string, string> = {
   "Clear contents": "Effacer le contenu",
   "Header fill": "Remplissage de l'en-tête",
   "Header text color": "Couleur du texte de l'en-tête",
-  "First column in bold": "Première colonne en gras",
+  "First column is a header (bold)": "La première colonne est un en-tête (gras)",
+  "Headers": "En-têtes",
+  "Row": "Ligne",
+  "Column": "Colonne",
   "Shade every second row": "Griser une ligne sur deux",
   "Shading color": "Couleur de la trame",
   "Drag the lines of the table on the page, or the lines between the column letters and the row numbers here, to change the width of the columns and the height of the rows.": "Faites glisser les lignes du tableau sur la page, ou les traits entre les lettres des colonnes et les numéros des lignes ici, pour changer la largeur des colonnes et la hauteur des lignes.",
-};
+  "Reverse": "Inverser",
+  "Merge": "Fusionner",
+  "Split": "Scinder",};
 
 export const TABLE_AR: Record<string, string> = {
   "Table Studio": "استوديو الجداول",
@@ -148,8 +153,13 @@ export const TABLE_AR: Record<string, string> = {
   "Clear contents": "مسح المحتوى",
   "Header fill": "تعبئة الترويسة",
   "Header text color": "لون نص الترويسة",
-  "First column in bold": "العمود الأول بخط غامق",
+  "First column is a header (bold)": "العمود الأول عنوان (بخط غامق)",
+  "Headers": "العناوين",
+  "Row": "صف",
+  "Column": "عمود",
   "Shade every second row": "تظليل صف من كل صفين",
   "Shading color": "لون التظليل",
   "Drag the lines of the table on the page, or the lines between the column letters and the row numbers here, to change the width of the columns and the height of the rows.": "اسحب خطوط الجدول في الصفحة، أو الخطوط بين حروف الأعمدة وأرقام الصفوف هنا، لتغيير عرض الأعمدة وارتفاع الصفوف.",
-};
+  "Reverse": "عكس",
+  "Merge": "دمج",
+  "Split": "فصل",};

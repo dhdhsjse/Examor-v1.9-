@@ -146,6 +146,16 @@ body {
   font-weight: 400;
   pointer-events: none;
 }
+/* A hint kept on one line inside its box, cut with "…" (the table's formula bar in the narrow right panel). */
+.rich-edit.rich-hint-line {
+  position: relative;
+}
+.rich-edit.rich-hint-line[data-empty="true"]::before {
+  inset-inline: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 /* The text box editor (workspace/TextboxEditor.tsx): the same paragraphs the canvas draws, as HTML. A flex column,
    so the space before and after a paragraph adds up (block margins would collapse into the larger one). */
 /* The Format painter is armed (Home → Clipboard): the cursor is a brush until the words are painted or Esc is pressed. */

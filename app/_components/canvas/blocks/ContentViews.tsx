@@ -5,7 +5,7 @@ import { Group, Image as KImage, Line, Path, Rect, Shape } from "react-konva";
 import { boxFillPath, boxLines } from "@/app/_lib/boxBorder";
 import StudioShapes from "@/app/_components/shapes/StudioShapes";
 import { isRtl } from "@/app/_lib/i18n";
-import { DEFAULT_ACCENT, layoutImageCaption, layoutTable, layoutText, layoutTextbox, tableFrame, type ListMarker, type ParagraphBox } from "@/app/_lib/blockLayout";
+import { DEFAULT_ACCENT, TABLE_HEADER_FILL, layoutImageCaption, layoutTable, layoutText, layoutTextbox, tableFrame, type ListMarker, type ParagraphBox } from "@/app/_lib/blockLayout";
 import { useImage } from "@/app/_lib/images";
 import { svgUrl } from "@/app/_lib/library";
 import { plainText, serializeRich } from "@/app/_lib/richText";
@@ -140,7 +140,7 @@ function TableBody({ b, meta }: { b: TableBlock; meta: ExamMeta }) {
 
   return (
     <Group listening={false}>
-      {b.header && L.rows[0] && <Rect width={w} height={L.rows[0].height} fill="#f3f4f6" />}
+      {b.header && L.rows[0] && <Rect width={w} height={L.rows[0].height} fill={TABLE_HEADER_FILL} />}
       {L.rows.map((row, r) => (
         <Group key={r}>
           {r > 0 && <Line points={[0, row.y, w, row.y]} stroke={INK} strokeWidth={1} />}

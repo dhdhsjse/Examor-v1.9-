@@ -4,6 +4,7 @@ import { fontStack } from "../fonts";
 import { newShapeItem } from "../shapes";
 import { editRegions } from "../editRegions";
 import type { ExamMeta, TableBlock } from "../types";
+import { cellLook } from "../table/model";
 
 const fr: ExamMeta = { title: "t", lang: "fr", templateId: "x" };
 const ar: ExamMeta = { ...fr, lang: "ar" };
@@ -124,6 +125,14 @@ describe("the look of cells", () => {
     expect(spec(0, 1).color).toBe("#fff");
     expect(spec(1, 0).bold).toBe(true);
     expect(spec(1, 1).bold).toBe(false);
+  });
+
+  it("shades the header column like the header row, without centring it", () => {
+    const t = table([["h", "h"], ["a", "b"]], { header: false, firstCol: true, headerFill: "#fef3c7", headerColor: "#333333" });
+    expect(cellLook(t, 1, 0)).toMatchObject({ bold: true, fill: "#fef3c7", color: "#333333", align: undefined });
+    expect(cellLook(t, 0, 0).fill).toBe("#fef3c7");
+    expect(cellLook(t, 1, 1)).toMatchObject({ bold: undefined, fill: undefined, color: undefined });
+    expect(cellLook({ ...t, headerFill: undefined }, 1, 0).fill).toBe(TABLE_HEADER_FILL);
   });
 
   it("draws the lines the border style says", () => {

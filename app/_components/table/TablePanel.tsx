@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeftRight, SquareArrowOutUpRight, TableCellsMerge, TableCellsSplit, TriangleAlert } from "lucide-react";
+import { ArrowLeftRight, PanelLeft, PanelRight, PanelTop, SquareArrowOutUpRight, TableCellsMerge, TableCellsSplit, TriangleAlert } from "lucide-react";
 import { useState } from "react";
 import { MAX_COLS, MAX_ROWS, anchorOf, colsOf, isFixedTable, resizeTable, rowsOf, tableMirrored, wholeMerges } from "@/app/_lib/table";
 import type { Lang, TableBlock } from "@/app/_lib/types";
@@ -47,7 +47,7 @@ function Count({ label, value, max, onChange, testId }: { label: string; value: 
 }
 
 // The properties of a selected table, in the right panel, kept small: a preview of the table (its cells are typed in and selected
-// there), its rows and columns, reversing the columns and merging the selected cells. Everything else (the look of the cells, lines,
+// there), its rows and columns, the header row and header column, reversing the columns and merging the selected cells. Everything else (the look of the cells, lines,
 // formulas, shapes) is in the Table Studio. Every change is one of the block's own updates, so it is part of the exam's undo history.
 export default function TablePanel({ b, lang, onChange, examFont, onOpenStudio }: Props) {
   const t = useT();
@@ -77,7 +77,8 @@ export default function TablePanel({ b, lang, onChange, examFont, onOpenStudio }
   const sel = clampSel(picked, rows, cols);
   const range = sel ? wholeMerges(b, selRange(sel)) : null;
   const apply = (patch: Partial<TableBlock>, key: string) => onChange(patch as BlockPatch, key);
-  const actions = makeActions(b, range, tableMirrored(b, lang === "ar"), apply, setSel);
+  const mirrored = tableMirrored(b, lang === "ar");
+  const actions = makeActions(b, range, mirrored, apply, setSel);
   // a merged cell alone selected: the button splits it
   const split = actions.canUnmerge && !!range && !!sel && (() => {
     const a = anchorOf(b, sel.focus.r, sel.focus.c);
@@ -105,10 +106,38 @@ export default function TablePanel({ b, lang, onChange, examFont, onOpenStudio }
         <Count label={t("Columns")} value={cols} max={MAX_COLS} onChange={(n) => apply(resizeTable(b, rows, n), "size")} testId="table-cols" />
       </div>
 
+      {/* the headers: across the top and down the first column (bold and shaded) */}
+      <span className="-mb-1 text-xs text-muted">{t("Headers")}</span>
+      <div className="grid grid-cols-2 gap-1.5">
+        <button
+          type="button"
+          onClick={() => apply({ header: !b.header }, "header")}
+          aria-pressed={b.header}
+          title={t("First row is a header (bold)")}
+          data-testid="table-header-row"
+          className={`${btn} ${b.header ? btnOn : ""}`}
+        >
+          <PanelTop size={13} aria-hidden />
+          <span className="truncate">{t("Row")}</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => apply({ firstCol: b.firstCol ? undefined : true }, "firstCol")}
+          aria-pressed={!!b.firstCol}
+          title={t("First column is a header (bold)")}
+          data-testid="table-header-col"
+          className={`${btn} ${b.firstCol ? btnOn : ""}`}
+        >
+          {/* (the first column is on the right when the table reads right to left) */}
+          {mirrored ? <PanelRight size={13} aria-hidden /> : <PanelLeft size={13} aria-hidden />}
+          <span className="truncate">{t("Column")}</span>
+        </button>
+      </div>
+
       <div className="grid grid-cols-2 gap-1.5">
         <button type="button" onClick={actions.flip} aria-pressed={actions.flipped} title={t("The columns in the other order: A B C D… becomes …D C B A. The text keeps its direction.")} data-testid="table-flip" className={`${btn} ${actions.flipped ? btnOn : ""}`}>
           <ArrowLeftRight size={13} aria-hidden />
-          <span className="truncate">{t("Reverse columns")}</span>
+          <span className="truncate">{t("Reverse")}</span>
         </button>
         <button
           type="button"
@@ -119,7 +148,7 @@ export default function TablePanel({ b, lang, onChange, examFont, onOpenStudio }
           className={btn}
         >
           {split ? <TableCellsSplit size={13} aria-hidden /> : <TableCellsMerge size={13} aria-hidden />}
-          <span className="truncate">{mergeText}</span>
+          <span className="truncate">{split ? t("Split") : t("Merge")}</span>
         </button>
       </div>
     </div>

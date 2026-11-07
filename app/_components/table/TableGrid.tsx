@@ -189,6 +189,18 @@ export default function TableGrid({ table, lang, sel, onSelect, onChange, onUndo
     if (edit?.from === "cell") editor.current?.focus("end");
   }, [edit?.r, edit?.c, edit?.from]);
 
+  // In the narrow panel a cell being typed in keeps its text on one line: it slides along so the caret stays in view.
+  useEffect(() => {
+    if (!compact || !edit || edit.from !== "cell") return;
+    const el = editor.current?.element();
+    const s = window.getSelection();
+    if (!el || !s?.rangeCount || !el.contains(s.focusNode)) return;
+    const caret = s.getRangeAt(0).getBoundingClientRect();
+    const box = el.getBoundingClientRect();
+    if (caret.right > box.right) el.scrollLeft += caret.right - box.right + 2;
+    else if (caret.left < box.left) el.scrollLeft -= box.left - caret.left + 2;
+  }, [compact, edit]);
+
   useEffect(() => {
     holder.current?.querySelector(`[data-r="${active.r}"][data-c="${active.c}"]`)?.scrollIntoView({ block: "nearest", inline: "nearest" });
   }, [active.r, active.c]);
@@ -477,7 +489,7 @@ export default function TableGrid({ table, lang, sel, onSelect, onChange, onUndo
           data-r={r}
           data-c={c}
           data-testid={`cell-${r}-${c}`}
-          className="relative flex min-w-0 overflow-hidden px-1.5 py-1 leading-tight break-words select-none"
+          className={`relative flex min-w-0 overflow-hidden px-1.5 py-1 leading-tight select-none ${compact ? "" : "break-words"}`}
           style={style}
           onMouseDown={(e) => pickCell(r, c, e)}
           onMouseEnter={(e) => enterCell(r, c, e)}
@@ -495,7 +507,9 @@ export default function TableGrid({ table, lang, sel, onSelect, onChange, onUndo
                 value={edit.draft}
                 onChange={(draft) => setEdit((cur) => (cur ? { ...cur, draft } : cur))}
                 dir={textRtl ? "rtl" : "ltr"}
-                className="rich-edit w-full bg-transparent whitespace-pre-wrap outline-none"
+                // (in the narrow panel a line does not wrap, it slides along as it is typed: the formula bar above shows all of it)
+                className={`rich-edit w-full bg-transparent outline-none ${compact ? "overflow-x-auto [scrollbar-width:none]" : ""}`}
+                style={compact ? { whiteSpace: "pre", overflowWrap: "normal" } : undefined}
                 // Enter starts a new line in the cell (the editor types it); Ctrl+Enter is done and goes down a row.
                 multiline={!singleLine}
                 onKeyDown={(ev) => {
@@ -518,7 +532,8 @@ export default function TableGrid({ table, lang, sel, onSelect, onChange, onUndo
               />
             </div>
           ) : (
-            <span className={`min-w-0 whitespace-pre-wrap ${showsError(text) ? "text-red-700" : ""}`}>
+            // (in the narrow panel a cell shows one line, cut with "…" rather than broken in the middle of its words)
+            <span className={`min-w-0 ${compact ? "truncate" : "whitespace-pre-wrap"} ${showsError(text) ? "text-red-700" : ""}`}>
               <RichSpan text={text} />
             </span>
           )}
@@ -555,7 +570,7 @@ export default function TableGrid({ table, lang, sel, onSelect, onChange, onUndo
             value={edit ? edit.draft : hasSel ? raw : ""}
             onChange={(draft) => setEdit((cur) => (cur ? { ...cur, draft } : hasSel ? { r: active.r, c: active.c, draft, from: "bar" } : cur))}
             dir={textRtl ? "rtl" : "ltr"}
-            className="rich-edit min-h-0 w-full bg-transparent p-0 outline-none"
+            className="rich-edit rich-hint-line min-h-0 w-full bg-transparent p-0 outline-none"
             placeholder={table.calc ? t("Type a value or a formula such as =SUM(B2:B4)") : t("Type the text of the cell")}
             onFocus={() => !edit && hasSel && setEdit({ r: active.r, c: active.c, draft: raw, from: "bar" })}
             onKeyDown={(ev) => {

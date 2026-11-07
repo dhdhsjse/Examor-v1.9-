@@ -57,7 +57,7 @@ export interface TableExtras {
   headerFill?: string;
   /** Text color of the header row */
   headerColor?: string;
-  /** The first column in bold, like a header */
+  /** The first column is a header, like the first row: bold, with the header's fill and text color */
   firstCol?: boolean;
   /** The columns in the other order: the first one on the side where the last one would be (A B C D… becomes …D C B A). The text keeps the direction of the exam. */
   flip?: boolean;
@@ -103,7 +103,7 @@ export function fixedScale(t: Pick<TableExtras, "shapes" | "base">, width: numbe
 }
 
 /** Fill of the header row when the table does not choose another */
-export const TABLE_HEADER_FILL = "#f3f4f6";
+export const TABLE_HEADER_FILL = "#e5e7eb";
 
 export const rowsOf = (t: Pick<TableData, "cells">) => t.cells.length;
 export const colsOf = (t: Pick<TableData, "cells">) => Math.max(1, t.cells[0]?.length ?? 1);
@@ -127,7 +127,7 @@ export function anchorOf(t: TableExtras, r: number, c: number): { r: number; c: 
   return m ? { r: m.r, c: m.c } : { r, c };
 }
 
-/** How a cell looks once the table's own rules (header, banded rows, bold first column) and the cell's own look are put together */
+/** How a cell looks once the table's own rules (header row, header column, banded rows) and the cell's own look are put together */
 export interface CellLook {
   /** undefined = the table's font */
   family?: string;
@@ -144,14 +144,16 @@ export interface CellLook {
 export function cellLook(t: TableData, r: number, c: number): CellLook {
   const s = styleAt(t, r, c);
   const head = t.header && r === 0;
+  // the first column as a header (down the side of the table): bold, with the header's fill and text color, but not centred
+  const headCol = !!t.firstCol && c === 0;
   const first = t.header ? 1 : 0;
   return {
     family: s.font,
-    bold: s.bold ?? (head || (!!t.firstCol && c === 0) ? true : undefined),
+    bold: s.bold ?? (head || headCol ? true : undefined),
     italic: s.italic,
     size: s.size,
-    color: s.color ?? (head ? t.headerColor : undefined),
-    fill: s.fill ?? (head ? (t.headerFill ?? TABLE_HEADER_FILL) : t.banded && r >= first && (r - first) % 2 === 1 ? t.banded : undefined),
+    color: s.color ?? (head || headCol ? t.headerColor : undefined),
+    fill: s.fill ?? (head || headCol ? (t.headerFill ?? TABLE_HEADER_FILL) : t.banded && r >= first && (r - first) % 2 === 1 ? t.banded : undefined),
     align: s.align ?? (head ? "center" : undefined),
     valign: s.valign ?? "middle",
   };
