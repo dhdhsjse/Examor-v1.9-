@@ -260,61 +260,77 @@ a {
 }
 
 /* ======================================================================================================================================
-   Dark mode (File → Appearance; `data-theme="dark"` on <html>, set before the first paint: _lib/theme.ts).
-   Apple's way: a near-black desk, panels one step lighter, cards and fields one more, hairlines instead of shadows, off-white text with
-   greys for the rest, the same indigo for actions. The tokens above change; the colour classes of the palette (tints for backgrounds and lines,
-   light shades for text) are remapped below; `bg-white` means "raised" and is the surface of a field or a card. The PAPER stays white: the
-   pages are drawn on the canvas, and anything that shows a piece of paper (a thumbnail, a sketch) says so with `data-paper`, which puts the
-   light tokens back inside it. ===================================================================================================== */
+   Dark mode, "Midnight" (File → Appearance; `data-theme="dark"` on <html>, set before the first paint: _lib/theme.ts).
+   A deep navy desk, panels one clear step lighter, fields one more; blue-grey hairlines that can be seen; off-white text; the indigo accent
+   brightened for text and kept deep enough as a fill to carry white text. Every text pair is at least 4.5:1 (WCAG AA).
+   How it works: the tokens of @theme change here; the colour classes of the palette are remapped (light tints become dark tints of the
+   same hue, dark text shades become light ones, the greys follow the navy steps); `bg-white` means "raised" (a field or a card).
+   The PAPER stays white: anything that shows a piece of the page (a thumbnail, a sketch) carries `data-paper`, which puts the light
+   tokens back inside it. ===================================================================================================== */
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --color-canvas: #0d0d0f;
-  --color-surface: #1c1c1e;
-  --color-subtle: #2c2c2e;
-  --color-hover: #3a3a3c;
-  --color-line: #3a3a3c;
-  --color-ink: #f5f5f7;
-  --color-muted: #a1a1a6;
-  --color-faint: #98989d;
-  --color-accent-strong: #a5b4fc;
-  --color-accent-soft: #2b2b55;
-  --color-pop: #2c2c2e;
-  --color-red-50: #372123; --color-red-100: #462426; --color-red-200: #5b2829; --color-red-300: #7b2e2f; --color-red-700: #f7a2a2; --color-red-800: #f9bebe; --color-red-900: #fcdada;
-  --color-amber-50: #382d1c; --color-amber-100: #47361a; --color-amber-200: #5d4318; --color-amber-300: #7e5715; --color-amber-700: #facf85; --color-amber-800: #fcddaa; --color-amber-900: #fdecce;
-  --color-emerald-50: #1a302b; --color-emerald-100: #1a3b32; --color-emerald-200: #184b3c; --color-emerald-300: #17634b; --color-emerald-700: #88dcc0; --color-emerald-800: #abe7d3; --color-emerald-900: #cff1e6;
-  --color-green-50: #1d3226; --color-green-100: #1d3e2b; --color-green-200: #1e4f31; --color-green-300: #1f683b; --color-green-700: #91e2af; --color-green-800: #b2ebc7; --color-green-900: #d3f3df;
-  --color-indigo-50: #252639; --color-indigo-100: #2a2b48; --color-indigo-200: #31325d; --color-indigo-300: #3c3d7d; --color-indigo-700: #b1b3f8; --color-indigo-800: #c8c9fa; --color-indigo-900: #e0e0fc;
-  --color-blue-50: #20293a; --color-blue-100: #223049; --color-blue-200: #253b5f; --color-blue-300: #2a4a7f; --color-blue-700: #9dc1fb; --color-blue-800: #bad3fc; --color-blue-900: #d8e6fd;
-  --color-rose-50: #382126; --color-rose-100: #47232b; --color-rose-200: #5d2731; --color-rose-300: #7d2c3b; --color-rose-700: #fa9faf; --color-rose-800: #fbbcc7; --color-rose-900: #fdd9df;
-  --color-sky-50: #1a2e38; --color-sky-100: #193747; --color-sky-200: #18455b; --color-sky-300: #165a79; --color-sky-700: #87d2f4; --color-sky-800: #abe0f7; --color-sky-900: #cfedfb;
-  --color-yellow-50: #37301b; --color-yellow-100: #453a1a; --color-yellow-200: #5a4917; --color-yellow-300: #796014; --color-yellow-700: #f5d984; --color-yellow-800: #f8e4a9; --color-yellow-900: #fbf0ce;
-  --color-orange-50: #39271d; --color-orange-100: #482d1c; --color-orange-200: #5e361c; --color-orange-300: #7f431a; --color-orange-700: #fcb98b; --color-orange-800: #fdcead; --color-orange-900: #fee3d0;
-  --color-violet-50: #2a243a; --color-violet-100: #322949; --color-violet-200: #3d2f5f; --color-violet-300: #4e397f; --color-violet-700: #c5aefb; --color-violet-800: #d6c6fc; --color-violet-900: #e8defd;
-  --color-purple-50: #2e233a; --color-purple-100: #382749; --color-purple-200: #462d5f; --color-purple-300: #5b3680; --color-purple-700: #d4aafb; --color-purple-800: #e1c4fc; --color-purple-900: #eeddfd;
-  --color-teal-50: #1b3030; --color-teal-100: #1a3b39; --color-teal-200: #1a4b47; --color-teal-300: #18625b; --color-teal-700: #8adcd3; --color-teal-800: #ade6e0; --color-teal-900: #d0f1ed;
-  --color-cyan-50: #193036; --color-cyan-100: #183b42; --color-cyan-200: #154a55; --color-cyan-300: #126170; --color-cyan-700: #83dbea; --color-cyan-800: #a8e5f0; --color-cyan-900: #cdf0f6;
-  --color-pink-50: #37222e; --color-pink-100: #462537; --color-pink-200: #5a2943; --color-pink-300: #7a3055; --color-pink-700: #f6a4cc; --color-pink-800: #f8bfdb; --color-pink-900: #fbdaeb;
-  --color-lime-50: #2a331d; --color-lime-100: #313f1c; --color-lime-200: #3b511c; --color-lime-300: #4b6b1a; --color-lime-700: #c2e68b; --color-lime-800: #d4edad; --color-lime-900: #e6f5d0;
-  --color-fuchsia-50: #352139; --color-fuchsia-100: #422448; --color-fuchsia-200: #55295d; --color-fuchsia-300: #712f7c; --color-fuchsia-700: #eca3f7; --color-fuchsia-800: #f2bef9; --color-fuchsia-900: #f7dafc;
-  --color-slate-50: #1c1c1e; --color-slate-100: #2c2c2e; --color-slate-200: #3a3a3c; --color-slate-300: #48484a; --color-slate-400: #6e6e73; --color-slate-500: #98989d; --color-slate-600: #aeaeb2; --color-slate-700: #c7c7cc; --color-slate-800: #d1d1d6; --color-slate-900: #e5e5ea;
-  --color-gray-50: #1c1c1e; --color-gray-100: #2c2c2e; --color-gray-200: #3a3a3c; --color-gray-300: #48484a; --color-gray-400: #6e6e73; --color-gray-500: #98989d; --color-gray-600: #aeaeb2; --color-gray-700: #c7c7cc; --color-gray-800: #d1d1d6; --color-gray-900: #e5e5ea;
-  --color-zinc-50: #1c1c1e; --color-zinc-100: #2c2c2e; --color-zinc-200: #3a3a3c; --color-zinc-300: #48484a; --color-zinc-400: #6e6e73; --color-zinc-500: #98989d; --color-zinc-600: #aeaeb2; --color-zinc-700: #c7c7cc; --color-zinc-800: #d1d1d6; --color-zinc-900: #e5e5ea;
-  --color-neutral-50: #1c1c1e; --color-neutral-100: #2c2c2e; --color-neutral-200: #3a3a3c; --color-neutral-300: #48484a; --color-neutral-400: #6e6e73; --color-neutral-500: #98989d; --color-neutral-600: #aeaeb2; --color-neutral-700: #c7c7cc; --color-neutral-800: #d1d1d6; --color-neutral-900: #e5e5ea;
-  --color-stone-50: #1c1c1e; --color-stone-100: #2c2c2e; --color-stone-200: #3a3a3c; --color-stone-300: #48484a; --color-stone-400: #6e6e73; --color-stone-500: #98989d; --color-stone-600: #aeaeb2; --color-stone-700: #c7c7cc; --color-stone-800: #d1d1d6; --color-stone-900: #e5e5ea;
+
+  /* Steps of the interface, from the desk up */
+  --color-canvas: #0b0f1c;      /* the desk around the pages */
+  --color-surface: #141a2b;     /* panels and bars */
+  --color-subtle: #1d2438;      /* fields and groups inside the panels */
+  --color-hover: #283150;       /* hover on rows and icon buttons */
+  --color-line: #313b5a;        /* hairlines */
+  --color-ink: #eef1fa;         /* main text: 15:1 on the panels */
+  --color-muted: #aab2cc;       /* secondary text: 8:1 */
+  --color-faint: #97a0bd;       /* hints: 4.9:1 even on a raised field */
+  --color-accent: #5b5ff0;      /* active state, rings, main actions (white text on it: 4.8:1) */
+  --color-accent-strong: #b4bffd; /* accent as text */
+  --color-accent-soft: #262b5e; /* selected / hover backgrounds */
+  --color-pop: #222a42;         /* menus and tooltips */
+
+  /* Steps only dark mode needs */
+  --dark-raised: #1d2438;       /* `bg-white` on a panel */
+  --dark-raised-2: #283150;     /* `bg-white` inside a field or a group */
+  --dark-hairline: rgb(148 163 214 / 0.16); /* what black hairlines (border-black/…, ring-black/…) become */
+  --dark-focus: #818cf8;
+
+  /* Greys: the navy steps above, then lighter blue-greys for icons and text */
+  --color-slate-50: #141a2b; --color-slate-100: #1d2438; --color-slate-200: #283150; --color-slate-300: #3d4766; --color-slate-400: #56607f; --color-slate-500: #7d87a6; --color-slate-600: #a3acc7; --color-slate-700: #c3cadd; --color-slate-800: #d9deeb; --color-slate-900: #eef1fa;
+  --color-gray-50: #141a2b; --color-gray-100: #1d2438; --color-gray-200: #283150; --color-gray-300: #3d4766; --color-gray-400: #56607f; --color-gray-500: #7d87a6; --color-gray-600: #a3acc7; --color-gray-700: #c3cadd; --color-gray-800: #d9deeb; --color-gray-900: #eef1fa;
+  --color-zinc-50: #141a2b; --color-zinc-100: #1d2438; --color-zinc-200: #283150; --color-zinc-300: #3d4766; --color-zinc-400: #56607f; --color-zinc-500: #7d87a6; --color-zinc-600: #a3acc7; --color-zinc-700: #c3cadd; --color-zinc-800: #d9deeb; --color-zinc-900: #eef1fa;
+  --color-neutral-50: #141a2b; --color-neutral-100: #1d2438; --color-neutral-200: #283150; --color-neutral-300: #3d4766; --color-neutral-400: #56607f; --color-neutral-500: #7d87a6; --color-neutral-600: #a3acc7; --color-neutral-700: #c3cadd; --color-neutral-800: #d9deeb; --color-neutral-900: #eef1fa;
+  --color-stone-50: #141a2b; --color-stone-100: #1d2438; --color-stone-200: #283150; --color-stone-300: #3d4766; --color-stone-400: #56607f; --color-stone-500: #7d87a6; --color-stone-600: #a3acc7; --color-stone-700: #c3cadd; --color-stone-800: #d9deeb; --color-stone-900: #eef1fa;
+
+  /* Hues: 50–300 are the hue mixed into the panel colour (backgrounds, borders); 700–900 are light shades for text on them (6:1 or more).
+     400–600 (fills with white text, dots, strong borders) stay as they are. */
+  --color-red-50: #301f2e; --color-red-100: #402230; --color-red-200: #562733; --color-red-300: #792d37; --color-red-700: #f98282; --color-red-800: #fba7a7; --color-red-900: #fcc6c6;
+  --color-orange-50: #322628; --color-orange-100: #422c27; --color-orange-200: #593525; --color-orange-300: #7d4321; --color-orange-700: #fb9f53; --color-orange-800: #fdbb86; --color-orange-900: #fdd3b1;
+  --color-amber-50: #312b27; --color-amber-100: #413425; --color-amber-200: #584221; --color-amber-300: #7c571c; --color-amber-700: #fbc73e; --color-amber-800: #fdd777; --color-amber-900: #fde5a7;
+  --color-yellow-50: #302e26; --color-yellow-100: #3f3924; --color-yellow-200: #544821; --color-yellow-300: #76601b; --color-yellow-700: #fbd231; --color-yellow-800: #fcdf6e; --color-yellow-900: #fdeba1;
+  --color-lime-50: #233128; --color-lime-100: #2a3e27; --color-lime-200: #364f25; --color-lime-300: #486c21; --color-lime-700: #aee94d; --color-lime-800: #c6f082; --color-lime-900: #daf5ae;
+  --color-green-50: #163032; --color-green-100: #173c35; --color-green-200: #184d3a; --color-green-300: #1a6942; --color-green-700: #60e28f; --color-green-800: #8febb0; --color-green-900: #b7f2cc;
+  --color-emerald-50: #132f36; --color-emerald-100: #133a3c; --color-emerald-200: #134a45; --color-emerald-300: #126353; --color-emerald-700: #4cd8a5; --color-emerald-800: #81e4c0; --color-emerald-900: #aeedd6;
+  --color-teal-50: #142f3b; --color-teal-100: #143a44; --color-teal-200: #144950; --color-teal-300: #146364; --color-teal-700: #46d9c7; --color-teal-800: #7de4d7; --color-teal-900: #abeee5;
+  --color-cyan-50: #122e41; --color-cyan-100: #11394d; --color-cyan-200: #10495e; --color-cyan-300: #0e6279; --color-cyan-700: #3dd8f0; --color-cyan-800: #76e4f4; --color-cyan-900: #a7edf8;
+  --color-sky-50: #132c44; --color-sky-100: #133651; --color-sky-200: #124464; --color-sky-300: #115a82; --color-sky-700: #50c5f9; --color-sky-800: #84d6fb; --color-sky-900: #afe5fc;
+  --color-blue-50: #192845; --color-blue-100: #1c2f54; --color-blue-200: #203968; --color-blue-300: #264a88; --color-blue-700: #73b0fb; --color-blue-800: #9cc7fc; --color-blue-900: #bfdbfd;
+  --color-indigo-50: #1e2445; --color-indigo-100: #242953; --color-indigo-200: #2c3166; --color-indigo-300: #383d86; --color-indigo-700: #909af9; --color-indigo-800: #b1b8fb; --color-indigo-900: #cdd1fc;
+  --color-violet-50: #232345; --color-violet-100: #2c2754; --color-violet-200: #382e68; --color-violet-300: #4b3888; --color-violet-700: #b299fb; --color-violet-800: #c8b7fc; --color-violet-900: #dcd1fd;
+  --color-purple-50: #272246; --color-purple-100: #322654; --color-purple-200: #402c68; --color-purple-300: #583589; --color-purple-700: #c893fc; --color-purple-800: #d8b3fd; --color-purple-900: #e6cefe;
+  --color-fuchsia-50: #2e2044; --color-fuchsia-100: #3b2352; --color-fuchsia-200: #4f2766; --color-fuchsia-300: #6f2e85; --color-fuchsia-700: #eb89fa; --color-fuchsia-800: #f1acfb; --color-fuchsia-900: #f6c9fd;
+  --color-pink-50: #302039; --color-pink-100: #3f2341; --color-pink-200: #55284c; --color-pink-300: #772f5e; --color-pink-700: #f583bf; --color-pink-800: #f8a8d2; --color-pink-900: #fbc7e2;
+  --color-rose-50: #311f32; --color-rose-100: #412135; --color-rose-200: #57253a; --color-rose-300: #7b2b42; --color-rose-700: #fb8294; --color-rose-800: #fda7b3; --color-rose-900: #fdc6ce;
 }
 
-/* Surfaces: a field or a card is one step above what it sits on; the shells of the Studios and the bars are the panel colour itself. */
+/* Surfaces: a field or a card is one step above what it sits on; the shells (Studios, bars, side panels, full-screen pages) are the panel itself */
 :root[data-theme="dark"] .bg-white,
 :root[data-theme="dark"] .hover\:bg-white:hover,
 :root[data-theme="dark"] .focus\:bg-white:focus,
 :root[data-theme="dark"] .focus-visible\:bg-white:focus-visible,
 :root[data-theme="dark"] .focus-within\:bg-white:focus-within {
-  background-color: #2c2c2e;
+  background-color: var(--dark-raised);
 }
 :root[data-theme="dark"] .bg-subtle .bg-white,
 :root[data-theme="dark"] .bg-subtle .hover\:bg-white:hover,
-:root[data-theme="dark"] .bg-subtle .focus\:bg-white:focus {
-  background-color: #3a3a3c;
+:root[data-theme="dark"] .bg-subtle .focus\:bg-white:focus,
+:root[data-theme="dark"] .bg-subtle .focus-within\:bg-white:focus-within {
+  background-color: var(--dark-raised-2);
 }
 :root[data-theme="dark"] .fixed.inset-0.bg-white,
 :root[data-theme="dark"] .absolute.inset-0.bg-white,
@@ -322,9 +338,9 @@ a {
 :root[data-theme="dark"] header.bg-white,
 :root[data-theme="dark"] main.bg-white,
 :root[data-theme="dark"] nav.bg-white {
-  background-color: #1c1c1e;
+  background-color: var(--color-surface);
 }
-/* (frosted bars and floating tool bars) */
+/* Frosted bars and floating tool bars: the raised step, see-through */
 :root[data-theme="dark"] .bg-white\/60,
 :root[data-theme="dark"] .bg-white\/70,
 :root[data-theme="dark"] .bg-white\/80,
@@ -333,56 +349,101 @@ a {
 :root[data-theme="dark"] .bg-white\/95,
 :root[data-theme="dark"] .hover\:bg-white\/60:hover,
 :root[data-theme="dark"] .hover\:bg-white\/70:hover {
-  background-color: rgb(44 44 46 / 0.88);
+  background-color: rgb(29 36 56 / 0.9);
 }
-/* Black hairlines and tints become white ones */
+:root[data-theme="dark"] .bg-surface\/95 {
+  background-color: rgb(20 26 43 / 0.95);
+}
+
+/* Black hairlines and tints become light blue-grey ones */
 :root[data-theme="dark"] [class*="ring-black/"] {
-  --tw-ring-color: rgb(255 255 255 / 0.14);
+  --tw-ring-color: var(--dark-hairline);
 }
 :root[data-theme="dark"] [class*="border-black/"] {
-  border-color: rgb(255 255 255 / 0.14);
+  border-color: var(--dark-hairline);
 }
 :root[data-theme="dark"] .bg-black\/5,
-:root[data-theme="dark"] .bg-black\/10 {
-  background-color: rgb(255 255 255 / 0.08);
+:root[data-theme="dark"] .hover\:bg-black\/5:hover {
+  background-color: rgb(170 178 204 / 0.1);
 }
+:root[data-theme="dark"] .bg-black\/10,
+:root[data-theme="dark"] .bg-black\/\[0\.08\] {
+  background-color: rgb(170 178 204 / 0.16);
+}
+/* Scrims behind dialogs: the desk, dimmed */
+:root[data-theme="dark"] .bg-black\/30,
+:root[data-theme="dark"] .bg-black\/40,
+:root[data-theme="dark"] .bg-black\/50 {
+  background-color: rgb(4 6 14 / 0.62);
+}
+/* Shadows: deeper, so floating things still lift off the panels */
+:root[data-theme="dark"] .shadow,
 :root[data-theme="dark"] .shadow-sm,
 :root[data-theme="dark"] .shadow-md,
 :root[data-theme="dark"] .shadow-lg,
-:root[data-theme="dark"] .shadow-xl {
-  --tw-shadow-color: rgb(0 0 0 / 0.5);
+:root[data-theme="dark"] .shadow-xl,
+:root[data-theme="dark"] .shadow-2xl {
+  --tw-shadow-color: rgb(2 4 12 / 0.6);
 }
-/* The accent: lighter as text, its own shade as a fill */
-:root[data-theme="dark"] .text-accent {
+
+/* The accent: light as text, deep as a fill (white text stays readable on it), a little lighter on hover */
+:root[data-theme="dark"] .text-accent,
+:root[data-theme="dark"] .hover\:text-accent:hover {
   color: #a5b4fc;
 }
 :root[data-theme="dark"] .bg-accent-strong,
 :root[data-theme="dark"] .hover\:bg-accent-strong:hover {
-  background-color: #575ce6;
+  background-color: #4f52e0;
 }
 :root[data-theme="dark"] .bg-pop {
-  box-shadow: 0 0 0 1px rgb(255 255 255 / 0.1), 0 12px 32px rgb(0 0 0 / 0.5);
+  box-shadow:
+    0 0 0 1px rgb(148 163 214 / 0.18),
+    0 14px 36px rgb(2 4 12 / 0.6);
+}
+:root[data-theme="dark"] :focus-visible {
+  outline-color: var(--dark-focus);
+}
+:root[data-theme="dark"] ::selection {
+  background: rgb(99 102 241 / 0.45);
+}
+:root[data-theme="dark"] a {
+  color: #a5b4fc;
 }
 
-/* The desk, the paper and the little fields of the editors */
+/* The desk and the paper on it */
 :root[data-theme="dark"] .workspace-dots {
-  background-image: radial-gradient(#242428 1px, transparent 1px);
+  background-image: radial-gradient(#252e48 1.2px, transparent 1.2px);
 }
 :root[data-theme="dark"] .paper-shadow {
   box-shadow:
-    0 0 0 1px rgb(255 255 255 / 0.06),
-    0 2px 6px rgb(0 0 0 / 0.4),
-    0 18px 44px -10px rgb(0 0 0 / 0.7);
+    0 0 0 1px rgb(148 163 214 / 0.1),
+    0 2px 6px rgb(2 4 12 / 0.5),
+    0 20px 48px -12px rgb(2 4 12 / 0.85);
 }
+
+/* The little fields of the editors */
 :root[data-theme="dark"] .equation-host math-field {
-  background: #2c2c2e;
+  background: var(--dark-raised);
+  border-color: var(--color-line);
   color: var(--color-ink);
 }
+:root[data-theme="dark"] .equation-host math-field:focus-within {
+  border-color: var(--dark-focus);
+  outline-color: rgb(99 102 241 / 0.35);
+}
+:root[data-theme="dark"] .textbox-editor.show-marks .ProseMirror p::after,
+:root[data-theme="dark"] .textbox-editor.show-marks .ProseMirror br:not(.ProseMirror-trailingBreak)::after {
+  color: #7d87a6;
+}
 :root[data-theme="dark"] ::-webkit-scrollbar-thumb {
-  background-color: rgba(235, 235, 245, 0.22);
+  background-color: rgb(170 178 204 / 0.24);
 }
 :root[data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(235, 235, 245, 0.38);
+  background-color: rgb(170 178 204 / 0.42);
+}
+/* Glyphs drawn as dark pictures (the keys of the math keyboard) are turned light */
+:root[data-theme="dark"] .kb-glyph {
+  filter: invert(1) brightness(0.95);
 }
 
 /* Paper: a piece of the page shown inside the app (a thumbnail, a sketch, the editor typed over a page) stays as it prints */
@@ -395,20 +456,18 @@ a {
   --color-hover: #ebebeb;
   --color-line: #e6e6e6;
   --color-surface: #ffffff;
+  --color-accent: #4f46e5;
   --color-accent-strong: #4338ca;
   --color-accent-soft: #eceafe;
+  --color-slate-50: #f8fafc; --color-slate-100: #f1f5f9; --color-slate-200: #e2e8f0; --color-slate-300: #cbd5e1; --color-slate-400: #94a3b8; --color-slate-500: #64748b; --color-slate-600: #475569; --color-slate-700: #334155; --color-slate-800: #1e293b; --color-slate-900: #0f172a;
+  --color-gray-50: #f9fafb; --color-gray-100: #f3f4f6; --color-gray-200: #e5e7eb; --color-gray-300: #d1d5db; --color-gray-400: #9ca3af; --color-gray-500: #6b7280; --color-gray-600: #4b5563; --color-gray-700: #374151; --color-gray-800: #1f2937; --color-gray-900: #111827;
+  --color-neutral-50: #fafafa; --color-neutral-100: #f5f5f5; --color-neutral-200: #e5e5e5; --color-neutral-300: #d4d4d4; --color-neutral-400: #a3a3a3; --color-neutral-500: #737373; --color-neutral-600: #525252; --color-neutral-700: #404040; --color-neutral-800: #262626; --color-neutral-900: #171717;
   color: #1e1e1e;
 }
 :root[data-theme="dark"] [data-paper].bg-white,
 :root[data-theme="dark"] [data-paper] .bg-white {
   background-color: #ffffff;
 }
-
-/* Glyphs drawn as dark pictures (the keys of the math keyboard) are turned light */
-:root[data-theme="dark"] .kb-glyph {
-  filter: invert(1);
-}
-:root[data-theme="dark"] [data-paper] {
-  --color-slate-50: #f8fafc; --color-slate-100: #f1f5f9; --color-slate-200: #e2e8f0; --color-slate-300: #cbd5e1; --color-slate-400: #94a3b8; --color-slate-500: #64748b;
-  --color-neutral-50: #fafafa; --color-neutral-100: #f5f5f5; --color-neutral-200: #e5e5e5; --color-neutral-300: #d4d4d4; --color-neutral-400: #a3a3a3;
+:root[data-theme="dark"] [data-paper] .bg-subtle .bg-white {
+  background-color: #ffffff;
 }

@@ -3,15 +3,32 @@ import { createBlock } from "../blocks";
 import { frameOf } from "../sheet/frame";
 import { sheetScores } from "../sheet/marks";
 import { defaultSheet } from "../sheet/model";
-import { MAX_RECENT, remembered } from "../sheet/stickers";
+import { isDefaultSticker, parseSticker, withSticker, withoutSticker } from "../sheet/stickers";
 import { addTotals, rowsWithoutTotal } from "../sheet/totals";
 import type { Block, ExamDoc, ExamMeta, MarkBlock } from "../types";
 
-describe("the marks the library keeps", () => {
-  it("puts the latest first, once, and keeps only so many", () => {
-    expect(remembered([1, 2, 3], 2, 6)).toEqual([2, 1, 3]);
-    expect(remembered([1, 2, 3], 9, 3)).toEqual([9, 1, 2]);
-    expect(remembered<number>([], 0.5, MAX_RECENT)).toEqual([0.5]);
+describe("the sticker library the teacher keeps", () => {
+  it("reads what is typed as a mark (a comma is a decimal point) or as words", () => {
+    expect(parseSticker("3.5")).toBe(3.5);
+    expect(parseSticker(" 1,25 ")).toBe(1.25);
+    expect(parseSticker("NR")).toBe("NR");
+    expect(parseSticker("")).toBeNull();
+    expect(parseSticker("0")).toBeNull();
+    expect(parseSticker("-2")).toBeNull();
+  });
+
+  it("adds a sticker at the end, once, and takes an added one off again", () => {
+    expect(withSticker([3.5, "NR"], 7)).toEqual([3.5, "NR", 7]);
+    expect(withSticker([3.5], 3.5)).toEqual([3.5]);
+    expect(withSticker([3.5, 7], 9, 2)).toEqual([3.5, 7]);
+    expect(withoutSticker([3.5, "NR"], "NR")).toEqual([3.5]);
+  });
+
+  it("does not add the usual stickers again: they are always there", () => {
+    expect(withSticker([], 1)).toEqual([]);
+    expect(withSticker([], "✓")).toEqual([]);
+    expect(isDefaultSticker(0.125)).toBe(true);
+    expect(isDefaultSticker(3.5)).toBe(false);
   });
 });
 
