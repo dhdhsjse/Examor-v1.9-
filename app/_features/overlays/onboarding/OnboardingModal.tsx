@@ -279,7 +279,6 @@ export function OnboardingModal({ ctx }: { ctx: Ctx }) {
         role="dialog"
         aria-modal="true"
         aria-label={t("Configure page layout")}
-        dir={ctx.dir}
         data-onboarding-dialog
         className="flex max-h-full w-full max-w-4xl flex-col overflow-hidden rounded-2xl bg-white p-6 shadow-2xl sm:p-8"
       >

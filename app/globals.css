@@ -30,6 +30,24 @@ body {
   user-select: none; /* feels like a desktop app */
 }
 
+/* Arabic interface. The layout is not mirrored: panels, toolbars and icons stay where they are in English
+   and French. Only the words read right-to-left: each element takes its direction from its own text (like
+   dir="auto"), so "حفظ…" keeps its "…" at the end and "تصدير PDF" reads in the right order, while the
+   text stays aligned on the left like the rest of the layout. Anything with its own `dir` (the pages and
+   their editors, formulas, numbers, typed fields) keeps its direction and alignment as in the other languages.
+   In the base layer, so the Tailwind classes (text-center…) still win. */
+@layer base {
+  html:lang(ar) body {
+    text-align: left;
+  }
+  html:lang(ar) body *:not([dir], [dir] *) {
+    unicode-bidi: plaintext;
+  }
+  html:lang(ar) body [dir] {
+    text-align: start;
+  }
+}
+
 /* Thin, light, rounded scrollbars (the window uses Chromium/WebView2). */
 ::-webkit-scrollbar {
   width: 10px;

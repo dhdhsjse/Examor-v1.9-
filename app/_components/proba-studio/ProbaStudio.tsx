@@ -34,7 +34,7 @@ type Inline = { tree: string; node: string };
 // the properties on the right. The drawing lives in this Studio only (useProbaStudio, with its own undo and redo): the exam's
 // undo history gets one step when it is inserted or updated.
 export default function ProbaStudio({ editing, onInsert, onUpdate, onClose }: Props) {
-  const { t, rtl, lang } = useUi();
+  const { t, lang } = useUi();
   const studio = useProbaStudio(editing ?? DEFAULT_PROBA_CONFIG, lang === "en" ? ["H", "T"] : ["P", "F"]);
   const { config, tool, selection, selectedTree, selectedNode, selectedShape, selectedItem, undo, redo, canUndo, canRedo, dirty, empty } = studio;
   const ink = useInkTools(); // (the page's Draw tool: the same brush, pencil and highlighter, kept between sessions)
@@ -114,7 +114,7 @@ export default function ProbaStudio({ editing, onInsert, onUpdate, onClose }: Pr
   const header = studioHeaderProps();
 
   return (
-    <div data-testid="proba-studio" dir={rtl ? "rtl" : "ltr"} className="fixed inset-0 z-50 flex flex-col bg-white">
+    <div data-testid="proba-studio" className="fixed inset-0 z-50 flex flex-col bg-white">
       {/* the shared studio header, slimmer here (40px) */}
       <header {...header} className={`${header.className} gap-2! py-1.5!`}>
         <h2 className="shrink-0 text-sm font-semibold text-ink">{t("Probability Studio")}</h2>

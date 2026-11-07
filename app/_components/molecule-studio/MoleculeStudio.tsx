@@ -44,7 +44,7 @@ const STARTS: { id: string; name?: { fr: string; en: string }; graph: MoleculeGr
 // bar of the page: select, draw, text box, eraser, math keyboard) and the properties on the right. The drawing lives in this Studio only (useMoleculeStudio, with its own
 // undo and redo): the exam's own undo history gets one step when the drawing is inserted or updated.
 export default function MoleculeStudio({ editing, onInsert, onUpdate, onInsertMolecule, onClose }: Props) {
-  const { t, lang, rtl } = useUi();
+  const { t, lang } = useUi();
   const studio = useMoleculeStudio(editing ?? BLANK);
   const { graph, activeElement, selection, clearSelection, selectEverything, deleteSelected, setElementOf, pickElement, loadGraph } = studio;
   const { undo, redo, canUndo, canRedo, dirty, copy, cut, paste } = studio;
@@ -132,7 +132,7 @@ export default function MoleculeStudio({ editing, onInsert, onUpdate, onInsertMo
     : { items: STARTS.map((s) => ({ id: s.id, name: s.name ? (lang === "fr" ? s.name.fr : s.name.en) : t("Blank page") })), current: start.id, disabled: dirty, onPick: chooseStart };
 
   return (
-    <div data-testid="molecule-studio-lab" dir={rtl ? "rtl" : "ltr"} className="fixed inset-0 z-50 flex flex-col bg-white">
+    <div data-testid="molecule-studio-lab" className="fixed inset-0 z-50 flex flex-col bg-white">
       <header {...header} className={`${header.className} gap-2! py-1.5!`}>
         <h2 className="shrink-0 text-sm font-semibold text-ink">{t("Molecule Studio")}</h2>
         <div className="mx-1 h-5 w-px bg-line" />

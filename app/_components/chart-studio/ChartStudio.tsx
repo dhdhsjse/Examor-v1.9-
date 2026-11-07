@@ -75,7 +75,7 @@ const emptyTextBox = (s: ShapeItem | undefined) => !!s && !s.text?.trim() && s.f
 // box, eraser, math keyboard): what it draws goes on the chart's picture. It goes on the page as a picture that keeps its settings:
 // double-click it to come back here. The chart has its own undo and redo; the exam's history gets one step on Insert or Update.
 export default function ChartStudio({ editing, onInsert, onUpdate, onClose }: Props) {
-  const { t, rtl } = useUi();
+  const { t } = useUi();
   const [history, setHistory] = useState<StudioHistory<ChartConfig>>(() => startStudioHistory(editing ?? newChart()));
   const chart = history.present;
   const dirty = isStudioDirty(history);
@@ -174,7 +174,7 @@ export default function ChartStudio({ editing, onInsert, onUpdate, onClose }: Pr
   const iconButton = "grid size-7 shrink-0 place-items-center rounded text-muted enabled:hover:bg-hover enabled:hover:text-ink disabled:opacity-40";
 
   return (
-    <div data-testid="chart-studio" dir={rtl ? "rtl" : "ltr"} className="fixed inset-0 z-50 flex flex-col bg-white">
+    <div data-testid="chart-studio" className="fixed inset-0 z-50 flex flex-col bg-white">
       <header {...header} className={`${header.className} gap-2! py-1.5!`}>
         <h2 className="shrink-0 text-sm font-semibold text-ink">{t("Chart Studio")}</h2>
         <div className="mx-1 h-5 w-px bg-line" />

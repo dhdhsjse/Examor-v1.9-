@@ -63,7 +63,7 @@ const readTip = () => {
 // The Molecule Studio: find a molecule, choose how it is drawn, hide or blank parts of it for the exercise, put it on the page.
 // Chemistry lives in app/_molecule (no React there); this file only arranges the screen and the flow.
 export default function MoleculeStudio({ editing, onInsert, onUpdate, onInsertText, onClose }: Props) {
-  const { t, lang, rtl } = useUi();
+  const { t, lang } = useUi();
   const chem = useChemEngine();
   const editor = useMoleculeEditor(editing);
   const { block, selection } = editor;
@@ -261,7 +261,7 @@ export default function MoleculeStudio({ editing, onInsert, onUpdate, onInsertTe
   // Full screen like the other Studios: the header has the search, how the molecule is drawn, the isomers and Insert; the molecules to
   // browse are on the left, the drawing in the middle (with its floating bar), and what can be changed on the right, one section each.
   return (
-    <div dir={rtl ? "rtl" : "ltr"} data-testid="molecule-studio" className="fixed inset-0 z-50 flex flex-col bg-white">
+    <div data-testid="molecule-studio" className="fixed inset-0 z-50 flex flex-col bg-white">
       <header {...header} className={`${header.className} gap-2! py-1.5!`}>
         <h2 className="shrink-0 text-sm font-semibold text-ink">{t("Molecule Studio")}</h2>
         <div className="mx-1 h-5 w-px bg-line" />

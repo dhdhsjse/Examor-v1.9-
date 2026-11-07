@@ -36,7 +36,7 @@ export const CHART_AR: Record<string, string> = {
   "Area chart": "مساحي",
   "Pie": "دائري",
   "Half pie": "نصف دائري",
-  "Text box: drag on the chart to draw one, then type": "مربع نص: اسحبه على المخطط ثم اكتب",
+  "Text box: drag on the chart to draw one, then type": "مربع نص: اسحب على المخطط لرسمه، ثم اكتب",
   "No title": "بدون عنوان",
   "Values": "القيم",
   "Name": "الاسم",

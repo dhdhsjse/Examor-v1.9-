@@ -41,7 +41,7 @@ function saveCollapsed(value: boolean) {
 
 // Slim column of page thumbnails between the toolbox and the page. Can be collapsed.
 export default function PageStrip({ pages, blocks, heights, activeIndex, onJump, onAddPage, onDeletePage }: Props) {
-  const { t, rtl } = useUi();
+  const { t } = useUi();
   const [collapsed, setCollapsed] = useState(loadCollapsed);
 
   const toggle = () => {
@@ -61,7 +61,7 @@ export default function PageStrip({ pages, blocks, heights, activeIndex, onJump,
       <PanelToggle
         side="start"
         open={!collapsed}
-        dir={rtl ? "rtl" : "ltr"}
+        dir="ltr"
         placement="top"
         title={collapsed ? t("Show pages") : t("Hide pages")}
         controls="page-strip"

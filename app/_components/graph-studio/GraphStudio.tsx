@@ -30,7 +30,7 @@ interface Props {
 // grid on the right. The graph lives in this Studio only (useGraphStudio, with its
 // own undo and redo): the exam's undo history gets one step when the graph is inserted or updated.
 export default function GraphStudio({ editing, onInsert, onUpdate, onClose }: Props) {
-  const { t, rtl } = useUi();
+  const { t } = useUi();
   const studio = useGraphStudio(editing ?? DEFAULT_GRAPH_CONFIG);
   const { undo, redo, canUndo, canRedo, dirty, selected, selectedAnnotation, selectedShape, shapeTool, tool, pickTool, selectFunction, selectAnnotation, removeFunction, removeAnnotation } = studio;
   const { config, view, setView, masked } = studio;
@@ -85,7 +85,7 @@ export default function GraphStudio({ editing, onInsert, onUpdate, onClose }: Pr
   const iconButton = "grid size-8 place-items-center rounded-full text-muted transition-[transform,background-color,color] duration-100 ease-out outline-none enabled:hover:bg-subtle enabled:hover:text-ink enabled:active:scale-90 focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-40";
 
   return (
-    <div data-testid="graph-studio" dir={rtl ? "rtl" : "ltr"} className="fixed inset-0 z-50 flex flex-col bg-white">
+    <div data-testid="graph-studio" className="fixed inset-0 z-50 flex flex-col bg-white">
       <header {...studioHeaderProps()}>
         <h2 className="shrink-0 text-base font-semibold tracking-[-0.01em] text-ink">{t("Graph Studio")}</h2>
 

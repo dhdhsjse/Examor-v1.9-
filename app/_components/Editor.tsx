@@ -1037,7 +1037,8 @@ export default function Editor() {
     selection: selectedId,
     activePageId: doc.pages[exam.activePage]?.id ?? "",
     t: tr,
-    dir: uiLang === "ar" ? "rtl" : "ltr",
+    // The interface keeps its left-to-right layout in every language (Arabic words still read right-to-left, see globals.css).
+    dir: "ltr",
     shell,
     activeInspectorId,
     openInspector,
@@ -1053,7 +1054,7 @@ export default function Editor() {
 
   return (
     <UiProvider lang={uiLang}>
-      <div className="flex h-screen flex-col bg-canvas" dir={uiLang === "ar" ? "rtl" : "ltr"}>
+      <div className="flex h-screen flex-col bg-canvas">
         {bars("top")}
 
         <div className="flex min-h-0 flex-1">

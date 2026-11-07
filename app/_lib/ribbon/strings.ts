@@ -170,7 +170,7 @@ export const RIBBON_AR: Record<string, string> = {
   "Replace": "استبدال",
   "Replace all": "استبدال الكل",
   "{n} replaced": "تم استبدال {n}",
-  "{n} found in {b} blocks": "تم العثور على {n} في {b} كتل",
+  "{n} found in {b} blocks": "تم العثور على {n} في {b} عناصر",
   "Nothing found": "لا نتائج",
   "Type the words to find in all the texts of the exam.": "اكتب الكلمات المراد البحث عنها في جميع نصوص الامتحان.",
   "Only the first {n} are listed.": "تُعرض أول {n} نتيجة فقط.",

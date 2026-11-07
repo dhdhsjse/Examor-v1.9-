@@ -102,7 +102,7 @@ export const STUDIO_FR: Record<string, string> = {
   "Wedge": "Coin",
   "Hashed": "Hachurée",
   "Open wedge": "Coin creux",
-  "Bold": "Épaisse",
+  "Bold bond": "Épaisse",
   "Wavy": "Ondulée",
   "Dative": "Dative",
   "Ionic": "Ionique",
@@ -167,7 +167,7 @@ export const STUDIO_FR: Record<string, string> = {
 };
 
 export const STUDIO_AR: Record<string, string> = {
-  "Drag on the paper to draw the shape (Shift: a square or a 45° line, Alt: from the centre), or click to put it at its usual size": "اسحب على الورقة لرسم الشكل (Shift : مربع أو خط بزاوية 45°، Alt : من المركز)، أو انقر لوضعه بحجمه المعتاد",
+  "Drag on the paper to draw the shape (Shift: a square or a 45° line, Alt: from the centre), or click to put it at its usual size": "اسحب على الورقة لرسم الشكل (Shift: مربع أو خط بزاوية 45°، Alt: من المركز)، أو انقر لوضعه بحجمه المعتاد",
   "Draw a molecule": "رسم جزيء",
   "Drawing lab": "ورشة الرسم",
   "Drawing": "الرسم",
@@ -247,7 +247,7 @@ export const STUDIO_AR: Record<string, string> = {
   "Nothing drawn yet. Pick a tool on the left and click the paper.": "لم يُرسم شيء بعد. اختر أداة من اليسار وانقر على الورقة.",
   "Click an atom or a bond to change it, or drag a frame around several.": "انقر على ذرة أو رابطة لتعديلها، أو ارسم إطارا حول عدة عناصر.",
   "Drag them together, or press Delete to remove them.": "حرّكها معا، أو اضغط Delete لحذفها.",
-  "Hydrogens": "الهيدروجين",
+  "Hydrogens": "ذرات الهيدروجين",
   "Manual": "يدوي",
   "Auto": "تلقائي",
   "Labels": "تسميات",
@@ -263,7 +263,7 @@ export const STUDIO_AR: Record<string, string> = {
   "Wedge": "إسفينية",
   "Hashed": "متقطعة",
   "Open wedge": "إسفين مفرغ",
-  "Bold": "غليظة",
+  "Bold bond": "غليظة",
   "Wavy": "متموجة",
   "Dative": "تناسقية",
   "Ionic": "أيونية",
@@ -293,7 +293,7 @@ export const STUDIO_AR: Record<string, string> = {
   "Click beside an atom to put a single electron (one dot) there · click a dot to take it away · Shift+click: the nearest one": "انقر بجانب ذرة لوضع إلكترون منفرد (نقطة) هناك · انقر على نقطة لإزالتها · Shift+نقر: الأقرب",
   "Single electron": "إلكترون منفرد",
   "Write them all automatically": "اكتبها كلها تلقائيا",
-  "Every atom gets the pairs its valence leaves, placed automatically": "تحصل كل ذرة على الأزواج التي تتركها تكافؤها، موضوعة تلقائيا",
+  "Every atom gets the pairs its valence leaves, placed automatically": "تحصل كل ذرة على الأزواج التي يتركها تكافؤها، موضوعة تلقائيا",
   "Placed by hand: {count}": "موضوعة يدويا: {count}",
   "One lone pair less": "زوج غير رابط أقل",
   "One lone pair more": "زوج غير رابط أكثر",
@@ -320,10 +320,10 @@ export const STUDIO_AR: Record<string, string> = {
   "Teacher view: everything is drawn, the masked parts faded": "عرض الأستاذ: كل شيء مرسوم والأجزاء المخفية باهتة",
   "Student view: this is what the students will see": "عرض التلميذ: هذا ما سيراه التلاميذ",
   "Masks do not apply to this representation: the students would see all of it. Use the Developed, Skeletal, Lewis or Cram tab.": "لا تنطبق الأقنعة على هذا التمثيل: سيراه التلاميذ كاملا. استعمل تبويب المفصّلة أو الهيكلية أو لويس أو كرام.",
-  "Atoms with more bonds than their usual valence: {count}": "ذرات لها روابط أكثر من تكافئها المعتاد: {count}",
+  "Atoms with more bonds than their usual valence: {count}": "ذرات لها روابط أكثر من تكافؤها المعتاد: {count}",
   "Drag on the paper to draw freely · Esc to stop": "اسحب على الورقة للرسم بحرية · Esc للإيقاف",
   "Drag on the paper to draw a text box, then type in it · Esc to stop": "اسحب على الورقة لرسم مربع نص، ثم اكتب فيه · Esc للإيقاف",
-  "Drag over a drawing or a shape to rub it out · Esc to stop": "مرّر فوق رسم أو شكل لمسحه · Esc للتوقف",
+  "Drag over a drawing or a shape to rub it out · Esc to stop": "مرّر فوق رسم أو شكل لمسحه · Esc للإيقاف",
   "Text box: drag on the paper to draw one, then type": "مربع نص: اسحب على الورقة لرسمه، ثم اكتب",
 };
 

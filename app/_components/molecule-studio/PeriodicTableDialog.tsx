@@ -16,7 +16,7 @@ const ROW_SIZES = "repeat(7, minmax(0, 1fr)) 14px repeat(2, minmax(0, 1fr))";
 
 // The periodic table as a dialog: pick any of the 118 elements.
 export default function PeriodicTableDialog({ selected, onPick, onClose }: Props) {
-  const { t, lang, rtl } = useUi();
+  const { t, lang } = useUi();
   const [hover, setHover] = useState<string | null>(null);
   const shown = PERIODIC_TABLE[hover ?? selected];
 
@@ -29,7 +29,7 @@ export default function PeriodicTableDialog({ selected, onPick, onClose }: Props
   return (
     <div className="absolute inset-0 z-20 grid place-items-center bg-black/40 p-4 backdrop-blur-sm" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div role="dialog" aria-modal="true" aria-label={t("Periodic table")} dir="ltr" className="flex max-h-full w-full max-w-[1180px] flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
-        <header className="flex items-center gap-4 border-b border-line px-5 py-3" dir={rtl ? "rtl" : "ltr"}>
+        <header className="flex items-center gap-4 border-b border-line px-5 py-3">
           <h3 className="shrink-0 text-base font-semibold text-ink">{t("Periodic table")}</h3>
           <Details element={shown} lang={lang} hovering={hover !== null} />
           <button autoFocus onClick={onClose} className="ms-auto grid size-8 shrink-0 place-items-center rounded-lg text-muted hover:bg-subtle hover:text-ink" title={t("Close (Esc)")} aria-label={t("Close (Esc)")}>

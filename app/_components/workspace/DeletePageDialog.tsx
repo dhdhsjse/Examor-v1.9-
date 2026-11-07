@@ -13,7 +13,7 @@ interface Props {
 
 // Warning before a page is deleted with everything on it. Cancel has the focus; Esc or a click outside cancels.
 export default function DeletePageDialog({ page, blocks, onConfirm, onCancel }: Props) {
-  const { t, rtl } = useUi();
+  const { t } = useUi();
   const cancelRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
@@ -34,7 +34,6 @@ export default function DeletePageDialog({ page, blocks, onConfirm, onCancel }: 
         aria-modal="true"
         aria-labelledby="delete-page-title"
         aria-describedby="delete-page-text"
-        dir={rtl ? "rtl" : "ltr"}
         className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-2xl"
       >
         <div className="flex items-start gap-3">

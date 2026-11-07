@@ -26,7 +26,7 @@ export function useBondNames(): { short: Record<BondType, string>; full: Record<
       wedge: t("Wedge"),
       dash: t("Hashed"),
       "wedge-open": t("Open wedge"),
-      bold: t("Bold"),
+      bold: t("Bold bond"),
       wavy: t("Wavy"),
       dative: t("Dative"),
       ionic: t("Ionic"),

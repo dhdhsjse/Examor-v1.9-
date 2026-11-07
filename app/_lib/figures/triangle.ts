@@ -48,7 +48,7 @@ export const triangleFigure: FigureDef = {
       kind: "select",
       options: [
         { value: "custom", label: "Custom" },
-        { value: "right", label: "Right" },
+        { value: "right", label: "Right-angled" },
         { value: "isosceles", label: "Isosceles" },
         { value: "equilateral", label: "Equilateral" },
         { value: "right-isosceles", label: "Right isosceles" },

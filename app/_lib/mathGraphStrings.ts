@@ -21,7 +21,7 @@ export const MATHGRAPH_FR: Record<string, string> = {
 };
 
 export const MATHGRAPH_AR: Record<string, string> = {
-  "Curves": "منحنيات",
+  "Curves": "المنحنيات",
   "Examples": "أمثلة",
   "Curve options": "خيارات المنحنى",
   "Derivative": "الدالة المشتقة",
@@ -34,5 +34,5 @@ export const MATHGRAPH_AR: Record<string, string> = {
   "Choose y so that the curves fit": "اختيار y لتظهر المنحنيات كاملة",
   "Usual window": "النافذة المعتادة",
   "Size on the page": "الحجم في الصفحة",
-  "Height (px)": "الارتفاع (px)",
+  "Height (px)": "الارتفاع (بكسل)",
 };

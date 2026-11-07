@@ -21,7 +21,16 @@ export type T = (text: string, vars?: Vars) => string;
 // "{name}" in the text is replaced by vars.name.
 export function translate(lang: UiLang, text: string, vars?: Vars): string {
   const out = (lang === "fr" ? FR[text] : lang === "ar" ? AR[text] : undefined) ?? text;
-  return vars ? out.replace(/\{(\w+)\}/g, (m, k: string) => (k in vars ? String(vars[k]) : m)) : out;
+  const filled = vars ? out.replace(/\{(\w+)\}/g, (m, k: string) => (k in vars ? String(vars[k]) : m)) : out;
+  return lang === "ar" ? rtlStart(filled) : filled;
+}
+
+// An Arabic text whose first letter is Latin ("pH و pKa", "{element} له 5 روابط", "Del — حذف") would be read
+// left-to-right, its words in the wrong order: a right-to-left mark (invisible) in front makes it read as Arabic.
+const FIRST_LETTER = /[A-Za-zÀ-ɏͰ-Ͽ؀-ۿݐ-ݿﭐ-﷿ﹰ-﻿]/;
+function rtlStart(s: string): string {
+  const first = FIRST_LETTER.exec(s)?.[0];
+  return first && !/[؀-﻿]/.test(first) && /[؀-ۿ]/.test(s) ? `‏${s}` : s;
 }
 
 export function loadUiLang(): UiLang {
@@ -41,16 +50,17 @@ export function saveUiLang(lang: UiLang) {
   } catch {}
 }
 
+// The layout is the same in every language: in Arabic the panels and tools stay where they are and
+// only the words read right-to-left (globals.css, "Arabic interface").
 interface UiValue {
   lang: UiLang;
-  rtl: boolean;
   t: T;
 }
 
-const UiContext = createContext<UiValue>({ lang: "en", rtl: false, t: (s, v) => translate("en", s, v) });
+const UiContext = createContext<UiValue>({ lang: "en", t: (s, v) => translate("en", s, v) });
 
 export function UiProvider({ lang, children }: { lang: UiLang; children: ReactNode }) {
-  const value = useMemo<UiValue>(() => ({ lang, rtl: lang === "ar", t: (s, v) => translate(lang, s, v) }), [lang]);
+  const value = useMemo<UiValue>(() => ({ lang, t: (s, v) => translate(lang, s, v) }), [lang]);
   return <UiContext value={value}>{children}</UiContext>;
 }
 

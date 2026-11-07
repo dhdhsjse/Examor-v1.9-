@@ -30,7 +30,7 @@ interface Props {
 // properties on the right. The circuit lives in this Studio only (useCircuitStudio, with its
 // own undo and redo): the exam's undo history gets one step when the circuit is inserted or updated.
 export default function CircuitStudio({ editing, onInsert, onUpdate, onClose }: Props) {
-  const { t, rtl } = useUi();
+  const { t } = useUi();
   const studio = useCircuitStudio(editing ?? DEFAULT_CIRCUIT_CONFIG);
   const { config, tool, draft, selectedComponent, selectedWire, selectedShape, undo, redo, canUndo, canRedo, dirty, empty } = studio;
   const ink = useInkTools(); // (the page's Draw tool: the same brush, pencil and highlighter, kept between sessions)
@@ -88,7 +88,7 @@ export default function CircuitStudio({ editing, onInsert, onUpdate, onClose }: 
   const iconButton = "grid size-8 place-items-center rounded-lg text-muted enabled:hover:bg-subtle enabled:hover:text-ink disabled:opacity-40";
 
   return (
-    <div data-testid="circuit-studio" dir={rtl ? "rtl" : "ltr"} className="fixed inset-0 z-50 flex flex-col bg-white">
+    <div data-testid="circuit-studio" className="fixed inset-0 z-50 flex flex-col bg-white">
       <header {...studioHeaderProps()}>
         <h2 className="shrink-0 text-base font-semibold text-ink">{t("Circuit Studio")}</h2>
         <span className="shrink-0 rounded-full bg-accent-soft px-2.5 py-0.5 text-xs font-medium text-accent-strong">{t("Circuit lab")}</span>

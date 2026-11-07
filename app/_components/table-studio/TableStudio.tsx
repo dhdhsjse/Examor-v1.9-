@@ -49,7 +49,7 @@ const emptyTextBox = (s: ShapeItem | undefined) => !!s && !s.text?.trim() && s.f
 // will show it. What is true of the whole table, or of the selected shape, is on the right. What is inserted is an ordinary table
 // block, so it can be changed again from the right panel, with the same tools, or here (the block's panel has a button back to the Studio).
 export default function TableStudio({ meta, editing, startShape, onInsert, onUpdate, onClose }: Props) {
-  const { t, rtl } = useUi();
+  const { t } = useUi();
   const lang = meta.lang;
   const studio = useTableStudio(editing ? studioTableOf(editing) : blankStudioTable(CONTENT_WIDTH));
   const { table, apply, undo, redo, canUndo, canRedo, dirty } = studio;
@@ -203,7 +203,7 @@ export default function TableStudio({ meta, editing, startShape, onInsert, onUpd
             : t("Click a cell and type · Enter edits · Tab moves right · drag the square of the selection to fill · right-click for rows and columns");
 
   return (
-    <div data-testid="table-studio" dir={rtl ? "rtl" : "ltr"} className="fixed inset-0 z-50 flex flex-col bg-white">
+    <div data-testid="table-studio" className="fixed inset-0 z-50 flex flex-col bg-white">
       <header {...studioHeaderProps()}>
         <h2 className="shrink-0 text-base font-semibold text-ink">{t("Table Studio")}</h2>
         <span className="shrink-0 rounded-full bg-accent-soft px-2.5 py-0.5 text-xs font-medium text-accent-strong">{t("Spreadsheet")}</span>

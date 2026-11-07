@@ -208,7 +208,7 @@ export type Ctx = {
   selection: string | null;
   activePageId: string;
   t: T;
-  dir: 'ltr' | 'rtl';
+  dir: 'ltr' | 'rtl'; // of the interface: 'ltr' in every language (the exam's own direction is in doc.meta.lang)
   shell: Shell;
   // The feature drawn in the right panel instead of the block / exam properties (see Feature.target).
   activeInspectorId: string | null;
