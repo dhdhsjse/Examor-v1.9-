@@ -43,7 +43,7 @@ export interface SheetConfig {
   headings: HeadingScope;
   frame: FrameOffsets;
   line: { color: string; width: number };
-  /** Whole marks under ten written with a zero first: "01" */
+  /** Whole marks under ten written with a zero first: "01" (always, now: the panel has no switch for it) */
   pad: boolean;
 }
 
@@ -68,7 +68,7 @@ export const defaultSheet = (lang: Lang, paper: SheetPaper = "bordered"): SheetC
     headings: "first",
     frame: { top: 0, right: 0, bottom: 0, left: 0, firstTop: 0 },
     line: { color: "#111111", width: 1.2 },
-    pad: false,
+    pad: true,
   };
 };
 
@@ -96,6 +96,6 @@ export function normalizeSheet(raw: Partial<SheetConfig> | undefined, lang: Lang
     headings: raw.headings === "all" || raw.headings === "none" ? raw.headings : "first",
     frame: { top: side(f.top), right: side(f.right), bottom: side(f.bottom), left: side(f.left), firstTop: num(f.firstTop, 0, 0, 600) },
     line: { color: typeof raw.line?.color === "string" ? raw.line.color : d.line.color, width: num(raw.line?.width, d.line.width, 0.5, 6) },
-    pad: raw.pad === true,
+    pad: true, // (older sheets too: whole marks are always written 01, 02)
   };
 }

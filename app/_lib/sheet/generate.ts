@@ -317,10 +317,16 @@ export function stickerFor(q: QuestionBlock, pageId: string, middle: number, dat
   return { ...b, meta: { source: { id: q.id, ...(part !== undefined ? { part } : {}) } }, layout: { ...b.layout, pageId, x: 0, y: Math.round((middle - h / 2) * 100) / 100, width: 56, height: h } };
 }
 
-/** The stickers of a question: a mark for each slot, and a total when there are two or more (it follows its marks, see settle.ts) */
-export function stickersFor(q: QuestionBlock, slots: Slot[], lang: Lang, meta: ExamMeta): MarkBlock[] {
+/** A bordered sheet with a column of totals: each row has its total there, even a row of one mark */
+export const totalsColumn = (sheet: SheetConfig | undefined) => sheet?.paper === "bordered" && !!sheet.total;
+
+/**
+ * The stickers of a question: a mark for each slot, and a total (it follows its marks, see settle.ts) when there are two or more, or whenever
+ * `always` (the sheet has its column of totals)
+ */
+export function stickersFor(q: QuestionBlock, slots: Slot[], lang: Lang, meta: ExamMeta, always = false): MarkBlock[] {
   const marks = slots.map((s) => stickerFor(q, s.pageId, s.y, { kind: "number", value: s.value }, lang, meta, s.part));
-  if (marks.length < 2) return marks;
+  if (!marks.length || (marks.length < 2 && !always)) return marks;
   return [...marks, stickerFor(q, slots[0].pageId, (slots[0].y + slots[slots.length - 1].y) / 2, { kind: "total", place: "center" }, lang, meta)];
 }
 
@@ -349,8 +355,8 @@ export function sourcesOf(blocks: Block[]): Map<string, Block[]> {
 /** The blocks of a question on the sheet, the answers to its sub-questions in order */
 export const anchorsOf = (by: Map<string, Block[]>, id: string): Block[] => [...(by.get(id) ?? [])].sort((a, b) => (a.meta?.source?.part ?? -1) - (b.meta?.source?.part ?? -1));
 
-/** The marks and the lines of the questions `list` (in exam order), from where their blocks are in `doc` */
-export function decorate(ctx: Ctx, doc: ExamDoc, list: QuestionBlock[], marks: boolean): Block[] {
+/** The marks and the lines of the questions `list` (in exam order), from where their blocks are in `doc` (`totals`: a total in every row) */
+export function decorate(ctx: Ctx, doc: ExamDoc, list: QuestionBlock[], marks: boolean, totals = false): Block[] {
   const by = sourcesOf(doc.blocks);
   const numbers = questionNumbers(doc.blocks, doc.pages);
   const order = questionsAndHeadings(ctx.exam);
@@ -359,7 +365,7 @@ export function decorate(ctx: Ctx, doc: ExamDoc, list: QuestionBlock[], marks: b
     const mine = anchorsOf(by, q.id);
     if (!mine.length) continue;
     const n = numbers.get((mine.find(isQuestion) ?? mine[0]).id) ?? ctx.numbers.get(q.id) ?? 1;
-    if (marks) out.push(...stickersFor(q, markSlots(q, mine, n, ctx.meta), ctx.lang, ctx.meta));
+    if (marks) out.push(...stickersFor(q, markSlots(q, mine, n, ctx.meta), ctx.lang, ctx.meta, totals));
     const next = order[order.findIndex((b) => b.id === q.id) + 1];
     const line = lineAfter(q, mine, n, doc.pages, ctx.lang, ctx.meta, !!next && isTitle(next));
     if (line) out.push(line);
@@ -410,7 +416,7 @@ export function generateCorrection(exam: ExamDoc, opts: SheetMakeOptions): Corre
   // The marks and the lines follow where the answers are (a text box puts the questions in its text in their room first)
   let doc: ExamDoc = { version: 1, meta, pages: ctx.pages, blocks: [...title.blocks, ...place(ctx, items, 0, room.top)], sheet: ctx.sheet };
   doc = syncEmbedded(doc);
-  doc = { ...doc, blocks: [...doc.blocks, ...decorate(ctx, doc, questionsOf(exam), opts.marks)] };
+  doc = { ...doc, blocks: [...doc.blocks, ...decorate(ctx, doc, questionsOf(exam), opts.marks, totalsColumn({ ...base, paper: opts.paper }))] };
   doc = settleSheet(doc);
 
   return { sheet: { ...ctx.sheet, paper: opts.paper }, pages: ctx.pages, blocks: doc.blocks, template: opts.template, ...noChrome() };

@@ -32,7 +32,12 @@ export interface FrameColumn {
   x1: number;
 }
 
+/** Which title of the sheet: the one of the answers, the one over both mark columns, the one of each mark column */
+export type TitleKey = "answer" | "mark" | "marks" | "total";
+
 export interface FrameTitle {
+  key: TitleKey;
+  /** (empty: nothing is written there, but its place is kept so it can be typed on the page) */
   text: string;
   rect: Rect;
 }
@@ -139,18 +144,16 @@ export function frameGeometry(sheet: SheetConfig, page: Page | undefined, pageIn
 
   const titles: FrameTitle[] = [];
   if (head) {
-    const at2 = (c: FrameColumn, y: number, h: number, text: string) => {
-      if (text) titles.push({ text, rect: { x: c.x0, y, width: c.x1 - c.x0, height: h } });
-    };
-    at2(answer, y0, head, sheet.answerTitle);
+    const at2 = (key: TitleKey, c: FrameColumn, y: number, h: number, text: string) => titles.push({ key, text, rect: { x: c.x0, y, width: c.x1 - c.x0, height: h } });
+    at2("answer", answer, y0, head, sheet.answerTitle);
     if (rows === 2 && marks && total) {
       const from = Math.min(marks.x0, total.x0);
       const to = Math.max(marks.x1, total.x1);
-      if (sheet.markTitle) titles.push({ text: sheet.markTitle, rect: { x: from, y: y0, width: to - from, height: HEAD_ROW } });
-      at2(marks, y0 + HEAD_ROW, HEAD_ROW, sheet.marks?.title ?? "");
-      at2(total, y0 + HEAD_ROW, HEAD_ROW, sheet.total?.title ?? "");
-    } else if (marks) at2(marks, y0, head, sheet.marks?.title ?? "");
-    else if (total) at2(total, y0, head, sheet.total?.title ?? "");
+      titles.push({ key: "mark", text: sheet.markTitle, rect: { x: from, y: y0, width: to - from, height: HEAD_ROW } });
+      at2("marks", marks, y0 + HEAD_ROW, HEAD_ROW, sheet.marks?.title ?? "");
+      at2("total", total, y0 + HEAD_ROW, HEAD_ROW, sheet.total?.title ?? "");
+    } else if (marks) at2("marks", marks, y0, head, sheet.marks?.title ?? "");
+    else if (total) at2("total", total, y0, head, sheet.total?.title ?? "");
   }
 
   const content: Rect = {
@@ -179,6 +182,20 @@ export function columnsAfterDrag(sheet: SheetConfig, which: "outer" | "inner", d
   if (!only) return { marks, total };
   const next = { ...only, width: limit(d) };
   return marks ? { marks: next, total } : { marks, total: next };
+}
+
+/** The settings with the title `key` changed to `text` (typed on the page) */
+export function withTitle(sheet: SheetConfig, key: TitleKey, text: string): Partial<SheetConfig> {
+  switch (key) {
+    case "answer":
+      return { answerTitle: text };
+    case "mark":
+      return { markTitle: text };
+    case "marks":
+      return sheet.marks ? { marks: { ...sheet.marks, title: text } } : {};
+    case "total":
+      return sheet.total ? { total: { ...sheet.total, title: text } } : {};
+  }
 }
 
 /** The frame offsets after one of its edges was dragged to `at` (page px); `first`: the top edge of the first page, which can also start lower */

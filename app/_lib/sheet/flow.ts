@@ -202,6 +202,34 @@ export function shiftBelow(doc: ExamDoc, page: number, from: number, delta: numb
   return changed ? { ...doc, blocks } : doc;
 }
 
+const MIN_ROW = 14; // the least height a row keeps when its line is pulled up
+
+/**
+ * A row line dragged up or down on its page, like the edge of a table row: the row over it grows or shrinks, and everything under it (the rows that
+ * follow, their marks and lines) moves by as much; what no longer fits passes on to the next page. The line never goes up past what is in its row.
+ * Null: not a line of this sheet, or it was dropped on another page (then it simply goes there).
+ */
+export function moveRule(doc: ExamDoc, id: string, pageId: string, y: number): ExamDoc | null {
+  const rule = doc.blocks.find((b) => b.id === id);
+  if (!doc.sheet || !rule || !isRule(rule) || rule.layout.pageId !== pageId) return null;
+  const page = doc.pages.findIndex((p) => p.id === pageId);
+  if (page < 0) return null;
+  const height = measurer(doc);
+  const half = height(rule) / 2;
+  const was = rule.layout.y + half; // (the line itself is in the middle of its block)
+  const room = contentBounds(doc, page);
+  const onPage = doc.blocks.filter((b) => b.layout.pageId === pageId && flows(b) && b.id !== id);
+  const above = Math.max(room.top, ...onPage.filter(isRule).map((r) => r.layout.y + height(r) / 2).filter((c) => c < was - 0.5));
+  // (what is in its row: the blocks whose middle is between the line over it and it)
+  const inRow = onPage.filter((b) => !isRule(b) && b.layout.y + height(b) / 2 > above && b.layout.y + height(b) / 2 < was);
+  const lowest = Math.max(above + MIN_ROW, ...inRow.map((b) => b.layout.y + height(b) + 2));
+  const to = round2(Math.min(room.bottom, Math.max(lowest, y + half)));
+  const delta = to - was;
+  if (Math.abs(delta) < 0.01) return doc;
+  const moved = { ...doc, blocks: doc.blocks.map((b) => (b.id === id ? ({ ...b, layout: { ...b.layout, y: round2(to - half) } } as Block) : b)) };
+  return fixOverflow(shiftBelow(moved, page, was + 0.5, delta, new Set([id])));
+}
+
 /** The pages that overflow pass their last bands on to the next page (a band that is the whole page stays: it cannot be cut) */
 export function fixOverflow(doc: ExamDoc): ExamDoc {
   if (!doc.sheet) return doc;

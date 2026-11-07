@@ -18,7 +18,7 @@ export interface SheetInfo {
 }
 
 const INK = "#111111";
-const TITLE_SIZE = 12;
+export const TITLE_SIZE = 12; // (the titles of the frame; FrameTitles types them in the same size)
 
 // A sticker: its mark, sign, total or words, in the middle of its box (the width of its column), plain or in a circle or a box.
 export function MarkView({ b, meta, info, interactive }: { b: MarkBlock; meta: ExamMeta; info?: SheetInfo; interactive: boolean }) {
@@ -63,7 +63,8 @@ export function RuleView({ b, info, interactive }: { b: RuleBlock; info?: SheetI
 }
 
 // The frame of a bordered page: the border, the lines between its columns and the titles of the columns.
-export function SheetFrame({ geo, sheet, box, meta }: { geo: FrameGeometry; sheet: SheetConfig; box: PageBox; meta: ExamMeta }) {
+// `titles`: false on screen, where the titles are boxes typed in on the page (FrameTitles, over the canvas).
+export function SheetFrame({ geo, sheet, box, meta, titles = true }: { geo: FrameGeometry; sheet: SheetConfig; box: PageBox; meta: ExamMeta; titles?: boolean }) {
   const { x, y, width, height } = geo.frame;
   const stroke = sheet.line.color;
   const sw = sheet.line.width;
@@ -73,7 +74,8 @@ export function SheetFrame({ geo, sheet, box, meta }: { geo: FrameGeometry; shee
       {geo.lines.map((l, k) => (
         <Line key={k} points={[l.x1, l.y1, l.x2, l.y2]} stroke={stroke} strokeWidth={sw} />
       ))}
-      {geo.titles.map((t, k) => (
+      {titles &&
+        geo.titles.filter((t) => t.text).map((t, k) => (
         <Text
           key={k}
           x={t.rect.x}

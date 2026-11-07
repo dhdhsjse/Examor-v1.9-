@@ -1,19 +1,17 @@
 "use client";
 
 import { Minus, Plus } from "lucide-react";
-import { useState } from "react";
-import { MARK_STEP, formatMark, snapMark } from "@/app/_lib/sheet/marks";
+import { useState, type ReactNode } from "react";
+import { MARK_STEP, snapMark } from "@/app/_lib/sheet/marks";
 import type { ExamMeta, MarkBlock, MarkKind, MarkLook, MarkOp, RuleBlock, RuleLine, TotalPlace } from "@/app/_lib/types";
 import { useT } from "@/app/_lib/uiLang";
 import { ColorGrid } from "../rich/FormatBar";
-import { Field, Segmented, Stepper, TextInput, Toggle, inputCls } from "./fields";
+import { Field, Segmented, Stepper, TextInput, Toggle } from "./fields";
 import type { OnChange } from "./QuestionEditors";
 
-const QUICK = [0.25, 0.5, 1, 2];
-
-// A mark typed in a box: what is typed counts at once (brought to a multiple of 0.125); the box shows what was typed until it is left, so "0." can
-// become "0.5". The buttons step by 0.125.
-function MarkField({ value, pad, onChange }: { value: number; pad: boolean; onChange: (v: number) => void }) {
+// A mark typed in a box between − and + (the look of the other steppers): what is typed counts at once (brought to a multiple of 0.125); the box
+// shows what was typed until it is left, so "0." can become "0.5". The buttons step by 0.125.
+function MarkField({ value, onChange }: { value: number; onChange: (v: number) => void }) {
   const t = useT();
   const [draft, setDraft] = useState(String(value));
   const [seen, setSeen] = useState(value);
@@ -22,51 +20,46 @@ function MarkField({ value, pad, onChange }: { value: number; pad: boolean; onCh
     setSeen(value);
     if (snapMark(Number(draft)) !== value) setDraft(String(value));
   }
-  const step = "grid size-7 place-items-center rounded-[5px] text-muted outline-none hover:bg-hover hover:text-ink focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-35";
+  const step = "grid size-7 place-items-center rounded-[5px] text-muted outline-none hover:bg-hover hover:text-ink focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-35 disabled:hover:bg-transparent";
   return (
-    <div className="flex flex-col gap-1.5">
-      <div className="flex items-center gap-1">
-        <button type="button" className={step} aria-label={t("Decrease")} disabled={value <= 0} onClick={() => onChange(snapMark(value - MARK_STEP))}>
-          <Minus size={12} strokeWidth={2} aria-hidden />
-        </button>
-        <input
-          type="number"
-          min={0}
-          step={MARK_STEP}
-          value={draft}
-          aria-label={t("Mark")}
-          data-testid="mark-value"
-          onChange={(e) => {
-            setDraft(e.target.value);
-            const v = Number(e.target.value);
-            if (e.target.value.trim() !== "" && Number.isFinite(v)) onChange(snapMark(v));
-          }}
-          onBlur={() => setDraft(String(value))}
-          className={`${inputCls} w-20 text-center`}
-        />
-        <button type="button" className={step} aria-label={t("Increase")} onClick={() => onChange(snapMark(value + MARK_STEP))}>
-          <Plus size={12} strokeWidth={2} aria-hidden />
-        </button>
-        <span className="ms-1 text-xs text-muted tabular-nums">{formatMark(value, pad)}</span>
-      </div>
-      <div className="flex gap-1">
-        {QUICK.map((q) => (
-          <button
-            key={q}
-            type="button"
-            onClick={() => onChange(q)}
-            className={`h-6 flex-1 rounded-[5px] text-xs tabular-nums transition-colors outline-none focus-visible:ring-2 focus-visible:ring-accent ${value === q ? "bg-emerald-600 font-semibold text-white" : "bg-subtle text-ink hover:bg-hover"}`}
-          >
-            {formatMark(q, pad)}
-          </button>
-        ))}
-      </div>
+    <div className="flex items-center rounded-[5px] bg-subtle">
+      <button type="button" className={step} aria-label={t("Decrease")} disabled={value <= 0} onClick={() => onChange(snapMark(value - MARK_STEP))}>
+        <Minus size={12} strokeWidth={2} aria-hidden />
+      </button>
+      <input
+        type="number"
+        min={0}
+        step={MARK_STEP}
+        value={draft}
+        aria-label={t("Mark")}
+        data-testid="mark-value"
+        onChange={(e) => {
+          setDraft(e.target.value);
+          const v = Number(e.target.value);
+          if (e.target.value.trim() !== "" && Number.isFinite(v)) onChange(snapMark(v));
+        }}
+        onBlur={() => setDraft(String(value))}
+        className="h-7 w-14 rounded-[5px] bg-transparent text-center text-xs text-ink tabular-nums outline-none [appearance:textfield] focus-visible:ring-2 focus-visible:ring-accent [&::-webkit-inner-spin-button]:appearance-none"
+      />
+      <button type="button" className={step} aria-label={t("Increase")} onClick={() => onChange(snapMark(value + MARK_STEP))}>
+        <Plus size={12} strokeWidth={2} aria-hidden />
+      </button>
+    </div>
+  );
+}
+
+// A label on the left, its control on the right.
+function Row({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="flex min-h-7 items-center justify-between gap-2">
+      <span className="text-xs text-muted">{label}</span>
+      {children}
     </div>
   );
 }
 
 // Properties of a sticker of the correction sheet: what it is (a mark, a sign, a total, a few words), its value, where a total sits in its row, its look.
-export function MarkEditor({ b, meta, pad, shown, onChange }: { b: MarkBlock; meta: ExamMeta; pad: boolean; shown?: number; onChange: OnChange }) {
+export function MarkEditor({ b, meta, shown, onChange }: { b: MarkBlock; meta: ExamMeta; shown?: number; onChange: OnChange }) {
   const t = useT();
   const kinds: { value: MarkKind; label: string }[] = [
     { value: "number", label: t("Mark") },
@@ -100,9 +93,9 @@ export function MarkEditor({ b, meta, pad, shown, onChange }: { b: MarkBlock; me
       </Field>
 
       {b.kind === "number" && (
-        <Field label={t("Mark")} group>
-          <MarkField value={b.value ?? 0} pad={pad} onChange={(value) => onChange({ value }, "value")} />
-        </Field>
+        <Row label={t("Mark")}>
+          <MarkField value={b.value ?? 0} onChange={(value) => onChange({ value }, "value")} />
+        </Row>
       )}
 
       {b.kind === "op" && (
@@ -113,14 +106,11 @@ export function MarkEditor({ b, meta, pad, shown, onChange }: { b: MarkBlock; me
 
       {b.kind === "total" && (
         <>
-          <p className="text-xs leading-snug text-muted">
-            {b.manual ? t("The total you typed.") : t("The total of the marks of its row: {total}", { total: formatMark(shown ?? 0, pad) })}
-          </p>
           <Toggle checked={!!b.manual} onChange={(manual) => onChange({ manual, ...(manual ? { value: shown ?? b.value ?? 0 } : {}) }, "manual")} label={t("Type the total myself")} />
           {b.manual && (
-            <Field label={t("Total")} group>
-              <MarkField value={b.value ?? 0} pad={pad} onChange={(value) => onChange({ value }, "value")} />
-            </Field>
+            <Row label={t("Total")}>
+              <MarkField value={b.value ?? 0} onChange={(value) => onChange({ value }, "value")} />
+            </Row>
           )}
           <Field label={t("Place in its row")} group>
             <Segmented value={b.place ?? "center"} options={places} onChange={(place) => onChange({ place }, "place")} />
@@ -140,20 +130,20 @@ export function MarkEditor({ b, meta, pad, shown, onChange }: { b: MarkBlock; me
       <Field label={t("Color")} group>
         <ColorGrid value={b.color} autoLabel={t("Black")} onChange={(color) => onChange({ color }, "color")} />
       </Field>
-      <div className="flex min-h-7 items-center justify-between gap-2">
-        <span className="text-xs text-muted">{t("Size")}</span>
+      <Row label={t("Size")}>
         <Stepper value={b.size ?? meta.fontSize ?? 14} min={9} max={40} onChange={(size) => onChange({ size }, "size")} />
-      </div>
+      </Row>
     </>
   );
 }
 
-// Properties of a line across the correction sheet: what it closes (a row, an exercise) or that it is not drawn, and its color.
+// Properties of a line across the correction sheet: thin (between two rows), thick (between two exercises) or hidden (it cuts the rows without
+// being printed), and its color. It is moved up and down on the page: its row grows or shrinks, the rows under it follow (sheet/flow.ts moveRule).
 export function RuleEditor({ b, onChange }: { b: RuleBlock; onChange: OnChange }) {
   const t = useT();
   const lines: { value: RuleLine; label: string }[] = [
-    { value: "row", label: t("Between rows") },
-    { value: "exercise", label: t("Between exercises") },
+    { value: "row", label: t("Thin") },
+    { value: "exercise", label: t("Thick") },
     { value: "hidden", label: t("Hidden") },
   ];
   return (
@@ -161,7 +151,6 @@ export function RuleEditor({ b, onChange }: { b: RuleBlock; onChange: OnChange }
       <Field label={t("Line")} group>
         <Segmented value={b.line ?? "row"} options={lines} onChange={(line) => onChange({ line }, "line")} />
       </Field>
-      <p className="text-xs leading-snug text-muted">{t("The marks above it and under it are two rows, each with its own total.")}</p>
       <Field label={t("Color")} group>
         <ColorGrid value={b.color} autoLabel={t("Sheet color")} onChange={(color) => onChange({ color }, "color")} />
       </Field>

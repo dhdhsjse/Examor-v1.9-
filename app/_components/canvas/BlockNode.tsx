@@ -238,7 +238,7 @@ export default function BlockNode(props: Props) {
         strokeWidth={props.grouped ? 1.5 / props.zoom : 1}
         dash={props.grouped ? [5 / props.zoom, 3 / props.zoom] : [4, 3]}
         cornerRadius={4}
-        listening={!props.erasable}
+        listening={!props.erasable || block.type === "mark" || block.type === "rule"} // (a sticker or a line is rubbed out by its box: what it draws does not catch the mouse)
       />
       {explore && block.type === "graph" ? (
         <GraphExplorer b={block} height={height} zoom={props.zoom} onPatch={props.onPatch} />

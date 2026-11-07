@@ -29,6 +29,7 @@ import {
   sourcesOf,
   stickerFor,
   titleOfBox,
+  totalsColumn,
   type Ctx,
   type Template,
 } from "./generate";
@@ -119,6 +120,9 @@ export function staleSources(exam: ExamDoc, sheet: ExamDoc, template: Template):
 function alignMarks(exam: ExamDoc, doc: ExamDoc, qs: QuestionBlock[]): ExamDoc {
   const ctx = ctxFor(exam, doc);
   const numbers = questionNumbers(doc.blocks, doc.pages);
+  // (with a column of totals every row has its total, even a row of one mark: it is neither taken away nor left missing)
+  const column = totalsColumn(doc.sheet);
+  const least = column ? 1 : 2;
   let blocks = doc.blocks;
   const added: Block[] = [];
   for (const q of qs) {
@@ -141,8 +145,8 @@ function alignMarks(exam: ExamDoc, doc: ExamDoc, qs: QuestionBlock[]): ExamDoc {
     }
     const gone = new Set(marks.filter((m) => !used.has(m.id)).map((m) => m.id));
     const total = linked.find((m) => m.kind === "total");
-    if (total && !total.manual && slots.length < 2) gone.add(total.id);
-    if (!total && marks.length < 2 && slots.length >= 2) added.push(stickerFor(q, slots[0].pageId, (slots[0].y + slots[slots.length - 1].y) / 2, { kind: "total", place: "center" }, ctx.lang, ctx.meta));
+    if (total && !total.manual && slots.length < least) gone.add(total.id);
+    if (!total && (column || marks.length < 2) && slots.length >= least) added.push(stickerFor(q, slots[0].pageId, (slots[0].y + slots[slots.length - 1].y) / 2, { kind: "total", place: "center" }, ctx.lang, ctx.meta));
     blocks = blocks.filter((b) => !gone.has(b.id)).map((b) => moved.get(b.id) ?? b);
   }
   return added.length || blocks !== doc.blocks ? { ...doc, blocks: [...blocks, ...added] } : doc;
@@ -318,12 +322,12 @@ export function addQuestions(exam: ExamDoc, sheet: ExamDoc, template: Template, 
     const came = new Set(r.items.map((b) => b.id));
     const hasLine = (id: string) => doc.blocks.some((b) => isRule(b) && b.meta?.source?.id === id);
     const qs = questionsOf(exam).filter((q) => (came.has(q.id) || came.has(q.meta?.slot ?? "")) && !hasLine(q.id));
-    doc = { ...doc, blocks: [...doc.blocks, ...decorate(ctx, doc, qs, marks)] };
+    doc = { ...doc, blocks: [...doc.blocks, ...decorate(ctx, doc, qs, marks, totalsColumn(sheet.sheet))] };
   }
   // the questions that came into a box that was there: their marks and their line
   if (embedded.length) {
     const ctx = ctxFor(exam, doc);
-    doc = { ...doc, blocks: [...doc.blocks, ...decorate(ctx, doc, embedded, marks)] };
+    doc = { ...doc, blocks: [...doc.blocks, ...decorate(ctx, doc, embedded, marks, totalsColumn(sheet.sheet))] };
   }
   return settleSheet(doc);
 }

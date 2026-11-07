@@ -25,11 +25,13 @@ import {
 } from "./pageChrome";
 import { withFullMark } from "./examMark";
 import { contentBounds } from "./sheet/frame";
+import { moveRule } from "./sheet/flow";
 import { generateCorrection } from "./sheet/generate";
 import { rebuildSheet } from "./sheet/links";
 import type { SheetChoice, SheetConfig } from "./sheet/model";
 import { createCorrection, dropCorrection, mergeView, partChanged, readCorrection, viewOf, withCorrection, withSheetChrome, type Part } from "./sheet/part";
 import { settleSheet } from "./sheet/settle";
+import { addTotals } from "./sheet/totals";
 import { saveAutosave } from "./storage";
 import { moveSlotTo, removeBlock, settleTextboxes, stepSlot } from "./textboxSlots";
 import { buildDoc, type Template } from "./templates";
@@ -304,6 +306,8 @@ export function useExam(initial: ExamDoc, t?: T) {
       commit((d) => {
         const added = { ...d, pages, blocks: [...d.blocks, ...chrome, block] };
         const next = chrome.length && tRef.current && pages.length !== d.pages.length ? syncChrome(d, added, tRef.current, { pageCount: true }) : added;
+        // A mark stamped on the correction sheet: its row gets its total when it now asks for one (one mark with a column of totals, two on free paper)
+        if (block.type === "mark" && block.kind === "number" && next.sheet) return addTotals(next, block.id);
         // An exam header on a page without one becomes that page's header.
         return block.type === "header" ? adoptHeaders(next) : next;
       });
@@ -327,6 +331,9 @@ export function useExam(initial: ExamDoc, t?: T) {
           const h = blockHeights(d).get(id) ?? 0;
           return moveSlotTo(d, id, y + h / 2);
         }
+        // A row line of the correction sheet moved on its page: its row grows or shrinks and the rows under it follow (sheet/flow.ts)
+        const ruled = cur?.type === "rule" ? moveRule(d, id, pageId, y) : null;
+        if (ruled) return ruled;
         // The block moved goes over the others (saved, so the PDF draws it on top too, as the page shows it).
         const others = d.blocks.filter((b) => b.id !== id).map((b) => b.layout.z ?? 0);
         const top = Math.max(0, ...others);
@@ -592,7 +599,13 @@ export function useExam(initial: ExamDoc, t?: T) {
 
   // The settings of the paper of the correction sheet (its columns, frame, titles…). Changes with the same `key` (dragging an edge) are one undo step.
   const setSheet = useCallback(
-    (patch: Partial<SheetConfig>, key?: string) => commit((d) => (d.sheet ? { ...d, sheet: { ...d.sheet, ...patch } } : d), { key }),
+    (patch: Partial<SheetConfig>, key?: string) =>
+      commit((d) => {
+        if (!d.sheet) return d;
+        const next = { ...d, sheet: { ...d.sheet, ...patch } };
+        // (the column of totals turned on, or the paper changed: the rows that now ask for a total get one)
+        return (!d.sheet.total && next.sheet.total) || d.sheet.paper !== next.sheet.paper ? addTotals(next) : next;
+      }, { key }),
     [commit],
   );
 

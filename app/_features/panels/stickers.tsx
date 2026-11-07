@@ -8,6 +8,7 @@ export const stickersPanel: Feature = {
   label: "Stickers",
   render: ({ ctx }) => {
     const { shell } = ctx;
-    return <StickerPanel stamp={shell.canvasTool === "stamp" ? shell.stamp : null} onPick={shell.setStamp} pad={!!shell.sheet?.config.pad} totalOn={shell.sheet?.config.paper !== "bordered" || !!shell.sheet?.config.total} onPad={(pad) => shell.setSheet({ pad })} textboxOn={shell.canvasTool === "textbox"} onTextbox={() => shell.setCanvasTool(shell.canvasTool === "textbox" ? "select" : "textbox")} />;
+    const sheet = shell.sheet?.config;
+    return <StickerPanel stamp={shell.canvasTool === "stamp" ? shell.stamp : null} onPick={shell.setStamp} pad={!!sheet?.pad} />;
   },
 };

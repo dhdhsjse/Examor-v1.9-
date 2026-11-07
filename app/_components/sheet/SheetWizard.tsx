@@ -90,13 +90,13 @@ export default function SheetWizard({ rebuild, questions, points, fullMark, init
   }, [onClose]);
 
   const templates: { id: SheetTemplate; title: string; hint: string }[] = [
-    { id: "answers", title: t("Questions and answers"), hint: t("One row per question: its number, its model answer and its marks.") },
-    { id: "copy", title: t("The exam with its answers"), hint: t("The whole exam in the answer column, with the answers under the questions and the marks beside them.") },
-    { id: "blank", title: t("An empty sheet"), hint: t("Start from nothing: put the answers, the marks and the lines yourself.") },
+    { id: "answers", title: t("Questions and answers"), hint: t("One row per question") },
+    { id: "copy", title: t("The exam with its answers"), hint: t("The whole exam, answered") },
+    { id: "blank", title: t("An empty sheet"), hint: t("Start from nothing") },
   ];
   const papers: { id: SheetPaper; title: string; hint: string }[] = [
-    { id: "bordered", title: t("Bordered"), hint: t("A frame with a column for the marks and one for the totals, like an official answer key.") },
-    { id: "free", title: t("Free paper"), hint: t("No frame: put the stickers and the lines where you want.") },
+    { id: "bordered", title: t("Bordered"), hint: t("Columns for the marks") },
+    { id: "free", title: t("Free paper"), hint: t("No frame") },
   ];
   const fromExam = template !== "blank";
   const mismatch = fromExam && marks && questions > 0 && Math.abs(points - fullMark) > 1e-6;
@@ -118,7 +118,6 @@ export default function SheetWizard({ rebuild, questions, points, fullMark, init
         <div className="flex items-start justify-between px-8 pt-7 pb-3">
           <div>
             <h2 className="text-[22px] font-semibold tracking-[-0.02em] text-ink">{rebuild ? t("Make the correction sheet again") : t("Make the correction sheet")}</h2>
-            <p className="mt-1 text-[13px] tracking-[-0.01em] text-muted">{t("Choose what it is made from and the paper it is written on. You can change everything afterwards.")}</p>
           </div>
           <button type="button" onClick={onClose} className="grid size-8 place-items-center rounded-full bg-subtle text-muted transition-[transform,background-color] duration-100 outline-none hover:bg-hover hover:text-ink focus-visible:ring-2 focus-visible:ring-accent active:scale-90" title={t("Close (Esc)")} aria-label={t("Close (Esc)")}>
             ✕
@@ -176,7 +175,6 @@ export default function SheetWizard({ rebuild, questions, points, fullMark, init
           <label className={`flex cursor-pointer items-center justify-between gap-4 rounded-2xl bg-subtle px-4 py-3 ${fromExam ? "text-ink" : "text-faint"}`}>
             <span className="flex flex-col gap-0.5 text-[15px] font-medium tracking-[-0.015em]">
               {t("Put the marks of the questions")}
-              <span className="text-xs leading-snug font-normal tracking-[-0.005em] text-muted">{t("The points of each question become a mark beside its answer, with a total when it has several.")}</span>
             </span>
             <input
               type="checkbox"
@@ -200,7 +198,7 @@ export default function SheetWizard({ rebuild, questions, points, fullMark, init
             </p>
           )}
           {fromExam && questions === 0 && <p className="rounded-2xl bg-amber-50 px-4 py-3 text-[13px] text-amber-900">{t("The exam has no questions yet: the sheet will only have its title.")}</p>}
-          {rebuild && <p className="rounded-2xl bg-amber-50 px-4 py-3 text-[13px] text-amber-900">{t("This replaces the correction sheet you have (the settings of its frame are kept). Ctrl+Z brings the old one back.")}</p>}
+          {rebuild && <p className="rounded-2xl bg-amber-50 px-4 py-3 text-[13px] text-amber-900">{t("Replaces the current sheet. Ctrl+Z brings it back.")}</p>}
         </div>
 
         <div className="flex items-center justify-end gap-2.5 px-8 pt-3 pb-7">

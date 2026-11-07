@@ -4,7 +4,7 @@
 // Every function takes the whole file and gives back the whole file.
 import { isQuestion, questionNumbers } from "../blocks";
 import type { Block, ExamDoc, MarkBlock, OpenBlock, QuestionBlock } from "../types";
-import { anchorsOf, generateCorrection, markSlots, questionsOf, sourcesOf, stickersFor, type SheetMakeOptions } from "./generate";
+import { anchorsOf, generateCorrection, markSlots, questionsOf, sourcesOf, stickersFor, totalsColumn, type SheetMakeOptions } from "./generate";
 import { isMark, sheetScores } from "./marks";
 import type { SheetTemplate } from "./model";
 import { settleSheet } from "./settle";
@@ -184,7 +184,7 @@ export function resetMarks(full: ExamDoc, ids: string[]): ExamDoc {
       if (mine.length) {
         const n = sheetNumbers.get((mine.find(isQuestion) ?? mine[0]).id) ?? examNumbers.get(q.id) ?? 1;
         blocks = blocks.filter((b) => !own(b));
-        made.push(...stickersFor(q, markSlots(q, mine, n, exam.meta), exam.meta.lang, exam.meta));
+        made.push(...stickersFor(q, markSlots(q, mine, n, exam.meta), exam.meta.lang, exam.meta, totalsColumn(sheet.sheet)));
         continue;
       }
       // (its answers are gone: the first of its marks takes the points of the question, the others go)

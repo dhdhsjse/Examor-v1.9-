@@ -69,7 +69,7 @@ describe("marks that are not the points of the exam", () => {
   it("can be fixed by making the marks again from the points of the exam", () => {
     const fixed = resetMarks(full, [q1.id]);
     expect(linkReport(fixed)?.diffs).toEqual([]);
-    expect(marks(fixed).filter((m) => m.meta?.source?.id === q1.id).map((m) => m.value)).toEqual([1]);
+    expect(marks(fixed).filter((m) => m.meta?.source?.id === q1.id && m.kind === "number").map((m) => m.value)).toEqual([1]);
     // (the marks of the other questions are the same blocks)
     const before = marks(full).filter((m) => m.meta?.source?.id === q2.id);
     const after = marks(fixed).filter((m) => m.meta?.source?.id === q2.id);
@@ -176,7 +176,7 @@ describe("questions the sheet does not have", () => {
     expect(linkReport(next)?.missing).toEqual([]);
     expect(linkReport(next)?.diffs).toEqual([]);
     expect(sourcesOf(sheetOf(next).blocks).get(fresh.id)).toHaveLength(1);
-    expect(marks(next).filter((m) => m.meta?.source?.id === fresh.id).map((m) => m.value)).toEqual([2]);
+    expect(marks(next).filter((m) => m.meta?.source?.id === fresh.id && m.kind === "number").map((m) => m.value)).toEqual([2]);
     expect(sheetScores(sheetOf(next)).total).toBe(1 + 2 + 2.5 + 2);
     // (the exam is left alone)
     expect(next.blocks).toBe(grown.blocks);

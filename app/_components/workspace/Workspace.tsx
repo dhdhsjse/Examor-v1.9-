@@ -15,6 +15,8 @@ import { useZoom } from "@/app/_lib/useZoom";
 import { chromeConfig, withChromeConfig } from "@/app/_lib/pageChrome";
 import type { ResizeResult } from "../canvas/BlockNode";
 import ExamCanvas, { type BlockMover, type DrawnBox, type MarginEditView } from "../canvas/ExamCanvas";
+import FrameTitles from "../canvas/FrameTitles";
+import { frameOf } from "@/app/_lib/sheet/frame";
 import { DOCKED_HEIGHT_VAR } from "../math-keyboard/FloatingKeyboard";
 import AnswerBar from "./AnswerBar";
 import ChromeBar from "./ChromeBar";
@@ -92,8 +94,6 @@ interface Props {
   onDropItem: (action: ToolAction, at: DropPoint) => void;
 }
 
-const ANSWER_BAR_KEY = "examBuilder.answerBarOpen";
-
 // Page thumbnails on the left, the zoomable page stack in the center, zoom bottom-right.
 export default function Workspace(props: Props) {
   const t = useT();
@@ -114,15 +114,10 @@ export default function Workspace(props: Props) {
   const [dropHover, setDropHover] = useState(false);
   const [dragging, setDragging] = useState(false);
   const [askDelete, setAskDelete] = useState<string | null>(null); // page waiting for "Do you really want to delete it?"
-  const [answerOpen, setAnswerOpen] = useState(() => {
-    try {
-      return localStorage.getItem(ANSWER_BAR_KEY) !== "0";
-    } catch {
-      return true;
-    }
-  });
   // Pages can differ in size: each one has its box on the canvas (see pageBoxes).
   const boxes = useMemo(() => pageBoxes(pages), [pages]);
+  // (a bordered correction sheet: the frame of each page, whose titles are typed on the page)
+  const frames = useMemo(() => (doc.sheet?.paper === "bordered" ? pages.map((_, i) => frameOf(doc, i)) : null), [doc, pages]);
   const canvasSize = stackSize(boxes);
   const { zoom, fitMode, setZoom, fitPage, fitWidth } = useZoom(viewport, boxes[Math.min(activePage, boxes.length - 1)] ?? canvasSize);
   const [panReady, setPanReady] = useState(false); // Space held: drag to move around
@@ -288,13 +283,6 @@ export default function Workspace(props: Props) {
     props.onDropItem(JSON.parse(raw) as ToolAction, { pageIndex: i, x: x - boxes[i].left, y: y - boxes[i].top });
   };
 
-  const toggleAnswerBar = () => {
-    setAnswerOpen(!answerOpen);
-    try {
-      localStorage.setItem(ANSWER_BAR_KEY, answerOpen ? "0" : "1");
-    } catch {}
-  };
-
   const editBlock = editing ? doc.blocks.find((b) => b.id === editing.id) : undefined;
   const selected = doc.blocks.find((b) => b.id === selectedId);
   const question = selected && isQuestion(selected) && !dragging ? selected : undefined;
@@ -402,6 +390,9 @@ export default function Workspace(props: Props) {
                   />
                 </div>
 
+                {/* The titles of the frame of a correction sheet, typed on the page */}
+                {frames && doc.sheet && <FrameTitles geos={frames} boxes={boxes} sheet={doc.sheet} meta={doc.meta} onChange={props.onSheet} />}
+
                 {/* Typing in a text box: a rich-text editor over it, following it while it is resized */}
                 {editing && editBlock?.type === "textbox" && (
                   <TextboxEditor
@@ -499,8 +490,6 @@ export default function Workspace(props: Props) {
                   <AnswerBar
                     block={question}
                     lang={doc.meta.lang}
-                    open={answerOpen}
-                    onToggle={toggleAnswerBar}
                     onPatch={(patch, field) => props.onPatch(question.id, patch, field)}
                     onEdit={(field) => props.onEditStart(question.id, field)}
                   />

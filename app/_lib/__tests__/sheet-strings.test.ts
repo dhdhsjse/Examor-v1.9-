@@ -43,23 +43,23 @@ describe("the interface strings of the correction sheet", () => {
     "There is no correction sheet yet",
     "Make it first: it is printed here, with the marks beside the answers.",
     "Correction sheet made",
-    "Correction sheet made from the exam — check it and move what you want",
+
     "Make the correction sheet first",
     "Open the correction sheet",
     "This row already has a total.",
     "Make the correction sheet…",
-    "Model answer: Properties panel",
   ];
   const files = [
     "../../_components/workspace/StickerPanel.tsx",
+    "../../_components/canvas/FrameTitles.tsx",
     "../../_components/inspector/SheetEditors.tsx",
     "../../_components/inspector/SheetSettings.tsx",
     "../../_components/sheet/SheetWizard.tsx",
     "../../_features/panels/exam-summary.tsx",
     "../../_features/groups/group-stickers.ts",
   ];
-  // (looked up by name: the lines a sticker panel offers, and the message of the Stamp tool)
-  const used = new Set([...files.flatMap(textsOf), ...elsewhere, "Line between rows", "Line between exercises", "Invisible break", "Click on the page to put the sticker — Esc to stop"]);
+  // (looked up by name: the message of the Stamp tool)
+  const used = new Set([...files.flatMap(textsOf), ...elsewhere, "Click on the page to put the sticker — Esc to stop"]);
 
   it("finds the strings of the screens", () => {
     expect(used.size).toBeGreaterThan(100);

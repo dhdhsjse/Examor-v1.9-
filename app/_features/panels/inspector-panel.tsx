@@ -43,6 +43,7 @@ export const inspectorPanel: Feature = {
         hasSheet={shell.hasSheet}
         onOpenCorrection={() => shell.setMode("key")}
         onDeleteSheet={shell.deleteSheet}
+        onRemakeSheet={() => shell.openSheetWizard(true)}
         onClose={shell.selectNone}
       />
     );

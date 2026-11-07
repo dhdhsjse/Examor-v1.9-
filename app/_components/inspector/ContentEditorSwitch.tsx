@@ -63,7 +63,7 @@ export function ContentEditorSwitch({ block, number, lang, totalPoints, onChange
     case "divider":
       return <DividerEditor b={block} onChange={onChange} />;
     case "mark":
-      return <MarkEditor b={block} meta={meta ?? { title: "", lang, templateId: "" }} pad={!!sheet?.config.pad} shown={sheet?.scores.shown.get(block.id)} onChange={onChange} />;
+      return <MarkEditor b={block} meta={meta ?? { title: "", lang, templateId: "" }} shown={sheet?.scores.shown.get(block.id)} onChange={onChange} />;
     case "rule":
       return <RuleEditor b={block} onChange={onChange} />;
     case "header":

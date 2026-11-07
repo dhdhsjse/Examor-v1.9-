@@ -1,34 +1,72 @@
 "use client";
 
-import { ChevronRight, Minus, Plus, TriangleAlert } from "lucide-react";
+import { ChevronDown, MoreHorizontal, TriangleAlert } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { DEFAULT_SIZE } from "@/app/_lib/blockLayout";
 import type { SheetFix, SheetReport } from "@/app/_lib/sheet/links";
 import { formatMark } from "@/app/_lib/sheet/marks";
 import type { SheetScores } from "@/app/_lib/sheet/marks";
 import { defaultSheet, type HeadingScope, type SheetConfig, type SheetPaper } from "@/app/_lib/sheet/model";
+import { marksForTotal } from "@/app/_lib/sheet/totals";
 import type { ExamMeta } from "@/app/_lib/types";
 import { useT } from "@/app/_lib/uiLang";
-import InfoTip from "../InfoTip";
+import Dropdown, { type MenuItem } from "@/app/_features/core/Dropdown";
 import { ColorGrid } from "../rich/FormatBar";
-import { Segmented, SmallButton } from "./fields";
+import { MenuSelect, Segmented, Stepper } from "./fields";
 
 const round = (n: number) => Math.round(n * 1000) / 1000;
 
-function Section({ title, children }: { title?: string; children: ReactNode }) {
+// A group of settings, divided from the next by a line (same as the exam's settings).
+function Section({ title, children }: { title?: ReactNode; children: ReactNode }) {
   return (
-    <section aria-label={title} className="flex flex-col gap-2 px-3 py-3">
-      {title && <h3 className="flex h-5 items-center text-xs font-semibold text-ink">{title}</h3>}
+    <section className="flex flex-col gap-1.5 px-3 py-2">
+      {title && <h3 className="flex h-5 items-center gap-1.5 text-xs font-semibold text-ink">{title}</h3>}
       {children}
     </section>
   );
 }
 
-const Hint = ({ children }: { children: ReactNode }) => <p className="text-xs leading-snug text-faint">{children}</p>;
+// A label on the left, its control on the right (every row of the frame block is one of these, 32px high).
+function Row({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="flex min-h-8 items-center justify-between gap-3" role="group" aria-label={label}>
+      <span className="shrink-0 text-xs text-muted">{label}</span>
+      {children}
+    </div>
+  );
+}
 
-// The right panel while the correction sheet is shown and nothing is selected: its paper (free, or bordered like an official answer key with a column
-// of marks and a column of totals), what it adds up to, and its look. The columns and the edges of the frame are dragged on the page (FrameHandles).
-export default function SheetSettings({ sheet, scores, full, onFullMark, onGoTo, meta, report, fix, onChange, onMeta, onDelete }: {
+// An on/off setting: a small switch (the emerald of the correction sheet when on).
+function Switch({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label: string }) {
+  return (
+    <input
+      type="checkbox"
+      role="switch"
+      checked={checked}
+      aria-label={label}
+      onChange={(e) => onChange(e.target.checked)}
+      className="relative h-4 w-7 shrink-0 cursor-pointer appearance-none rounded-full bg-muted/40 transition-colors outline-none before:absolute before:top-0.5 before:left-0.5 before:size-3 before:rounded-full before:bg-[#fff] before:shadow-sm before:transition-transform before:content-[''] checked:bg-emerald-600 checked:before:translate-x-3 focus-visible:ring-2 focus-visible:ring-accent rtl:before:right-0.5 rtl:before:left-auto rtl:checked:before:-translate-x-3"
+    />
+  );
+}
+
+// (the frame block is closed at first; once opened it stays open while the app is, even when the panel shows something else for a while)
+let frameOpen = false;
+
+// Something on the sheet that needs a look, and the buttons that fix it (or show it).
+interface Check {
+  key: string;
+  text: string;
+  hint?: string;
+  actions: { label: string; run: () => void }[];
+}
+
+const actionBtn =
+  "h-5 shrink-0 rounded-[4px] px-1.5 text-[11px] font-medium text-accent transition-colors outline-none hover:bg-hover focus-visible:ring-2 focus-visible:ring-accent";
+
+// The right panel while the correction sheet is shown and nothing is selected. Most used first: what the marks add up to, what needs a look (and
+// the button that fixes it), the frame, the look. What is done rarely (make it again, fit the answers, close up the rows, delete) is in the ⋯ menu.
+export default function SheetSettings({ sheet, scores, full, onFullMark, onGoTo, meta, report, fix, onChange, onMeta, onRemake, onDelete }: {
   sheet: SheetConfig;
   scores: SheetScores;
   full: number;
@@ -39,23 +77,110 @@ export default function SheetSettings({ sheet, scores, full, onFullMark, onGoTo,
   fix: SheetFix;
   onChange: (patch: Partial<SheetConfig>, key?: string) => void;
   onMeta: (patch: Partial<ExamMeta>, key?: string) => void;
+  onRemake: () => void;
   onDelete: () => void;
 }) {
   const t = useT();
   const [sure, setSure] = useState(false);
+  const [open, setOpen] = useState(frameOpen);
   const [draft, setDraft] = useState<string | null>(null); // the full mark as it is being typed
   const bordered = sheet.paper === "bordered";
   const dflt = defaultSheet(meta.lang);
+  const linked = !!report?.linked;
+  const fromExam = linked && report.template !== "blank";
   const over = scores.total > full;
-  // (rows with several marks that show no total: the sticker is easy to forget when the marks are stamped one by one)
-  const noTotal = sheet.total ? scores.rows.filter((r) => r.totals.length === 0 && r.marks.filter((m) => m.kind === "number").length >= 2).length : 0;
+  const ok = scores.rows.length > 0 && Math.abs(scores.total - full) < 1e-6;
+  const pct = full > 0 ? Math.min(100, (scores.total / full) * 100) : 0;
   const size = meta.answerSize ?? meta.fontSize ?? DEFAULT_SIZE;
-  const setSize = (v: number) => {
-    onMeta({ answerSize: v }, "answerSize");
-    fix.restyle({ size: v });
-  };
-  const stepBtn = "grid size-8 place-items-center rounded-md text-ink outline-none transition-[transform,background-color] duration-100 ease-out hover:bg-hover active:scale-90 focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-35 disabled:active:scale-100";
-  const ok = scores.rows.length > 0 && scores.total === full;
+  const fmt = (v: number) => formatMark(v, sheet.pad);
+  const qs = (ns: number[]) => ns.map((n) => t("Q{n}", { n })).join(" + ");
+
+  // ---- What needs a look ----
+  // (a short line each; the full sentence shows on hover)
+  const checks: Check[] = [];
+  scores.issues.forEach((issue, i) =>
+    checks.push(
+      issue.kind === "two-totals"
+        ? {
+            key: `issue-${i}`,
+            text: t("2 totals in one row"),
+            hint: t("Two totals in the same row: only the first counts."),
+            actions: [{ label: t("Show"), run: () => onGoTo(issue.id) }],
+          }
+        : {
+            key: `issue-${i}`,
+            text: t("Total {typed} ≠ marks {auto}", { typed: fmt(issue.typed), auto: fmt(issue.auto) }),
+            hint: t("The total you typed ({typed}) is not the marks of its row ({auto}).", { typed: fmt(issue.typed), auto: fmt(issue.auto) }),
+            actions: [{ label: t("Show"), run: () => onGoTo(issue.id) }],
+          },
+    ),
+  );
+  // (rows that show no total: one was deleted, or the marks were stamped one by one; on free paper only a row of several marks asks for one)
+  const least = marksForTotal(sheet);
+  const noTotal = sheet.total ? scores.rows.filter((r) => r.totals.length === 0 && r.marks.filter((m) => m.kind === "number").length >= least).length : 0;
+  if (noTotal > 0)
+    checks.push({
+      key: "no-total",
+      text: noTotal === 1 ? t("1 row without total") : t("{n} rows without total", { n: noTotal }),
+      actions: [{ label: t("Add"), run: fix.addTotals }],
+    });
+  if (report && fromExam) {
+    if (report.missing.length) {
+      const list = qs(report.missing.map((m) => m.n));
+      checks.push({
+        key: "missing",
+        text: t("Missing: {qs}", { qs: list }),
+        hint: t("Not on the sheet yet: {qs}", { qs: list }),
+        actions: [{ label: t("Add"), run: () => fix.addMissing() }],
+      });
+    }
+    if (report.stale.length) {
+      const n = report.stale.length;
+      checks.push({
+        key: "stale",
+        text: n === 1 ? t("1 answer changed") : t("{n} answers changed", { n }),
+        hint: n === 1 ? t("One answer changed in the exam since the sheet was made.") : t("{n} answers changed in the exam since the sheet was made.", { n }),
+        actions: [{ label: t("Update"), run: () => fix.refresh() }],
+      });
+    }
+  }
+  if (report && linked) {
+    for (const d of report.diffs) {
+      const ids = d.questions.map((q) => q.id);
+      const vals = { qs: qs(d.questions.map((q) => q.n)), sheet: fmt(d.sheet), exam: fmt(d.exam) };
+      checks.push({
+        key: `diff-${ids.join("-")}`,
+        text: t("{qs}: sheet {sheet}, exam {exam}", vals),
+        hint: t("{qs}: {sheet} on the sheet, {exam} in the exam", vals),
+        actions: [
+          { label: t("Use exam"), run: () => fix.resetMarks(ids) },
+          ...(d.adoptable ? [{ label: t("Use sheet"), run: () => fix.adoptMarks(ids) }] : []),
+        ],
+      });
+    }
+    if (report.orphans.length) {
+      const n = report.orphans.length;
+      checks.push({
+        key: "orphans",
+        text: n === 1 ? t("1 row of a deleted question") : t("{n} rows of deleted questions", { n }),
+        hint: n === 1 ? t("One row is of a question the exam no longer has.") : t("{n} rows are of questions the exam no longer has.", { n }),
+        actions: [{ label: t("Remove"), run: fix.removeOrphans }],
+      });
+    }
+  }
+
+  // ---- The ⋯ menu ----
+  const menu: MenuItem[] = [
+    ...(linked
+      ? [
+          { label: t("Fit the answers to the frame"), onClick: fix.refit },
+          { label: t("Close up the rows"), onClick: fix.pack },
+        ]
+      : []),
+    { label: t("Make it again…"), separator: linked, onClick: onRemake },
+    { label: t("Delete the correction sheet…"), separator: true, onClick: () => setSure(true) },
+  ];
+
   const papers: { value: SheetPaper; label: string }[] = [
     { value: "bordered", label: t("Bordered") },
     { value: "free", label: t("Free paper") },
@@ -65,227 +190,175 @@ export default function SheetSettings({ sheet, scores, full, onFullMark, onGoTo,
     { value: "all", label: t("Every page") },
     { value: "none", label: t("None") },
   ];
+  const tone = over ? "text-red-700" : ok ? "text-emerald-700" : "text-ink";
 
   return (
     <div className="flex flex-col" data-testid="sheet-settings">
-      <div className="flex h-10 items-center gap-1.5 border-b border-line px-3">
-        <h2 className="text-xs font-semibold text-ink">{t("Correction sheet")}</h2>
-        <InfoTip label={t("More info")} text={t("Put the stickers of the left toolbox on the page: the marks between two lines are added up, and the total sticker shows the result.")} />
+      <div className="flex h-8 items-center justify-between gap-2 border-b border-line ps-3 pe-1">
+        <h2 className="truncate text-xs font-semibold text-ink">{t("Correction sheet")}</h2>
+        <Dropdown
+          alignEnd
+          items={menu}
+          className="[&>button]:w-7 [&>button]:justify-center [&>button]:px-0 [&>button]:text-muted [&>button:hover]:text-ink"
+          trigger={
+            <>
+              <span className="sr-only">{t("More")}</span>
+              <MoreHorizontal size={16} strokeWidth={1.5} aria-hidden />
+            </>
+          }
+        />
       </div>
+
+      {sure && (
+        <div className="flex flex-col gap-1.5 border-b border-line bg-red-50 px-3 py-2" role="alertdialog" aria-label={t("Delete the correction sheet…")}>
+          <p className="text-xs leading-snug text-red-900">{t("Delete the correction sheet? Its pages and marks go (Ctrl+Z brings them back).")}</p>
+          <div className="flex gap-1.5">
+            <button type="button" onClick={onDelete} className="h-6 rounded-[5px] bg-red-600 px-2 text-xs font-medium text-white outline-none hover:bg-red-700 focus-visible:ring-2 focus-visible:ring-accent">
+              {t("Delete")}
+            </button>
+            <button type="button" onClick={() => setSure(false)} className="h-6 rounded-[5px] px-2 text-xs font-medium text-ink outline-none hover:bg-hover focus-visible:ring-2 focus-visible:ring-accent">
+              {t("Cancel")}
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="flex flex-col divide-y divide-line">
-        <Section title={t("Marks")}>
-          <div className="flex justify-center py-2">
-            <span
-              data-testid="sheet-total"
-              className={`flex items-baseline gap-2 text-4xl font-semibold tracking-[-0.03em] tabular-nums ${over ? "text-red-700" : ok ? "text-emerald-700" : "text-ink"}`}
-              title={over ? t("The marks add up to more than the full mark!") : t("What the marks of the sheet add up to / the full mark of the exam")}
-            >
-              {over && <TriangleAlert size={20} strokeWidth={2} aria-hidden className="self-center" />}
-              <span>{formatMark(scores.total, sheet.pad)}</span>
-              <span className="flex items-baseline gap-0.5 text-2xl font-medium text-faint">
-                <span aria-hidden>/</span>
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  min={1}
-                  max={200}
-                  step={1}
-                  value={draft ?? round(full)}
-                  aria-label={t("Full mark")}
-                  title={t("Full mark")}
-                  data-testid="sheet-full-mark"
-                  style={{ width: `${String(draft ?? round(full)).length + 2}ch` }}
-                  onChange={(e) => {
-                    setDraft(e.target.value);
-                    const v = Number(e.target.value);
-                    if (e.target.value.trim() !== "" && Number.isFinite(v) && v >= 1) onFullMark(v);
-                  }}
-                  onBlur={() => setDraft(null)}
-                  className="rounded-lg bg-transparent px-1 text-center text-2xl font-medium text-ink tabular-nums outline-none [appearance:textfield] hover:bg-subtle focus:bg-subtle focus-visible:ring-2 focus-visible:ring-accent [&::-webkit-inner-spin-button]:appearance-none"
-                />
+        {/* What the marks add up to, out of the full mark (typed here) */}
+        <Section>
+          <div className="flex items-baseline justify-between gap-2">
+            <span className="text-xs text-muted">{t("Marks")}</span>
+            <span className="flex items-baseline gap-1 tabular-nums">
+              <span data-testid="sheet-total" className={`text-lg font-semibold tracking-[-0.02em] ${tone}`}>
+                {fmt(scores.total)}
               </span>
+              <span className="text-sm text-faint" aria-hidden>
+                /
+              </span>
+              <input
+                type="number"
+                inputMode="numeric"
+                min={1}
+                max={200}
+                step={1}
+                value={draft ?? round(full)}
+                aria-label={t("Full mark")}
+                title={t("Full mark")}
+                data-testid="sheet-full-mark"
+                style={{ width: `${String(draft ?? round(full)).length + 1.5}ch` }}
+                onChange={(e) => {
+                  setDraft(e.target.value);
+                  const v = Number(e.target.value);
+                  if (e.target.value.trim() !== "" && Number.isFinite(v) && v >= 1) onFullMark(v);
+                }}
+                onBlur={() => setDraft(null)}
+                className="h-6 rounded-[5px] bg-transparent text-center text-sm font-medium text-ink tabular-nums outline-none [appearance:textfield] hover:bg-subtle focus:bg-subtle focus-visible:ring-2 focus-visible:ring-accent [&::-webkit-inner-spin-button]:appearance-none"
+              />
             </span>
           </div>
-          {scores.issues.map((issue, i) => (
-            <button
-              key={i}
-              type="button"
-              data-testid="sheet-issue"
-              title={t("Show")}
-              onClick={() => onGoTo(issue.id)}
-              className="flex w-full items-start gap-1.5 rounded-xl bg-amber-50 px-2.5 py-2 text-start text-xs leading-snug text-amber-900 ring-1 ring-amber-200 transition-[transform,background-color] duration-100 outline-none hover:bg-amber-100 focus-visible:ring-2 focus-visible:ring-accent active:scale-[0.985]"
-            >
-              <TriangleAlert size={12} strokeWidth={2} aria-hidden className="mt-px shrink-0" />
-              <span className="min-w-0 flex-1">
-                {issue.kind === "two-totals"
-                  ? t("Two totals in the same row: only the first counts.")
-                  : t("The total you typed ({typed}) is not the marks of its row ({auto}).", { typed: formatMark(issue.typed, sheet.pad), auto: formatMark(issue.auto, sheet.pad) })}
-              </span>
-              <ChevronRight size={13} strokeWidth={2} aria-hidden className="mt-px shrink-0 rtl:rotate-180" />
-            </button>
-          ))}
-          {noTotal > 0 && (
-            <div className="flex flex-col gap-1.5 rounded-[5px] bg-amber-50 px-2 py-1.5 text-xs leading-snug text-amber-900 ring-1 ring-amber-200" data-testid="rows-without-total">
-              <p className="flex items-start gap-1.5">
-                <TriangleAlert size={12} strokeWidth={2} aria-hidden className="mt-px shrink-0" />
-                {noTotal === 1 ? t("One row has several marks and no total.") : t("{n} rows have several marks and no total.", { n: noTotal })}
-              </p>
-              <div>
-                <button
-                  type="button"
-                  data-testid="add-totals"
-                  onClick={fix.addTotals}
-                  className="h-6 rounded-[5px] bg-white px-2 text-xs font-medium text-ink ring-1 ring-amber-300 transition-colors outline-none hover:bg-amber-100 focus-visible:ring-2 focus-visible:ring-accent"
-                >
-                  {t("Add the totals")}
-                </button>
-              </div>
-            </div>
-          )}
+          <div className="h-1 overflow-hidden rounded-full bg-subtle" aria-hidden>
+            <div className={`h-full rounded-full transition-[width] duration-200 ${over ? "bg-red-600" : "bg-emerald-600"}`} style={{ width: `${over ? 100 : pct}%` }} />
+          </div>
         </Section>
 
-        {report?.linked && (
-          <Section title={t("Rows")}>
-            <SmallButton onClick={fix.refit} title={t("Wraps the answers and the copies to the answer column again, after you moved its columns or edges. The rows under make room.")}>
-              {t("Fit the answers to the frame")}
-            </SmallButton>
-            <SmallButton onClick={fix.pack} title={t("Lays the rows out again from the first one, page after page: rows pushed to the next page come back when they fit, and empty pages go.")}>
-              {t("Close up the rows")}
-            </SmallButton>
-          </Section>
+        {checks.length > 0 && (
+          <section className="flex flex-col px-3 py-1.5" aria-label={t("To check")}>
+            <h3 className="flex h-5 items-center gap-1 text-[11px] font-medium text-muted">
+              <TriangleAlert size={11} strokeWidth={2} aria-hidden className="text-amber-600" />
+              {t("To check")}
+              <span className="tabular-nums text-faint">· {checks.length}</span>
+            </h3>
+            <ul className="flex flex-col" data-testid="sheet-checks">
+              {checks.map((c) => (
+                <li key={c.key} data-testid="sheet-issue" className="flex min-h-6 items-center gap-1.5">
+                  <span aria-hidden className="size-1.5 shrink-0 rounded-full bg-amber-500" />
+                  <span className="min-w-0 flex-1 truncate text-xs text-ink" title={c.hint ?? c.text}>
+                    {c.text}
+                  </span>
+                  {c.actions.map((a) => (
+                    <button key={a.label} type="button" onClick={a.run} className={actionBtn} data-testid={c.key === "no-total" ? "add-totals" : undefined}>
+                      {a.label}
+                    </button>
+                  ))}
+                </li>
+              ))}
+            </ul>
+          </section>
         )}
 
-        {/* (a copy of the exam draws its answers in the exam's color and size for model answers; on a sheet of the answers they are text blocks, restyled one by one) */}
-        {report?.linked && (
-          <Section title={t("Answers")}>
-            <div className="flex flex-col gap-1.5">
-              <span className="px-0.5 text-xs font-medium tracking-[-0.005em] text-muted">{t("Color of the answers")}</span>
-              <ColorGrid
-                value={meta.answerColor}
-                autoLabel={report.template === "answers" ? t("Black") : t("Green")}
-                onChange={(answerColor) => {
-                  onMeta({ answerColor });
-                  fix.restyle({ color: answerColor });
-                }}
-              />
-            </div>
-            <div className="flex items-center justify-between gap-3 rounded-xl bg-subtle p-1.5 ps-3">
-              <span className="text-xs font-medium tracking-[-0.01em] text-ink">{t("Size of the answers")}</span>
-              <div className="flex items-center gap-0.5 rounded-lg bg-white p-0.5 shadow-sm ring-1 ring-line">
-                <button type="button" aria-label={t("Decrease")} disabled={size <= 9} onClick={() => setSize(size - 1)} className={stepBtn}>
-                  <Minus size={14} strokeWidth={2} aria-hidden />
-                </button>
-                <output className="w-9 text-center text-sm font-semibold tabular-nums text-ink" data-testid="answer-size">{size}</output>
-                <button type="button" aria-label={t("Increase")} disabled={size >= 28} onClick={() => setSize(size + 1)} className={stepBtn}>
-                  <Plus size={14} strokeWidth={2} aria-hidden />
-                </button>
-              </div>
-            </div>
-          </Section>
-        )}
+        {/* The frame and the look of the answers: one block, closed at first (set once, seldom touched again) */}
+        <section aria-label={t("Frame")} className="px-3 py-2">
+          <button
+            type="button"
+            aria-expanded={open}
+            data-testid="sheet-frame-toggle"
+            onClick={() => {
+              frameOpen = !open;
+              setOpen(!open);
+            }}
+            className="flex h-5 w-full items-center justify-between gap-2 rounded-[4px] text-xs font-semibold text-ink outline-none focus-visible:ring-2 focus-visible:ring-accent"
+          >
+            {t("Frame")}
+            <span className="flex min-w-0 items-center gap-1.5 font-normal text-faint">
+              {!open && <span className="truncate">{bordered ? t("Bordered") : t("Free paper")}</span>}
+              <ChevronDown size={12} strokeWidth={2} aria-hidden className={`shrink-0 text-muted transition-transform ${open ? "rotate-180" : ""}`} />
+            </span>
+          </button>
 
-        <Section title={t("Paper")}>
-          <Segmented value={sheet.paper} options={papers} onChange={(paper) => onChange({ paper })} />
-          <Hint>{bordered ? t("A frame with a column for the marks and one for the totals. Drag its columns and edges on the page.") : t("No frame: put the stickers and the lines where you want.")}</Hint>
-        </Section>
-
-        {bordered && (
-          <>
-            <Section title={t("Columns")}>
-              <div className="flex items-start gap-3">
-                <div className="flex min-w-0 flex-1 flex-col gap-2">
-                  <label className="flex min-h-8 cursor-pointer items-start gap-2 text-xs leading-tight font-medium tracking-[-0.01em] text-ink select-none active:scale-[0.98] transition-transform duration-100 ease-out">
-                    <input
-                      type="checkbox"
-                      checked={!!sheet.marks}
-                      onChange={(e) => onChange({ marks: e.target.checked ? (dflt.marks && { ...dflt.marks }) : null })}
-                      className="mt-px size-4 shrink-0 accent-accent"
-                    />
-                    <span>{t("Column of the marks")}</span>
-                  </label>
-                  <input
-                    dir="auto"
-                    value={sheet.marks?.title ?? ""}
-                    disabled={!sheet.marks}
-                    aria-label={t("Title of the column")}
-                    placeholder={t("Title of the column")}
-                    onChange={(e) => onChange({ marks: sheet.marks && { ...sheet.marks, title: e.target.value } }, "marks-title")}
-                    className="h-9 w-full min-w-0 rounded-lg border border-transparent bg-subtle px-2.5 text-center text-xs font-medium tracking-[-0.01em] text-ink transition-colors duration-150 outline-none placeholder:font-normal placeholder:text-faint hover:border-line focus:border-accent focus:bg-white disabled:opacity-40 disabled:hover:border-transparent"
-                  />
+          {open && (
+            <div className="flex flex-col pt-1" data-testid="sheet-frame">
+              <Row label={t("Paper")}>
+                <div className="w-40">
+                  <Segmented value={sheet.paper} options={papers} onChange={(paper) => onChange({ paper })} />
                 </div>
-                <div className="mt-0.5 w-px self-stretch bg-line" aria-hidden />
-                <div className="flex min-w-0 flex-1 flex-col gap-2">
-                  <label className="flex min-h-8 cursor-pointer items-start gap-2 text-xs leading-tight font-medium tracking-[-0.01em] text-ink select-none active:scale-[0.98] transition-transform duration-100 ease-out">
-                    <input
-                      type="checkbox"
-                      checked={!!sheet.total}
-                      onChange={(e) => onChange({ total: e.target.checked ? (dflt.total && { ...dflt.total }) : null })}
-                      className="mt-px size-4 shrink-0 accent-accent"
-                    />
-                    <span>{t("Column of the totals")}</span>
-                  </label>
-                  <input
-                    dir="auto"
-                    value={sheet.total?.title ?? ""}
-                    disabled={!sheet.total}
-                    aria-label={t("Title of the column")}
-                    placeholder={t("Title of the column")}
-                    onChange={(e) => onChange({ total: sheet.total && { ...sheet.total, title: e.target.value } }, "total-title")}
-                    className="h-9 w-full min-w-0 rounded-lg border border-transparent bg-subtle px-2.5 text-center text-xs font-medium tracking-[-0.01em] text-ink transition-colors duration-150 outline-none placeholder:font-normal placeholder:text-faint hover:border-line focus:border-accent focus:bg-white disabled:opacity-40 disabled:hover:border-transparent"
-                  />
-                </div>
-              </div>
-            </Section>
-
-            <Section title={t("Titles of the columns")}>
-              <Segmented value={sheet.headings} options={scopes} onChange={(headings) => onChange({ headings })} />
-              {sheet.headings !== "none" && (
-                <div className="flex flex-col gap-3 pt-1">
-                  <label className="flex flex-col gap-1.5">
-                    <span className="px-0.5 text-xs font-medium tracking-[-0.005em] text-muted">{t("Title of the answers")}</span>
-                    <input
-                      dir="auto"
-                      value={sheet.answerTitle}
-                      placeholder={t("Title of the answers")}
-                      onChange={(e) => onChange({ answerTitle: e.target.value }, "answer-title")}
-                      className="h-9 w-full rounded-lg border border-transparent bg-subtle px-2.5 text-xs font-medium tracking-[-0.01em] text-ink transition-colors duration-150 outline-none placeholder:font-normal placeholder:text-faint hover:border-line focus:border-accent focus:bg-white"
-                    />
-                  </label>
-                  {sheet.marks && sheet.total && (
-                  <label className="flex flex-col gap-1.5">
-                    <span className="px-0.5 text-xs font-medium tracking-[-0.005em] text-muted">{t("Title over both columns")}</span>
-                    <input
-                      dir="auto"
-                      value={sheet.markTitle}
-                      placeholder={t("Title over both columns")}
-                      onChange={(e) => onChange({ markTitle: e.target.value }, "mark-title")}
-                      className="h-9 w-full rounded-lg border border-transparent bg-subtle px-2.5 text-xs font-medium tracking-[-0.01em] text-ink transition-colors duration-150 outline-none placeholder:font-normal placeholder:text-faint hover:border-line focus:border-accent focus:bg-white"
-                    />
-                  </label>
-                  )}
-                </div>
+              </Row>
+              {bordered && (
+                <>
+                  <Row label={t("Marks column")}>
+                    <Switch checked={!!sheet.marks} label={t("Marks column")} onChange={(on) => onChange({ marks: on ? dflt.marks && { ...dflt.marks } : null })} />
+                  </Row>
+                  <Row label={t("Totals column")}>
+                    <Switch checked={!!sheet.total} label={t("Totals column")} onChange={(on) => onChange({ total: on ? dflt.total && { ...dflt.total } : null })} />
+                  </Row>
+                  <Row label={t("Column titles")}>
+                    <MenuSelect value={sheet.headings} options={scopes} label={t("Column titles")} onChange={(headings) => onChange({ headings })} />
+                  </Row>
+                </>
               )}
-            </Section>
-          </>
-        )}
 
-        <Section>
-          {sure ? (
-            <div className="flex flex-col gap-2">
-              <Hint>{t("Delete the correction sheet? Its pages and marks go (Ctrl+Z brings them back).")}</Hint>
-              <div className="flex gap-1.5">
-                <SmallButton danger onClick={onDelete}>
-                  {t("Delete")}
-                </SmallButton>
-                <SmallButton onClick={() => setSure(false)}>{t("Cancel")}</SmallButton>
-              </div>
+              {/* (a copy of the exam draws its answers in the exam's color and size for model answers; on a sheet of the answers they are text blocks, restyled one by one) */}
+              {linked && report && (
+                <>
+                  <div className="my-1 h-px bg-line" />
+                  <Row label={t("Answer size")}>
+                    <span data-testid="answer-size">
+                      <Stepper
+                        value={size}
+                        min={9}
+                        max={28}
+                        onChange={(v) => {
+                          onMeta({ answerSize: v }, "answerSize");
+                          fix.restyle({ size: v });
+                        }}
+                      />
+                    </span>
+                  </Row>
+                  <div className="flex flex-col gap-1.5 pt-1 pb-0.5" role="group" aria-label={t("Answer color")}>
+                    <span className="text-xs text-muted">{t("Answer color")}</span>
+                    <ColorGrid
+                      value={meta.answerColor}
+                      autoLabel={report.template === "answers" ? t("Black") : t("Green")}
+                      onChange={(answerColor) => {
+                        onMeta({ answerColor });
+                        fix.restyle({ color: answerColor });
+                      }}
+                    />
+                  </div>
+                </>
+              )}
             </div>
-          ) : (
-            <SmallButton danger onClick={() => setSure(true)}>
-              {t("Delete the correction sheet")}
-            </SmallButton>
           )}
-        </Section>
+        </section>
       </div>
     </div>
   );

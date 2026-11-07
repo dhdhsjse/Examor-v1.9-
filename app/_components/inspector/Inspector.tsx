@@ -2,7 +2,7 @@
 
 import { ArrowDown, ArrowUp, ChevronDown, X } from "lucide-react";
 import type { ReactNode } from "react";
-import { ANSWER_COLOR, DEFAULT_SIZE } from "@/app/_lib/blockLayout";
+import { DEFAULT_SIZE } from "@/app/_lib/blockLayout";
 import { BLOCK_TYPE_NAMES, type BlockPreset } from "@/app/_lib/blocks";
 import type { BlockOrder } from "@/app/_lib/blockOrder";
 import { DEFAULT_FONT } from "@/app/_lib/fonts";
@@ -18,7 +18,7 @@ import InfoTip from "../InfoTip";
 import BlockOrderButtons from "./BlockOrderButtons";
 import { ContentEditorSwitch } from "./ContentEditorSwitch";
 import SheetSettings from "./SheetSettings";
-import { ColorGrid, FontSelect } from "../rich/FormatBar";
+import { FontSelect } from "../rich/FormatBar";
 import { BlockFontControls, hasFontControls } from "./FontControls";
 import { iconBtn } from "@/app/_features/core/ui";
 import { MenuSelect, SmallButton, Stepper, Toggle, inputCls } from "./fields";
@@ -32,6 +32,7 @@ interface Props {
   sheet?: { config: SheetConfig; scores: SheetScores } | null;
   onSheet?: (patch: Partial<SheetConfig>, key?: string) => void;
   onDeleteSheet?: () => void;
+  onRemakeSheet?: () => void; // the wizard again, to make the sheet anew from the exam
   sheetReport?: SheetReport | null; // the sheet against the exam it was made from
   sheetFix: SheetFix;
   hasSheet: boolean; // the exam has a correction sheet
@@ -76,6 +77,7 @@ export default function Inspector(props: Props) {
         fix={props.sheetFix}
         onChange={props.onSheet}
         onMeta={props.onMeta}
+        onRemake={props.onRemakeSheet ?? (() => {})}
         onDelete={props.onDeleteSheet}
       />
     );
@@ -130,7 +132,7 @@ export default function Inspector(props: Props) {
         onOpenChartStudio={props.onOpenChartStudio}
         sheet={props.sheet}
       />
-      {block.type !== "header" && <BlockOrderButtons onOrder={(order) => props.onOrder(block.id, order)} />}
+      {block.type !== "header" && block.type !== "mark" && block.type !== "rule" && <BlockOrderButtons onOrder={(order) => props.onOrder(block.id, order)} />}
       {hasFontControls(block) && <BlockFontControls b={block} meta={props.meta} onChange={(patch, field) => props.onChange(block.id, patch, field)} />}
       </div>
     </div>
@@ -183,17 +185,10 @@ function ExamSettings({ meta, fullMark, onFullMark, hasSheet, onMeta, onChangeTe
         <Toggle checked={!!meta.hidePoints} onChange={(hidePoints) => onMeta({ hidePoints })} label={t("Hide the points on the paper")} />
       </Section>
 
-      <Disclosure title={t("Correction sheet")}>
+      {/* (the color and size of the answers are set on the sheet itself: its settings, Look) */}
+      <Section title={t("Correction sheet")}>
         <SmallButton onClick={onOpenCorrection}>{hasSheet ? t("Open the correction sheet") : t("Make the correction sheet…")}</SmallButton>
-        <Row label={t("Size of the answers")}>
-          <Stepper value={meta.answerSize ?? meta.fontSize ?? DEFAULT_SIZE} min={9} max={28} onChange={(answerSize) => onMeta({ answerSize }, "answerSize")} />
-        </Row>
-        <span className="text-xs text-muted">{t("Color of the answers")}</span>
-        <ColorGrid value={meta.answerColor} autoLabel={t("Green")} onChange={(answerColor) => onMeta({ answerColor })} />
-        <p className="text-xs text-faint">
-          {t("Preview:")} <span style={{ color: meta.answerColor ?? ANSWER_COLOR, fontWeight: 600 }}>{t("model answer")}</span>
-        </p>
-      </Disclosure>
+      </Section>
 
       {/* A reference, not a setting */}
       <Disclosure title={t("Shortcuts")}>

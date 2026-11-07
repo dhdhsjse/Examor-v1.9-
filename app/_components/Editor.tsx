@@ -105,6 +105,9 @@ const CLICK_TEXTBOX_WIDTH = 200; // a text box made by a click (not drawn) with 
 const TYPE_ON_ADD: BlockType[] = ["mcq", "truefalse", "blank", "open", "match", "order", "classify", "text", "textbox"];
 
 // The shell: owns the state and the actions. The screen itself is drawn from appLayout (app/_features/app.ts).
+// The Stamp tool's "click on the page" message is shown the first time a sticker is picked, not each time
+let stampHinted = false;
+
 export default function Editor() {
   // Reopen the last exam (autosave), or start with the template picker.
   const [initial] = useState(() => {
@@ -929,7 +932,7 @@ export default function Editor() {
       setSheetWizard({ open: false, rebuild: false });
       setEditing(null);
       setTool("select");
-      notify(choice.template === "blank" ? tr("Correction sheet made") : tr("Correction sheet made from the exam — check it and move what you want"));
+      notify(tr("Correction sheet made"));
     },
     sheetReport,
     sheetFix: {
@@ -953,7 +956,11 @@ export default function Editor() {
     setStamp: (action) => {
       setStamp(action);
       setTool(action ? "stamp" : "select");
-      if (action) notify(tr("Click on the page to put the sticker — Esc to stop"));
+      // (said once: the green sticker and the cross cursor tell the rest)
+      if (action && !stampHinted) {
+        stampHinted = true;
+        notify(tr("Click on the page to put the sticker — Esc to stop"));
+      }
     },
     selectNone: () => {
       exam.setSelectedId(null);

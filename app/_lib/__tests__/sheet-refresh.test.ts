@@ -180,7 +180,7 @@ describe("bringing an answer up to date where it stands", () => {
     expect(refreshStale(made)).toBe(made);
   });
 
-  it("gives a question that got a sub-question its block, its mark and a total; takes them away again", () => {
+  it("gives a question that got a sub-question its block and its mark; takes them away again (the row keeps its total: the sheet has a column of totals)", () => {
     const parts = (n: number) => Array.from({ length: n }, (_, i) => ({ text: `p${i}`, lines: 2, answer: `R${i}`, points: 1 }));
     const q = open(100, { answer: "", parts: parts(2), points: 2 });
     const next = mcq(300, 1);
@@ -193,7 +193,7 @@ describe("bringing an answer up to date where it stands", () => {
     expect(linkReport(three)?.diffs).toEqual([]);
     expect(answerOf(three, next.id).layout.y).toBeGreaterThan(answerOf(full, next.id).layout.y);
     const one = refreshStale(change(three, q.id, { parts: parts(1), points: 1 }));
-    expect(marksOf(one, q.id).map((m) => m.kind)).toEqual(["number"]);
+    expect(marksOf(one, q.id).map((m) => m.kind).sort()).toEqual(["number", "total"]);
     expect(sheetScores(sheetOf(one)).total).toBe(2);
   });
 
@@ -312,7 +312,7 @@ describe("putting a question in its place among the rows", () => {
     // what is above did not move
     expect(sheetOf(next).blocks.filter((b) => b.meta?.source?.id === q1.id)).toEqual(sheetOf(made).blocks.filter((b) => b.meta?.source?.id === q1.id));
     // its own mark and line, and the sheet adds up
-    expect(marksOf(next, fresh.id).map((m) => m.value)).toEqual([1.5]);
+    expect(marksOf(next, fresh.id).filter((m) => m.kind === "number").map((m) => m.value)).toEqual([1.5]);
     expect(ruleOf(next, fresh.id)).toBeTruthy();
     expect(sheetScores(sheetOf(next)).total).toBe(sheetScores(sheetOf(made)).total + 1.5);
   });
@@ -416,6 +416,14 @@ describe("the look of the answers", () => {
     const red = restyleFull(made, { color: "#dc2626" });
     expect(answerOf(red, q1.id).font?.color).toBe("#dc2626");
     expect(answerOf(restyleFull(red, { color: undefined }), q1.id).font?.color).toBeUndefined();
+  });
+
+  it("keeps the total of a row of one mark on a sheet with a column of totals", () => {
+    const totals = (full: ExamDoc, id: string) => marksOf(full, id).filter((m) => m.kind === "total").length;
+    expect(totals(made, q1.id)).toBe(1);
+    for (const next of [restyleFull(made, { size: 24 }), restyleFull(made, { color: "#dc2626" }), refitAnswers(made)]) {
+      for (const q of [q1, q4]) expect(totals(next, q.id)).toBe(1);
+    }
   });
 });
 
@@ -575,7 +583,7 @@ describe("questions in a text box of a copy of the exam", () => {
     expect(clones(next)).toHaveLength(2);
     const boxCopy = sheetOf(next).blocks.find((b) => b.type === "textbox")!;
     expect(clones(next).every((b) => b.meta?.slot === boxCopy.id)).toBe(true);
-    expect(marksOf(next, two.id).map((m) => m.value)).toEqual([1]);
+    expect(marksOf(next, two.id).filter((m) => m.kind === "number").map((m) => m.value)).toEqual([1]);
     expect(ruleOf(next, two.id)).toBeTruthy();
     expect(sheetScores(sheetOf(next)).total).toBe(2);
   });

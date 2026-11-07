@@ -153,16 +153,25 @@ describe("a sheet of the answers", () => {
     }
   });
 
-  it("puts the marks of the questions beside the answers: one for a question, one for each sub-question, and a total over two or more", () => {
+  it("puts the marks of the questions beside the answers: one for a question, one for each sub-question, and a total in each row (the column of the totals)", () => {
     const marks = marksOf(doc);
     const of = (i: number) => marks.filter((m) => m.meta?.source?.id === ids[i]);
-    expect(of(1).map((m) => m.value)).toEqual([1]);
-    expect(of(2).map((m) => m.value)).toEqual([2]);
+    expect(of(1).filter((m) => m.kind === "number").map((m) => m.value)).toEqual([1]);
+    expect(of(2).filter((m) => m.kind === "number").map((m) => m.value)).toEqual([2]);
     expect(of(5).filter((m) => m.kind === "number").map((m) => [m.value, m.meta?.source?.part])).toEqual([[1, 0], [1.5, 1]]);
     expect(of(5).filter((m) => m.kind === "total")).toHaveLength(1);
-    expect(of(1).some((m) => m.kind === "total")).toBe(false);
+    expect(of(1).filter((m) => m.kind === "total")).toHaveLength(1);
     // (the heading has none)
     expect(of(0)).toHaveLength(0);
+  });
+  it("keeps a total for the rows of two marks or more on free paper, or when the column of the totals is off", () => {
+    const free = sheetDoc(exam, generateCorrection(exam, { template: "answers", paper: "free", marks: true }));
+    const off = sheetDoc(exam, generateCorrection(exam, { template: "answers", paper: "bordered", marks: true, keep: { ...out.sheet, total: null } }));
+    for (const d of [free, off]) {
+      const of = (i: number) => marksOf(d).filter((m) => m.meta?.source?.id === ids[i] && m.kind === "total");
+      expect(of(1)).toHaveLength(0);
+      expect(of(5)).toHaveLength(1);
+    }
   });
 
   it("keeps each mark level with the first line of its answer, in the column of the marks", () => {
@@ -215,7 +224,7 @@ describe("a sheet of the answers", () => {
   it("does not make a mark of a question that earns nothing", () => {
     const zero = examOf([mcq(60, 0), mcq(200, 1)]);
     const d = sheetDoc(zero, generateCorrection(zero, { template: "answers", paper: "bordered", marks: true }));
-    expect(marksOf(d).map((m) => m.value)).toEqual([1]);
+    expect(marksOf(d).filter((m) => m.kind === "number").map((m) => m.value)).toEqual([1]);
   });
 
   it("is made on the paper chosen: free paper has the room of the frame, the marks in the same places", () => {
@@ -397,7 +406,7 @@ describe("questions in a text box", () => {
   it("lists such a question like any other in a sheet of the answers", () => {
     const d = sheetDoc(exam, generateCorrection(exam, { template: "answers", paper: "bordered", marks: true }));
     expect(by(d, inner.id)).toHaveLength(1);
-    expect(marksOf(d).map((m) => m.value)).toEqual([1]);
+    expect(marksOf(d).filter((m) => m.kind === "number").map((m) => m.value)).toEqual([1]);
   });
 
   it("copies the box with copies of the questions in it, and puts the marks beside them", () => {
@@ -427,7 +436,7 @@ describe("putting more questions in a sheet", () => {
     const grown = { ...exam, blocks: [...exam.blocks, fresh] };
     const next = addQuestions(grown, sheet, "answers", [fresh.id], true);
     expect(by(next, fresh.id).filter((b) => b.type === "text")).toHaveLength(1);
-    expect(marksOf(next).filter((m) => m.meta?.source?.id === fresh.id).map((m) => m.value)).toEqual([2]);
+    expect(marksOf(next).filter((m) => m.meta?.source?.id === fresh.id && m.kind === "number").map((m) => m.value)).toEqual([2]);
     expect(rulesOf(next).filter((r) => r.meta?.source?.id === fresh.id)).toHaveLength(1);
     const added = by(next, fresh.id)[0];
     const lowestBefore = Math.max(...sheet.blocks.filter((b) => b.layout.pageId === added.layout.pageId).map((b) => b.layout.y + blockHeight(b, 1, fr)));

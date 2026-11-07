@@ -15,7 +15,7 @@ describe("the marks the library keeps", () => {
   });
 });
 
-describe("the total a row with several marks needs", () => {
+describe("the total a row needs", () => {
   const meta: ExamMeta = { title: "x", lang: "fr", templateId: "t" };
   const sheet = defaultSheet("fr");
   const doc = (blocks: Block[], config = sheet): ExamDoc => ({ version: 1, meta, pages: [{ id: "c1" }], blocks, sheet: config });
@@ -26,10 +26,14 @@ describe("the total a row with several marks needs", () => {
   };
   const rule = (y: number): Block => ({ ...createBlock("rule", "fr", "c1"), layout: { pageId: "c1", x: geo.frame.x, y, width: geo.frame.width, height: 10 } });
 
-  it("finds the rows with two or more marks and no total, not the others", () => {
+  it("finds the rows with marks and no total on a bordered sheet, even a row of one mark", () => {
     const d = doc([mark(200, { kind: "number", value: 0.5 }), mark(230, { kind: "number", value: 1 }), rule(260), mark(280, { kind: "number", value: 1 }), rule(320), mark(340, { kind: "number", value: 1 }), mark(370, { kind: "number", value: 1 }), mark(370, { kind: "total" })]);
-    expect(rowsWithoutTotal(d)).toHaveLength(1);
-    expect(rowsWithoutTotal(d)[0].marks.map((m) => m.value)).toEqual([0.5, 1]);
+    expect(rowsWithoutTotal(d).map((g) => g.marks.map((m) => m.value))).toEqual([[0.5, 1], [1]]);
+  });
+
+  it("on free paper, asks a total only of the rows with two or more marks", () => {
+    const d = doc([mark(200, { kind: "number", value: 0.5 }), mark(230, { kind: "number", value: 1 }), rule(260), mark(280, { kind: "number", value: 1 }), rule(320)], { ...sheet, paper: "free" });
+    expect(rowsWithoutTotal(d).map((g) => g.marks.map((m) => m.value))).toEqual([[0.5, 1]]);
   });
 
   it("puts the total in the column of the totals, in the middle of the marks of the row, and adds up", () => {
@@ -57,6 +61,14 @@ describe("the total a row with several marks needs", () => {
     const d = doc([mark(200, { kind: "number", value: 0.5 }), mark(230, { kind: "number", value: 1 }), rule(260), mark(280, { kind: "number", value: 2 })], only);
     expect(sheetScores(d).rows.map((r) => r.score)).toEqual([1.5, 2]);
     expect(sheetScores(d).total).toBe(3.5);
+  });
+
+  it("can add the total of the row of one mark only (a mark just stamped)", () => {
+    const d = doc([mark(200, { kind: "number", value: 1 }), rule(260), mark(280, { kind: "number", value: 2 }), rule(320)]);
+    const stamped = d.blocks[2].id;
+    const next = addTotals(d, stamped);
+    expect(rowsWithoutTotal(next).map((g) => g.marks.map((m) => m.value))).toEqual([[1]]);
+    expect(addTotals(next, stamped)).toBe(next);
   });
 
   it("keeps the link of the marks with their question on the total it adds", () => {

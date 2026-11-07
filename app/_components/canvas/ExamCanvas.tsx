@@ -113,6 +113,10 @@ export type BlockMover = { move: (id: string, x: number, y: number) => { x: numb
 
 // Blocks drawn over all the others (see drawOrder).
 const ON_TOP = new Set<Block["type"]>(["shape", "image", "graph", "equation", "mark", "rule"]);
+// The stickers and lines of a correction sheet: they stay clickable while a sticker is in hand (to pick one up, move it or delete it)
+const sticker = (b: Block) => b.type === "mark" || b.type === "rule";
+// What the stroke eraser rubs out whole: the shapes, and the stickers and lines of a correction sheet
+const rubbable = (b: Block) => b.type === "shape" || sticker(b);
 
 const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(v, max));
 
@@ -418,8 +422,8 @@ export default function ExamCanvas(props: Props) {
     const box = { x: x - page.left, y: y - page.top, width: b.layout.width, height: h };
     const snapped = guidesOn && !turn ? snapBox(box, others, { ...page, margins: snapMargins(i) }, SNAP_PX / zoom) : { ...box, guides: [] };
     setSnap({ page: i, guides: snapped.guides });
-    // (a mark or a line held by the frame only moves up and down, in its column)
-    const column = columnOf(b, geos[i] ?? null);
+    // (a mark or a line held by the frame only moves up and down, in its column; a line of free paper only up and down too)
+    const column = columnOf(b, geos[i] ?? null) ?? (b.type === "rule" ? { x: b.layout.x, width: b.layout.width } : null);
     // (a turned text box is kept inside the page by where it really is, and is not snapped)
     const pos = turn ? keepTurnedInside(snapped.x, snapped.y, b.layout.width, h, turn, page.width, page.height) : { x: column ? column.x : clamp(snapped.x, 0, page.width - b.layout.width), y: clamp(snapped.y, 0, page.height - h) };
     if (dragAt?.pageId !== pages[i].id || dragAt.y !== pos.y) setDragAt({ id: b.id, pageId: pages[i].id, y: pos.y });
@@ -657,7 +661,7 @@ export default function ExamCanvas(props: Props) {
   const startErase = (stage: Konva.Stage, e: PointerEvent, how: EraserSettings) => {
     const key = `erase:${Date.now()}`;
     const radius = how.size / 2 / zoomRef.current; // (page px: the tip keeps its size on the screen)
-    const erasable = new Set(blocks.filter((b) => b.type === "shape").map((b) => b.id));
+    const erasable = new Set(blocks.filter(rubbable).map((b) => b.id));
     const gone = new Set<string>();
     let last: { x: number; y: number } | null = null;
     const rub = (ev: PointerEvent) => {
@@ -768,7 +772,7 @@ export default function ExamCanvas(props: Props) {
         {pages.map((page, i) => page.border && <PageBorderView key={page.id} box={boxes[i]} border={page.border} />)}
 
         {/* A bordered correction sheet: the frame of each page (under the blocks) */}
-        {sheet && geos.map((geo, i) => geo && <SheetFrame key={pages[i].id} geo={geo} sheet={sheet} box={boxes[i]} meta={meta} />)}
+        {sheet && geos.map((geo, i) => geo && <SheetFrame key={pages[i].id} geo={geo} sheet={sheet} box={boxes[i]} meta={meta} titles={!interactive || !props.onSheet} />)}
 
         {/* One list (keys kept), so a block that becomes selected keeps its node: a drag started on it goes on */}
         {[
@@ -795,8 +799,8 @@ export default function ExamCanvas(props: Props) {
             grouped={!passive && group.has(b.id)}
             interactive={interactive}
             textTool={!!props.textTool}
-            drawing={drawing || erasing || stamping}
-            erasable={erasing && props.eraser?.mode === "stroke" && b.type === "shape"}
+            drawing={drawing || erasing || (stamping && !sticker(b))}
+            erasable={erasing && props.eraser?.mode === "stroke" && rubbable(b)}
             typing={b.id === props.typingId}
             onSelect={(alt, shift) => pick(b, !!alt, !!shift)}
             onDragStart={() => handleDragStart(b)}
