@@ -68,7 +68,7 @@ describe("the model answer of each question", () => {
   it("gives the model answer of an open question, or one for each sub-question with its own points", () => {
     expect(ans(open(0))).toEqual(["1) Parce que A."]);
     const p = answerParts(parts(0), 2, "fr");
-    expect(p.map((x) => plainText(x.text))).toEqual(["2a) Réponse un", "2b) Réponse deux"]);
+    expect(p.map((x) => plainText(x.text))).toEqual(["2) a) Réponse un", "b) Réponse deux"]);
     expect(p.map((x) => x.points)).toEqual([1, 1.5]);
     expect(p.map((x) => x.part)).toEqual([0, 1]);
   });
@@ -78,6 +78,7 @@ describe("the model answer of each question", () => {
     const p = answerParts(q, 1, "fr");
     expect(p).toHaveLength(3);
     expect(plainText(p[0].text)).toBe("1) En général.");
+    expect(plainText(p[1].text)).toBe("a) Réponse un"); // (the number is already on the line above)
     expect(p[0].points).toBe(0);
     expect(p[0].part).toBeUndefined();
   });

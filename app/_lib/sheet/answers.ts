@@ -55,8 +55,14 @@ export function answerParts(q: QuestionBlock, n: number, lang: Lang): AnswerPart
       if (!parts.length) return one(runs(q.answer));
       const out: AnswerPart[] = [];
       // (an answer typed for the question itself, above its sub-questions: it earns nothing of its own)
-      if ((q.answer ?? "").trim()) out.push({ text: serializeRich([...head(number), ...runs(q.answer)]), points: 0 });
-      parts.forEach((p, i) => out.push({ text: serializeRich([...head(partLabel(q, n, i, lang)), ...runs(p.answer)]), points: p.points, part: i }));
+      const own = !!(q.answer ?? "").trim();
+      if (own) out.push({ text: serializeRich([...head(number), ...runs(q.answer)]), points: 0 });
+      // (the first line of the question carries its number, as on the paper: "2) a) …", then "b) …")
+      parts.forEach((p, i) => {
+        const label = partLabel(q, n, i, lang);
+        const lead = i === 0 && !own ? [number, label].filter(Boolean).join(" ") : label;
+        out.push({ text: serializeRich([...head(lead), ...runs(p.answer)]), points: p.points, part: i });
+      });
       return out;
     }
     case "match": {
