@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createBlock } from "../blocks";
 import { generateCorrection, sourcesOf } from "../sheet/generate";
-import { addMissing, adoptMarks, linkReport, rebuildSheet, removeOrphans, resetMarks } from "../sheet/links";
+import { addMissing, adoptMarks, linkReport, rebuildSheet, removeOrphans, resetMarks, syncPoints } from "../sheet/links";
 import { sheetScores } from "../sheet/marks";
 import { viewOf, withCorrection } from "../sheet/part";
 import type { Block, ExamDoc, ExamMeta, MarkBlock, OpenBlock, QuestionBlock, TextBlock } from "../types";
@@ -111,12 +111,24 @@ describe("marks that are not the points of the exam", () => {
     expect(open.points).toBe(3.5);
   });
 
-  it("cannot take the sheet's marks when a question with sub-questions has not a mark for each", () => {
+  it("gives a sub-question that has no mark on the sheet no points", () => {
     const base = make(exam);
     const edited = { ...base, correction: { ...base.correction!, blocks: base.correction!.blocks.filter((b) => !(b.type === "mark" && b.meta?.source?.id === q3.id && b.meta.source.part === 1)) } };
     const diff = linkReport(edited)!.diffs[0];
-    expect(diff.adoptable).toBe(false);
-    expect(adoptMarks(edited, [q3.id])).toBe(edited);
+    expect(diff).toMatchObject({ exam: 2.5, sheet: 1, adoptable: true });
+    const open = adoptMarks(edited, [q3.id]).blocks.find((b) => b.id === q3.id) as OpenBlock;
+    expect(open.parts!.map((p) => p.points)).toEqual([1, 0]);
+    expect(open.points).toBe(1);
+  });
+
+  it("shares a typed total out among the sub-questions as their points were", () => {
+    const base = make(exam);
+    const edited = { ...base, correction: { ...base.correction!, blocks: base.correction!.blocks.map((b) => (b.type === "mark" && b.meta?.source?.id === q3.id && b.kind === "total" ? { ...b, manual: true, value: 5 } : b)) } };
+    expect(linkReport(edited)!.diffs[0]).toMatchObject({ exam: 2.5, sheet: 5, adoptable: true });
+    const fixed = adoptMarks(edited, [q3.id]);
+    const open = fixed.blocks.find((b) => b.id === q3.id) as OpenBlock;
+    expect(open.parts!.map((p) => p.points)).toEqual([2, 3]);
+    expect(open.points).toBe(5);
   });
 
   it("tells a question that has its answer but no mark at all", () => {
@@ -145,7 +157,11 @@ describe("marks that are not the points of the exam", () => {
     expect(diff.questions.map((q) => q.n)).toEqual([1, 2]);
     expect(diff.exam).toBe(3);
     expect(diff.sheet).toBe(2.5);
-    expect(diff.adoptable).toBe(false);
+    expect(diff.adoptable).toBe(true);
+    // (they share the marks of the row as their points were: 1 and 2 of 3)
+    const fixed = adoptMarks(edited, [q1.id]);
+    expect([q1.id, q2.id].map((id) => (fixed.blocks.find((b) => b.id === id) as QuestionBlock).points)).toEqual([0.833, 1.667]);
+    expect(linkReport(fixed)?.diffs).toEqual([]);
   });
 
   it("works on a copy of the exam: the marks are beside the questions", () => {
@@ -158,6 +174,44 @@ describe("marks that are not the points of the exam", () => {
     const question = sheetOf(fixed).blocks.find((b) => b.type === "mcq")!;
     expect(mark.layout.y + 12).toBeGreaterThan(question.layout.y);
     expect(mark.layout.y + 12).toBeLessThan(question.layout.y + 40);
+  });
+});
+
+describe("a mark changed on the sheet", () => {
+  const exam = exam3();
+  const [, q1, q2] = exam.blocks;
+  const points = (full: ExamDoc, id: string) => (full.blocks.find((b) => b.id === id) as QuestionBlock).points;
+
+  it("sets the points of its question in the exam: nothing is left to check", () => {
+    const base = make(exam);
+    const synced = syncPoints(base, withMarkChanged(base, q1.id, 0.5));
+    expect(points(synced, q1.id)).toBe(0.5);
+    expect(linkReport(synced)?.diffs).toEqual([]);
+  });
+
+  it("leaves alone a row that disagreed the same way before (the points were changed in the exam)", () => {
+    const changed = { ...make(exam), blocks: exam.blocks.map((b) => (b.id === q2.id ? ({ ...b, points: 3 } as Block) : b)) };
+    const after = withMarkChanged(changed, q1.id, 0.5);
+    const synced = syncPoints(changed, after);
+    expect(points(synced, q1.id)).toBe(0.5);
+    expect(points(synced, q2.id)).toBe(3);
+    expect(linkReport(synced)!.diffs.map((d) => [d.exam, d.sheet])).toEqual([[3, 2]]);
+  });
+
+  it("does not take a question whose marks were all deleted to 0", () => {
+    const base = make(exam);
+    const after = { ...base, correction: { ...base.correction!, blocks: base.correction!.blocks.filter((b) => !(b.type === "mark" && b.meta?.source?.id === q2.id)) } };
+    expect(syncPoints(base, after)).toBe(after);
+  });
+
+  it("brings the copy of the question up to date on a copy of the exam", () => {
+    const base = make(exam, "copy");
+    const synced = syncPoints(base, withMarkChanged(base, q1.id, 0.5));
+    expect(points(synced, q1.id)).toBe(0.5);
+    const report = linkReport(synced)!;
+    expect(report.diffs).toEqual([]);
+    expect(report.stale).toEqual([]);
+    expect((sheetOf(synced).blocks.find((b) => b.type === "mcq") as QuestionBlock).points).toBe(0.5);
   });
 });
 

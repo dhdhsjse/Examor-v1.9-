@@ -1,10 +1,11 @@
 // The sheet and the exam it was made from. Each block made from the exam says which block it came from (`meta.source`), so the two can be compared:
 // the marks of a row against the points of its questions (and either set from the other), the questions that are not in the sheet yet (they can be put
-// in), what the sheet has of questions the exam no longer has (it can be taken out). Nothing is kept in step by itself: the sheet is the teacher's.
+// in), what the sheet has of questions the exam no longer has (it can be taken out). One thing is kept in step by itself: a mark changed on the sheet
+// sets the points of its question in the exam (`syncPoints`: the sheet is the one followed). The rest is the teacher's to do.
 // Every function takes the whole file and gives back the whole file.
 import { isQuestion, questionNumbers } from "../blocks";
 import type { Block, ExamDoc, MarkBlock, OpenBlock, QuestionBlock } from "../types";
-import { anchorsOf, generateCorrection, markSlots, questionsOf, sourcesOf, stickersFor, totalsColumn, type SheetMakeOptions } from "./generate";
+import { anchorsOf, copySig, generateCorrection, hostedShapes, markSlots, questionsOf, sourcesOf, stickersFor, totalsColumn, type SheetMakeOptions } from "./generate";
 import { isMark, sheetScores } from "./marks";
 import type { SheetTemplate } from "./model";
 import { settleSheet } from "./settle";
@@ -19,7 +20,8 @@ export interface MarksDiff {
   exam: number;
   /** What their row of the sheet adds up to */
   sheet: number;
-  /** The points of the exam can be set from the marks of the sheet (a question with sub-questions needs a mark for each of them) */
+  /** The points of the exam can be set from the marks of the sheet: the row has a mark to go by (a question with no mark at all, or a row
+   *  that adds up to less than nothing, cannot) */
   adoptable: boolean;
 }
 
@@ -39,18 +41,32 @@ export interface SheetReport {
 const round3 = (v: number) => Math.round(v * 1000) / 1000;
 const SAME = 1e-6;
 
-/** The marks of the sub-questions of an open question, one for each, when the sheet has exactly one mark for each of them */
+/** What the marks of each sub-question of an open question add up to (one with no mark: 0), when every mark of the question is a number given to
+ *  one of its sub-questions */
 function partMarks(sheetBlocks: Block[], q: OpenBlock): number[] | null {
   const parts = q.parts ?? [];
   const mine = sheetBlocks.filter((b): b is MarkBlock => isMark(b) && b.meta?.source?.id === q.id && b.kind !== "total");
-  if (mine.some((m) => m.kind !== "number" || m.meta?.source?.part === undefined)) return null;
-  const values: number[] = [];
-  for (let i = 0; i < parts.length; i++) {
-    const own = mine.filter((m) => m.meta?.source?.part === i);
-    if (own.length !== 1) return null;
-    values.push(own[0].value ?? 0);
-  }
-  return values;
+  if (!mine.length || mine.some((m) => m.kind !== "number" || m.meta?.source?.part === undefined || m.meta.source.part >= parts.length)) return null;
+  return parts.map((_, i) => mine.filter((m) => m.meta?.source?.part === i).reduce((s, m) => s + (m.value ?? 0), 0));
+}
+
+/** `total` shared out as `weights` are (evenly when they are all 0), to the thousandth: the biggest share takes what the rounding left */
+function split(total: number, weights: number[]): number[] {
+  const sum = weights.reduce((s, w) => s + w, 0);
+  const out = weights.map((w) => round3(sum > 0 ? (total * w) / sum : total / weights.length));
+  const big = out.indexOf(Math.max(...out));
+  out[big] = round3(out[big] + total - out.reduce((s, v) => s + v, 0));
+  return out;
+}
+
+/** The question worth `total` points: a question with sub-questions gives each the marks the sheet has for it, or (when those do not add up to
+ *  `total`: a typed total, several questions in one row) shares `total` out as its points were */
+function withPoints(q: QuestionBlock, total: number, sheetBlocks: Block[]): QuestionBlock {
+  if (q.type !== "open" || !q.parts?.length) return { ...q, points: round3(total) } as QuestionBlock;
+  const own = partMarks(sheetBlocks, q);
+  const values = own && Math.abs(own.reduce((s, v) => s + v, 0) - total) <= SAME ? own : split(total, q.parts.map((p) => p.points));
+  const parts = q.parts.map((p, i) => ({ ...p, points: round3(values[i]) }));
+  return { ...q, parts, points: round3(parts.reduce((s, p) => s + p.points, 0)) };
 }
 
 /** The sheet of `full` against its exam (null: it has no sheet) */
@@ -79,8 +95,8 @@ export function linkReport(full: ExamDoc): SheetReport | null {
     const qs = ids.map((id) => byId.get(id)!);
     const exam = round3(qs.reduce((s, q) => s + q.points, 0));
     if (Math.abs(exam - row.score) <= SAME) continue;
-    const one = qs.length === 1 ? qs[0] : null;
-    const adoptable = !!one && (one.type !== "open" || !one.parts?.length || partMarks(sheet.blocks, one) !== null);
+    const marked = row.marks.some((m) => m.kind === "number") || row.totals.some((m) => m.manual);
+    const adoptable = marked && row.score >= 0;
     diffs.push({ questions: qs.map((q) => ({ id: q.id, n: numbers.get(q.id) ?? 0, points: q.points })), exam, sheet: row.score, adoptable });
   }
   // a question that has answers in the sheet and no mark at all
@@ -196,27 +212,59 @@ export function resetMarks(full: ExamDoc, ids: string[]): ExamDoc {
   });
 }
 
-/** The points of the questions `ids` set from the marks of their rows in the sheet (the ones that can be: see `adoptable`) */
-export function adoptMarks(full: ExamDoc, ids: string[]): ExamDoc {
-  const report = linkReport(full);
+/** The points of the questions `ids` set from the marks of their rows in the sheet (the ones that can be: see `adoptable`). Several questions in one
+ *  row share its marks as their points were. */
+export function adoptMarks(full: ExamDoc, ids: string[], report = linkReport(full)): ExamDoc {
   const c = full.correction;
   if (!report || !c) return full;
   const sheet = viewOf(full, "sheet");
   const wanted = new Set(ids);
+  const byId = new Map(questionsOf(full).map((q) => [q.id, q]));
   const points = new Map<string, QuestionBlock>();
   for (const d of report.diffs) {
-    if (!d.adoptable || d.questions.length !== 1 || !wanted.has(d.questions[0].id)) continue;
-    const q = questionsOf(full).find((x) => x.id === d.questions[0].id);
-    if (!q) continue;
-    if (q.type === "open" && q.parts?.length) {
-      const marks = partMarks(sheet.blocks, q);
-      if (!marks) continue;
-      const next = q.parts.map((p, i) => ({ ...p, points: round3(marks[i]) }));
-      points.set(q.id, { ...q, parts: next, points: round3(next.reduce((s, p) => s + p.points, 0)) });
-    } else points.set(q.id, { ...q, points: round3(Math.max(0, d.sheet)) } as QuestionBlock);
+    if (!d.adoptable || !d.questions.some((q) => wanted.has(q.id))) continue;
+    const qs = d.questions.flatMap((q) => byId.get(q.id) ?? []);
+    if (qs.length !== d.questions.length) continue;
+    const shares = qs.length === 1 ? [d.sheet] : split(d.sheet, qs.map((q) => q.points));
+    qs.forEach((q, i) => points.set(q.id, withPoints(q, shares[i], sheet.blocks)));
   }
   if (!points.size) return full;
-  return { ...full, blocks: full.blocks.map((b) => points.get(b.id) ?? b) };
+  const next = { ...full, blocks: full.blocks.map((b) => points.get(b.id) ?? b) };
+  return c.template === "copy" ? recopyPoints(full, next, points) : next;
+}
+
+/** On a copy of the exam: the copies of the questions whose points changed take them too, and remember the question as it is now (else they would
+ *  be told "changed in the exam"). A copy that was behind already stays as it was. */
+function recopyPoints(before: ExamDoc, after: ExamDoc, changed: Map<string, QuestionBlock>): ExamDoc {
+  const shapesBefore = hostedShapes(before);
+  const shapesAfter = hostedShapes(after);
+  let touched = false;
+  const blocks = after.correction!.blocks.map((b) => {
+    const src = b.meta?.source;
+    const q = src ? changed.get(src.id) : undefined;
+    const old = q && before.blocks.find((x) => x.id === q.id);
+    if (!src || !q || !old || b.type !== q.type || src.sig === undefined || src.sig !== copySig(before, old, shapesBefore.get(q.id) ?? [])) return b;
+    touched = true;
+    const copy = b as QuestionBlock;
+    const parts = copy.type === "open" && q.type === "open" && copy.parts ? { parts: copy.parts.map((p, i) => ({ ...p, points: q.parts?.[i]?.points ?? p.points })) } : {};
+    return { ...copy, points: q.points, ...parts, meta: { ...b.meta, source: { ...src, sig: copySig(after, q, shapesAfter.get(q.id) ?? []) } } } as Block;
+  });
+  return touched ? { ...after, correction: { ...after.correction!, blocks } } : after;
+}
+
+/**
+ * After a change made on the sheet: where the marks of a row no longer agree with the points of the exam, the sheet is followed and the points of
+ * the exam are set from its marks (no warning is left behind). Only the rows that this change made disagree are taken: a row that disagreed the same
+ * way before (the points were changed in the exam since) is left for the teacher to settle, so a change of points in the exam is not undone by moving
+ * something on the sheet.
+ */
+export function syncPoints(before: ExamDoc, after: ExamDoc): ExamDoc {
+  const now = linkReport(after);
+  if (!now?.diffs.some((d) => d.adoptable)) return after;
+  const key = (d: MarksDiff) => `${d.questions.map((q) => `${q.id}:${q.points}`).join("+")}=${d.sheet}`;
+  const was = new Set((linkReport(before)?.diffs ?? []).map(key));
+  const ids = now.diffs.filter((d) => d.adoptable && !was.has(key(d))).flatMap((d) => d.questions.map((q) => q.id));
+  return ids.length ? adoptMarks(after, ids, now) : after;
 }
 
 /** The whole sheet made again from the exam (its settings kept), as the wizard says; the old one goes */

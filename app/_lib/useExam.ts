@@ -27,7 +27,7 @@ import { withFullMark } from "./examMark";
 import { contentBounds } from "./sheet/frame";
 import { moveRule } from "./sheet/flow";
 import { generateCorrection } from "./sheet/generate";
-import { rebuildSheet } from "./sheet/links";
+import { rebuildSheet, syncPoints } from "./sheet/links";
 import type { SheetChoice, SheetConfig } from "./sheet/model";
 import { createCorrection, dropCorrection, mergeView, partChanged, readCorrection, viewOf, withCorrection, withSheetChrome, type Part } from "./sheet/part";
 import { settleSheet } from "./sheet/settle";
@@ -156,8 +156,10 @@ export function useExam(initial: ExamDoc, t?: T) {
       const changed = settleTextboxes(update(view));
       const next = shown === "sheet" && changed.sheet ? settleSheet(changed) : changed;
       if (next === view) return h;
-      const merged = mergeView(h.present, next, shown);
-      if (merged === h.present) return h;
+      const changedFile = mergeView(h.present, next, shown);
+      if (changedFile === h.present) return h;
+      // (a mark changed on the correction sheet sets the points of its question in the exam, in the same step: the sheet is the one followed)
+      const merged = shown === "sheet" ? syncPoints(h.present, changedFile) : changedFile;
       const merge = opts.silent || (opts.key !== undefined && h.last?.key === opts.key && now - h.last.time < 1000);
       const last = opts.silent ? h.last : opts.key ? { key: opts.key, time: now } : null;
       if (merge) return { ...h, present: merged, last };
