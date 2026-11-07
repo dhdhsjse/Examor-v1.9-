@@ -182,7 +182,7 @@ export default function IsomerGallery({ engine, formula, smiles, graph, onPick, 
                       aria-current={isCurrent}
                       className={`flex flex-col gap-1 rounded-lg border p-2 text-start ${isCurrent ? "border-accent bg-accent-soft" : "border-line hover:bg-subtle"}`}
                     >
-                      <div dir="ltr" className="flex h-24 items-center justify-center overflow-hidden [&>svg]:h-auto [&>svg]:max-h-24 [&>svg]:w-auto [&>svg]:max-w-full" dangerouslySetInnerHTML={{ __html: pictures[e.smiles] ?? "" }} />
+                      <div dir="ltr" data-paper="" className="paper-chip flex h-24 items-center justify-center overflow-hidden [&>svg]:h-auto [&>svg]:max-h-24 [&>svg]:w-auto [&>svg]:max-w-full" dangerouslySetInnerHTML={{ __html: pictures[e.smiles] ?? "" }} />
                       <span className="min-h-5 text-sm font-medium text-ink">{nameOf(e) ?? ""}</span>
                       <span className="text-xs text-muted">{e.groups.map((id) => t(GROUP_LABEL[id])).join(" · ")}</span>
                       {isCurrent ? (

@@ -270,6 +270,7 @@ export default function TextboxEditor({ block, meta, zoom, box, selectAll, keepO
           e.preventDefault();
           editor?.commands.focus("end");
         }}
+        data-paper=""
         className={`textbox-editor ${showMarks ? "show-marks" : ""} ${autoWidth ? "[&_.ProseMirror]:whitespace-pre!" : ""} relative flex cursor-text flex-col rounded-[2px] outline-2 outline-offset-1 outline-indigo-500 [&_.ProseMirror]:outline-none [&_.ProseMirror]:[overflow-wrap:break-word] [&_mark]:[color:inherit]`}
         style={{
           minHeight: box.height,

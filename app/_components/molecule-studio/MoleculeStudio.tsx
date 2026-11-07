@@ -229,7 +229,7 @@ export default function MoleculeStudio({ editing, onInsert, onUpdate, onInsertMo
                       ))}
                     </div>
                   )}
-                  <div className="rounded-xl bg-white p-4 shadow-sm [&>svg]:h-auto [&>svg]:max-w-full" dangerouslySetInnerHTML={{ __html: preview.svg }} />
+                  <div data-paper="" className="rounded-xl bg-white p-4 shadow-sm [&>svg]:h-auto [&>svg]:max-w-full" dangerouslySetInnerHTML={{ __html: preview.svg }} />
                 </>
               ) : preview.status === "error" ? (
                 <p className="max-w-md text-center text-sm text-muted">

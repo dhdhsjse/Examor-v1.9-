@@ -116,7 +116,7 @@ export default function EditCanvas({ svg, selection, onSelection, zoom, editable
   return (
     <div ref={box} data-testid="edit-canvas" className="relative grid h-full w-full touch-none place-items-center overflow-auto p-4" onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up}>
       <style>{`${editable ? '[data-testid="edit-canvas"] [data-atom-id],[data-testid="edit-canvas"] [data-bond-id],[data-testid="edit-canvas"] [data-lp-id]{cursor:pointer}' : ""}${css}`}</style>
-      <div dir="ltr" className="rounded-md bg-white p-3 shadow-sm" style={{ transform: `scale(${zoom})`, transformOrigin: "center" }} dangerouslySetInnerHTML={{ __html: svg }} />
+      <div dir="ltr" data-paper="" className="rounded-md bg-white p-3 shadow-sm" style={{ transform: `scale(${zoom})`, transformOrigin: "center" }} dangerouslySetInnerHTML={{ __html: svg }} />
       {band && (
         <div
           className="pointer-events-none absolute border border-accent bg-accent/10"

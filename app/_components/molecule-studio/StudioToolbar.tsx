@@ -3,7 +3,7 @@
 import { ArrowRight, Check, CircleDot, Dot, Eraser, Table2, Type } from "lucide-react";
 import type { HydrogenMode, LonePairMode, BondType } from "@/app/_lib/chemistry/types";
 import type { ReactNode } from "react";
-import { COMMON_ELEMENTS, PERIODIC_TABLE, elementName, textColor } from "@/app/_lib/chemistry/periodicTable";
+import { COMMON_ELEMENTS, PERIODIC_TABLE, elementInk, elementName } from "@/app/_lib/chemistry/periodicTable";
 import { FRAGMENTS, FRAGMENT_IDS, type FragmentId } from "@/app/_lib/chemistry/fragments";
 import { TOOL_HINTS } from "@/app/_lib/chemistry/strings";
 import type { RingSpec } from "@/app/_lib/chemistry/types";
@@ -69,8 +69,8 @@ export default function StudioToolbar({ studio, onOpenTable, examples }: Props) 
                 title={`${elementName(e, lang)} — ${t(TOOL_HINTS.atom)}`}
                 aria-label={`${symbol} — ${elementName(e, lang)}`}
                 data-symbol={symbol}
-                className={`${tileBase} h-9 text-[15px]! font-bold! ${on ? held : idle}`}
-                style={{ color: on ? undefined : textColor(e.color) }}
+                className={`${tileBase} h-9 text-[15px]! font-bold! ${on ? held : `${idle} element-ink`}`}
+                style={on ? undefined : elementInk(e.color)}
               >
                 {symbol}
               </button>

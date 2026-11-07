@@ -20,7 +20,7 @@ interface Props {
 
 // The little pictures of the three ways (the lines are the text, the small boxes on the right are the marks)
 const Sketch = ({ children }: { children: ReactNode }) => (
-  <svg viewBox="0 0 120 70" width="100%" height="70" aria-hidden className="rounded-lg bg-white ring-1 ring-black/5">
+  <svg viewBox="0 0 120 70" width="100%" height="70" aria-hidden data-paper="" className="rounded-lg bg-white ring-1 ring-black/5">
     <rect x="8" y="6" width="104" height="58" fill="none" stroke="#9ca3af" strokeWidth="1" />
     <line x1="80" y1="6" x2="80" y2="64" stroke="#9ca3af" strokeWidth="1" />
     <line x1="96" y1="6" x2="96" y2="64" stroke="#9ca3af" strokeWidth="1" />

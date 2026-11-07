@@ -53,7 +53,8 @@ export function PlaceGlyph({ kind, width = 56, height = 34 }: { kind: PlaceKind;
   const d = drawItem(newItem(kind, 0, 0));
   const pad = 6;
   return (
-    <svg width={width} height={height} className="shrink-0" viewBox={`${d.bounds.x - pad} ${d.bounds.y - pad} ${d.bounds.w + 2 * pad} ${d.bounds.h + 2 * pad}`} aria-hidden="true">
+    // (`ink-glyph`: in dark mode the ink turns light and the white faces of dice and cards see-through, globals.css)
+    <svg width={width} height={height} className="ink-glyph shrink-0" viewBox={`${d.bounds.x - pad} ${d.bounds.y - pad} ${d.bounds.w + 2 * pad} ${d.bounds.h + 2 * pad}`} aria-hidden="true">
       <SvgPrims prims={d.prims} />
     </svg>
   );

@@ -2,7 +2,7 @@
 
 import { X } from "lucide-react";
 import { useEffect, useState } from "react";
-import { ELEMENTS, PERIODIC_TABLE, elementName, tableCell, textColor, type ElementData } from "@/app/_lib/chemistry/periodicTable";
+import { ELEMENTS, PERIODIC_TABLE, elementInk, elementName, tableCell, type ElementData } from "@/app/_lib/chemistry/periodicTable";
 import { useUi } from "@/app/_lib/uiLang";
 
 interface Props {
@@ -71,7 +71,7 @@ function Tile({ element: e, lang, active, onPick, onHover }: { element: ElementD
       className={`flex min-h-[54px] min-w-0 flex-col items-center justify-center rounded-md border px-0.5 py-1 leading-none transition-colors ${active ? "border-accent bg-accent-soft ring-1 ring-accent" : "border-line bg-subtle hover:border-accent hover:bg-accent-soft"}`}
     >
       <span className="self-start ps-0.5 text-[9px] tabular-nums text-faint">{e.atomicNumber}</span>
-      <span className="text-[17px] font-bold" style={{ color: textColor(e.color) }}>
+      <span className="element-ink text-[17px] font-bold" style={elementInk(e.color)}>
         {e.symbol}
       </span>
       <span className="mt-0.5 w-full truncate text-center text-[8.5px] text-muted">{name}</span>
@@ -99,7 +99,7 @@ function Details({ element: e, lang, hovering }: { element: ElementData; lang: "
   const { t } = useUi();
   return (
     <div className="flex min-w-0 items-baseline gap-3 text-sm" aria-live="polite">
-      <span className="text-2xl font-bold" style={{ color: textColor(e.color) }}>
+      <span className="element-ink text-2xl font-bold" style={elementInk(e.color)}>
         {e.symbol}
       </span>
       <span className="truncate font-medium text-ink">{elementName(e, lang)}</span>

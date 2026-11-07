@@ -4,7 +4,7 @@ import { Minus, Plus, RefreshCcw, Table2 } from "lucide-react";
 import { useId, useMemo, type KeyboardEvent, type ReactNode } from "react";
 import { formulaSegments, moleculesOf } from "@/app/_lib/chemistry/formula";
 import { ARROW_MIN_WIDTH } from "@/app/_lib/chemistry/geometry";
-import { COMMON_ELEMENTS, PERIODIC_TABLE, elementName, textColor } from "@/app/_lib/chemistry/periodicTable";
+import { COMMON_ELEMENTS, PERIODIC_TABLE, elementInk, elementName } from "@/app/_lib/chemistry/periodicTable";
 import { MAX_CHARGE, MAX_MASK, isEmpty } from "@/app/_lib/chemistry/selection";
 import { DEFAULT_ATOM_MASK } from "@/app/_lib/chemistry/masking";
 import { drawingIssues } from "@/app/_lib/chemistry/issues";
@@ -186,8 +186,8 @@ function AtomSection({ studio, atoms, onOpenTable, lang }: { studio: MoleculeStu
             aria-pressed={element === symbol}
             data-element={symbol}
             title={elementName(PERIODIC_TABLE[symbol], lang)}
-            className={`${tileBase} h-8 text-[13px]! font-bold! ${element === symbol ? held : idle}`}
-            style={{ color: element === symbol ? undefined : textColor(PERIODIC_TABLE[symbol].color) }}
+            className={`${tileBase} h-8 text-[13px]! font-bold! ${element === symbol ? held : `${idle} element-ink`}`}
+            style={element === symbol ? undefined : elementInk(PERIODIC_TABLE[symbol].color)}
           >
             {symbol}
           </button>

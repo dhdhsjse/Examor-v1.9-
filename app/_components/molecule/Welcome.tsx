@@ -27,7 +27,7 @@ export default function Welcome({ engine, onPick }: Props) {
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         {popular.map((e) => (
           <button key={e.id} onClick={() => onPick(e)} className={`${tileBase} ${idle} gap-1! p-2.5`}>
-            <div dir="ltr" className="flex h-14 w-full items-center justify-center overflow-hidden mix-blend-multiply [&>svg]:h-auto [&>svg]:max-h-14 [&>svg]:w-auto [&>svg]:max-w-full" dangerouslySetInnerHTML={{ __html: pictures[e.id] ?? "" }} />
+            <div dir="ltr" data-paper="" className="paper-chip flex h-14 w-full items-center justify-center overflow-hidden mix-blend-multiply [&>svg]:h-auto [&>svg]:max-h-14 [&>svg]:w-auto [&>svg]:max-w-full" dangerouslySetInnerHTML={{ __html: pictures[e.id] ?? "" }} />
             <span className="text-[13px] font-semibold text-ink">{entryName(e, lang)}</span>
             <span className="text-xs font-normal text-muted">
               <Formula text={displayFromCounts(parseFormula(e.formula) ?? {}) || e.formula} />

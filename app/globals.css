@@ -317,6 +317,7 @@ a {
   --dark-raised-2: #283150;     /* `bg-white` inside a field or a group */
   --dark-hairline: rgb(148 163 214 / 0.16); /* what black hairlines (border-black/…, ring-black/…) become */
   --dark-focus: #818cf8;
+  --dark-glyph-ink: #dfe4f2;    /* what black ink in the little pictures of the interface becomes */
 
   /* Greys: the navy steps above, then lighter blue-greys for icons and text */
   --color-slate-50: #141a2b; --color-slate-100: #1d2438; --color-slate-200: #283150; --color-slate-300: #3d4766; --color-slate-400: #56607f; --color-slate-500: #7d87a6; --color-slate-600: #a3acc7; --color-slate-700: #c3cadd; --color-slate-800: #d9deeb; --color-slate-900: #eef1fa;
@@ -472,6 +473,70 @@ a {
 /* Glyphs drawn as dark pictures (the keys of the math keyboard) are turned light */
 :root[data-theme="dark"] .kb-glyph {
   filter: invert(1) brightness(0.95);
+}
+
+/* Little pictures drawn in a fixed ink (tool tiles, style previews, shape thumbnails…): what is drawn in black or a dark grey would
+   vanish on the navy, so it is drawn in the light ink instead, and the deep indigo of a chosen one in the light indigo. Not on paper
+   (`data-paper`: it prints dark on white) and not where the picture keeps its own colours (`keep-ink`). */
+:root[data-theme="dark"]
+  :is(svg, svg *):not(.keep-ink, .keep-ink *):is(
+    [stroke="#000" i], [stroke="#000000" i], [stroke="black" i], [stroke="#111" i], [stroke="#111111" i], [stroke="#111827" i],
+    [stroke="#171717" i], [stroke="#18181b" i], [stroke="#1e1e1e" i], [stroke="#1f1f1f" i], [stroke="#1f2937" i], [stroke="#0f172a" i],
+    [stroke="#1e293b" i], [stroke="#222" i], [stroke="#222222" i], [stroke="#262626" i], [stroke="#27272a" i], [stroke="#333" i],
+    [stroke="#333333" i], [stroke="#334155" i], [stroke="#374151" i], [stroke="#3f3f46" i], [stroke="#404040" i], [stroke="#444" i],
+    [stroke="#444444" i], [stroke="#475569" i], [stroke="#4b5563" i], [stroke="#52525b" i]
+  ):not([data-paper] *) {
+  stroke: var(--dark-glyph-ink);
+}
+:root[data-theme="dark"]
+  :is(svg, svg *):not(.keep-ink, .keep-ink *):is(
+    [fill="#000" i], [fill="#000000" i], [fill="black" i], [fill="#111" i], [fill="#111111" i], [fill="#111827" i],
+    [fill="#171717" i], [fill="#18181b" i], [fill="#1e1e1e" i], [fill="#1f1f1f" i], [fill="#1f2937" i], [fill="#0f172a" i],
+    [fill="#1e293b" i], [fill="#222" i], [fill="#222222" i], [fill="#262626" i], [fill="#27272a" i], [fill="#333" i],
+    [fill="#333333" i], [fill="#334155" i], [fill="#374151" i], [fill="#3f3f46" i], [fill="#404040" i], [fill="#444" i],
+    [fill="#444444" i], [fill="#475569" i], [fill="#4b5563" i], [fill="#52525b" i]
+  ):not([data-paper] *) {
+  fill: var(--dark-glyph-ink);
+}
+:root[data-theme="dark"]
+  :is(svg, svg *):not(.keep-ink, .keep-ink *):is([stop-color="#000" i], [stop-color="#000000" i], [stop-color="#111827" i], [stop-color="#1e1e1e" i], [stop-color="#1f2937" i], [stop-color="#374151" i], [stop-color="#475569" i]):not([data-paper] *) {
+  stop-color: var(--dark-glyph-ink);
+}
+:root[data-theme="dark"] :is(svg, svg *):not(.keep-ink, .keep-ink *):is([stroke="#4f46e5" i], [stroke="#4338ca" i]):not([data-paper] *) {
+  stroke: #a5b4fc;
+}
+:root[data-theme="dark"] :is(svg, svg *):not(.keep-ink, .keep-ink *):is([fill="#4f46e5" i], [fill="#4338ca" i]):not([data-paper] *) {
+  fill: #a5b4fc;
+}
+:root[data-theme="dark"] :is(svg, svg *):not(.keep-ink, .keep-ink *)[stop-color="#4f46e5" i]:not([data-paper] *) {
+  stop-color: #a5b4fc;
+}
+/* (the light grey body of the shape thumbnails: a soft blue-grey, so the light outline still stands out) */
+:root[data-theme="dark"] :is(svg, svg *):not(.keep-ink, .keep-ink *)[fill="#e8e8e8" i]:not([data-paper] *) {
+  fill: rgb(170 178 204 / 0.22);
+}
+/* The tiles of the Probability Studio: the white faces of dice and cards (and the patches under the labels) are see-through, so the
+   light ink drawn on them reads */
+:root[data-theme="dark"] .ink-glyph :is([fill="#ffffff" i], [fill="#fff" i], [fill="white" i]):not([data-paper] *) {
+  fill: transparent;
+}
+/* (the letters of the coins sit on their yellow face: they stay dark) */
+:root[data-theme="dark"] svg.ink-glyph [fill="#fde68a" i] ~ text[fill]:not([data-paper] *) {
+  fill: #111827;
+}
+/* A drawing that sits straight on a card without paper of its own (the molecule pictures of the gallery): on dark it gets a white
+   chip, so its black lines read as on the page */
+:root[data-theme="dark"] .paper-chip {
+  background-color: #ffffff;
+  border-radius: 6px;
+  mix-blend-mode: normal;
+}
+/* Symbols of the elements (Molecule Studio): their CPK colour on white, a lightened one on dark (_lib/chemistry/periodicTable.ts) */
+.element-ink {
+  color: var(--el);
+}
+:root[data-theme="dark"] .element-ink:not([data-paper] *) {
+  color: var(--el-dark);
 }
 
 /* Paper: a piece of the page shown inside the app (a thumbnail, a sketch, the editor typed over a page) stays as it prints */

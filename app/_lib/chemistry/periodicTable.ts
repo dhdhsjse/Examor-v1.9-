@@ -204,3 +204,26 @@ export function textColor(hex: string): string {
   const part = (v: number) => Math.round(v * k).toString(16).padStart(2, "0");
   return `#${part(r)}${part(g)}${part(b)}`.toUpperCase();
 }
+
+// The darkest step the symbols sit on in dark mode (a field inside a group: --dark-raised-2 in globals.css)
+const DARK_PANEL: [number, number, number] = [0x28, 0x31, 0x50];
+const luminance = ([r, g, b]: number[]) => {
+  const f = (v: number) => ((v /= 255) <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4);
+  return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b);
+};
+
+/** The colour of an element's symbol on the dark panels: its CPK colour, lightened toward white until it reads (4.5:1 or more).
+ *  A dark colour (carbon, bromine…) would vanish there, as a pale one would on white. */
+export function textColorOnDark(hex: string): string {
+  const n = parseInt(hex.slice(1), 16);
+  const rgb = [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+  const bg = luminance(DARK_PANEL);
+  for (let t = 0; t <= 1.0001; t += 0.05) {
+    const c = rgb.map((v) => v + (255 - v) * t);
+    if ((luminance(c) + 0.05) / (bg + 0.05) >= 4.5) return `#${c.map((v) => Math.round(v).toString(16).padStart(2, "0")).join("")}`.toUpperCase();
+  }
+  return "#FFFFFF";
+}
+
+/** What an element's symbol in the interface is painted with: the colour on white, and the one on dark (the `element-ink` class picks). */
+export const elementInk = (hex: string): Record<string, string> => ({ "--el": textColor(hex), "--el-dark": textColorOnDark(hex) });

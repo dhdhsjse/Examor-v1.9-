@@ -10,7 +10,7 @@ const BAND = "#d4d4d8";
 // the part that touches the paper in the color it draws with. 28×64, upright with the tip at the top.
 export default function InkToolArt({ tool, color, className }: { tool: InkTool; color: string; className?: string }) {
   return (
-    <svg viewBox="0 0 28 64" width="28" height="64" className={className} fill="none" stroke={LINE} strokeWidth="1.4" strokeLinejoin="round" aria-hidden>
+    <svg viewBox="0 0 28 64" width="28" height="64" className={`keep-ink ${className ?? ""}`} fill="none" stroke={LINE} strokeWidth="1.4" strokeLinejoin="round" aria-hidden>
       {tool === "pencil" && (
         <g>
           <path d="M7 26 L14 5 L21 26 Z" fill={BODY} />
