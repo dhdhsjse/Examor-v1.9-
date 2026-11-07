@@ -184,6 +184,10 @@ export type Shell = {
   probaStudio: { open: boolean; blockId: string | null };
   openProbaStudio: (blockId?: string) => void;
   closeProbaStudio: () => void;
+  // The Image Studio (image-studio/): draw on a picture of the page and crop it. `blockId` = the image block edited.
+  imageStudio: { open: boolean; blockId: string | null };
+  openImageStudio: (blockId: string) => void;
+  closeImageStudio: () => void;
   restore: (version: Version) => void;
   exportJob: { doc: ExamDoc; mode: ViewMode; resolve: (stage: Konva.Stage) => void } | null;
   toast: string | null;

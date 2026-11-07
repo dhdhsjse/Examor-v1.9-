@@ -18,7 +18,7 @@ export default function PageKeyboard({ ctx }: { ctx: Ctx }) {
   useEffect(() => setKeyboardSubject(shell.subject), [shell.subject]);
   useEffect(() => trackTextFields(), []);
 
-  const studioOpen = shell.graphStudio.open || shell.circuitStudio.open || shell.probaStudio.open || shell.tableStudio.open || shell.molecule.open || shell.moleculeLab.open;
+  const studioOpen = shell.graphStudio.open || shell.circuitStudio.open || shell.probaStudio.open || shell.tableStudio.open || shell.imageStudio.open || shell.molecule.open || shell.moleculeLab.open;
   return (
     <div className="pointer-events-none absolute inset-0 z-40">
       {!studioOpen && keyboardState(shell).visible && <FloatingKeyboard where="page" onClose={() => shell.toggleMathKeyboard(false)} openTarget={shell.openForTyping} />}

@@ -5,6 +5,7 @@ import { useId, useState, type ReactNode } from "react";
 import { FILL_COLORS, TEXT_COLORS } from "@/app/_lib/fonts";
 import { DEFAULT_FONT_SIZE, DEFAULT_STROKE, DEFAULT_TEXT_COLOR, MIN_SHAPE_SIZE, isLine, isPicture, resolveStyle, shapeDef, type DashKind, type Order, type ShapeStyle, type ShapeTextAlign, type ShapeVAlign } from "@/app/_lib/shapes";
 import { useT } from "@/app/_lib/uiLang";
+import { Segmented } from "@/app/_components/inspector/fields";
 import { FontSelect } from "@/app/_components/rich/FormatBar";
 import { ShapesMenuButton, ShapeThumb } from "./ShapeGallery";
 
@@ -123,9 +124,9 @@ type Props = {
   onChange: (patch: Partial<ShapeFields>) => void;
   /** Shows where it is, how big and how turned (a Studio's shape; on the page a block has its own handles) */
   geometry?: boolean;
-  /** Only the size, in `item.w` and `item.h` (a block on the page: it has its own place) */
-  size?: boolean;
-  /** Put the shape in front of or behind the others (a Studio's shapes are stacked) */
+  /** A shape on the page: its Position, in front of the blocks it overlaps or behind everything on its page */
+  position?: { behind: boolean; onChange: (behind: boolean) => void };
+  /** A Studio's shape: one step or all the way up or down among the Studio's shapes */
   onOrder?: (order: Order) => void;
   onDuplicate?: () => void;
   onDelete?: () => void;
@@ -133,10 +134,10 @@ type Props = {
   onReplaceImage?: () => void;
 };
 
-// The properties of a selected shape, in the right panel of a Studio and in the page editor's: which shape, its fill and outline,
-// its text, and (in a Studio) where it is and how it is stacked. `onChange` gets only what changed. A picture has its image and its
-// outline (none unless asked), flips, and the same place, size and stacking.
-export default function ShapeProperties({ item, onChange, geometry, size, onOrder, onDuplicate, onDelete, onReplaceImage }: Props) {
+// The properties of a selected shape, in the right panel of a Studio and in the page editor's: which shape (and its flips), its fill and
+// outline, its text, and its Position: on the page in front of or behind the other blocks, in a Studio how it is stacked and (folded) its
+// exact place and size. `onChange` gets only what changed. A picture has its image and its outline (none unless asked), flips, and the same Position.
+export default function ShapeProperties({ item, onChange, geometry, position, onOrder, onDuplicate, onDelete, onReplaceImage }: Props) {
   const t = useT();
   const def = shapeDef(item.shape);
   const picture = isPicture(item);
@@ -149,6 +150,13 @@ export default function ShapeProperties({ item, onChange, geometry, size, onOrde
     { value: "dashed", label: t("Dashed line") },
     { value: "dotted", label: t("Dotted line") },
   ];
+  // (next to the shape or the picture: they change how it looks, not where it is)
+  const flips = (
+    <>
+      <IconToggle icon={FlipHorizontal2} label={t("Flip horizontally")} pressed={!!item.flipX} onClick={() => onChange({ flipX: !item.flipX || undefined })} testId="shape-flip-x" />
+      <IconToggle icon={FlipVertical2} label={t("Flip vertically")} pressed={!!item.flipY} onClick={() => onChange({ flipY: !item.flipY || undefined })} testId="shape-flip-y" />
+    </>
+  );
 
   return (
     <div data-testid="shape-properties">
@@ -156,20 +164,24 @@ export default function ShapeProperties({ item, onChange, geometry, size, onOrde
         <Section title={t("Image")} testId="picture-section">
           {/* eslint-disable-next-line @next/next/no-img-element -- local data URL preview */}
           <img src={item.src} alt="" className="max-h-32 w-full rounded-md border border-line bg-subtle object-contain" />
-          {onReplaceImage && (
-            <button type="button" onClick={onReplaceImage} data-testid="picture-replace" className="flex items-center justify-center gap-1.5 rounded-lg border border-line bg-white px-2.5 py-1.5 text-sm text-ink hover:border-accent">
-              <ImageIcon size={14} />
-              {t("Replace image…")}
-            </button>
-          )}
+          <div className="flex items-center gap-1">
+            {onReplaceImage && (
+              <button type="button" onClick={onReplaceImage} data-testid="picture-replace" className={`${textBtn} text-ink hover:border-accent`}>
+                <ImageIcon size={14} />
+                <span className="truncate">{t("Replace image…")}</span>
+              </button>
+            )}
+            {flips}
+          </div>
         </Section>
       ) : (
       <Section title={t("Shape")}>
-        <div className="flex items-center gap-2">
-          <span className="grid size-7 shrink-0 place-items-center rounded border border-line">
+        <div className="flex items-center gap-1">
+          <span className="me-1 grid size-7 shrink-0 place-items-center rounded border border-line">
             <ShapeThumb shape={item.shape} size={22} />
           </span>
           <span className="min-w-0 flex-1 truncate text-sm text-ink">{t(def.label)}</span>
+          {flips}
           <ShapesMenuButton variant="icon" current={item.shape} testId="shape-change" onPick={(shape) => onChange({ shape, adj: undefined })} />
         </div>
       </Section>
@@ -236,25 +248,30 @@ export default function ShapeProperties({ item, onChange, geometry, size, onOrde
         </Section>
       )}
 
-      <Section title={t("Arrange")}>
-        <div className="flex flex-wrap gap-1">
-          <IconToggle icon={FlipHorizontal2} label={t("Flip horizontally")} pressed={!!item.flipX} onClick={() => onChange({ flipX: !item.flipX || undefined })} testId="shape-flip-x" />
-          <IconToggle icon={FlipVertical2} label={t("Flip vertically")} pressed={!!item.flipY} onClick={() => onChange({ flipY: !item.flipY || undefined })} testId="shape-flip-y" />
-          {onOrder && (
-            <>
-              <span className="mx-1 my-1 w-px self-stretch bg-line" aria-hidden />
-              <IconToggle icon={BringToFront} label={t("Bring to front")} onClick={() => onOrder("front")} testId="shape-front" />
-              <IconToggle icon={ArrowUp} label={t("Bring forward")} onClick={() => onOrder("forward")} testId="shape-forward" />
-              <IconToggle icon={ArrowDown} label={t("Send backward")} onClick={() => onOrder("backward")} testId="shape-backward" />
-              <IconToggle icon={SendToBack} label={t("Send to back")} onClick={() => onOrder("back")} testId="shape-back" />
-            </>
-          )}
-        </div>
+      <Section title={t("Position")} testId="shape-position">
+        {position && (
+          <Segmented
+            value={position.behind ? "behind" : "front"}
+            onChange={(v) => position.onChange(v === "behind")}
+            options={[
+              { value: "front", label: t("In front") },
+              { value: "behind", label: t("Behind") },
+            ]}
+          />
+        )}
+        {onOrder && (
+          <div className="flex gap-1">
+            <IconToggle icon={BringToFront} label={t("Bring to front")} onClick={() => onOrder("front")} testId="shape-front" />
+            <IconToggle icon={ArrowUp} label={t("Bring forward")} onClick={() => onOrder("forward")} testId="shape-forward" />
+            <IconToggle icon={ArrowDown} label={t("Send backward")} onClick={() => onOrder("backward")} testId="shape-backward" />
+            <IconToggle icon={SendToBack} label={t("Send to back")} onClick={() => onOrder("back")} testId="shape-back" />
+          </div>
+        )}
         {geometry && item.w !== undefined && item.h !== undefined && item.x !== undefined && item.y !== undefined && (
           <details className="group">
             <summary className="flex h-7 cursor-pointer list-none items-center gap-1 rounded text-xs text-muted outline-none hover:text-ink focus-visible:ring-2 focus-visible:ring-accent [&::-webkit-details-marker]:hidden">
               <ChevronRight size={14} className="shrink-0 group-open:rotate-90 rtl:-scale-x-100 rtl:group-open:scale-x-100" />
-              {t("Position")}
+              {t("Place and size")}
             </summary>
             <div className="flex flex-col gap-2 pt-1">
             <div className="flex gap-2">
@@ -268,12 +285,6 @@ export default function ShapeProperties({ item, onChange, geometry, size, onOrde
             </div>
             </div>
           </details>
-        )}
-        {!geometry && size && item.w !== undefined && item.h !== undefined && (
-          <div className="flex gap-2">
-            <NumberInput label={t("Width")} value={item.w} min={line ? 0 : MIN_SHAPE_SIZE} max={5000} onCommit={(w) => onChange({ w })} testId="shape-w" />
-            <NumberInput label={t("Height")} value={item.h} min={line ? 0 : MIN_SHAPE_SIZE} max={5000} onCommit={(h) => onChange({ h })} testId="shape-h" />
-          </div>
         )}
         {(onDuplicate || onDelete) && (
           <div className="flex gap-1">

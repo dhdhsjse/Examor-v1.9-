@@ -14,7 +14,7 @@ import type { Block, BlockType, ExamMeta } from "@/app/_lib/types";
 import { useT } from "@/app/_lib/uiLang";
 import type { BlockPatch } from "@/app/_lib/useExam";
 import { BookmarkIcon, CopyIcon, TrashIcon } from "../icons";
-import BlockOrderButtons from "./BlockOrderButtons";
+import BlockPosition from "./BlockPosition";
 import { ContentEditorSwitch } from "./ContentEditorSwitch";
 import SheetSettings from "./SheetSettings";
 import { FontSelect } from "../rich/FormatBar";
@@ -48,6 +48,7 @@ interface Props {
   onReplaceImage: (id: string) => void;
   onOpenTableStudio: (shape?: string) => void; // a table: back to the Table Studio on it
   onOpenChartStudio: () => void; // a chart: the Chart Studio on it
+  onOpenImageStudio: () => void; // a picture: the Image Studio on it (draw on it, crop it)
   onMeta: (patch: Partial<ExamMeta>, key?: string) => void;
   onChangeTemplate: () => void;
   keyboardOpen: boolean;
@@ -130,13 +131,15 @@ export default function Inspector(props: Props) {
         meta={props.meta}
         onOpenTableStudio={props.onOpenTableStudio}
         onOpenChartStudio={props.onOpenChartStudio}
+        onOpenImageStudio={props.onOpenImageStudio}
         sheet={props.sheet}
       />
-      {/* (the text style is changed more often than the layer order: it comes first) */}
+      {/* (the text style is changed more often than the position: it comes first) */}
       {hasFontControls(block) && <BlockFontControls b={block} meta={props.meta} onChange={(patch, field) => props.onChange(block.id, patch, field)} />}
-      {block.type !== "header" && block.type !== "mark" && block.type !== "rule" && (
-        <Group label={t("Arrange")}>
-          <BlockOrderButtons onOrder={(order) => props.onOrder(block.id, order)} />
+      {/* (not for a block in a text box's text: it is drawn with its box) */}
+      {block.type !== "header" && block.type !== "mark" && block.type !== "rule" && !props.inBox && (
+        <Group label={t("Position")}>
+          <BlockPosition behind={!!block.behind} onChange={(behind) => props.onOrder(block.id, behind ? "back" : "front")} />
         </Group>
       )}
       </div>

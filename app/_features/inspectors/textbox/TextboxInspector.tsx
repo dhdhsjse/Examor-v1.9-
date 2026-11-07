@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import BlockOrderButtons from "@/app/_components/inspector/BlockOrderButtons";
+import BlockPosition from "@/app/_components/inspector/BlockPosition";
 import { Stepper } from "@/app/_components/inspector/fields";
 import FormulaField from "@/app/_components/inspector/FormulaField";
 import BoxBorders from "./BoxBorders";
@@ -13,14 +13,14 @@ import { useFormatTarget } from "@/app/_features/inspectors/format/formatTarget"
 import { SpacingFields } from "@/app/_features/inspectors/format/ParagraphGroup";
 import { RibbonButton, RibbonGroup } from "@/app/_features/inspectors/format/ribbonUi";
 import TextRibbon from "@/app/_features/inspectors/format/TextRibbon";
-import { TEXTBOX_MAX_PAD, TEXTBOX_PAD, layoutTextbox, sizingAfterResize, textboxPad } from "@/app/_lib/blockLayout";
+import { TEXTBOX_MAX_PAD, TEXTBOX_PAD, layoutTextbox, textboxPad } from "@/app/_lib/blockLayout";
 import { normalTurn, turnAboutCentre } from "@/app/_lib/turn";
 import type { TextboxBlock, TextboxSizing } from "@/app/_lib/types";
 
 // The selected text box's ribbon, in place of its Properties (like Word's tab for a selected shape): its name and actions
 // on one line, then the same ribbon as Home → Formatting (TextRibbon), on the selected words and paragraphs while the box
 // is being typed in (its Tiptap editor on the page), else on the whole box; then the box's own settings (resizing, line and
-// paragraph spacing, inner margin, dimensions, fill, border). It opens when a text box is selected (Feature.edits) and gives
+// paragraph spacing, inner margin, rotation, position, border; its size is set with its handles on the page). It opens when a text box is selected (Feature.edits) and gives
 // way when it no longer is.
 export default function TextboxInspector({ ctx }: { ctx: Ctx }) {
   const { t, shell } = ctx;
@@ -56,9 +56,8 @@ export default function TextboxInspector({ ctx }: { ctx: Ctx }) {
               onChange={(v) => shell.updateBlock(b.id, { padding: v === TEXTBOX_PAD ? undefined : v }, "padding")}
             />
           </div>
-          <TextboxDimensions ctx={ctx} b={b} />
           {!ctx.doc.blocks.some((o) => o.meta?.slot === b.id) && <TextboxRotation ctx={ctx} b={b} />}
-          <BlockOrderButtons onOrder={(order) => shell.orderBlock(b.id, order)} />
+          {!b.meta?.slot && <BlockPosition behind={!!b.behind} onChange={(behind) => shell.orderBlock(b.id, behind ? "back" : "front")} />}
         </RibbonGroup>
         <RibbonGroup title={t("Borders")} collapsible>
           <BoxBorders ctx={ctx} b={b} />
@@ -197,53 +196,6 @@ function AngleInput({ label, value, onCommit }: { label: string; value: number; 
         className="w-full min-w-0 bg-transparent text-end text-ink outline-none"
       />
       <span className="text-faint">°</span>
-    </label>
-  );
-}
-
-// The width and height typed in. Typing a size, like dragging an edge, gives up the automatic size that it changes.
-function TextboxDimensions({ ctx, b }: { ctx: Ctx; b: TextboxBlock }) {
-  const { t, shell, doc } = ctx;
-  const height = Math.round(layoutTextbox(b, doc.meta).height);
-  const resize = (size: { width?: number; height?: number }) => {
-    const next = sizingAfterResize(b, doc.meta, size);
-    shell.updateBlock(b.id, { layout: size, ...(next !== b.sizing ? { sizing: next } : {}) }, "size");
-  };
-  return (
-    <div className="flex items-center gap-1.5">
-      <span className="me-auto text-xs text-muted">{t("Dimensions")}</span>
-      <SizeInput label="W" title={t("Width (px)")} value={Math.round(b.layout.width)} min={40} onCommit={(width) => resize({ width })} />
-      <SizeInput label="H" title={t("Height (px)")} value={height} min={30} onCommit={(h) => resize({ height: h })} />
-    </div>
-  );
-}
-
-// A size typed in: kept when Enter is pressed or the field is left (a number under `min` becomes `min`).
-function SizeInput({ label, title, value, min, onCommit }: { label: string; title: string; value: number; min: number; onCommit: (v: number) => void }) {
-  const [draft, setDraft] = useState<string | null>(null);
-  const commit = () => {
-    const v = Math.round(Number(draft));
-    setDraft(null);
-    if (draft !== null && Number.isFinite(v) && v !== value) onCommit(Math.max(min, Math.min(5000, v)));
-  };
-  return (
-    <label title={title} className="flex h-7 w-[72px] items-center gap-1 rounded-md bg-subtle px-2 text-xs focus-within:ring-1 focus-within:ring-accent">
-      <span className="text-faint">{label}</span>
-      <input
-        inputMode="numeric"
-        value={draft ?? String(value)}
-        onChange={(e) => setDraft(e.target.value)}
-        onBlur={commit}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") e.currentTarget.blur();
-          if (e.key === "Escape") {
-            setDraft(null);
-            e.currentTarget.blur();
-          }
-        }}
-        aria-label={title}
-        className="w-full min-w-0 bg-transparent text-ink outline-none"
-      />
     </label>
   );
 }

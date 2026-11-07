@@ -25,6 +25,7 @@ interface Props {
   meta?: ExamMeta; // the exam settings (an image caption's default font and size)
   onOpenTableStudio: (shape?: string) => void;
   onOpenChartStudio: () => void;
+  onOpenImageStudio: () => void;
   keyboardOpen: boolean;
   onToggleKeyboard: () => void;
   onInsertBelow: (type: BlockType, preset: BlockPreset) => void; // a new block under this one (an equation's graph or table)
@@ -32,7 +33,7 @@ interface Props {
 }
 
 // Picks the right editor for the selected block type.
-export function ContentEditorSwitch({ block, number, lang, totalPoints, onChange, onLatex, onReplaceImage, examFont, meta, onOpenTableStudio, onOpenChartStudio, keyboardOpen, onToggleKeyboard, onInsertBelow, sheet }: Props) {
+export function ContentEditorSwitch({ block, number, lang, totalPoints, onChange, onLatex, onReplaceImage, examFont, meta, onOpenTableStudio, onOpenChartStudio, onOpenImageStudio, keyboardOpen, onToggleKeyboard, onInsertBelow, sheet }: Props) {
   switch (block.type) {
     case "mcq":
       return <McqEditor b={block} onChange={onChange} />;
@@ -57,7 +58,7 @@ export function ContentEditorSwitch({ block, number, lang, totalPoints, onChange
     case "equation":
       return <EquationEditor b={block} onLatex={onLatex} keyboardOpen={keyboardOpen} onToggleKeyboard={onToggleKeyboard} lang={lang} onInsert={onInsertBelow} />;
     case "image":
-      return <ImageEditor b={block} lang={lang} meta={meta} onChange={onChange} onReplace={onReplaceImage} onOpenChartStudio={onOpenChartStudio} />;
+      return <ImageEditor b={block} lang={lang} meta={meta} onChange={onChange} onReplace={onReplaceImage} onOpenChartStudio={onOpenChartStudio} onOpenImageStudio={onOpenImageStudio} />;
     case "graph":
       return <GraphEditor b={block} onChange={onChange} />;
     case "divider":

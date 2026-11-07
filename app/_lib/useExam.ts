@@ -349,14 +349,20 @@ export function useExam(initial: ExamDoc, t?: T) {
 
   // Bring a block to the front, send it to the back, or one layer up or down. The layers are what the page draws: the saved `layout.z`, the
   // exam's order for equal ones; the new order is saved as the z of every block (the order of the exam itself, which numbers the questions, stays).
+  // To the front / to the back is also the block's Position (In front / Behind): to the back puts it in the bottom layer, under everything
+  // else on its page (`behind`), to the front takes it out again — one undo step for both.
   const orderBlock = useCallback(
     (id: string, order: BlockOrder) =>
       commit((d) => {
-        const stacked = d.blocks.map((b, i) => ({ b, i })).sort((a, c) => (a.b.layout.z ?? 0) - (c.b.layout.z ?? 0) || a.i - c.i).map((x) => x.b);
+        const cur = d.blocks.find((b) => b.id === id);
+        if (!cur) return d;
+        const behind = order === "back" ? true : order === "front" ? undefined : cur.behind;
+        const flagged = behind === cur.behind ? d.blocks : d.blocks.map((b) => (b.id === id ? ({ ...b, behind } as Block) : b));
+        const stacked = flagged.map((b, i) => ({ b, i })).sort((a, c) => (a.b.layout.z ?? 0) - (c.b.layout.z ?? 0) || a.i - c.i).map((x) => x.b);
         const next = reorderBlock(stacked, id, order, blockHeights(d));
-        if (next === stacked) return d;
+        if (next === stacked) return flagged === d.blocks ? d : { ...d, blocks: flagged };
         const z = new Map(next.map((b, i) => [b.id, i + 1]));
-        return { ...d, blocks: d.blocks.map((b) => ({ ...b, layout: { ...b.layout, z: z.get(b.id) } }) as Block) };
+        return { ...d, blocks: flagged.map((b) => ({ ...b, layout: { ...b.layout, z: z.get(b.id) } }) as Block) };
       }),
     [commit],
   );

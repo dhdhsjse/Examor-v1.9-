@@ -142,6 +142,7 @@ export default function Editor() {
   const [probaStudio, setProbaStudio] = useState<Shell["probaStudio"]>({ open: false, blockId: null }); // the Probability Studio
   const [tableStudio, setTableStudio] = useState<Shell["tableStudio"]>({ open: false, blockId: null }); // the Table Studio
   const [chartStudio, setChartStudio] = useState<Shell["chartStudio"]>({ open: false, blockId: null }); // the Chart Studio
+  const [imageStudio, setImageStudio] = useState<Shell["imageStudio"]>({ open: false, blockId: null }); // the Image Studio
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -308,7 +309,7 @@ export default function Editor() {
     if (!file || !block) return;
     const { src, ratio } = await readImageFile(file);
     // A picture that was drawn in a Studio is no longer that drawing: double-click must not reopen the old one.
-    exam.updateBlock(id, { src, ratio, drawing: undefined, molecule: undefined, graphStudio: undefined, circuitStudio: undefined, chartStudio: undefined, srcAnswer: undefined, probaStudio: undefined, layout: { height: block.layout.width / ratio } });
+    exam.updateBlock(id, { src, ratio, drawing: undefined, molecule: undefined, graphStudio: undefined, circuitStudio: undefined, chartStudio: undefined, srcAnswer: undefined, probaStudio: undefined, imageEdit: undefined, layout: { height: block.layout.width / ratio } });
   };
 
   // Keep a copy of a block in "My blocks" (without its place on the page or its header/footer role).
@@ -779,7 +780,7 @@ export default function Editor() {
         setBarOpen(bar.id);
         return;
       }
-      if (typing || picker.open || sheetWizard.open || preview || history || molecule.open || moleculeLab.open || graphStudio.open || circuitStudio.open || probaStudio.open || tableStudio.open || chartStudio.open) return;
+      if (typing || picker.open || sheetWizard.open || preview || history || molecule.open || moleculeLab.open || graphStudio.open || circuitStudio.open || probaStudio.open || tableStudio.open || chartStudio.open || imageStudio.open) return;
 
       if (mod && key === "z") {
         e.preventDefault();
@@ -849,7 +850,7 @@ export default function Editor() {
   // Copy, cut and paste of whole blocks (when no text is being typed in).
   const clipboard = useBlockClipboard({
     selected,
-    active: !(picker.open || sheetWizard.open || preview || history || molecule.open || moleculeLab.open || graphStudio.open || circuitStudio.open || probaStudio.open || tableStudio.open || chartStudio.open),
+    active: !(picker.open || sheetWizard.open || preview || history || molecule.open || moleculeLab.open || graphStudio.open || circuitStudio.open || probaStudio.open || tableStudio.open || chartStudio.open || imageStudio.open),
     deleteBlock: exam.deleteBlock,
     pasteBlock: exam.pasteBlock,
     addText: (text) => exam.addBlock("text", { text, style: "body" }),
@@ -1021,6 +1022,9 @@ export default function Editor() {
     probaStudio,
     openProbaStudio: (blockId) => setProbaStudio({ open: true, blockId: blockId ?? null }),
     closeProbaStudio: () => setProbaStudio({ open: false, blockId: null }),
+    imageStudio,
+    openImageStudio: (blockId) => setImageStudio({ open: true, blockId }),
+    closeImageStudio: () => setImageStudio({ open: false, blockId: null }),
     restore,
     exportJob,
     toast,

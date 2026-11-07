@@ -9,6 +9,7 @@ import { SHAPES_AR, SHAPES_FR } from "@/app/_lib/shapes/strings";
 import { TABLE_AR, TABLE_FR } from "@/app/_lib/table/strings";
 import { MATHGRAPH_AR, MATHGRAPH_FR } from "@/app/_lib/mathGraphStrings";
 import { CHART_AR, CHART_FR } from "@/app/_lib/chart/strings";
+import { IMAGE_STUDIO_AR, IMAGE_STUDIO_FR } from "@/app/_lib/imageStudio/strings";
 import { SHEET_AR, SHEET_FR } from "@/app/_lib/sheet/strings";
 import { MOLECULE_AR, MOLECULE_FR } from "@/app/_molecule/strings";
 
@@ -1961,6 +1962,8 @@ Object.assign(AR, MATHGRAPH_AR);
 // The Chart Studio (Insert → Chart Studio).
 Object.assign(FR, CHART_FR);
 Object.assign(AR, CHART_AR);
+Object.assign(FR, IMAGE_STUDIO_FR);
+Object.assign(AR, IMAGE_STUDIO_AR);
 
 // The correction sheet (stickers, marks, paper).
 Object.assign(FR, SHEET_FR);

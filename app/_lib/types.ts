@@ -5,6 +5,7 @@ import type { CircuitConfig } from "@/app/_lib/circuit/types";
 import type { ProbaConfig } from "@/app/_lib/proba/types";
 import type { SheetConfig, SheetTemplate } from "@/app/_lib/sheet/model";
 import type { GraphConfig } from "@/app/_lib/graph/types";
+import type { ImageEdit } from "@/app/_lib/imageStudio/types";
 import type { ListKind } from "@/app/_lib/lists";
 import type { ShapeStyle } from "@/app/_lib/shapes/types";
 import type { TableExtras } from "@/app/_lib/table/model";
@@ -129,6 +130,9 @@ interface BlockBase {
   layout: BlockLayout;
   font?: BlockFont;
   meta?: BlockMeta; // missing in older files
+  // Position (Properties): drawn in the bottom layer, under the text, tables, text boxes, shapes and pictures of its page instead of
+  // over them. Missing = in front. (Before, only a picture had it.)
+  behind?: boolean;
 }
 
 // ---- Questions (they have points and a correct answer) ----
@@ -294,11 +298,11 @@ export interface ImageBlock extends BlockBase {
   chartStudio?: ChartConfig; // a chart from the Chart Studio: `src` is its picture, redrawn on edit
   srcAnswer?: string; // what the correction sheet shows instead of `src` (a chart that is blank for the students)
   probaStudio?: ProbaConfig; // probability trees and figures from the Probability Studio: `src` is their picture, redrawn on edit
+  imageEdit?: ImageEdit; // a picture cropped or drawn on in the Image Studio: the picture before, the crop and the drawings (`src` is what they make)
   // Text printed under the picture (a description, a legend, a source…), rich text. `layout.height` stays the picture's own
   // height: the caption is added below it (blockHeight).
   caption?: string;
   captionStyle?: CaptionStyle; // missing = italic, a bit smaller than the exam font, dark grey, centered
-  behind?: boolean; // drawn under the other blocks (text, tables, text boxes…) instead of over them; missing = in front
 }
 
 // The look of an image's caption (its own small toolbar in the image properties). Each missing value = the default.

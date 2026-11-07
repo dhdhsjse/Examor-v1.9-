@@ -1,6 +1,6 @@
 "use client";
 
-import { ChartColumn } from "lucide-react";
+import { ChartColumn, PencilLine } from "lucide-react";
 import type { ReactNode } from "react";
 import { DEFAULT_ACCENT } from "@/app/_lib/blockLayout";
 import { readChart } from "@/app/_lib/chart/types";
@@ -72,13 +72,25 @@ export function TextEditor({ b, onChange }: { b: TextBlock; onChange: OnChange }
   );
 }
 
-export function ImageEditor({ b, lang, meta, onChange, onReplace, onOpenChartStudio }: { b: ImageBlock; lang: Lang; meta?: ExamMeta; onChange: OnChange; onReplace: () => void; onOpenChartStudio: () => void }) {
+export function ImageEditor({ b, lang, meta, onChange, onReplace, onOpenChartStudio, onOpenImageStudio }: { b: ImageBlock; lang: Lang; meta?: ExamMeta; onChange: OnChange; onReplace: () => void; onOpenChartStudio: () => void; onOpenImageStudio: () => void }) {
   const t = useT();
   const hasCaption = !!b.caption && !!plainText(b.caption).trim();
   return (
     <>
-      {/* eslint-disable-next-line @next/next/no-img-element -- local data URL preview */}
-      <img src={b.src} alt="" className="max-h-36 w-full rounded-[5px] border border-line bg-subtle object-contain" />
+      <div className="relative">
+        {/* eslint-disable-next-line @next/next/no-img-element -- local data URL preview */}
+        <img src={b.src} alt="" className="max-h-36 w-full rounded-[5px] border border-line bg-subtle object-contain" />
+        <button
+          type="button"
+          onClick={onOpenImageStudio}
+          title={t("Edit the image: draw on it, crop it")}
+          aria-label={t("Edit the image: draw on it, crop it")}
+          data-testid="edit-image"
+          className="ui-icon absolute top-1.5 grid size-7 place-items-center rounded-[5px] border border-line bg-surface/90 text-ink shadow-sm backdrop-blur-sm transition-colors hover:border-accent hover:text-accent ltr:right-1.5 rtl:left-1.5"
+        >
+          <PencilLine size={14} aria-hidden />
+        </button>
+      </div>
       <div className="flex gap-1.5">
         {readChart(b.chartStudio) && (
           <SmallButton onClick={onOpenChartStudio} className="flex-1">
@@ -91,26 +103,6 @@ export function ImageEditor({ b, lang, meta, onChange, onReplace, onOpenChartStu
           <span className="truncate">{t(b.figure || b.molecule || b.drawing || b.graphStudio || b.circuitStudio || b.chartStudio || b.probaStudio ? "Replace with an image…" : "Replace image…")}</span>
         </SmallButton>
       </div>
-      <Field group label={t("Position")}>
-        <Segmented
-          value={b.behind ? "behind" : "front"}
-          onChange={(v) => onChange({ behind: v === "behind" }, "behind")}
-          options={[
-            { value: "front", label: t("In front") },
-            { value: "behind", label: t("Behind") },
-          ]}
-        />
-      </Field>
-      <Row label={t("Width (px)")}>
-        <NumberInput
-          value={Math.round(b.layout.width)}
-          min={40}
-          max={794}
-          ariaLabel={t("Width (px)")}
-          className="w-20"
-          onChange={(width) => onChange({ layout: { width, height: width / b.ratio } }, "width")}
-        />
-      </Row>
       {b.figure && <FigureEditor b={b} figure={b.figure} lang={lang} onChange={onChange} />}
       <Group title={t("Caption")}>
         <RichInput value={b.caption ?? ""} onChange={(caption) => onChange({ caption }, "caption")} rows={2} multiline placeholder={t("e.g. Figure 1: a plant cell seen under a microscope")} />
