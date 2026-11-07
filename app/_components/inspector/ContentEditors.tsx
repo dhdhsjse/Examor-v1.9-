@@ -12,7 +12,7 @@ import { HEADER_STYLE_OPTIONS, HeaderSketch } from "../HeaderSketch";
 import { ColorGrid } from "../rich/FormatBar";
 import { CaptionControls } from "./CaptionControls";
 import { FigureEditor } from "./FigureEditor";
-import { ChoiceGrid, Field, NumberInput, RichInput, Segmented, SmallButton, TextInput } from "./fields";
+import { ChoiceGrid, Field, Group, NumberInput, RichInput, Row, Segmented, SmallButton, TextInput, Toggle } from "./fields";
 import type { OnChange } from "./QuestionEditors";
 
 // A text box: its text, and where it sits in the box. Font, size and alignment: Home → Formatting.
@@ -23,7 +23,7 @@ export function TextboxEditor({ b, onChange }: { b: TextboxBlock; onChange: OnCh
       <Field label={t("Text")}>
         <RichInput value={b.text} onChange={(text) => onChange({ text, content: docFromRich(text) }, "text")} rows={5} multiline />
       </Field>
-      <Field label={t("In the box")}>
+      <Field group label={t("In the box")}>
         <Segmented
           value={b.valign ?? "top"}
           onChange={(valign) => onChange({ valign }, "valign")}
@@ -42,7 +42,7 @@ export function TextEditor({ b, onChange }: { b: TextBlock; onChange: OnChange }
   const t = useT();
   return (
     <>
-      <Field label={t("Style")}>
+      <Field group label={t("Style")}>
         <Segmented
           value={b.style}
           onChange={(style) => onChange({ style }, "style")}
@@ -53,22 +53,21 @@ export function TextEditor({ b, onChange }: { b: TextBlock; onChange: OnChange }
           ]}
         />
       </Field>
+      <Field label={t("Text")}>
+        <RichInput value={b.text} onChange={(text) => onChange({ text }, "text")} rows={b.style === "body" ? 5 : 2} multiline={b.style === "body"} />
+      </Field>
       {b.style !== "body" && (
-        <>
-          <Field label={t("Look")}>
+        <Group>
+          <Field group label={t("Look")}>
             <ChoiceGrid value={b.decor ?? "plain"} onChange={(decor) => onChange({ decor }, "decor")} options={decorOptions(t, b.accent ?? DEFAULT_ACCENT)} />
           </Field>
           {(b.decor ?? "plain") !== "plain" && (
-            <div className="flex flex-col gap-1">
-              <span className="text-xs font-semibold text-muted">{t("Accent color")}</span>
+            <Field group label={t("Accent color")}>
               <ColorGrid value={b.accent ?? DEFAULT_ACCENT} onChange={(accent) => onChange({ accent }, "accent")} />
-            </div>
+            </Field>
           )}
-        </>
+        </Group>
       )}
-      <Field label={t("Text")}>
-        <RichInput value={b.text} onChange={(text) => onChange({ text }, "text")} rows={5} multiline={b.style === "body"} />
-      </Field>
     </>
   );
 }
@@ -78,16 +77,21 @@ export function ImageEditor({ b, lang, meta, onChange, onReplace, onOpenChartStu
   const hasCaption = !!b.caption && !!plainText(b.caption).trim();
   return (
     <>
-      {readChart(b.chartStudio) && (
-        <SmallButton onClick={onOpenChartStudio}>
-          <ChartColumn size={13} aria-hidden />
-          {t("Edit the chart")}
-        </SmallButton>
-      )}
       {/* eslint-disable-next-line @next/next/no-img-element -- local data URL preview */}
-      <img src={b.src} alt="" className="max-h-40 w-full rounded-md border border-line bg-subtle object-contain" />
-      {b.figure && <FigureEditor b={b} figure={b.figure} lang={lang} onChange={onChange} />}
-      <Field label={t("Position")}>
+      <img src={b.src} alt="" className="max-h-36 w-full rounded-[5px] border border-line bg-subtle object-contain" />
+      <div className="flex gap-1.5">
+        {readChart(b.chartStudio) && (
+          <SmallButton onClick={onOpenChartStudio} className="flex-1">
+            <ChartColumn size={13} aria-hidden />
+            <span className="truncate">{t("Edit the chart")}</span>
+          </SmallButton>
+        )}
+        {/* A figure is redrawn from its settings, a molecule or a drawing from its data: replacing it with a picture drops them. */}
+        <SmallButton onClick={onReplace} className="flex-1">
+          <span className="truncate">{t(b.figure || b.molecule || b.drawing || b.graphStudio || b.circuitStudio || b.chartStudio || b.probaStudio ? "Replace with an image…" : "Replace image…")}</span>
+        </SmallButton>
+      </div>
+      <Field group label={t("Position")}>
         <Segmented
           value={b.behind ? "behind" : "front"}
           onChange={(v) => onChange({ behind: v === "behind" }, "behind")}
@@ -97,20 +101,21 @@ export function ImageEditor({ b, lang, meta, onChange, onReplace, onOpenChartStu
           ]}
         />
       </Field>
-      <Field label={t("Caption")}>
-        <RichInput value={b.caption ?? ""} onChange={(caption) => onChange({ caption }, "caption")} rows={3} multiline placeholder={t("e.g. Figure 1: a plant cell seen under a microscope")} />
-      </Field>
-      {hasCaption && <CaptionControls b={b} meta={meta} onChange={onChange} />}
-      {/* A figure is redrawn from its settings, a molecule or a drawing from its data: replacing it with a picture drops them. */}
-      <SmallButton onClick={onReplace}>{t(b.figure || b.molecule || b.drawing || b.graphStudio || b.circuitStudio || b.chartStudio || b.probaStudio ? "Replace with an image…" : "Replace image…")}</SmallButton>
-      <Field label={t("Width (px)")}>
+      <Row label={t("Width (px)")}>
         <NumberInput
           value={Math.round(b.layout.width)}
           min={40}
           max={794}
+          ariaLabel={t("Width (px)")}
+          className="w-20"
           onChange={(width) => onChange({ layout: { width, height: width / b.ratio } }, "width")}
         />
-      </Field>
+      </Row>
+      {b.figure && <FigureEditor b={b} figure={b.figure} lang={lang} onChange={onChange} />}
+      <Group title={t("Caption")}>
+        <RichInput value={b.caption ?? ""} onChange={(caption) => onChange({ caption }, "caption")} rows={2} multiline placeholder={t("e.g. Figure 1: a plant cell seen under a microscope")} />
+        {hasCaption && <CaptionControls b={b} meta={meta} onChange={onChange} />}
+      </Group>
     </>
   );
 }
@@ -140,38 +145,39 @@ export function HeaderEditor({ b, totalPoints, onChange }: { b: HeaderBlock; tot
         />
       </Field>
       {COLORED.includes(b.style) && (
-        <div className="flex flex-col gap-1">
-          <span className="text-xs font-semibold text-muted">{t("Color")}</span>
+        <Field group label={t("Color")}>
           <ColorGrid value={b.accent} autoLabel={t("Style's own")} onChange={(accent) => onChange({ accent }, "accent")} />
-        </div>
+        </Field>
       )}
-      {b.style === "official" && text("authority", t("Ministry / authority line"))}
-      {text("title", t("Exam title"))}
-      {text("school", t("School"))}
-      {text("subject", t("Subject"))}
-      {text("level", t("Level / class"))}
-      {text("duration", t("Duration"))}
-      {text("year", t("School year"))}
 
-      <div className="flex flex-col gap-1.5 border-t border-line pt-2.5">
-        <span className="text-xs font-semibold text-ink">{t("Graded out of")}</span>
-        <label className="flex items-center gap-2 text-xs text-ink">
-          <input type="checkbox" checked={auto} onChange={(e) => set("autoOutOf", e.target.checked)} className="accent-accent" />
-          {t("Use the total of the questions ({n} pts)", { n: totalPoints })}
-        </label>
-        {auto ? (
-          <p className="text-[11px] leading-snug text-faint">
-            {totalPoints > 0 ? t("The score follows the points of the questions.") : t("No points yet: /{n} is shown until you add questions.", { n: b.fields.outOf })}
-          </p>
-        ) : (
-          <NumberInput value={b.fields.outOf} min={1} max={100} onChange={(v) => set("outOf", v)} />
-        )}
+      {/* The texts: the long ones on their own line, the short ones two by two */}
+      <Group>
+        {b.style === "official" && text("authority", t("Ministry / authority line"))}
+        {text("title", t("Exam title"))}
+        {text("school", t("School"))}
+        <div className="grid grid-cols-2 gap-x-2 gap-y-2">
+          {text("subject", t("Subject"))}
+          {text("level", t("Level / class"))}
+          {text("duration", t("Duration"))}
+          {text("year", t("School year"))}
+        </div>
+      </Group>
+
+      <Group>
+        <Row label={t("Graded out of")} hint={auto && totalPoints === 0 ? t("No points yet: /{n} is shown until you add questions.", { n: b.fields.outOf }) : undefined}>
+          {auto ? (
+            <span className="pe-1 text-xs font-semibold tabular-nums text-ink">/{totalPoints > 0 ? totalPoints : b.fields.outOf}</span>
+          ) : (
+            <NumberInput value={b.fields.outOf} min={1} max={100} ariaLabel={t("Graded out of")} className="w-16" onChange={(v) => set("outOf", v)} />
+          )}
+        </Row>
+        <Toggle checked={auto} onChange={(v) => set("autoOutOf", v)} label={t("Use the total of the questions ({n} pts)", { n: totalPoints })} />
         {mismatch && (
-          <p className="rounded-md bg-amber-50 px-2 py-1.5 text-xs leading-snug text-amber-800 ring-1 ring-amber-200">
+          <p role="status" className="rounded-[5px] bg-amber-50 px-2 py-1 text-xs leading-snug text-amber-800 ring-1 ring-amber-200">
             {t("The questions add up to {total} pts, not {outOf}.", { total: totalPoints, outOf: b.fields.outOf })}
           </p>
         )}
-      </div>
+      </Group>
     </>
   );
 }

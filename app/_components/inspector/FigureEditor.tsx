@@ -6,7 +6,7 @@ import { svgSize, svgUrl } from "@/app/_lib/library";
 import type { FigureSpec, FigureValue, ImageBlock, Lang } from "@/app/_lib/types";
 import { useT } from "@/app/_lib/uiLang";
 import { ColorGrid } from "../rich/FormatBar";
-import { MenuSelect, NumberInput, Segmented, TextInput, Toggle } from "./fields";
+import { Field, Group, MenuSelect, NumberInput, Segmented, TextInput, Toggle, iconButtonCls } from "./fields";
 import type { OnChange } from "./QuestionEditors";
 
 // Settings of a library figure (the angles of a triangle, the lamps of a circuit…).
@@ -35,82 +35,76 @@ export function FigureEditor({ b, figure, lang, onChange }: { b: ImageBlock; fig
   }
 
   return (
-    <div className="flex flex-col gap-2.5 rounded-[5px] border border-line p-2.5">
-      <div className="flex items-center justify-between gap-2">
-        <span className="flex items-center gap-1.5 text-xs font-semibold text-ink">
-          <SlidersHorizontal size={12} strokeWidth={2} aria-hidden className="text-muted" />
-          {t(def.name)}
-        </span>
-        <button
-          type="button"
-          onClick={() => apply(def.defaults(lang), "figure-reset")}
-          title={t("Back to the default settings")}
-          className="grid size-6 place-items-center rounded-md text-muted hover:bg-white hover:text-ink"
-        >
+    <Group
+      label={t(def.name)}
+      title={
+        <>
+          <SlidersHorizontal size={12} strokeWidth={2} aria-hidden className="shrink-0 text-muted" />
+          <span className="truncate">{t(def.name)}</span>
+        </>
+      }
+      hint={def.hint ? t(def.hint) : undefined}
+      action={
+        <button type="button" onClick={() => apply(def.defaults(lang), "figure-reset")} title={t("Back to the default settings")} aria-label={t("Back to the default settings")} className={`${iconButtonCls} size-6!`}>
           <RotateCcw size={13} aria-hidden />
         </button>
-      </div>
-      {def.hint && <p className="text-xs leading-snug text-faint">{t(def.hint)}</p>}
+      }
+    >
       {rows.map((row) =>
         row.length > 1 ? (
           <div key={row[0].key} className="grid gap-2" style={{ gridTemplateColumns: `repeat(${row.length}, minmax(0, 1fr))` }}>
             {row.map((p) => (
-              <Control key={p.key} p={p} params={params} set={set} compact />
+              <Control key={p.key} p={p} params={params} set={set} />
             ))}
           </div>
         ) : (
           <Control key={row[0].key} p={row[0]} params={params} set={set} />
         ),
       )}
-    </div>
+    </Group>
   );
 }
 
-function Control({ p, params, set, compact }: { p: FigureParam; params: Params; set: (key: string, v: FigureValue) => void; compact?: boolean }) {
+function Control({ p, params, set }: { p: FigureParam; params: Params; set: (key: string, v: FigureValue) => void }) {
   const t = useT();
   const label = t(p.label, p.vars?.(params));
   const value = params[p.key];
-  const caption = <span className={`text-xs font-semibold text-muted ${compact ? "truncate" : ""}`}>{label}</span>;
 
   switch (p.kind) {
     case "bool":
       return <Toggle checked={value === true} onChange={(v) => set(p.key, v)} label={label} />;
     case "number":
       return (
-        <label className="flex min-w-0 flex-col gap-1" title={label}>
-          {caption}
-          <span className="flex items-center gap-1 text-xs text-muted [&_input]:w-full [&_input]:min-w-0">
-            <NumberInput value={Number(value) || 0} min={p.min} max={p.max} step={p.step} onChange={(v) => set(p.key, v)} />
-            {p.unit}
+        <Field label={label}>
+          <span className="flex min-w-0 items-center gap-1 text-xs text-muted">
+            <NumberInput value={Number(value) || 0} min={p.min} max={p.max} step={p.step} ariaLabel={label} onChange={(v) => set(p.key, v)} />
+            {p.unit && <span className="shrink-0">{p.unit}</span>}
           </span>
-        </label>
+        </Field>
       );
     case "text":
       return (
-        <label className="flex min-w-0 flex-col gap-1" title={label}>
-          {caption}
+        <Field label={label}>
           <TextInput value={typeof value === "string" ? value : ""} placeholder={p.placeholder} onChange={(v) => set(p.key, v)} />
-        </label>
+        </Field>
       );
     case "select": {
       const options = p.options.map((o) => ({ value: o.value, label: t(o.label) }));
       return (
-        <div className="flex min-w-0 flex-col gap-1" role="group" aria-label={label}>
-          {caption}
+        <Field group label={label}>
           {options.length <= 3 ? (
             <Segmented value={String(value)} options={options} onChange={(v) => set(p.key, v)} />
           ) : (
-            <MenuSelect label={label} value={String(value)} options={options} onChange={(v) => set(p.key, v)} />
+            <MenuSelect full label={label} value={String(value)} options={options} onChange={(v) => set(p.key, v)} />
           )}
-        </div>
+        </Field>
       );
     }
     case "color":
       return (
-        <div className="flex flex-col gap-1" role="group" aria-label={label}>
-          {caption}
+        <Field group label={label}>
           <ColorGrid value={typeof value === "string" ? value : undefined} onChange={(v) => v && set(p.key, v)} />
-        </div>
+        </Field>
       );
   }
 }

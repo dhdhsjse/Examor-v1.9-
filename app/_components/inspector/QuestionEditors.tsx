@@ -1,6 +1,6 @@
 "use client";
 
-import { GripVertical, ListTree, Plus } from "lucide-react";
+import { GripVertical, ListTree, Plus, Shuffle } from "lucide-react";
 import { useRef, useState, type ReactNode } from "react";
 import { PART_NUMBERINGS, blankAnswers, partLabel, partNumberingOf } from "@/app/_lib/blockLayout";
 import { MAX_OPTIONS, addPart, insertOption, mcqAnswers, movePart, patchPart, removeOption, removePart, toggleMcq } from "@/app/_lib/blocks";
@@ -10,7 +10,7 @@ import type { AnswerStyle, BlankBlock, Lang, McqBlock, OpenBlock, OpenPart, Ques
 import { useT } from "@/app/_lib/uiLang";
 import type { BlockPatch } from "@/app/_lib/useExam";
 import type { RichHandle } from "../rich/RichEditable";
-import { AddRowButton, ChoiceGrid, Field, NumberInput, RemoveButton, RichInput, Segmented, TextInput, Toggle } from "./fields";
+import { AddRowButton, ChoiceGrid, Field, Group, NumberInput, RemoveButton, RichInput, Row, Segmented, TextAction, TextInput, Toggle } from "./fields";
 
 export type OnChange = (patch: BlockPatch, field: string) => void;
 
@@ -22,25 +22,20 @@ export function QuestionBasics({ b, onChange, lockPoints }: { b: QuestionBlock; 
       <Field label={t("Question")}>
         <RichInput value={b.text} placeholder={t("Type the question…")} onChange={(text) => onChange({ text }, "text")} rows={3} multiline />
       </Field>
-      <Field label={t("Points")} hint={lockPoints ? t("Total of the sub-questions.") : undefined}>
+      <Row label={t("Points")} hint={lockPoints ? t("Total of the sub-questions.") : undefined}>
         {lockPoints ? (
-          <span className="text-xs font-semibold text-ink">{b.points}</span>
+          <span className="pe-1 text-xs font-semibold tabular-nums text-ink">{b.points}</span>
         ) : (
-          <NumberInput value={b.points} min={0} max={100} step={0.25} onChange={(points) => onChange({ points }, "points")} />
+          <NumberInput value={b.points} min={0} max={100} step={0.25} ariaLabel={t("Points")} className="w-16" onChange={(points) => onChange({ points }, "points")} />
         )}
-      </Field>
+      </Row>
     </>
   );
 }
 
-// A group of settings inside an editor, set off by a hairline (no card).
+// A group of settings inside an editor, set off by a hairline (no card). (The shared Group of fields.tsx, under its old name.)
 export function Panel({ title, children }: { title?: string; children: ReactNode }) {
-  return (
-    <div className="flex flex-col gap-2 border-t border-line pt-2.5">
-      {title && <span className="text-xs font-semibold text-ink">{title}</span>}
-      {children}
-    </div>
-  );
+  return <Group title={title}>{children}</Group>;
 }
 
 export function McqEditor({ b, onChange }: { b: McqBlock; onChange: OnChange }) {
@@ -60,7 +55,39 @@ export function McqEditor({ b, onChange }: { b: McqBlock; onChange: OnChange }) 
   return (
     <>
       <QuestionBasics b={b} onChange={onChange} />
-      <Panel>
+      <Field
+        group
+        label={t("Options")}
+        action={
+          <TextAction onClick={shuffle} title={t("Mix the options (the correct answers follow)")}>
+            <Shuffle size={12} strokeWidth={2} aria-hidden />
+            {t("Shuffle")}
+          </TextAction>
+        }
+      >
+        <div className="flex flex-col gap-1.5">
+          {b.options.map((opt, i) => (
+            <div key={i} className="flex items-center gap-1.5">
+              {/* (in a 28px cell: the circle sits on the middle of the option's first line) */}
+              <span className="grid h-7 w-4 shrink-0 place-items-center self-start">
+                <input
+                  type={b.multi ? "checkbox" : "radio"}
+                  name={`correct-${b.id}`}
+                  checked={answers.includes(i)}
+                  onChange={() => onChange(toggleMcq(b, i), "correct")}
+                  className="size-3.5 cursor-pointer accent-emerald-600"
+                  title={t("Correct answer")}
+                  aria-label={`${t("Correct answer")} ${i + 1}`}
+                />
+              </span>
+              <RichInput value={opt} placeholder={`${t("Option")} ${i + 1}`} onChange={(v) => setOption(i, v)} />
+              {b.options.length > 2 && <RemoveButton onClick={() => onChange(removeOption(b, i), "options")} title={t("Remove")} />}
+            </div>
+          ))}
+          {b.options.length < MAX_OPTIONS && <AddRowButton onClick={() => onChange(insertOption(b, b.options.length), "options")}>{t("Add option")}</AddRowButton>}
+        </div>
+      </Field>
+      <Group>
         <Field group label={t("Correct answers")}>
           <Segmented
             value={b.multi ? "multi" : "one"}
@@ -74,34 +101,7 @@ export function McqEditor({ b, onChange }: { b: McqBlock; onChange: OnChange }) 
         <Field group label={t("Options per row")}>
           <Segmented value={String(b.columns ?? 1)} onChange={(v) => onChange({ columns: Number(v) }, "columns")} options={["1", "2", "3", "4"].map((v) => ({ value: v, label: v }))} />
         </Field>
-      </Panel>
-      <Field group label={t("Options")}>
-        <div className="flex flex-col gap-2">
-          {b.options.map((opt, i) => (
-            <div key={i} className="flex items-center gap-2">
-              <input
-                type={b.multi ? "checkbox" : "radio"}
-                name={`correct-${b.id}`}
-                checked={answers.includes(i)}
-                onChange={() => onChange(toggleMcq(b, i), "correct")}
-                className="size-[18px] shrink-0 cursor-pointer accent-emerald-600"
-                title={t("Correct answer")}
-              />
-              <RichInput roomy value={opt} placeholder={`${t("Option")} ${i + 1}`} onChange={(v) => setOption(i, v)} />
-              {b.options.length > 2 && <RemoveButton onClick={() => onChange(removeOption(b, i), "options")} title={t("Remove")} />}
-            </div>
-          ))}
-          {b.options.length < MAX_OPTIONS && <AddRowButton onClick={() => onChange(insertOption(b, b.options.length), "options")}>{t("Add option")}</AddRowButton>}
-        </div>
-      </Field>
-      <button
-        type="button"
-        onClick={shuffle}
-        title={t("Mix the options (the correct answers follow)")}
-        className="h-9 w-full rounded-xl bg-subtle text-[13px] font-medium tracking-[-0.01em] text-ink transition-[transform,background-color] duration-100 ease-out outline-none hover:bg-hover focus-visible:ring-2 focus-visible:ring-accent active:scale-[0.98]"
-      >
-        {t("Shuffle options")}
-      </button>
+      </Group>
     </>
   );
 }
@@ -114,18 +114,18 @@ export function TrueFalseEditor({ b, onChange }: { b: TrueFalseBlock; onChange: 
   return (
     <>
       <QuestionBasics b={b} onChange={onChange} />
-      <Toggle checked={!!b.justify} onChange={(justify) => onChange({ justify }, "justify")} label={t("Ask to correct the false statements")} hint={t("Adds a line under each statement.")} />
       <Field group label={t("Statements")} hint={t("Click T / F to set the correct answer of each statement.")}>
         <div className="flex flex-col gap-1.5">
           {b.statements.map((s, i) => (
             <div key={i} className="flex flex-col gap-1">
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-start gap-1.5">
                 <RichInput value={s.text} placeholder={t("Statement…")} onChange={(text) => set(i, { text })} />
                 <button
                   type="button"
                   onClick={() => set(i, { answer: !s.answer }, "answer")}
                   title={t("Correct answer")}
-                  className={`w-8 shrink-0 rounded-md py-1.5 text-xs font-bold ${s.answer ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"}`}
+                  aria-pressed={s.answer}
+                  className={`h-7 w-7 shrink-0 rounded-[5px] text-xs font-bold outline-none focus-visible:ring-2 focus-visible:ring-accent ${s.answer ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"}`}
                 >
                   {s.answer ? t("T") : t("F")}
                 </button>
@@ -134,7 +134,7 @@ export function TrueFalseEditor({ b, onChange }: { b: TrueFalseBlock; onChange: 
                 )}
               </div>
               {b.justify && !s.answer && (
-                <div className="ps-3">
+                <div className="border-s-2 border-line ps-2">
                   <RichInput value={s.fix ?? ""} placeholder={t("Corrected statement (correction sheet)…")} onChange={(fix) => set(i, { fix }, "fix")} />
                 </div>
               )}
@@ -143,6 +143,9 @@ export function TrueFalseEditor({ b, onChange }: { b: TrueFalseBlock; onChange: 
           <AddRowButton onClick={() => onChange({ statements: [...b.statements, { text: "", answer: true }] }, "statements")}>{t("Add statement")}</AddRowButton>
         </div>
       </Field>
+      <Group>
+        <Toggle checked={!!b.justify} onChange={(justify) => onChange({ justify }, "justify")} label={t("Ask to correct the false statements")} hint={t("Adds a line under each statement.")} />
+      </Group>
     </>
   );
 }
@@ -168,26 +171,26 @@ export function BlankEditor({ b, onChange }: { b: BlankBlock; onChange: OnChange
   return (
     <>
       <QuestionBasics b={b} onChange={onChange} />
-      <Field label={t("Text with blanks")} hint={t("Put each answer in [brackets], or select words and click “Make blank”.")}>
+      <Field
+        label={t("Text with blanks")}
+        hint={t("Put each answer in [brackets], or select words and click “Make blank”.")}
+        action={
+          <TextAction onMouseDown={(e) => e.preventDefault() /* keep the text selection */} onClick={makeBlank} title={t("Make blank from selection")}>
+            {t("Make blank")}
+          </TextAction>
+        }
+      >
         <RichInput ref={ref} value={b.content} placeholder={t("e.g. The sun rises in the [east].")} onChange={(content) => onChange({ content }, "content")} rows={4} multiline />
       </Field>
-      <button
-        type="button"
-        onMouseDown={(e) => e.preventDefault() /* keep the text selection */}
-        onClick={makeBlank}
-        className="h-7 self-start rounded-[5px] bg-subtle px-2 text-xs font-medium text-ink transition-colors outline-none hover:bg-hover focus-visible:ring-2 focus-visible:ring-accent"
-      >
-        {t("Make blank from selection")}
-      </button>
       {answers.length > 0 && (
-        <p className="text-xs text-muted">
+        <p className="text-xs leading-snug text-muted">
           {t("Answers:")} <span className="font-medium text-emerald-700">{answers.join(" · ")}</span>
         </p>
       )}
-      <Panel>
+      <Group>
         <Toggle checked={!!b.wordBank} onChange={(wordBank) => onChange({ wordBank }, "wordBank")} label={t("Give the words in a box")} hint={t("The answers are printed mixed up above the text.")} />
         {b.wordBank && (
-          <Field label={t("Extra words (wrong answers)")} hint={t("Separate them with commas.")}>
+          <Field label={t("Extra words (wrong answers)")}>
             <TextInput
               value={splitList(extra).filter(Boolean).join(",") === (b.distractors ?? []).join(",") ? extra : (b.distractors ?? []).join(", ")}
               placeholder={t("e.g. nord, sud")}
@@ -198,7 +201,7 @@ export function BlankEditor({ b, onChange }: { b: BlankBlock; onChange: OnChange
             />
           </Field>
         )}
-      </Panel>
+      </Group>
     </>
   );
 }
@@ -255,113 +258,119 @@ export function OpenEditor({ b, onChange, number, lang }: { b: OpenBlock; onChan
   return (
     <>
       <QuestionBasics b={b} onChange={onChange} lockPoints={parts.length > 0} />
-      {/* Sub-questions first, in their own band between two lines: splitting a question into a), b)… is the main choice here */}
-      <section aria-label={t("Sub-questions")} className="-mx-3 flex flex-col gap-2 border-y border-line px-3 py-3">
-        <div className="flex h-5 items-center gap-1.5">
-          <ListTree size={16} strokeWidth={1.5} aria-hidden className="text-muted" />
-          <span className="text-xs font-semibold text-ink">{t("Sub-questions")}</span>
-          {parts.length > 0 && <span className="rounded bg-hover px-1 text-[11px] font-semibold tabular-nums text-ink">{parts.length}</span>}
-        </div>
-        <span className="text-xs leading-snug text-faint">{t("Split the question into parts: a), b)… Each part has its own lines, points and answer.")}</span>
-        <div className="flex flex-col gap-2">
-          {parts.length > 0 && (
-            <div className="flex flex-col gap-1">
-              <span className="text-xs text-muted">{t("Numbering")}</span>
-              <Segmented value={partNumberingOf(b)} onChange={(partNumbering) => onChange({ partNumbering }, "numbering")} options={PART_NUMBERINGS} />
-            </div>
-          )}
-          {parts.map((p, i) => (
-            <div
-              key={i}
-              draggable={armed === i}
-              onDragStart={(e) => {
-                e.dataTransfer.effectAllowed = "move";
-                e.dataTransfer.setData("text/plain", String(i));
-                setDrag(i);
-              }}
-              onDragOver={(e) => {
-                if (drag === null) return;
-                e.preventDefault();
-                setOver(i);
-              }}
-              onDrop={(e) => {
-                e.preventDefault();
-                if (drag !== null && drag !== i) onChange(movePart(b, drag, i), "parts-order");
-                reset();
-              }}
-              onDragEnd={reset}
-              // One sub-question, top to bottom: its name, points and remove; its text; its answer lines and model answer.
-              className={`flex flex-col gap-2 rounded-[5px] border bg-white p-2 transition-colors ${drag === i ? "opacity-40" : ""} ${
-                over === i && drag !== i ? "border-accent" : "border-line"
-              }`}
-            >
-              <div className="flex items-center gap-1.5">
-                <span
-                  onMouseDown={() => setArmed(i)}
-                  onMouseUp={() => setArmed(null)}
-                  className="grid h-7 w-4 cursor-grab place-items-center text-faint select-none hover:text-ink active:cursor-grabbing"
-                  title={t("Drag to reorder")}
-                >
-                  <GripVertical size={12} strokeWidth={2} aria-hidden />
-                </span>
-                <div className="w-14 shrink-0 font-semibold" title={t("Name of the sub-question (empty = automatic)")}>
-                  <TextInput value={p.label ?? ""} placeholder={autoLabel(i)} onChange={(label) => setPart(i, { label }, "label")} />
-                </div>
-                <span className="flex-1" />
-                <div className="w-16 shrink-0" title={t("Points")}>
-                  <NumberInput value={p.points} min={0} max={100} step={0.25} onChange={(points) => setPart(i, { points }, "points")} />
-                </div>
-                <span className="text-xs text-muted">{t("pts")}</span>
-                <RemoveButton title={t("Remove")} onClick={() => onChange(removePart(b, i), "parts")} />
-              </div>
-              <RichInput value={p.text} placeholder={t("Sub-question…")} onChange={(text) => setPart(i, { text }, "text")} rows={2} multiline />
-              <div className="flex items-center gap-2 text-xs text-muted">
-                {t("Answer lines")}
-                <div className="w-16">
-                  <NumberInput value={p.lines} min={0} max={20} onChange={(lines) => setPart(i, { lines }, "lines")} />
-                </div>
-              </div>
-              <RichInput value={p.answer} placeholder={t("Answer (correction sheet)…")} onChange={(answer) => setPart(i, { answer }, "answer")} rows={2} multiline />
-            </div>
-          ))}
-          {parts.length < 12 && (
-            <button
-              type="button"
-              onClick={() => onChange(addPart(b), "parts")}
-              className="flex h-7 w-full items-center justify-center gap-1.5 rounded-[5px] bg-subtle text-xs font-medium text-ink transition-colors outline-none hover:bg-hover focus-visible:ring-2 focus-visible:ring-accent"
-            >
-              <Plus size={12} strokeWidth={2} aria-hidden /> {t("Add sub-question")}
-            </button>
-          )}
-        </div>
-      </section>
       <Field label={t("Statement (optional)")} hint={t("Data, a short text or a situation, printed under the question.")}>
         <RichInput value={b.context ?? ""} placeholder={t("e.g. Let ABC be a right triangle at A…")} onChange={(context) => onChange({ context }, "context")} rows={2} multiline />
       </Field>
-      <Field group label={t("Answer space")}>
-        <ChoiceGrid value={b.answerStyle ?? "dotted"} onChange={(answerStyle) => onChange({ answerStyle }, "answerStyle")} options={answerStyleOptions(t)} cols={5} />
-      </Field>
-      <Field group label={t("Answer lines")} hint={parts.length ? t("Lines right under the question (often 0 when there are sub-questions).") : undefined}>
-        <div className="flex flex-wrap items-center gap-1.5">
-          <NumberInput value={b.lines} min={0} max={30} onChange={(lines) => onChange({ lines }, "lines")} />
+
+      {/* Sub-questions: splitting a question into a), b)… is the main choice here */}
+      <Group
+        label={t("Sub-questions")}
+        title={
+          <>
+            <ListTree size={14} strokeWidth={1.75} aria-hidden className="text-muted" />
+            {t("Sub-questions")}
+            {parts.length > 0 && <span className="rounded bg-hover px-1 text-[11px] font-semibold tabular-nums text-ink">{parts.length}</span>}
+          </>
+        }
+        hint={t("Split the question into parts: a), b)… Each part has its own lines, points and answer.")}
+      >
+        {parts.length > 0 && (
+          <Field group label={t("Numbering")}>
+            <Segmented value={partNumberingOf(b)} onChange={(partNumbering) => onChange({ partNumbering }, "numbering")} options={PART_NUMBERINGS} />
+          </Field>
+        )}
+        {parts.map((p, i) => (
+          <div
+            key={i}
+            draggable={armed === i}
+            onDragStart={(e) => {
+              e.dataTransfer.effectAllowed = "move";
+              e.dataTransfer.setData("text/plain", String(i));
+              setDrag(i);
+            }}
+            onDragOver={(e) => {
+              if (drag === null) return;
+              e.preventDefault();
+              setOver(i);
+            }}
+            onDrop={(e) => {
+              e.preventDefault();
+              if (drag !== null && drag !== i) onChange(movePart(b, drag, i), "parts-order");
+              reset();
+            }}
+            onDragEnd={reset}
+            // One sub-question, top to bottom: its name, points and remove; its text; its answer lines; its model answer.
+            // (the panel's own surface, not bg-white: in dark mode that is the grey of the fields, which would vanish in it)
+            className={`flex flex-col gap-1.5 rounded-[5px] border bg-surface p-1.5 transition-colors ${drag === i ? "opacity-40" : ""} ${
+              over === i && drag !== i ? "border-accent" : "border-line"
+            }`}
+          >
+            <div className="flex items-center gap-1">
+              <span
+                onMouseDown={() => setArmed(i)}
+                onMouseUp={() => setArmed(null)}
+                className="grid h-7 w-4 shrink-0 cursor-grab place-items-center text-faint select-none hover:text-ink active:cursor-grabbing"
+                title={t("Drag to reorder")}
+              >
+                <GripVertical size={12} strokeWidth={2} aria-hidden />
+              </span>
+              <TextInput
+                value={p.label ?? ""}
+                placeholder={autoLabel(i)}
+                title={t("Name of the sub-question (empty = automatic)")}
+                ariaLabel={t("Name of the sub-question (empty = automatic)")}
+                className="w-12 font-semibold"
+                onChange={(label) => setPart(i, { label }, "label")}
+              />
+              <span className="flex-1" />
+              <NumberInput value={p.points} min={0} max={100} step={0.25} ariaLabel={t("Points")} className="w-14" onChange={(points) => setPart(i, { points }, "points")} />
+              <span className="text-xs text-muted">{t("pts")}</span>
+              <RemoveButton title={t("Remove")} onClick={() => onChange(removePart(b, i), "parts")} />
+            </div>
+            <RichInput value={p.text} placeholder={t("Sub-question…")} onChange={(text) => setPart(i, { text }, "text")} rows={2} multiline />
+            <Row label={t("Answer lines")}>
+              <NumberInput value={p.lines} min={0} max={20} ariaLabel={t("Answer lines")} className="w-14" onChange={(lines) => setPart(i, { lines }, "lines")} />
+            </Row>
+            <RichInput value={p.answer} placeholder={t("Answer (correction sheet)…")} onChange={(answer) => setPart(i, { answer }, "answer")} rows={2} multiline />
+          </div>
+        ))}
+        {parts.length < 12 && (
+          <button
+            type="button"
+            onClick={() => onChange(addPart(b), "parts")}
+            className="flex h-7 w-full items-center justify-center gap-1.5 rounded-[5px] bg-subtle text-xs font-medium text-ink transition-colors outline-none hover:bg-hover focus-visible:ring-2 focus-visible:ring-accent"
+          >
+            <Plus size={12} strokeWidth={2} aria-hidden /> {t("Add sub-question")}
+          </button>
+        )}
+      </Group>
+
+      <Group>
+        <Field group label={t("Answer space")}>
+          <ChoiceGrid value={b.answerStyle ?? "dotted"} onChange={(answerStyle) => onChange({ answerStyle }, "answerStyle")} options={answerStyleOptions(t)} cols={5} />
+        </Field>
+        <Field group label={t("Answer lines")} hint={parts.length ? t("Lines right under the question (often 0 when there are sub-questions).") : undefined}>
+          <div className="flex items-center gap-1">
+          <NumberInput value={b.lines} min={0} max={30} ariaLabel={t("Answer lines")} className="me-0.5 w-14" onChange={(lines) => onChange({ lines }, "lines")} />
           {[2, 4, 8, 15].map((n) => (
             <button
               key={n}
               type="button"
               onClick={() => onChange({ lines: n }, "lines")}
               aria-pressed={b.lines === n}
-              className={`h-7 min-w-7 rounded-[5px] px-2 text-xs tabular-nums transition-colors outline-none focus-visible:ring-2 focus-visible:ring-accent ${b.lines === n ? "bg-hover font-semibold text-ink" : "text-muted hover:bg-subtle hover:text-ink"}`}
+              className={`h-7 min-w-7 rounded-[5px] px-1.5 text-xs tabular-nums transition-colors outline-none focus-visible:ring-2 focus-visible:ring-accent ${b.lines === n ? "bg-hover font-semibold text-ink" : "text-muted hover:bg-subtle hover:text-ink"}`}
             >
               {n}
             </button>
           ))}
-        </div>
-      </Field>
-      {(b.lines > 0 || !parts.length) && (
-        <Field label={t("Model answer")} hint={t("Shown only on the correction sheet.")}>
-          <RichInput value={b.answer} onChange={(answer) => onChange({ answer }, "answer")} rows={3} multiline />
+          </div>
         </Field>
-      )}
+        {(b.lines > 0 || !parts.length) && (
+          <Field label={t("Model answer")}>
+            <RichInput value={b.answer} onChange={(answer) => onChange({ answer }, "answer")} rows={3} multiline placeholder={t("Shown only on the correction sheet.")} />
+          </Field>
+        )}
+      </Group>
     </>
   );
 }

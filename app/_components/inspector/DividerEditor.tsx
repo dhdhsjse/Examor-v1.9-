@@ -4,7 +4,7 @@ import { DIVIDER_STYLES, dividerHeight, dividerMarks, dividerSpace, dividerThick
 import type { DividerBlock, DividerStyle } from "@/app/_lib/types";
 import { useT } from "@/app/_lib/uiLang";
 import { ColorGrid } from "../rich/FormatBar";
-import { Field, Stepper, inputCls } from "./fields";
+import { Field, Group, Row, Stepper, TextInput } from "./fields";
 import type { OnChange } from "./QuestionEditors";
 
 // (a preview has no page fonts: an average letter width is close enough)
@@ -69,7 +69,7 @@ export function DividerEditor({ b, onChange }: { b: DividerBlock; onChange: OnCh
                 aria-pressed={on}
                 // (another look starts at its own thickness)
                 onClick={() => onChange({ style: s.id, thickness: undefined }, "style")}
-                className={`flex flex-col items-stretch gap-1 rounded-[6px] border px-2 pt-1.5 pb-1 text-[11px] transition-colors outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+                className={`flex min-w-0 flex-col items-stretch gap-1 truncate rounded-[5px] border px-2 pt-1.5 pb-1 text-[11px] transition-colors outline-none focus-visible:ring-2 focus-visible:ring-accent ${
                   on ? "border-accent bg-accent-soft text-accent" : "border-line bg-white text-muted hover:border-accent/50 hover:text-ink"
                 }`}
               >
@@ -83,22 +83,21 @@ export function DividerEditor({ b, onChange }: { b: DividerBlock; onChange: OnCh
 
       {b.style === "label" && (
         <Field label={t("Text in the middle")}>
-          <input value={b.label ?? ""} onChange={(e) => onChange({ label: e.target.value }, "label")} className={inputCls} />
+          <TextInput value={b.label ?? ""} onChange={(label) => onChange({ label }, "label")} />
         </Field>
       )}
 
-      <Field label={t("Color")} group>
-        <ColorGrid value={b.color} autoLabel={t("Dark grey")} onChange={(c) => onChange({ color: c }, "color")} />
-      </Field>
-
-      <div className="flex min-h-7 items-center justify-between gap-2">
-        <span className="text-xs text-muted">{t("Thickness")}</span>
-        <Stepper value={Math.round(dividerThickness(b))} min={1} max={10} onChange={(v) => onChange({ thickness: v }, "thickness")} />
-      </div>
-      <div className="flex min-h-7 items-center justify-between gap-2">
-        <span className="text-xs text-muted">{t("Space above and below")}</span>
-        <Stepper value={dividerSpace(b)} min={0} max={60} onChange={(v) => onChange({ space: v }, "space")} />
-      </div>
+      <Group>
+        <Field label={t("Color")} group>
+          <ColorGrid value={b.color} autoLabel={t("Dark grey")} onChange={(c) => onChange({ color: c }, "color")} />
+        </Field>
+        <Row label={t("Thickness")}>
+          <Stepper value={Math.round(dividerThickness(b))} min={1} max={10} onChange={(v) => onChange({ thickness: v }, "thickness")} />
+        </Row>
+        <Row label={t("Space above and below")}>
+          <Stepper value={dividerSpace(b)} min={0} max={60} onChange={(v) => onChange({ space: v }, "space")} />
+        </Row>
+      </Group>
     </>
   );
 }

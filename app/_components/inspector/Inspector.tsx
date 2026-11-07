@@ -14,14 +14,13 @@ import type { Block, BlockType, ExamMeta } from "@/app/_lib/types";
 import { useT } from "@/app/_lib/uiLang";
 import type { BlockPatch } from "@/app/_lib/useExam";
 import { BookmarkIcon, CopyIcon, TrashIcon } from "../icons";
-import InfoTip from "../InfoTip";
 import BlockOrderButtons from "./BlockOrderButtons";
 import { ContentEditorSwitch } from "./ContentEditorSwitch";
 import SheetSettings from "./SheetSettings";
 import { FontSelect } from "../rich/FormatBar";
 import { BlockFontControls, hasFontControls } from "./FontControls";
 import { iconBtn } from "@/app/_features/core/ui";
-import { MenuSelect, SmallButton, Stepper, Toggle, inputCls } from "./fields";
+import { Group, MenuSelect, Row, SmallButton, Stepper, Toggle, inputCls } from "./fields";
 
 interface Props {
   block: Block | undefined;
@@ -113,7 +112,8 @@ export default function Inspector(props: Props) {
           </HeaderButton>
         </div>
       </div>
-      <div className="flex flex-col gap-2.5 px-3 py-2.5">
+      {/* The panel grid (fields.tsx): fields 8px apart, groups set off by a hairline */}
+      <div className="flex min-w-0 flex-col gap-2 px-3 pt-2.5 pb-3">
       <ContentEditorSwitch
         key={block.id}
         block={block}
@@ -132,8 +132,13 @@ export default function Inspector(props: Props) {
         onOpenChartStudio={props.onOpenChartStudio}
         sheet={props.sheet}
       />
-      {block.type !== "header" && block.type !== "mark" && block.type !== "rule" && <BlockOrderButtons onOrder={(order) => props.onOrder(block.id, order)} />}
+      {/* (the text style is changed more often than the layer order: it comes first) */}
       {hasFontControls(block) && <BlockFontControls b={block} meta={props.meta} onChange={(patch, field) => props.onChange(block.id, patch, field)} />}
+      {block.type !== "header" && block.type !== "mark" && block.type !== "rule" && (
+        <Group label={t("Arrange")}>
+          <BlockOrderButtons onOrder={(order) => props.onOrder(block.id, order)} />
+        </Group>
+      )}
       </div>
     </div>
   );
@@ -156,17 +161,7 @@ function ExamSettings({ meta, fullMark, onFullMark, hasSheet, onMeta, onChangeTe
   return (
     <div className="flex flex-col divide-y divide-line">
       <Section title={t("Exam settings")}>
-        <Row
-          label={
-            <span className="flex items-center gap-1">
-              {t("Exam language")}
-              <InfoTip
-                label={t("More info")}
-                text={t("Arabic flips the page right-to-left and translates the printed labels. The app's own language is in the File menu.")}
-              />
-            </span>
-          }
-        >
+        <Row label={t("Exam language")} hint={t("Arabic flips the page right-to-left and translates the printed labels. The app's own language is in the File menu.")}>
           <MenuSelect label={t("Exam language")} value={meta.lang} options={EXAM_LANGS} onChange={(lang) => onMeta({ lang })} />
         </Row>
       </Section>
@@ -238,14 +233,5 @@ function Disclosure({ title, children }: { title: string; children: ReactNode })
       </summary>
       <div className="flex flex-col gap-1.5 pt-1.5">{children}</div>
     </details>
-  );
-}
-
-function Row({ label, children }: { label: ReactNode; children: ReactNode }) {
-  return (
-    <div className="flex min-h-8 items-center justify-between gap-2">
-      <span className="text-[12px] tracking-[-0.005em] text-muted">{label}</span>
-      {children}
-    </div>
   );
 }

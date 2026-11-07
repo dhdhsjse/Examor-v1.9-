@@ -193,6 +193,13 @@ body[data-painter="on"] * {
 /* In the panels the hint must stay readable (on the paper it stays light, unlike printed text). */
 .rich-input[data-empty="true"]::before {
   color: var(--color-faint);
+  /* inside the box's padding: a long hint never runs out of it (one line: cut with "…") */
+  inset-inline: 0.5rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.rich-input[data-empty="true"]:not([aria-multiline="true"])::before {
+  white-space: nowrap;
 }
 
 /* The math keyboard slides up when it opens. It moves with `translate`, so it does not fight the

@@ -2047,3 +2047,13 @@ Object.assign(AR, {
   "word": "كلمة",
   "Fill the categories below: their words are gathered here, mixed up.": "املأ الفئات أدناه: تجمع كلماتها هنا مختلطة.",
 });
+
+// ---- Properties panel: short labels at the end of a field's label line ----
+Object.assign(FR, {
+  "Shuffle": "Mélanger",
+  "Make blank": "Faire un trou",
+});
+Object.assign(AR, {
+  "Shuffle": "خلط",
+  "Make blank": "إنشاء فراغ",
+});

@@ -1,11 +1,12 @@
 "use client";
 
+import { ChevronDown } from "lucide-react";
 import { useMemo, useState } from "react";
 import type { BlockPreset } from "@/app/_lib/blocks";
 import { compileLatex, derivativeTable, functionName, graphWindow, studyFunction, type StudyRange } from "@/app/_lib/functionStudy";
 import type { BlockType, Lang } from "@/app/_lib/types";
 import { useT } from "@/app/_lib/uiLang";
-import { Toggle, inputCls } from "./fields";
+import { Group, Row, Toggle, inputCls } from "./fields";
 
 interface Props {
   latex: string;
@@ -48,39 +49,40 @@ export default function FunctionTools({ latex, lang, onInsert }: Props) {
   };
 
   const tooMany = (study?.points.length ?? 0) > 9;
+  const bound = `${inputCls} h-7 w-14 text-center tabular-nums`;
 
   return (
-    <section className="flex flex-col gap-2 rounded-md border border-line p-2.5" data-text-format="">
-      <h3 className="text-xs font-semibold text-ink">{t("Study of the function")}</h3>
-      {error || !fn ? (
-        <p className="text-xs leading-snug text-faint">{t("Type a function, e.g. f(x) = x^2 - 2x, to draw its graph or make its table of variations.")}</p>
-      ) : (
-        <>
-          <div className="grid grid-cols-2 gap-1.5">
-            <ToolButton onClick={makeGraph} label={t("Function graph")} icon={<GraphGlyph />} />
-            <ToolButton onClick={makeTable} label={t("Variation table")} icon={<TableGlyph />} disabled={badRange} />
-          </div>
-          <details className="group/fn">
-            <summary className="cursor-pointer list-none text-xs text-muted hover:text-ink [&::-webkit-details-marker]:hidden">
-              {t("Options of the table")} ▾
-            </summary>
-            <div className="mt-2 flex flex-col gap-2">
-              <div className="flex items-center gap-1.5 text-xs text-muted">
-                <span className="shrink-0">{t("Study on")}</span>
-                <input aria-label={t("From")} placeholder="−∞" value={from} onChange={(e) => setFrom(e.target.value)} className={`${inputCls} h-7 w-full min-w-0 text-center`} />
-                <span>…</span>
-                <input aria-label={t("To")} placeholder="+∞" value={to} onChange={(e) => setTo(e.target.value)} className={`${inputCls} h-7 w-full min-w-0 text-center`} />
-              </div>
-              <Toggle checked={words} onChange={setWords} label={t("Words instead of arrows")} />
-              <Toggle checked={blank} onChange={setBlank} label={t("Blank, for the student to fill")} />
+    <div data-text-format="">
+      <Group title={t("Study of the function")} hint={fn && !error ? t("Each one is added as its own block under the equation.") : undefined}>
+        {error || !fn ? (
+          <p className="text-xs leading-snug text-faint">{t("Type a function, e.g. f(x) = x^2 - 2x, to draw its graph or make its table of variations.")}</p>
+        ) : (
+          <>
+            <div className="grid grid-cols-2 gap-1.5">
+              <ToolButton onClick={makeGraph} label={t("Function graph")} icon={<GraphGlyph />} />
+              <ToolButton onClick={makeTable} label={t("Variation table")} icon={<TableGlyph />} disabled={badRange} />
             </div>
-          </details>
-          {badRange && <p className="text-xs text-red-700">{t("The start of the interval must be before its end.")}</p>}
-          {tooMany && !badRange && <p className="text-xs leading-snug text-amber-700">{t("Many changes of direction: choose an interval in the options for a shorter table.")}</p>}
-          <p className="text-[11px] leading-snug text-faint">{t("Each one is added as its own block under the equation.")}</p>
-        </>
-      )}
-    </section>
+            <details className="group/fn">
+              <summary className="flex h-6 cursor-pointer list-none items-center gap-1 rounded-[4px] text-xs text-muted outline-none hover:text-ink focus-visible:ring-2 focus-visible:ring-accent [&::-webkit-details-marker]:hidden">
+                {t("Options of the table")}
+                <ChevronDown size={12} strokeWidth={2} aria-hidden className="transition-transform group-open/fn:rotate-180" />
+              </summary>
+              <div className="mt-1 flex flex-col">
+                <Row label={t("Study on")}>
+                  <input aria-label={t("From")} placeholder="−∞" value={from} onChange={(e) => setFrom(e.target.value)} className={bound} />
+                  <span className="text-xs text-muted" aria-hidden>…</span>
+                  <input aria-label={t("To")} placeholder="+∞" value={to} onChange={(e) => setTo(e.target.value)} className={bound} />
+                </Row>
+                <Toggle checked={words} onChange={setWords} label={t("Words instead of arrows")} />
+                <Toggle checked={blank} onChange={setBlank} label={t("Blank, for the student to fill")} />
+              </div>
+            </details>
+            {badRange && <p className="text-xs text-red-700">{t("The start of the interval must be before its end.")}</p>}
+            {tooMany && !badRange && <p className="text-xs leading-snug text-amber-700">{t("Many changes of direction: choose an interval in the options for a shorter table.")}</p>}
+          </>
+        )}
+      </Group>
+    </div>
   );
 }
 
@@ -91,10 +93,10 @@ function ToolButton({ onClick, label, icon, disabled }: { onClick: () => void; l
       disabled={disabled}
       onMouseDown={(e) => e.preventDefault()}
       onClick={onClick}
-      className="flex h-14 flex-col items-center justify-center gap-1 rounded-[6px] border border-line bg-white text-xs font-medium text-ink transition-colors outline-none hover:border-accent hover:bg-accent-soft hover:text-accent focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-40"
+      className="flex h-12 min-w-0 flex-col items-center justify-center gap-0.5 rounded-[5px] border border-line bg-white px-1 text-xs font-medium text-ink transition-colors outline-none hover:border-accent hover:bg-accent-soft hover:text-accent focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-40"
     >
       {icon}
-      {label}
+      <span className="max-w-full truncate">{label}</span>
     </button>
   );
 }

@@ -1,17 +1,36 @@
 "use client";
 
+import { ChevronDown, ChevronUp, Shuffle } from "lucide-react";
 import { useEffect, useState } from "react";
 import { addOrderItem, addPair, removeOrderItem, removePair, reshuffle, setSentence } from "@/app/_lib/blocks";
 import { plainText } from "@/app/_lib/richText";
 import { fixOrder } from "@/app/_lib/shuffle";
 import type { ClassifyBlock, MatchBlock, OrderBlock } from "@/app/_lib/types";
 import { useT } from "@/app/_lib/uiLang";
-import { AddRowButton, Field, RemoveButton, RichInput, Segmented, SmallButton, TextArea, TextInput, Toggle } from "./fields";
+import { AddRowButton, Field, Group, RemoveButton, RichInput, Segmented, TextAction, TextArea, TextInput, Toggle } from "./fields";
 import { QuestionBasics, type OnChange } from "./QuestionEditors";
 
 const MAX_ROWS = 12;
 
 const lines = (s: string) => s.split("\n").map((w) => w.trim()).filter(Boolean);
+
+// The row number at the start of a pair or an item (in a 28px cell, on the middle of its first line).
+const RowNumber = ({ children, title }: { children: string | number; title?: string }) => (
+  <span title={title} className="grid h-7 w-4 shrink-0 place-items-center self-start text-xs font-semibold tabular-nums text-muted">
+    {children}
+  </span>
+);
+
+// "Mix again", at the end of a list's label line.
+function MixAction({ onClick, title }: { onClick: () => void; title?: string }) {
+  const t = useT();
+  return (
+    <TextAction onClick={onClick} title={title}>
+      <Shuffle size={12} strokeWidth={2} aria-hidden />
+      {t("Mix again")}
+    </TextAction>
+  );
+}
 
 // Pairs that belong together, side by side. The paper prints the right column mixed up.
 export function MatchEditor({ b, onChange }: { b: MatchBlock; onChange: OnChange }) {
@@ -23,26 +42,28 @@ export function MatchEditor({ b, onChange }: { b: MatchBlock; onChange: OnChange
   return (
     <>
       <QuestionBasics b={b} onChange={onChange} />
-      <Field group label={t("Pairs")} hint={t("Write each item next to its match. On the paper the right column is mixed up; the correction sheet draws the links.")}>
+      <Field
+        group
+        label={t("Pairs")}
+        hint={t("Write each item next to its match. On the paper the right column is mixed up; the correction sheet draws the links.")}
+        action={<MixAction onClick={() => onChange(reshuffle(b.pairs.length), "order")} title={t("Mix the right column again")} />}
+      >
         <div className="flex flex-col gap-1.5">
           {b.pairs.map((p, i) => (
-            <div key={i} className="flex items-center gap-1">
-              <span className="w-4 shrink-0 text-center text-xs font-semibold text-muted">{i + 1}</span>
+            <div key={i} className="flex items-start gap-1">
+              <RowNumber>{i + 1}</RowNumber>
               <RichInput value={p.left} placeholder={t("Item…")} onChange={(v) => set(i, "left", v)} />
-              <span className="shrink-0 text-faint" aria-hidden>
+              <span className="grid h-7 shrink-0 place-items-center text-xs text-faint" aria-hidden>
                 ↔
               </span>
               <RichInput value={p.right} placeholder={t("Match…")} onChange={(v) => set(i, "right", v)} />
-              <span className="w-4 shrink-0 text-center text-xs font-semibold text-muted" title={t("Printed as")}>
-                {letter(i)}
-              </span>
+              <RowNumber title={t("Printed as")}>{letter(i)}</RowNumber>
               {b.pairs.length > 2 && <RemoveButton title={t("Remove")} onClick={() => onChange(removePair(b, i), "pairs")} />}
             </div>
           ))}
           {b.pairs.length < MAX_ROWS && <AddRowButton onClick={() => onChange(addPair(b), "pairs")}>{t("Add pair")}</AddRowButton>}
         </div>
       </Field>
-      <SmallButton onClick={() => onChange(reshuffle(b.pairs.length), "order")}>{t("Mix the right column again")}</SmallButton>
     </>
   );
 }
@@ -61,6 +82,8 @@ export function OrderEditor({ b, onChange }: { b: OrderBlock; onChange: OnChange
     // The printed order stays the same on paper: swap the two indexes in it too.
     onChange({ items, order: order.map((k) => (k === i ? to : k === to ? i : k)) }, "items-order");
   };
+  const mix = <MixAction onClick={() => onChange(reshuffle(b.items.length), "order")} />;
+  const arrow = "grid h-3.5 w-5 place-items-center rounded-[3px] text-muted outline-none hover:bg-hover hover:text-ink focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-30 disabled:hover:bg-transparent";
 
   return (
     <>
@@ -83,10 +106,11 @@ export function OrderEditor({ b, onChange }: { b: OrderBlock; onChange: OnChange
       </Field>
       {sentence ? (
         <>
-          <Field label={t("Correct sentence")} hint={t("Its words are printed mixed up; the student writes the sentence on the line.")}>
+          <Field label={t("Correct sentence")} hint={t("Its words are printed mixed up; the student writes the sentence on the line.")} action={mix}>
             <TextInput
               value={typed.split(/\s+/).filter(Boolean).join(" ") === b.items.join(" ") ? typed : b.items.join(" ")}
               placeholder={t("e.g. The cat sleeps on the chair.")}
+              ariaLabel={t("Correct sentence")}
               onChange={(v) => {
                 setTyped(v);
                 onChange(setSentence(b, v), "sentence");
@@ -94,24 +118,24 @@ export function OrderEditor({ b, onChange }: { b: OrderBlock; onChange: OnChange
             />
           </Field>
           {b.items.length > 1 && (
-            <p className="rounded-md bg-subtle px-2.5 py-1.5 text-xs text-muted" dir="auto">
+            <p className="rounded-[5px] bg-subtle px-2 py-1 text-xs leading-snug text-muted [overflow-wrap:anywhere]" dir="auto">
               {order.map((i) => plainText(b.items[i])).join("  /  ")}
             </p>
           )}
         </>
       ) : (
-        <Field group label={t("Items, in the right order")} hint={t("The paper prints them mixed up, with a box for the rank.")}>
+        <Field group label={t("Items, in the right order")} hint={t("The paper prints them mixed up, with a box for the rank.")} action={mix}>
           <div className="flex flex-col gap-1.5">
             {b.items.map((item, i) => (
-              <div key={i} className="flex items-center gap-1">
-                <span className="w-4 shrink-0 text-center text-xs font-semibold text-muted">{i + 1}</span>
+              <div key={i} className="flex items-start gap-1">
+                <RowNumber>{i + 1}</RowNumber>
                 <RichInput value={item} placeholder={t("Item…")} onChange={(v) => onChange({ items: b.items.map((x, k) => (k === i ? v : x)) }, `item${i}`)} />
-                <div className="flex shrink-0 flex-col">
-                  <button type="button" onClick={() => move(i, i - 1)} disabled={i === 0} title={t("Move up")} className="h-3.5 px-1 text-[9px] leading-none text-muted hover:text-ink disabled:opacity-30">
-                    ▲
+                <div className="flex h-7 shrink-0 flex-col justify-center">
+                  <button type="button" onClick={() => move(i, i - 1)} disabled={i === 0} title={t("Move up")} aria-label={t("Move up")} className={arrow}>
+                    <ChevronUp size={12} strokeWidth={2} aria-hidden />
                   </button>
-                  <button type="button" onClick={() => move(i, i + 1)} disabled={i === b.items.length - 1} title={t("Move down")} className="h-3.5 px-1 text-[9px] leading-none text-muted hover:text-ink disabled:opacity-30">
-                    ▼
+                  <button type="button" onClick={() => move(i, i + 1)} disabled={i === b.items.length - 1} title={t("Move down")} aria-label={t("Move down")} className={arrow}>
+                    <ChevronDown size={12} strokeWidth={2} aria-hidden />
                   </button>
                 </div>
                 {b.items.length > 2 && <RemoveButton title={t("Remove")} onClick={() => onChange(removeOrderItem(b, i), "items")} />}
@@ -121,7 +145,6 @@ export function OrderEditor({ b, onChange }: { b: OrderBlock; onChange: OnChange
           </div>
         </Field>
       )}
-      <SmallButton onClick={() => onChange(reshuffle(b.items.length), "order")}>{t("Mix again")}</SmallButton>
     </>
   );
 }
@@ -137,14 +160,12 @@ export function ClassifyEditor({ b, onChange }: { b: ClassifyBlock; onChange: On
   return (
     <>
       <QuestionBasics b={b} onChange={onChange} />
-      <Toggle checked={!b.hideBank} onChange={(show) => onChange({ hideBank: !show }, "hideBank")} label={t("Give the words in a box")} hint={t("Off: the student finds the words (e.g. in a text).")} />
-      {!b.hideBank && <BankPreview words={b.groups.flatMap((g) => g.items)} />}
       <Field group label={t("Categories")} hint={t("One word per line. The correction sheet fills the table.")}>
-        <div className="grid grid-cols-[repeat(auto-fill,minmax(130px,1fr))] gap-2">
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(120px,1fr))] gap-1.5">
           {b.groups.map((g, i) => (
-            <div key={i} className="flex flex-col gap-1 rounded-[5px] border border-line p-1.5">
+            <div key={i} className="flex min-w-0 flex-col gap-1 rounded-[5px] border border-line p-1">
               <div className="flex items-center gap-1">
-                <TextInput value={g.name} placeholder={t("Category…")} onChange={(name) => setGroup(i, { name }, "name")} />
+                <TextInput value={g.name} placeholder={t("Category…")} ariaLabel={t("Category")} className="w-full font-semibold" onChange={(name) => setGroup(i, { name }, "name")} />
                 {b.groups.length > 2 && (
                   <RemoveButton
                     title={t("Remove")}
@@ -167,33 +188,38 @@ export function ClassifyEditor({ b, onChange }: { b: ClassifyBlock; onChange: On
             </div>
           ))}
         </div>
+        {b.groups.length < 4 && (
+          <AddRowButton
+            onClick={() => {
+              setLists((l) => [...l, ""]);
+              onChange({ groups: [...b.groups, { name: `${t("Category")} ${b.groups.length + 1}`, items: [] }] }, "groups");
+            }}
+          >
+            {t("Add category")}
+          </AddRowButton>
+        )}
       </Field>
-      {b.groups.length < 4 && (
-        <AddRowButton
-          onClick={() => {
-            setLists((l) => [...l, ""]);
-            onChange({ groups: [...b.groups, { name: `${t("Category")} ${b.groups.length + 1}`, items: [] }] }, "groups");
-          }}
-        >
-          {t("Add category")}
-        </AddRowButton>
-      )}
+      <Group>
+        <Toggle checked={!b.hideBank} onChange={(show) => onChange({ hideBank: !show }, "hideBank")} label={t("Give the words in a box")} hint={t("Off: the student finds the words (e.g. in a text).")} />
+        {!b.hideBank && <BankPreview words={b.groups.flatMap((g) => g.items)} />}
+      </Group>
     </>
   );
 }
 
-// The box of words as the page shows it, above the categories: the words typed in the categories go up into it, mixed up. Empty, a
-// ghost types "… / … / …" in it, so it is clear where the words will go.
+// The box of words as the page shows it: the words typed in the categories go up into it, mixed up. Empty, a ghost types
+// "… / … / …" in it, so it is clear where the words will go.
 function BankPreview({ words }: { words: string[] }) {
   const t = useT();
   const clean = words.map((w) => plainText(w).trim()).filter(Boolean);
   return (
-    <div className="flex flex-col gap-1">
-      <span className="text-xs text-muted">{t("Box of words on the page")}</span>
-      <div className="min-h-8 rounded-md border border-dashed border-line bg-white px-2 py-1.5 text-center text-xs leading-snug text-ink" aria-live="polite">
-        {clean.length ? clean.join(" / ") : <GhostTyping text={`${t("word")} … / ${t("word")} … / ${t("word")} … / ${t("word")} …`} />}
-      </div>
-      {!clean.length && <span className="text-[11px] leading-snug text-faint">{t("Fill the categories below: their words are gathered here, mixed up.")}</span>}
+    <div
+      title={t("Box of words on the page")}
+      aria-label={t("Box of words on the page")}
+      className="min-h-7 rounded-[5px] border border-dashed border-line bg-white px-2 py-1 text-center text-xs leading-snug text-ink [overflow-wrap:anywhere]"
+      aria-live="polite"
+    >
+      {clean.length ? clean.join(" / ") : <GhostTyping text={`${t("word")} … / ${t("word")} … / ${t("word")} … / ${t("word")} …`} />}
     </div>
   );
 }

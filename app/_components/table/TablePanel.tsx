@@ -6,6 +6,7 @@ import { MAX_COLS, MAX_ROWS, anchorOf, colsOf, isFixedTable, resizeTable, rowsOf
 import type { Lang, TableBlock } from "@/app/_lib/types";
 import { useT } from "@/app/_lib/uiLang";
 import type { BlockPatch } from "@/app/_lib/useExam";
+import { inputCls } from "../inspector/fields";
 import TableGrid from "./TableGrid";
 import { makeActions } from "./tableActions";
 import { clampSel, selRange, type Sel } from "./tableSel";
@@ -20,14 +21,15 @@ interface Props {
   onOpenStudio: (shape?: string) => void;
 }
 
-const btn = "flex h-7 items-center justify-center gap-1.5 rounded-md border border-line px-2 text-xs font-medium text-ink transition-colors hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-700 disabled:pointer-events-none disabled:opacity-40";
-const btnOn = "border-indigo-300 bg-indigo-50 text-indigo-700";
-const numCls = "h-7 w-full rounded-md border border-line bg-white px-1.5 text-[12px] text-ink outline-none focus:border-indigo-400";
+// (the look of the panel's other buttons and boxes: inspector/fields.tsx)
+const btn = "flex h-7 min-w-0 items-center justify-center gap-1.5 rounded-[5px] bg-subtle px-2 text-xs font-medium text-ink transition-colors outline-none hover:bg-hover focus-visible:ring-2 focus-visible:ring-accent disabled:pointer-events-none disabled:opacity-40 [&>svg]:shrink-0";
+const btnOn = "bg-accent-soft! text-accent!";
+const numCls = `${inputCls} h-7 tabular-nums`;
 
 function Count({ label, value, max, onChange, testId }: { label: string; value: number; max: number; onChange: (n: number) => void; testId: string }) {
   return (
-    <label className="flex min-w-0 flex-1 flex-col gap-0.5">
-      <span className="text-[10.5px] font-medium text-muted">{label}</span>
+    <label className="flex min-w-0 flex-1 flex-col gap-1">
+      <span className="text-xs text-muted">{label}</span>
       <input
         type="number"
         value={value}
@@ -85,16 +87,16 @@ export default function TablePanel({ b, lang, onChange, examFont, onOpenStudio }
   const mergeText = split ? t("Split merged cells") : t("Merge cells");
 
   return (
-    <div className="flex flex-col gap-2.5" data-testid="table-panel">
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-semibold text-muted">{t("Table")}</span>
-        <button type="button" onClick={() => onOpenStudio()} data-testid="open-table-studio" className="flex items-center gap-1 text-xs font-medium text-indigo-700 hover:text-indigo-800">
+    <div className="flex flex-col gap-2" data-testid="table-panel">
+      <div className="flex min-h-5 items-center justify-between gap-2">
+        <span className="text-xs text-muted">{t("Table")}</span>
+        <button type="button" onClick={() => onOpenStudio()} data-testid="open-table-studio" className="flex h-5 items-center gap-1 rounded-[4px] px-1 text-xs font-medium text-accent outline-none hover:bg-hover focus-visible:ring-2 focus-visible:ring-accent">
           {t("Open in Table Studio")}
           <SquareArrowOutUpRight size={11} aria-hidden />
         </button>
       </div>
 
-      <div className="-mx-1 overflow-hidden rounded-md border border-line">
+      <div className="overflow-hidden rounded-[5px] border border-line">
         <TableGrid table={b} lang={lang} sel={sel} onSelect={setSel} onChange={apply} compact maxHeight={260} actions={actions} examFont={examFont} testId="panel-grid" />
       </div>
 
@@ -103,10 +105,10 @@ export default function TablePanel({ b, lang, onChange, examFont, onOpenStudio }
         <Count label={t("Columns")} value={cols} max={MAX_COLS} onChange={(n) => apply(resizeTable(b, rows, n), "size")} testId="table-cols" />
       </div>
 
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-2 gap-1.5">
         <button type="button" onClick={actions.flip} aria-pressed={actions.flipped} title={t("The columns in the other order: A B C D… becomes …D C B A. The text keeps its direction.")} data-testid="table-flip" className={`${btn} ${actions.flipped ? btnOn : ""}`}>
           <ArrowLeftRight size={13} aria-hidden />
-          {t("Reverse columns")}
+          <span className="truncate">{t("Reverse columns")}</span>
         </button>
         <button
           type="button"
@@ -117,7 +119,7 @@ export default function TablePanel({ b, lang, onChange, examFont, onOpenStudio }
           className={btn}
         >
           {split ? <TableCellsSplit size={13} aria-hidden /> : <TableCellsMerge size={13} aria-hidden />}
-          {mergeText}
+          <span className="truncate">{mergeText}</span>
         </button>
       </div>
     </div>

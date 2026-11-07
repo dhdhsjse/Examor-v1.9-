@@ -6,28 +6,21 @@ import { DEFAULT_FONT } from "@/app/_lib/fonts";
 import type { CaptionStyle, ExamMeta, ImageBlock } from "@/app/_lib/types";
 import { useT } from "@/app/_lib/uiLang";
 import { ColorGrid, FontSelect } from "../rich/FormatBar";
-import { Stepper, inputCls } from "./fields";
+import { Stepper, TextAction, iconButtonCls, inputCls } from "./fields";
 import type { OnChange } from "./QuestionEditors";
 
-const selectCls = `${inputCls} min-w-0 flex-1`;
+const selectCls = `${inputCls} h-7 flex-1 truncate`;
 
 // A small square button that is on or off (bold, italic, an alignment…).
 function ToggleIcon({ icon: Icon, on, label, onClick }: { icon: LucideIcon; on: boolean; label: string; onClick: () => void }) {
   return (
-    <button
-      type="button"
-      title={label}
-      aria-label={label}
-      aria-pressed={on}
-      onClick={onClick}
-      className={`grid size-7 place-items-center rounded-[5px] outline-none focus-visible:ring-2 focus-visible:ring-accent ${on ? "bg-accent-soft text-accent" : "text-muted hover:bg-hover hover:text-ink"}`}
-    >
+    <button type="button" title={label} aria-label={label} aria-pressed={on} onClick={onClick} className={`${iconButtonCls} ${on ? "bg-accent-soft! text-accent!" : ""}`}>
       <Icon size={14} strokeWidth={2.2} aria-hidden />
     </button>
   );
 }
 
-// The caption's own little toolbar: font, size, bold / italic / underline, alignment, color.
+// The caption's own little toolbar, under its text in the Caption group: font and size, bold / italic / underline, alignment, color.
 export function CaptionControls({ b, meta, onChange }: { b: ImageBlock; meta?: ExamMeta; onChange: OnChange }) {
   const t = useT();
   const c = b.captionStyle ?? {};
@@ -42,7 +35,7 @@ export function CaptionControls({ b, meta, onChange }: { b: ImageBlock; meta?: E
   const changed = Object.keys(c).length > 0;
 
   return (
-    <div className="flex flex-col gap-1.5 border-t border-line pt-2.5">
+    <div className="flex flex-col gap-2">
       <div className="flex items-center gap-1.5">
         <FontSelect value={c.family} onChange={(family) => set({ family })} defaultLabel={`${t("Exam font")} (${meta?.fontFamily ?? DEFAULT_FONT})`} className={selectCls} />
         <Stepper value={size} min={CAPTION_MIN_SIZE} max={CAPTION_MAX_SIZE} onChange={(v) => set({ size: v })} title={t("Font size")} />
@@ -56,9 +49,9 @@ export function CaptionControls({ b, meta, onChange }: { b: ImageBlock; meta?: E
         <ToggleIcon icon={AlignCenter} label={t("Center")} on={align === "center"} onClick={() => set({ align: undefined })} />
         <ToggleIcon icon={AlignRight} label={t("Align right")} on={align === "right"} onClick={() => set({ align: "right" })} />
         {changed && (
-          <button type="button" onClick={() => onChange({ captionStyle: undefined }, "captionStyle")} className="ms-auto text-xs text-muted hover:text-ink hover:underline">
-            {t("Reset")}
-          </button>
+          <span className="ms-auto">
+            <TextAction onClick={() => onChange({ captionStyle: undefined }, "captionStyle")}>{t("Reset")}</TextAction>
+          </span>
         )}
       </div>
       <ColorGrid value={c.color} autoLabel={t("Auto")} onChange={(color) => set({ color })} />

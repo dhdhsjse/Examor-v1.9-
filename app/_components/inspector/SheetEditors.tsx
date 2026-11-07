@@ -1,12 +1,12 @@
 "use client";
 
 import { Minus, Plus } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { useState } from "react";
 import { MARK_STEP, snapMark } from "@/app/_lib/sheet/marks";
 import type { ExamMeta, MarkBlock, MarkKind, MarkLook, MarkOp, RuleBlock, RuleLine, TotalPlace } from "@/app/_lib/types";
 import { useT } from "@/app/_lib/uiLang";
 import { ColorGrid } from "../rich/FormatBar";
-import { Field, Segmented, Stepper, TextInput, Toggle } from "./fields";
+import { Field, Group, Row, Segmented, Stepper, TextInput, Toggle } from "./fields";
 import type { OnChange } from "./QuestionEditors";
 
 // A mark typed in a box between − and + (the look of the other steppers): what is typed counts at once (brought to a multiple of 0.125); the box
@@ -22,7 +22,7 @@ function MarkField({ value, onChange }: { value: number; onChange: (v: number) =
   }
   const step = "grid size-7 place-items-center rounded-[5px] text-muted outline-none hover:bg-hover hover:text-ink focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-35 disabled:hover:bg-transparent";
   return (
-    <div className="flex items-center rounded-[5px] bg-subtle">
+    <div className="flex shrink-0 items-center rounded-[5px] bg-subtle">
       <button type="button" className={step} aria-label={t("Decrease")} disabled={value <= 0} onClick={() => onChange(snapMark(value - MARK_STEP))}>
         <Minus size={12} strokeWidth={2} aria-hidden />
       </button>
@@ -44,16 +44,6 @@ function MarkField({ value, onChange }: { value: number; onChange: (v: number) =
       <button type="button" className={step} aria-label={t("Increase")} onClick={() => onChange(snapMark(value + MARK_STEP))}>
         <Plus size={12} strokeWidth={2} aria-hidden />
       </button>
-    </div>
-  );
-}
-
-// A label on the left, its control on the right.
-function Row({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div className="flex min-h-7 items-center justify-between gap-2">
-      <span className="text-xs text-muted">{label}</span>
-      {children}
     </div>
   );
 }
@@ -124,15 +114,18 @@ export function MarkEditor({ b, meta, shown, onChange }: { b: MarkBlock; meta: E
         </Field>
       )}
 
-      <Field label={t("Look")} group>
-        <Segmented value={b.look ?? "plain"} options={looks} onChange={(look) => onChange({ look }, "look")} />
-      </Field>
-      <Field label={t("Color")} group>
-        <ColorGrid value={b.color} autoLabel={t("Black")} onChange={(color) => onChange({ color }, "color")} />
-      </Field>
-      <Row label={t("Size")}>
-        <Stepper value={b.size ?? meta.fontSize ?? 14} min={9} max={40} onChange={(size) => onChange({ size }, "size")} />
-      </Row>
+      {/* (its look, apart from what it is) */}
+      <Group>
+        <Field label={t("Look")} group>
+          <Segmented value={b.look ?? "plain"} options={looks} onChange={(look) => onChange({ look }, "look")} />
+        </Field>
+        <Field label={t("Color")} group>
+          <ColorGrid value={b.color} autoLabel={t("Black")} onChange={(color) => onChange({ color }, "color")} />
+        </Field>
+        <Row label={t("Size")}>
+          <Stepper value={b.size ?? meta.fontSize ?? 14} min={9} max={40} onChange={(size) => onChange({ size }, "size")} />
+        </Row>
+      </Group>
     </>
   );
 }

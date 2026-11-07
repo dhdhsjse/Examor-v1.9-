@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown, Plus, X } from "lucide-react";
+import { ChevronDown, Plus } from "lucide-react";
 import { useState } from "react";
 import { tryCompile, type Fn } from "@/app/_lib/graphMath";
 import {
@@ -25,7 +25,7 @@ import {
 } from "@/app/_lib/mathGraph";
 import type { GraphBlock } from "@/app/_lib/types";
 import { useT } from "@/app/_lib/uiLang";
-import { AddRowButton, Field, NumberInput, RemoveButton, SmallButton } from "./fields";
+import { AddRowButton, Field, Group, NumberInput, RemoveButton, Row, SmallButton, Toggle, iconButtonCls, inputCls } from "./fields";
 import type { OnChange } from "./QuestionEditors";
 
 export const USUAL_WINDOW = { xMin: -5, xMax: 5, yMin: -4, yMax: 6 };
@@ -55,7 +55,7 @@ export function GraphEditor({ b, onChange }: { b: GraphBlock; onChange: OnChange
 
   return (
     <>
-      <Field label={t("Functions")}>
+      <Field group label={t("Functions")}>
         <div className="flex flex-col gap-1.5">
           {b.functions.map((src, i) => {
             const { fn, error } = tryCompile(src);
@@ -72,9 +72,8 @@ export function GraphEditor({ b, onChange }: { b: GraphBlock; onChange: OnChange
                     value={src}
                     spellCheck={false}
                     onChange={(e) => setFn(i, e.target.value)}
-                    className={`w-full rounded-md border bg-white px-2.5 py-1.5 font-mono text-xs text-ink outline-none focus:ring-2 ${
-                      error ? "border-red-300 focus:ring-red-100" : "border-line focus:border-accent focus:ring-accent-soft"
-                    }`}
+                    aria-label={`${nameOf(i)}(x)`}
+                    className={`${inputCls} h-7 font-mono ${error ? "border-red-300! focus:border-red-400!" : ""}`}
                   />
                   <button
                     type="button"
@@ -83,7 +82,7 @@ export function GraphEditor({ b, onChange }: { b: GraphBlock; onChange: OnChange
                     aria-label={t("Curve options")}
                     aria-expanded={unfolded}
                     data-testid={`curve-options-${i}`}
-                    className="grid size-7 shrink-0 place-items-center rounded-[5px] text-faint outline-none hover:bg-hover hover:text-ink focus-visible:ring-2 focus-visible:ring-accent"
+                    className={iconButtonCls}
                   >
                     <ChevronDown size={13} strokeWidth={2} aria-hidden className={`transition-transform ${unfolded ? "rotate-180" : ""}`} />
                   </button>
@@ -97,7 +96,8 @@ export function GraphEditor({ b, onChange }: { b: GraphBlock; onChange: OnChange
                     />
                   )}
                 </div>
-                {error && <p className="mt-0.5 ps-12 text-[11px] text-red-700">{errorText(error)}</p>}
+                {/* (under the formula: the width of the name and its gap) */}
+                {error && <p className="mt-0.5 ps-[50px] text-[11px] leading-snug text-red-700">{errorText(error)}</p>}
                 {unfolded && <CurveOptions b={b} i={i} fn={fn ?? null} onChange={onChange} />}
               </div>
             );
@@ -106,31 +106,30 @@ export function GraphEditor({ b, onChange }: { b: GraphBlock; onChange: OnChange
         </div>
       </Field>
 
-      <div className="grid grid-cols-2 gap-x-3 gap-y-2">
-        <Field label={t("x from")}>
-          <NumberInput value={b.xMin} min={-1000} max={1000} onChange={(v) => range("xMin", v)} />
-        </Field>
-        <Field label={t("x to")}>
-          <NumberInput value={b.xMax} min={-1000} max={1000} onChange={(v) => range("xMax", v)} />
-        </Field>
-        <Field label={t("y from")}>
-          <NumberInput value={b.yMin} min={-1000} max={1000} onChange={(v) => range("yMin", v)} />
-        </Field>
-        <Field label={t("y to")}>
-          <NumberInput value={b.yMax} min={-1000} max={1000} onChange={(v) => range("yMax", v)} />
-        </Field>
-      </div>
-      <div className="flex gap-1.5">
-        <SmallButton onClick={fitToCurves} title={t("Choose y so that the curves fit")}>
-          {t("Fit to the curves")}
-        </SmallButton>
-        <SmallButton onClick={() => onChange(USUAL_WINDOW, "window")}>{t("Usual window")}</SmallButton>
-      </div>
-
-      <label className="flex items-center gap-2 text-xs text-ink">
-        <input type="checkbox" checked={b.grid} onChange={(e) => onChange({ grid: e.target.checked }, "grid")} className="accent-accent" />
-        {t("Show grid")}
-      </label>
+      {/* The window: x and y, each from … to on one row */}
+      <Group>
+        {(
+          [
+            { axis: "x", lo: "xMin", hi: "xMax", from: t("x from"), to: t("x to") },
+            { axis: "y", lo: "yMin", hi: "yMax", from: t("y from"), to: t("y to") },
+          ] as const
+        ).map(({ axis, lo, hi, from, to }) => (
+          <Row key={axis} label={<span className="font-mono text-ink" dir="ltr">{axis}</span>}>
+            <NumberInput value={b[lo]} min={-1000} max={1000} ariaLabel={from} className="w-16" onChange={(v) => range(lo, v)} />
+            <span className="text-xs text-muted" aria-hidden>…</span>
+            <NumberInput value={b[hi]} min={-1000} max={1000} ariaLabel={to} className="w-16" onChange={(v) => range(hi, v)} />
+          </Row>
+        ))}
+        <div className="grid grid-cols-2 gap-1.5">
+          <SmallButton onClick={fitToCurves} title={t("Choose y so that the curves fit")}>
+            <span className="truncate">{t("Fit to the curves")}</span>
+          </SmallButton>
+          <SmallButton onClick={() => onChange(USUAL_WINDOW, "window")}>
+            <span className="truncate">{t("Usual window")}</span>
+          </SmallButton>
+        </div>
+        <Toggle checked={b.grid} onChange={(grid) => onChange({ grid }, "grid")} label={t("Show grid")} />
+      </Group>
     </>
   );
 }
@@ -153,8 +152,9 @@ function CurveOptions({ b, i, fn, onChange }: { b: GraphBlock; i: number; fn: Fn
   };
 
   return (
-    <div className="ms-12 mt-1.5 flex flex-col gap-2 border-s-2 ps-2.5" style={{ borderColor: color }} data-testid={`curve-panel-${i}`}>
-      <div className="flex items-center gap-1" role="group" aria-label={t("Color")}>
+    // (the whole width of the panel, marked by the curve's color: the rows keep room for their controls)
+    <div className="mt-1.5 flex flex-col border-s-2 ps-2" style={{ borderColor: color }} data-testid={`curve-panel-${i}`}>
+      <div className="flex h-7 items-center gap-1.5" role="group" aria-label={t("Color")}>
         {CURVE_PALETTE.map((c) => (
           <button
             key={c}
@@ -167,59 +167,52 @@ function CurveOptions({ b, i, fn, onChange }: { b: GraphBlock; i: number; fn: Fn
           />
         ))}
       </div>
-      <label className="flex items-center gap-2 text-xs text-ink">
-        <input type="checkbox" checked={!!o.derivative} onChange={(e) => change({ derivative: e.target.checked || undefined }, "derivative")} className="accent-accent" />
-        {t("Derivative")} <span dir="ltr">{name}′</span>
-      </label>
-      <label className="flex items-center gap-2 text-xs text-ink">
-        <input type="checkbox" checked={!!o.asymptotes} onChange={(e) => change({ asymptotes: e.target.checked || undefined }, "asymptotes")} className="accent-accent" />
-        {t("Asymptotes")}
-      </label>
+      <Toggle
+        checked={!!o.derivative}
+        onChange={(on) => change({ derivative: on || undefined }, "derivative")}
+        label={
+          <>
+            {t("Derivative")} <span dir="ltr">{name}′</span>
+          </>
+        }
+      />
+      <Toggle checked={!!o.asymptotes} onChange={(on) => change({ asymptotes: on || undefined }, "asymptotes")} label={t("Asymptotes")} />
       {o.asymptotes && (
-        <p className="-mt-1 text-xs leading-snug text-muted" dir="ltr">
+        <p className="pb-1 text-xs leading-snug text-muted [overflow-wrap:anywhere]" dir="ltr">
           {found.length ? found.join(" · ") : t("No asymptote found in this window")}
         </p>
       )}
-      <div className="flex flex-col gap-1">
-        {tangents.map((a, k) => {
-          const tg = fn ? tangentAt(fn, a) : null;
-          return (
-            <div key={k} className="flex items-center gap-1.5">
-              <span className="shrink-0 text-xs text-muted">{t("Tangent at")}</span>
-              <span className="shrink-0 text-xs text-muted" dir="ltr">
-                x =
+      {/* Tangents: x = [a]  f′(a) = m  ×  (its slope, or why there is none, in the space left) */}
+      {tangents.map((a, k) => {
+        const tg = fn ? tangentAt(fn, a) : null;
+        return (
+          <div key={k} className="flex h-8 items-center gap-1.5" role="group" aria-label={t("Tangent at")}>
+            <span className="shrink-0 text-xs text-muted" dir="ltr">
+              x =
+            </span>
+            <NumberInput value={a} min={-1000} max={1000} step={0.5} ariaLabel={t("Tangent at")} className="w-14" onChange={(v) => onChange(moveTangent(b, i, k, v), `curve${i}:tangent${k}`)} />
+            {tg ? (
+              <span className="min-w-0 flex-1 truncate text-[11px] text-faint" dir="ltr">
+                {name}′({formatNum(a)}) = {formatNum(tg.m)}
               </span>
-              <div className="w-16 shrink-0">
-                <NumberInput value={a} min={-1000} max={1000} step={0.5} onChange={(v) => onChange(moveTangent(b, i, k, v), `curve${i}:tangent${k}`)} />
-              </div>
-              <button
-                type="button"
-                onClick={() => onChange(removeTangent(b, i, k), `curve${i}:tangent`)}
-                title={t("Remove")}
-                aria-label={t("Remove")}
-                className="grid size-6 shrink-0 place-items-center rounded-[5px] text-faint hover:bg-red-50 hover:text-red-700"
-              >
-                <X size={12} aria-hidden />
-              </button>
-              {!tg && <span className="text-[11px] text-red-700">{t("No tangent here")}</span>}
-              {tg && (
-                <span className="min-w-0 truncate text-[11px] text-faint" dir="ltr">
-                  {name}′({formatNum(a)}) = {formatNum(tg.m)}
-                </span>
-              )}
-            </div>
-          );
-        })}
-        <button
-          type="button"
-          disabled={!fn}
-          onClick={addOne}
-          className="flex h-6 items-center gap-1 self-start rounded-[5px] px-1.5 text-xs text-muted hover:bg-hover hover:text-ink disabled:opacity-40"
-        >
-          <Plus size={11} strokeWidth={2} aria-hidden />
-          {t("Add a tangent")}
-        </button>
-      </div>
+            ) : (
+              <span className="min-w-0 flex-1 truncate text-[11px] text-red-700" title={t("No tangent here")}>
+                {t("No tangent here")}
+              </span>
+            )}
+            <RemoveButton title={t("Remove")} onClick={() => onChange(removeTangent(b, i, k), `curve${i}:tangent`)} />
+          </div>
+        );
+      })}
+      <button
+        type="button"
+        disabled={!fn}
+        onClick={addOne}
+        className="flex h-7 items-center gap-1.5 self-start rounded-[5px] px-1.5 text-xs text-muted outline-none hover:bg-hover hover:text-ink focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-40"
+      >
+        <Plus size={12} strokeWidth={2} aria-hidden />
+        {t("Add a tangent")}
+      </button>
     </div>
   );
 }
