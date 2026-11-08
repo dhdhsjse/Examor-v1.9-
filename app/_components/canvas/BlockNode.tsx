@@ -18,6 +18,8 @@ import { ClassifyView, MatchView, OrderView } from "./blocks/MoreQuestionViews";
 import { BlankView, McqView, OpenView, TrueFalseView } from "./blocks/QuestionViews";
 import { MarkView, RuleView, type SheetInfo } from "./blocks/SheetViews";
 import { TableHandles } from "./blocks/TableHandles";
+import { setTableSel, tableSelOf } from "../table/tableSelStore";
+import { cellSel } from "../table/tableSel";
 
 export interface ResizeResult {
   x: number;
@@ -44,6 +46,7 @@ interface Props {
   textTool: boolean; // "T" tool: one click starts typing
   drawing: boolean; // a box is being drawn on the page (text box tool): blocks ignore the mouse
   typing?: boolean; // a text box being typed in: its editor shows the words, the page only its fill and border
+  typingCell?: { r: number; c: number }; // a table cell being typed in: its editor shows its words
   erasable?: boolean; // the eraser is in hand and this block is a drawing or a shape: what it draws (not its box) catches the eraser
   // Blocks over each other: the selected block takes the clicks even where another one is drawn over it. It is then put on top
   // of the others but not seen ("ghost"), while a copy that ignores the mouse ("passive") draws it in its place in the stack.
@@ -64,7 +67,7 @@ interface Props {
 }
 
 // What to draw inside the block.
-function Content({ block: real, number, meta, mode, interactive, selected, totalPoints, typing, sheet }: Pick<Props, "block" | "number" | "meta" | "mode" | "interactive" | "selected" | "totalPoints" | "typing" | "sheet">) {
+function Content({ block: real, number, meta, mode, interactive, selected, totalPoints, typing, typingCell, sheet }: Pick<Props, "block" | "number" | "meta" | "mode" | "interactive" | "selected" | "totalPoints" | "typing" | "typingCell" | "sheet">) {
   // On screen, empty question texts show a light example (and the selected open question its statement); export draws the real
   // (empty) text.
   const block = interactive ? withHints(real, meta.lang, { statement: selected }) : real;
@@ -88,7 +91,7 @@ function Content({ block: real, number, meta, mode, interactive, selected, total
     case "textbox":
       return <TextboxView b={block} meta={meta} interactive={interactive} frameOnly={typing} />;
     case "table":
-      return <TableView b={block} meta={meta} />;
+      return <TableView b={block} meta={meta} hideCell={typingCell} />;
     case "equation":
       // An empty equation is only a hint on screen: it is not printed.
       return interactive || block.latex.trim() ? <EquationView b={block} /> : null;
@@ -243,7 +246,7 @@ export default function BlockNode(props: Props) {
       {explore && block.type === "graph" ? (
         <GraphExplorer b={block} height={height} zoom={props.zoom} onPatch={props.onPatch} />
       ) : (
-        <Content block={block} number={props.number} meta={props.meta} mode={props.mode} interactive={interactive} selected={selected} totalPoints={props.totalPoints} typing={props.typing} sheet={props.sheet} />
+        <Content block={block} number={props.number} meta={props.meta} mode={props.mode} interactive={interactive} selected={selected} totalPoints={props.totalPoints} typing={props.typing} typingCell={props.typingCell} sheet={props.sheet} />
       )}
 
       {/* Invisible areas on top of the texts: double-click, click a selected block (or click with
@@ -261,7 +264,20 @@ export default function BlockNode(props: Props) {
             onMouseEnter={(e) => setCursor(e, textTool || selected || r.direct ? "text" : moveCursor)}
             onMouseLeave={(e) => setCursor(e, moveCursor)}
             onClick={(e) => {
-              if (passedOn.current || (!textTool && !wasSelected.current && !r.direct)) return;
+              if (passedOn.current) return;
+              // A table, like a spreadsheet: a first click selects it whole, a second one the cell, a third one types in that cell
+              // (Shift: the cells from the selected one to this one). A double-click types at once.
+              if (block.type === "table" && r.field.kind === "cell" && !textTool) {
+                const { r: row, c: col } = r.field;
+                if (!wasSelected.current) return setTableSel(block.id, null);
+                e.cancelBubble = true;
+                const cur = tableSelOf(block.id);
+                const one = cur && cur.anchor.r === cur.focus.r && cur.anchor.c === cur.focus.c;
+                if (e.evt.shiftKey && cur) return setTableSel(block.id, { anchor: cur.anchor, focus: { r: row, c: col } });
+                if (one && cur.anchor.r === row && cur.anchor.c === col) return onEdit(r.field);
+                return setTableSel(block.id, cellSel(row, col));
+              }
+              if (!textTool && !wasSelected.current && !r.direct) return;
               e.cancelBubble = true;
               onEdit(r.field);
             }}

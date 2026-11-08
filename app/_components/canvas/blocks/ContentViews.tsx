@@ -6,6 +6,7 @@ import { boxFillPath, boxLines } from "@/app/_lib/boxBorder";
 import StudioShapes from "@/app/_components/shapes/StudioShapes";
 import { isRtl } from "@/app/_lib/i18n";
 import { DEFAULT_ACCENT, TABLE_HEADER_FILL, layoutImageCaption, layoutTable, layoutText, layoutTextbox, tableFrame, type ListMarker, type ParagraphBox } from "@/app/_lib/blockLayout";
+import type { TableLine } from "@/app/_lib/table/model";
 import { useImage } from "@/app/_lib/images";
 import { svgUrl } from "@/app/_lib/library";
 import { plainText, serializeRich } from "@/app/_lib/richText";
@@ -105,7 +106,27 @@ export function TextboxView({ b, meta, interactive, frameOnly }: { b: TextboxBlo
   );
 }
 
-function TableBody({ b, meta }: { b: TableBlock; meta: ExamMeta }) {
+// A line of a table with a look of its own: thicker, dashed, dotted, or two thin lines side by side
+function StyledLine({ pts, look, color }: { pts: [number, number, number, number]; look: TableLine; color: string }) {
+  const w = look.w ?? 1;
+  const stroke = look.color ?? color;
+  if (look.dash === "double") {
+    const [x1, y1, x2, y2] = pts;
+    const d = Math.max(1.5, w * 1.5);
+    const o = y1 === y2 ? [0, d] : [d, 0];
+    return (
+      <>
+        <Line points={[x1 - o[0], y1 - o[1], x2 - o[0], y2 - o[1]]} stroke={stroke} strokeWidth={Math.max(0.6, w / 2)} />
+        <Line points={[x1 + o[0], y1 + o[1], x2 + o[0], y2 + o[1]]} stroke={stroke} strokeWidth={Math.max(0.6, w / 2)} />
+      </>
+    );
+  }
+  const dash = look.dash === "dashed" ? [5 * w, 3 * w] : look.dash === "dotted" ? [0.01, 2.5 * w] : undefined;
+  return <Line points={pts} stroke={stroke} strokeWidth={w} dash={dash} lineCap={look.dash === "dotted" ? "round" : "butt"} />;
+}
+
+function TableBody({ b, meta, hideCell }: { b: TableBlock; meta: ExamMeta; hideCell?: { r: number; c: number } }) {
+  const hidden = (r: number, c: number) => hideCell?.r === r && hideCell?.c === c;
   // In Arabic the first column is on the right.
   const L = layoutTable(b, meta);
   const rtl = L.F.rtl;
@@ -117,7 +138,13 @@ function TableBody({ b, meta }: { b: TableBlock; meta: ExamMeta }) {
     return (
       <Group listening={false}>
         {L.cellBoxes.map((cell) => cell.fill && <Rect key={`f${cell.r}-${cell.c}`} x={cell.x} y={cell.y} width={cell.w} height={cell.h} fill={cell.fill} />)}
-        {L.cellBoxes.map((cell) => (
+        {L.cellBoxes.map((cell) => !hidden(cell.r, cell.c) && cell.rot && (
+          // sideways: the text laid out in the cell turned (from the bottom-left corner for 270, the top-right one for 90)
+          <Group key={`t${cell.r}-${cell.c}`} x={cell.rot === 270 ? cell.x : cell.x + cell.w} y={cell.rot === 270 ? cell.y + cell.h : cell.y} rotation={cell.rot === 270 ? -90 : 90}>
+            <RichText lines={cell.text.lines} x={6} y={cell.textY} width={cell.h - 12} rtl={rtl} align={cell.align} />
+          </Group>
+        ))}
+        {L.cellBoxes.map((cell) => !hidden(cell.r, cell.c) && !cell.rot && (
           <RichText key={`t${cell.r}-${cell.c}`} lines={cell.text.lines} x={cell.x + 6} y={cell.textY} width={cell.w - 12} rtl={rtl} align={cell.align} />
         ))}
         {lines.length > 0 && (
@@ -134,6 +161,7 @@ function TableBody({ b, meta }: { b: TableBlock; meta: ExamMeta }) {
             }}
           />
         )}
+        {L.styled.map(({ pts, look }, i) => <StyledLine key={`l${i}`} pts={pts} look={look} color={b.borderColor ?? INK} />)}
       </Group>
     );
   }
@@ -144,7 +172,7 @@ function TableBody({ b, meta }: { b: TableBlock; meta: ExamMeta }) {
       {L.rows.map((row, r) => (
         <Group key={r}>
           {r > 0 && <Line points={[0, row.y, w, row.y]} stroke={INK} strokeWidth={1} />}
-          {row.cells.map((cell, c) => (
+          {row.cells.map((cell, c) => !hidden(r, c) && (
             <RichText
               key={c}
               lines={cell.lines}
@@ -170,11 +198,11 @@ const TableShapes = ({ b }: { b: TableBlock }) => (b.shapes?.length ? <StudioSha
 
 // A table: its cells and lines, then the shapes and pictures over it. A fixed one (with shapes or pictures) is laid out at the width they
 // were put in and drawn scaled to the block's width, like a picture (see tableFrame).
-export function TableView({ b, meta }: { b: TableBlock; meta: ExamMeta }) {
+export function TableView({ b, meta, hideCell }: { b: TableBlock; meta: ExamMeta; hideCell?: { r: number; c: number } }) {
   const { block, k } = tableFrame(b);
   return (
     <Group listening={false} scaleX={k} scaleY={k}>
-      <TableBody b={block} meta={meta} />
+      <TableBody b={block} meta={meta} hideCell={hideCell} />
       <TableShapes b={block} />
     </Group>
   );

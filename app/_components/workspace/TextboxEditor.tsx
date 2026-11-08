@@ -75,7 +75,7 @@ export default function TextboxEditor({ block, meta, zoom, box, selectAll, keepO
     immediatelyRender: true,
     onUpdate: ({ editor: e }) => latest.current.onChange(e.getJSON()),
     editorProps: {
-      attributes: { dir: block.dir ?? (isRtl(meta.lang) ? "rtl" : "auto"), "aria-label": "Text box", class: "outline-none" },
+      attributes: { dir: block.dir ?? (isRtl(meta.lang) ? "rtl" : "auto"), "aria-label": "Text box", class: "outline-none", style: "outline: none" },
       handleKeyDown: (_view, e) => {
         if (e.key !== "Escape") return false;
         e.preventDefault();

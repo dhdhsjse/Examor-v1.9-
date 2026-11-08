@@ -1,15 +1,16 @@
 "use client";
 
 import { ArrowLeftRight, PanelLeft, PanelRight, PanelTop, SquareArrowOutUpRight, TableCellsMerge, TableCellsSplit, TriangleAlert } from "lucide-react";
-import { useState } from "react";
 import { MAX_COLS, MAX_ROWS, anchorOf, colsOf, isFixedTable, resizeTable, rowsOf, tableMirrored, wholeMerges } from "@/app/_lib/table";
 import type { Lang, TableBlock } from "@/app/_lib/types";
 import { useT } from "@/app/_lib/uiLang";
 import type { BlockPatch } from "@/app/_lib/useExam";
 import { inputCls } from "../inspector/fields";
 import TableGrid from "./TableGrid";
+import TableStyleSection from "./TableStyleSection";
 import { makeActions } from "./tableActions";
-import { clampSel, selRange, type Sel } from "./tableSel";
+import { clampSel, selRange } from "./tableSel";
+import { useTableSel } from "./tableSelStore";
 
 interface Props {
   b: TableBlock;
@@ -51,7 +52,8 @@ function Count({ label, value, max, onChange, testId }: { label: string; value: 
 // formulas, shapes) is in the Table Studio. Every change is one of the block's own updates, so it is part of the exam's undo history.
 export default function TablePanel({ b, lang, onChange, examFont, onOpenStudio }: Props) {
   const t = useT();
-  const [picked, setSel] = useState<Sel | null>(null);
+  // (shared with the page: cells picked there with the table tools are selected here too)
+  const [picked, setSel] = useTableSel(b.id);
   // A table with shapes or pictures over it is fixed like a picture: nothing of it can be changed here (what is over it would not follow),
   // only a warning and the button to the Studio.
   if (isFixedTable(b)) {
@@ -105,6 +107,8 @@ export default function TablePanel({ b, lang, onChange, examFont, onOpenStudio }
         <Count label={t("Rows")} value={rows} max={MAX_ROWS} onChange={(n) => apply(resizeTable(b, n, cols), "size")} testId="table-rows" />
         <Count label={t("Columns")} value={cols} max={MAX_COLS} onChange={(n) => apply(resizeTable(b, rows, n), "size")} testId="table-cols" />
       </div>
+
+      <TableStyleSection table={b} actions={actions} examFont={examFont} onWhole={() => setSel(null)} />
 
       {/* the headers: across the top and down the first column (bold and shaded) */}
       <span className="-mb-1 text-xs text-muted">{t("Headers")}</span>

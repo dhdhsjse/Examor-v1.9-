@@ -16,7 +16,9 @@ import EraserTools from "./EraserTools";
 // "eraser" = a drag on a page rubs out the parts of the drawings it goes over, or (the stroke eraser) whole drawings and shapes. The
 // other blocks stay: they are deleted as blocks.
 // "stamp" = a click on a page of the correction sheet puts the sticker in hand there (it stays in hand: a barème is many marks).
-export type CanvasTool = "select" | "text" | "textbox" | "shape" | "draw" | "eraser" | "stamp";
+// "table" = the table tools (Insert → Draw a table, and the floating bar of a selected table): draw a table and its lines, rub lines out,
+// select cells (workspace/TableDrawLayer). They stay in hand until Done, Esc or a click on the paper away from the tables.
+export type CanvasTool = "select" | "text" | "textbox" | "shape" | "draw" | "eraser" | "stamp" | "table";
 
 // The shapes of the Shapes button's menu, like Figma's (the whole gallery is in Insert → Shapes). `key` = its shortcut (Editor).
 export const QUICK_SHAPES: { id: string; label: string; key: string; Icon: typeof Square }[] = [

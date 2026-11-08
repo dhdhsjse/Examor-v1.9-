@@ -50,6 +50,8 @@ export interface DropPoint {
   x: number;
   y: number;
   corner?: boolean;
+  /** A box drawn on the paper: keep its position and width, including inside the page margins. */
+  free?: boolean;
 }
 
 // A change to a block. `layout` can be partial.
@@ -258,7 +260,7 @@ export function useExam(initial: ExamDoc, t?: T) {
         const bounds = room(at0);
         const left = bounds.left;
         const room0 = bounds.right - bounds.left;
-        const fit = w > room0;
+        const fit = !at.free && w > room0;
         block.layout = {
           ...block.layout,
           pageId: page.id,

@@ -3,7 +3,9 @@
 import type Konva from "konva";
 import { useState } from "react";
 import { Rect } from "react-konva";
+import { setTableGuide } from "@/app/_components/table/tableGuideStore";
 import { TABLE_MIN_COL, TABLE_MIN_ROW, layoutTable } from "@/app/_lib/blockLayout";
+import { edgeSpots, lineSpots, magnet } from "@/app/_lib/table/equal";
 import type { ExamMeta, TableBlock } from "@/app/_lib/types";
 import type { BlockPatch } from "@/app/_lib/useExam";
 
@@ -12,6 +14,7 @@ const ACCENT = "#4f46e5";
 
 type DragEvt = Konva.KonvaEventObject<DragEvent>;
 const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(v, max));
+const MAGNET = 6; // screen px: how close a line has to come to a size the table already has to take it (Alt: no magnet)
 
 // Invisible strips over the inner lines of the selected table: drag them to change
 // column widths (left/right) or row heights (up/down, including the bottom edge).
@@ -19,6 +22,23 @@ export function TableHandles({ b, meta, zoom, onPatch }: { b: TableBlock; meta: 
   const L = layoutTable(b, meta);
   const rtl = L.mirror; // (the first column is on the right)
   const grip = GRIP / Math.max(0.5, zoom);
+  const tol = MAGNET / Math.max(0.1, zoom);
+  // the line dragged and the stretches of the same size the magnet found: drawn by the page's table layer
+  const setMarks = (m: { vertical: boolean; at: number; marks: [number, number][] } | null) => setTableGuide(m && { id: b.id, ...m });
+  // the columns from left to right as seen (in Arabic the first one is on the right)
+  const order = L.colX.map((_, c) => c).sort((a, c) => L.colX[a] - L.colX[c]);
+  const seen = order.map((c) => L.colW[c]);
+  const heights = L.rows.map((r) => r.height);
+  const snapColumn = (k: number, x: number, free: boolean) => {
+    const spot = free ? { at: x, marks: [] } : magnet(x, lineSpots(seen, order.indexOf(columnLine(k).left), TABLE_MIN_COL), tol);
+    setMarks({ vertical: true, at: spot.at, marks: spot.marks });
+    return spot.at;
+  };
+  const snapRow = (r: number, y: number, free: boolean) => {
+    const spot = free ? { at: y, marks: [] } : magnet(y, edgeSpots(heights, r, TABLE_MIN_ROW), tol);
+    setMarks({ vertical: false, at: spot.at, marks: spot.marks });
+    return spot.at;
+  };
 
   // The line between columns k-1 and k. In Arabic column k is on the LEFT of column k-1.
   const columnLine = (k: number) => {
@@ -62,8 +82,11 @@ export function TableHandles({ b, meta, zoom, onPatch }: { b: TableBlock; meta: 
             y={0}
             width={grip}
             height={L.height}
-            limit={(x) => clamp(x + grip / 2, line.min, line.max) - grip / 2}
-            onDrop={(x) => dropColumn(k, x + grip / 2)}
+            limit={(x, free) => snapColumn(k, clamp(x + grip / 2, line.min, line.max), free) - grip / 2}
+            onDrop={(x) => {
+              setMarks(null);
+              dropColumn(k, x + grip / 2);
+            }}
           />
         );
       })}
@@ -75,8 +98,11 @@ export function TableHandles({ b, meta, zoom, onPatch }: { b: TableBlock; meta: 
           y={row.y + row.height - grip / 2}
           width={b.layout.width}
           height={grip}
-          limit={(y) => Math.max(row.y + TABLE_MIN_ROW, y + grip / 2) - grip / 2}
-          onDrop={(y) => dropRow(r, y + grip / 2)}
+          limit={(y, free) => snapRow(r, Math.max(row.y + TABLE_MIN_ROW, y + grip / 2), free) - grip / 2}
+          onDrop={(y) => {
+            setMarks(null);
+            dropRow(r, y + grip / 2);
+          }}
         />
       ))}
     </>
@@ -90,7 +116,8 @@ function Grip({ vertical, x, y, width, height, limit, onDrop }: {
   y: number;
   width: number;
   height: number;
-  limit: (pos: number) => number;
+  /** Where the strip goes for a position it is dragged to (`free`: Alt held, no magnet) */
+  limit: (pos: number, free: boolean) => number;
   onDrop: (pos: number) => void;
 }) {
   const [active, setActive] = useState(false);
@@ -126,8 +153,9 @@ function Grip({ vertical, x, y, width, height, limit, onDrop }: {
       onDragMove={(e) => {
         stop(e);
         const n = e.target;
-        if (vertical) n.position({ x: limit(n.x()), y });
-        else n.position({ x, y: limit(n.y()) });
+        const free = e.evt.altKey;
+        if (vertical) n.position({ x: limit(n.x(), free), y });
+        else n.position({ x, y: limit(n.y(), free) });
       }}
       onDragEnd={(e) => {
         stop(e);

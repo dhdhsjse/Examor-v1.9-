@@ -10,7 +10,7 @@ import { INDENT_PX, MAX_INDENT } from "./tiptap-indent";
 import { fixOrder, shuffled } from "./shuffle";
 import { shapesBounds } from "./shapes/geometry";
 import { shownText, tableSheet } from "./table/display";
-import { TABLE_HEADER_FILL, cellLook, fixedScale, hEdgeShown, isCovered, isPlainTable, mergeAt, tableMirrored, vEdgeShown, type CellLook } from "./table/model";
+import { TABLE_HEADER_FILL, cellLook, fixedScale, hEdgeLook, hEdgeShown, isCovered, isPlainTable, mergeAt, tableMirrored, vEdgeLook, vEdgeShown, type CellLook, type TableLine } from "./table/model";
 import type {
   BlankBlock,
   Block,
@@ -728,6 +728,11 @@ export interface TableCellBox {
   spec: Spec;
   align?: "left" | "center" | "right";
   fill?: string;
+  /**
+   * Sideways text (90: read from the top down, 270: from the bottom up). The text is then laid out in the cell turned: its lines are
+   * `h - 12` long, and `textY` is how far its first line is from the cell's side where the lines start (the left for 270, the right for 90).
+   */
+  rot?: 90 | 270;
 }
 
 export interface TableLayout {
@@ -744,6 +749,8 @@ export interface TableLayout {
   mirror: boolean;
   /** With extras: the lines to draw, as [x1, y1, x2, y2] */
   lines: [number, number, number, number][];
+  /** …and the lines that have a look of their own (width, dashes, color) */
+  styled: { pts: [number, number, number, number]; look: TableLine }[];
 }
 
 // In Arabic the first column is on the right.
@@ -772,7 +779,7 @@ export function layoutTable(b: TableBlock, meta: ExamMeta): TableLayout {
     y += h;
     return out;
   });
-  return { F, colX, colW, rows, height: y, cellBoxes, ext: false, mirror, lines: [] };
+  return { F, colX, colW, rows, height: y, cellBoxes, ext: false, mirror, lines: [], styled: [] };
 }
 
 export { TABLE_HEADER_FILL };
@@ -802,18 +809,22 @@ function layoutTableExt(b: TableBlock, F: Fonts, mirror: boolean, colW: number[]
       const size = look.size ?? body.size;
       const font = { ...body, family: look.family ? fontStack(look.family) : body.family, size, bold: look.bold ?? body.bold, italic: look.italic ?? body.italic, color: look.color ?? body.color };
       const spec: Spec = { font, line: size === body.size ? F.body.line : Math.round(size * (20 / 14)) };
-      const text = box(shownText(b, sheet, r, c, F.lang), width - 12, spec, 0);
+      // sideways: the lines run along the cell's height (wrapped at the height the rows were given, if any)
+      const given = look.rot ? Array.from({ length: rs }, (_, k) => b.rowHeights?.[r + k] ?? 0).reduce((s, v) => s + v, 0) : 0;
+      const text = box(shownText(b, sheet, r, c, F.lang), look.rot ? (given > 24 ? given - 12 : 4000) : width - 12, spec, 0);
       logical[r][c] = text;
       items.push({ r, c, rs, cs, x, w: width, spec, text, look });
     }
 
   // heights: a row fits its single-row cells; a merged cell over several rows asks the last of them for what it lacks
   const heights = Array.from({ length: rowsN }, (_, r) => Math.max(TABLE_MIN_ROW, b.rowHeights?.[r] ?? 0));
-  for (const it of items) if (it.rs === 1) heights[it.r] = Math.max(heights[it.r], it.text.height + 8);
+  // (sideways text needs its longest line, not its lines, in height)
+  const needOf = (it: Item) => (it.look.rot ? Math.max(0, ...it.text.lines.map((l) => l.width)) + 12 : it.text.height + 8);
+  for (const it of items) if (it.rs === 1) heights[it.r] = Math.max(heights[it.r], needOf(it));
   for (const it of items) {
     if (it.rs <= 1) continue;
     const have = heights.slice(it.r, it.r + it.rs).reduce((s, v) => s + v, 0);
-    const need = it.text.height + 8;
+    const need = needOf(it);
     if (need > have) heights[Math.min(it.r + it.rs, rowsN) - 1] += need - have;
   }
   let y = 0;
@@ -829,19 +840,26 @@ function layoutTableExt(b: TableBlock, F: Fonts, mirror: boolean, colW: number[]
     const top = ys[it.r];
     const h = heights.slice(it.r, it.r + it.rs).reduce((s, v) => s + v, 0);
     const valign = it.look.valign;
+    if (it.look.rot) {
+      // turned: "top" is the side the lines start from, the text runs along the height
+      const across = valign === "top" ? 4 : valign === "bottom" ? it.w - it.text.height - 4 : (it.w - it.text.height) / 2;
+      return { r: it.r, c: it.c, x: it.x, y: top, w: it.w, h, text: it.text, textY: across, spec: it.spec, align: it.look.align, fill: it.look.fill, rot: it.look.rot };
+    }
     const textY = valign === "top" ? top + 4 : valign === "bottom" ? top + h - it.text.height - 4 : top + (h - it.text.height) / 2;
     return { r: it.r, c: it.c, x: it.x, y: top, w: it.w, h, text: it.text, textY, spec: it.spec, align: it.look.align, fill: it.look.fill };
   });
 
   // the lines: every edge of the grid that is drawn, except inside a merged cell
   const lines: TableLayout["lines"] = [];
+  const styled: TableLayout["styled"] = [];
+  const push = (pts: [number, number, number, number], look: TableLine | undefined) => (look ? styled.push({ pts, look }) : lines.push(pts));
   for (let i = 0; i <= rowsN; i++)
     for (let c = 0; c < colsN; c++) {
       if (!hEdgeShown(b, rowsN, i, c)) continue;
       const above = i > 0 ? mergeAt(b, i - 1, c) : undefined;
       if (i > 0 && i < rowsN && above && above === mergeAt(b, i, c)) continue;
       const yy = i === rowsN ? height : ys[i];
-      lines.push([colX[c], yy, colX[c] + colW[c], yy]);
+      push([colX[c], yy, colX[c] + colW[c], yy], hEdgeLook(b, i, c));
     }
   for (let j = 0; j <= colsN; j++)
     for (let r = 0; r < rowsN; r++) {
@@ -849,9 +867,9 @@ function layoutTableExt(b: TableBlock, F: Fonts, mirror: boolean, colW: number[]
       const before = j > 0 ? mergeAt(b, r, j - 1) : undefined;
       if (j > 0 && j < colsN && before && before === mergeAt(b, r, j)) continue;
       const x = mirror ? (j === 0 ? w : colX[j - 1]) : j === colsN ? w : colX[j];
-      lines.push([x, ys[r], x, ys[r] + heights[r]]);
+      push([x, ys[r], x, ys[r] + heights[r]], vEdgeLook(b, j, r));
     }
-  return { F, colX, colW, rows, height, cellBoxes, ext: true, mirror, lines };
+  return { F, colX, colW, rows, height, cellBoxes, ext: true, mirror, lines, styled };
 }
 
 /**

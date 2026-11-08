@@ -23,7 +23,7 @@ import { headerRegions } from "@/app/_components/canvas/blocks/headerParts";
 import { toggleMcq } from "./blocks";
 import { chromeTextField } from "./onboarding/headerFooterLibrary";
 import { isRtl } from "./i18n";
-import { isFixedTable } from "./table/model";
+import { cellLook, isFixedTable } from "./table/model";
 import type { Block, ExamMeta, HeaderFields, OpenPart, ViewMode } from "./types";
 import type { BlockPatch } from "./useExam";
 
@@ -57,6 +57,8 @@ export interface EditRegion {
   align?: "left" | "right" | "center" | "justify";
   hit?: { x: number; y: number; width: number; height: number }; // where a click types here (missing = the text itself)
   direct?: boolean; // one click types here even when the block was not selected (a text box, like in Word)
+  turn?: { x: number; y: number; rot: 90 | 270 }; // sideways text: x, y, width are in the cell turned about this corner (see TableCellBox.rot)
+  bare?: boolean; // typed with no frame and see-through, right where the text is drawn (a table cell: the page leaves its text out meanwhile)
 }
 
 // A spot you click to set the correct answer (MCQ circle, True/False box).
@@ -175,17 +177,40 @@ export function editRegions(b: Block, n: number, meta: ExamMeta, mode: ViewMode 
     }
     case "table": {
       if (isFixedTable(b)) return []; // (fixed like a picture: its cells are typed in the Table Studio)
+      // typed right where the cell's text is drawn (an empty one: one line, placed as the text would be); a click anywhere in the cell types in it
       const L = layoutTable(b, meta);
-      return L.cellBoxes.map((cell) => ({
-        field: { kind: "cell", r: cell.r, c: cell.c } as EditField,
-        x: cell.x + 6,
-        y: cell.y + 4,
-        width: cell.w - 12,
-        height: cell.h - 8,
-        spec: cell.spec,
-        multiline: false,
-        align: cell.align,
-      }));
+      return L.cellBoxes.map((cell) => {
+        const height = Math.max(cell.text.height, cell.spec.line);
+        const valign = cellLook(b, cell.r, cell.c).valign;
+        const k = valign === "top" ? 0 : valign === "bottom" ? 1 : 0.5;
+        const hit = { x: cell.x + 2, y: cell.y + 2, width: cell.w - 4, height: cell.h - 4 };
+        if (cell.rot)
+          return {
+            field: { kind: "cell", r: cell.r, c: cell.c } as EditField,
+            x: 6,
+            y: cell.textY - (height - cell.text.height) * k,
+            width: cell.h - 12,
+            height,
+            spec: cell.spec,
+            multiline: false,
+            align: cell.align,
+            hit,
+            turn: cell.rot === 270 ? { x: cell.x, y: cell.y + cell.h, rot: 270 as const } : { x: cell.x + cell.w, y: cell.y, rot: 90 as const },
+            bare: true,
+          };
+        return {
+          field: { kind: "cell", r: cell.r, c: cell.c } as EditField,
+          x: cell.x + 6,
+          y: cell.textY - (height - cell.text.height) * k,
+          width: cell.w - 12,
+          height,
+          spec: cell.spec,
+          multiline: false,
+          align: cell.align,
+          hit,
+          bare: true,
+        };
+      });
     }
     default:
       return [];

@@ -31,6 +31,13 @@ import type { InkTools } from "@/app/_lib/ink/useInkTools";
 import type { EraserTool } from "@/app/_lib/ink/useEraserTool";
 import type { DrawnInk, InkInHand } from "../canvas/ExamCanvas";
 import ZoomBar from "./ZoomBar";
+import TableDrawBar from "./TableDrawBar";
+import TableDrawDock from "./TableDrawDock";
+import TableDrawLayer, { isDrawable, tableGeo, type TableDrawMode } from "./TableDrawLayer";
+import { setTableSel, useTableSel } from "../table/tableSelStore";
+import { clampSel, rangeSel, selRange } from "../table/tableSel";
+import { colsOf, rowsOf, wholeMerges } from "@/app/_lib/table";
+import { cellRange, cellsOf, mergeRange, rangeIn, splitRange } from "@/app/_lib/table/draw";
 
 export interface Editing {
   id: string;
@@ -38,6 +45,9 @@ export interface Editing {
   created?: boolean; // new text from the T tool (removed if left empty)
   selectAll?: boolean; // new block: its starting text is selected, so typing replaces it
 }
+
+let tableAction = 0;
+const tableActionKey = (action: string) => `table-${action}:${++tableAction}`;
 
 interface Props {
   doc: ExamDoc;
@@ -77,6 +87,10 @@ interface Props {
   onTextEditor: (editor: TextEditor | null) => void;
   onCreateText: (at: DropPoint) => void;
   onDrawBox: (box: DrawnBox) => void; // a box drawn with the text box tool (or a shape drawn with the Shapes tool)
+  onDrawTable: (box: DrawnBox) => void; // a box drawn on the paper with the table tools' pen: a new table of one cell
+  tableMode: TableDrawMode;
+  onTableMode: (mode: TableDrawMode) => void;
+  onOpenTableStudio: (id: string) => void; // the floating bar of the tables: this table in the Table Studio
   onStamp: (at: DropPoint) => void; // a click with the Stamp tool: the sticker of the correction sheet in hand goes there
   onSheet: (patch: Partial<SheetConfig>, key?: string) => void; // the frame of the correction sheet dragged on the page
   drawShape?: "box" | "line"; // the Shapes tool is in hand: what it draws
@@ -114,6 +128,8 @@ export default function Workspace(props: Props) {
   const [dropHover, setDropHover] = useState(false);
   const [dragging, setDragging] = useState(false);
   const [askDelete, setAskDelete] = useState<string | null>(null); // page waiting for "Do you really want to delete it?"
+  const tableMode = props.tableMode;
+  const pageIds = useMemo(() => pages.map((p) => p.id), [pages]);
   // Pages can differ in size: each one has its box on the canvas (see pageBoxes).
   const boxes = useMemo(() => pageBoxes(pages), [pages]);
   // (a bordered correction sheet: the frame of each page, whose titles are typed on the page)
@@ -292,6 +308,55 @@ export default function Workspace(props: Props) {
   const blockTop = (b: { layout: BlockLayout }) => boxes[pageIndex(b.layout.pageId)].top + b.layout.y;
   const blockLeft = (b: { layout: BlockLayout }) => boxes[pageIndex(b.layout.pageId)].left + b.layout.x;
 
+  // ---- The table tools (Insert → Draw a table, and the floating bar under a selected table) ----
+  const tableTools = props.tool === "table";
+  const drawn = isDrawable(selected, doc.blocks) && !dragging && !props.groupIds.length && (props.tool === "select" || tableTools) ? selected : undefined;
+  const [cellPick] = useTableSel(drawn?.id);
+  const geo = drawn ? tableGeo(drawn, boxes, pageIndex(drawn.layout.pageId), doc.meta) : null;
+  const safePick = drawn ? clampSel(cellPick, rowsOf(drawn), colsOf(drawn)) : null;
+  const picked = drawn && safePick ? wholeMerges(drawn, selRange(safePick)) : null;
+  const pickedCells = drawn && picked ? cellsOf(drawn).filter((c) => c.r >= picked.r0 && c.r <= picked.r1 && c.c >= picked.c0 && c.c <= picked.c1) : [];
+  const [barNote, setBarNote] = useState<string | null>(null);
+  useEffect(() => {
+    if (!barNote) return;
+    const id = setTimeout(() => setBarNote(null), 3500);
+    return () => clearTimeout(id);
+  }, [barNote]);
+  const pickTableTool = (m: TableDrawMode) => {
+    props.onTableMode(m);
+  };
+  const mergePicked = () => {
+    if (!drawn || !geo || !picked) return;
+    const out = mergeRange(drawn, geo.frame, picked);
+    if (!out) return;
+    props.onPatch(drawn.id, out.patch as BlockPatch, tableActionKey("merge"));
+    setTableSel(drawn.id, rangeSel(cellRange(out.cell)));
+  };
+  const splitPicked = (cols: number, rows: number) => {
+    if (!drawn || !geo || !picked) return;
+    const out = splitRange(drawn, geo.frame, picked, cols, rows);
+    if (!out) return setBarNote("This split does not fit. Choose fewer rows or columns, or enlarge the cells.");
+    props.onPatch(drawn.id, out.patch as BlockPatch, tableActionKey("split"));
+    const area = rangeIn({ ...drawn, ...out.patch }, out.frame, out.area);
+    setTableSel(drawn.id, area ? rangeSel(area) : null);
+  };
+  const tableBar = (drawn || tableTools) && (
+    <TableDrawBar
+      key={drawn?.id ?? "new"}
+      mode={tableTools ? tableMode : null}
+      onMode={pickTableTool}
+      hasTable={!!drawn}
+      cells={pickedCells.length}
+      span={pickedCells.length === 1 ? { rows: pickedCells[0].rs, cols: pickedCells[0].cs } : null}
+      onMerge={mergePicked}
+      onSplit={splitPicked}
+      canSplit={(cols, rows) => !!(drawn && geo && picked && splitRange(drawn, geo.frame, picked, cols, rows))}
+      onOpenStudio={() => { if (drawn) { props.onToolChange("select"); props.onOpenTableStudio(drawn.id); } }}
+      onDone={() => props.onToolChange("select")}
+      message={barNote}
+    />
+  );
+
   return (
     <div className="flex h-full">
       <PageStrip
@@ -386,9 +451,35 @@ export default function Workspace(props: Props) {
                     onResizing={(id, r) => setLiveBox(r && editing?.id === id ? { ...r, id } : null)}
                     hiddenId={movingId}
                     typingId={editing && editBlock?.type === "textbox" ? editBlock.id : null}
+                    typingCell={editing && editBlock?.type === "table" && editing.field.kind === "cell" ? { id: editBlock.id, r: editing.field.r, c: editing.field.c } : null}
                     mover={mover}
                   />
                 </div>
+
+                {/* The table tools: what a press on a table does (and the selected cells of the selected table) */}
+                {(tableTools || drawn) && !editing && (
+                  <TableDrawLayer
+                    key={`${props.tool}-${tableMode}`}
+                    blocks={doc.blocks}
+                    meta={doc.meta}
+                    pageIds={pageIds}
+                    boxes={boxes}
+                    zoom={zoom}
+                    width={canvasSize.width}
+                    height={height}
+                    mode={tableTools ? tableMode : null}
+                    selectedId={selectedId}
+                    onSelect={props.onSelect}
+                    onPatch={(id, patch, key) => props.onPatch(id, patch, key)}
+                    onCreate={props.onDrawTable}
+                    onExit={() => props.onToolChange("select")}
+                    onEditCell={(id, r, c) => {
+                      props.onToolChange("select");
+                      props.onEditStart(id, { kind: "cell", r, c });
+                    }}
+                    onMessage={setBarNote}
+                  />
+                )}
 
                 {/* The titles of the frame of a correction sheet, typed on the page */}
                 {frames && doc.sheet && <FrameTitles geos={frames} boxes={boxes} sheet={doc.sheet} meta={doc.meta} onChange={props.onSheet} />}
@@ -506,6 +597,12 @@ export default function Workspace(props: Props) {
             </button>
           </div>
         </div>
+
+        {tableBar && !editing && (
+          <TableDrawDock scroll={scrollRef} stack={stackRef} anchor={geo ? { left: geo.left * zoom, top: geo.top * zoom, bottom: (geo.top + geo.h) * zoom } : null}>
+            {tableBar}
+          </TableDrawDock>
+        )}
 
         {/* Warning before a page goes */}
         {askDelete && (

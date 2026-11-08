@@ -7,6 +7,14 @@ import { keyOf, type CellRange } from "./refs";
 
 export type TableAlign = "left" | "center" | "right";
 export type TableVAlign = "top" | "middle" | "bottom";
+export type TableRot = 90 | 270;
+
+/** How a line of the table is drawn (missing fields: 1 px, solid, the table's line color) */
+export interface TableLine {
+  w?: number;
+  dash?: "dashed" | "dotted" | "double";
+  color?: string;
+}
 
 /** The look of one cell (a missing field = the table's own look) */
 export interface TableCellStyle {
@@ -20,6 +28,8 @@ export interface TableCellStyle {
   fill?: string;
   align?: TableAlign;
   valign?: TableVAlign;
+  /** Sideways text: 90 = read from the top down, 270 = from the bottom up (missing = across) */
+  rot?: TableRot;
   fmt?: NumberFormat;
   /**
    * Edges drawn (true) or hidden (false), against the table's border style. Each edge of the grid belongs to one cell: the one
@@ -29,7 +39,21 @@ export interface TableCellStyle {
   bR?: boolean;
   bB?: boolean;
   bL?: boolean;
+  /** The look of the edges the cell owns (the same edges as bT, bR, bB, bL) */
+  lT?: TableLine;
+  lR?: TableLine;
+  lB?: TableLine;
+  lL?: TableLine;
 }
+
+/** The fields of a cell's look that are about its edges */
+export const EDGE_FIELDS = ["bT", "bR", "bB", "bL", "lT", "lR", "lB", "lL"] as const;
+
+/** The look of the horizontal line `i` at column `c` (see hEdgeShown); undefined = the table's plain line */
+export const hEdgeLook = (t: TableExtras, i: number, c: number): TableLine | undefined => (i === 0 ? styleAt(t, 0, c).lT : styleAt(t, i - 1, c).lB);
+
+/** The look of the vertical line `j` at row `r` (see vEdgeShown) */
+export const vEdgeLook = (t: TableExtras, j: number, r: number): TableLine | undefined => (j === 0 ? styleAt(t, r, 0).lL : styleAt(t, r, j - 1).lR);
 
 /** A merged cell: the top-left cell (r, c) and how many rows and columns it covers (the others are covered) */
 export interface TableMerge {
@@ -139,6 +163,7 @@ export interface CellLook {
   fill?: string;
   align?: TableAlign;
   valign: TableVAlign;
+  rot?: TableRot;
 }
 
 export function cellLook(t: TableData, r: number, c: number): CellLook {
@@ -156,6 +181,7 @@ export function cellLook(t: TableData, r: number, c: number): CellLook {
     fill: s.fill ?? (head || headCol ? (t.headerFill ?? TABLE_HEADER_FILL) : t.banded && r >= first && (r - first) % 2 === 1 ? t.banded : undefined),
     align: s.align ?? (head ? "center" : undefined),
     valign: s.valign ?? "middle",
+    rot: s.rot,
   };
 }
 

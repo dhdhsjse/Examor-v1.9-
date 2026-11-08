@@ -57,6 +57,11 @@ import { blockInspectorFor, findSectionFeature } from "@/app/_features/sections"
 import { defaultSize, picturesOf, shapeDef } from "@/app/_lib/shapes";
 import type { DrawnBox, DrawnInk } from "./canvas/ExamCanvas";
 import { FREEHAND_ID } from "@/app/_lib/shapes";
+import { drawnTablePreset } from "@/app/_lib/table/draw";
+import type { TableDrawMode } from "./workspace/TableDrawLayer";
+import { setTableSel, tableSelOf } from "./table/tableSelStore";
+import { cellSel, selRange } from "./table/tableSel";
+import { clearRange, isFixedTable, wholeMerges } from "@/app/_lib/table";
 import { inkToShape } from "@/app/_lib/ink/engine";
 import { useInkTools } from "@/app/_lib/ink/useInkTools";
 import { useEraserTool } from "@/app/_lib/ink/useEraserTool";
@@ -148,6 +153,7 @@ export default function Editor() {
   const toastTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const eqTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const [tool, setTool] = useState<CanvasTool>("select");
+  const [tableMode, setTableMode] = useState<TableDrawMode>("draw");
   const [stamp, setStamp] = useState<ToolAction | null>(null); // (the sticker of the correction sheet the Stamp tool puts on the page)
   const [shapeToDraw, setShapeToDraw] = useState<string | null>(null); // (Insert → Shapes: what the Shapes tool draws)
   const ink = useInkTools(); // the Draw tool: its brush, pencil and highlighter and how each draws (kept between sessions)
@@ -219,6 +225,7 @@ export default function Editor() {
     return findSectionFeature(activeInspectorId)?.followsSelection ? activeInspectorId : null;
   };
   const select = (id: string | null) => {
+    if (id !== selectedId && selectedId) setTableSel(selectedId, null);
     exam.setSelectedId(id);
     if (!id) return;
     setTab("properties");
@@ -343,6 +350,10 @@ export default function Editor() {
 
   // What a drag on the page does. The text box tool says how to use it, since nothing shows until drawn.
   const setCanvasTool = (next: CanvasTool) => {
+    if (next === "table") {
+      setEditing(null);
+      setTableMode("draw");
+    }
     setTool(next);
     if (next === "textbox" && tool !== "textbox") notify(tr("Drag on the page to draw a text box — Esc to cancel"));
   };
@@ -389,7 +400,7 @@ export default function Editor() {
 
   const runTool = (action: ToolAction, at?: DropPoint) => {
     // Another tool used meanwhile: no text box or shape is drawn any more.
-    setTool((cur) => (cur === "textbox" || cur === "shape" || cur === "draw" || cur === "stamp" ? "select" : cur));
+    setTool((cur) => (cur === "textbox" || cur === "shape" || cur === "draw" || cur === "stamp" || cur === "table" ? "select" : cur));
     // A question type or a table picked while a text box is being typed in is a real block placed in that box's text, at the cursor
     // (textboxSlots.ts). It is then edited like any block, as when added on the page.
     const box = textEditor && !at ? doc.blocks.find((b) => b.id === editing?.id) : undefined;
@@ -498,8 +509,10 @@ export default function Editor() {
     if (block?.type === "image" && block.circuitStudio) return setCircuitStudio({ open: true, blockId: id });
     // A probability drawing reopens in the Probability Studio, with its trees and figures.
     if (block?.type === "image" && block.probaStudio) return setProbaStudio({ open: true, blockId: id });
-    if (field) setEditing({ id, field });
-    else if (block?.type === "equation") {
+    if (field) {
+      if (block?.type === "table" && field.kind === "cell") setTableSel(id, cellSel(field.r, field.c));
+      setEditing({ id, field });
+    } else if (block?.type === "equation") {
       toggleKeyboard(true);
       setTimeout(focusMathfield, 80);
     }
@@ -614,6 +627,15 @@ export default function Editor() {
     const room = pageSize(doc.pages[pageIndex]).width - pageMargins(doc, pageIndex).right - x;
     const w = Math.max(80, Math.min(CLICK_TEXTBOX_WIDTH, room));
     runTool({ kind: "block", type: "textbox", preset: { width: w, height: 0, sizing: "auto-height" } }, { pageIndex, x, y: y - 14, corner: true });
+  };
+
+  // The table tools' pen: a box drawn on the paper becomes a table of one cell as big as the box, selected; the tools stay in hand to
+  // draw its lines.
+  const drawTable = (box: DrawnBox) => {
+    const block = exam.addBlock("table", drawnTablePreset(box.width, box.height), { pageIndex: box.pageIndex, x: box.x, y: box.y, corner: true, free: true });
+    setTableSel(block.id, null);
+    setTab("properties");
+    setActiveInspectorId(inspectorFor(block));
   };
 
   // Shapes tool: the box (or line) drawn on the page becomes a shape block of that size (a click: of its usual size, centred on the
@@ -795,6 +817,17 @@ export default function Editor() {
       } else if ((key === "delete" || key === "backspace") && group.length) {
         e.preventDefault();
         exam.deleteBlocks(group);
+      } else if ((key === "delete" || key === "backspace" || key === "enter" || key === "escape") && selected?.type === "table" && !isFixedTable(selected) && tableSelOf(selected.id)) {
+        // cells of the selected table are selected: Delete empties them, Enter types in the first one, Escape goes back to the whole table
+        e.preventDefault();
+        const sel = tableSelOf(selected.id)!;
+        const range = wholeMerges(selected, selRange(sel));
+        if (key === "escape") setTableSel(selected.id, null);
+        else if (key === "enter") startEdit(selected.id, { kind: "cell", r: range.r0, c: range.c0 });
+        else {
+          const patch = clearRange(selected, range);
+          if (patch) exam.updateBlock(selected.id, patch, { key: `${selected.id}:clear-cells` });
+        }
       } else if ((key === "delete" || key === "backspace") && selected) {
         e.preventDefault();
         exam.deleteBlock(selected.id);
@@ -1087,6 +1120,10 @@ export default function Editor() {
               mathKeyboard={mathKb}
               onToggleMathKeyboard={() => toggleKeyboard()}
               onDrawBox={drawOnPage}
+              onDrawTable={drawTable}
+              tableMode={tableMode}
+              onTableMode={(next) => { setEditing(null); setTableMode(next); setTool("table"); }}
+              onOpenTableStudio={(id) => setTableStudio({ open: true, blockId: id, shape: undefined })}
               ink={ink}
               onInk={drawInk}
               eraser={eraser}

@@ -97,13 +97,18 @@ export default function InlineEditor({ block, field, number, meta, mode, zoom, t
       onDone();
     }, 0);
 
-  const x = left + region.x;
-  const y = top + region.y;
+  // sideways text (a table cell): the editor is turned about the cell's corner, its format bar above the cell
+  const turn = region.turn;
+  const x = left + (turn ? turn.x : region.x);
+  const y = top + (turn ? turn.y : region.y);
+  const barX = turn && region.hit ? left + region.hit.x : x;
+  const barY = turn && region.hit ? top + region.hit.y : y;
+  const barW = turn && region.hit ? region.hit.width : region.width;
 
   return (
     <div ref={wrap} onMouseDown={(e) => e.stopPropagation()} onBlur={handleBlur}>
       {/* Format bar just above the text, at screen size (lined up on the right in Arabic) */}
-      <div className="absolute z-30 h-0" style={{ left: rtl ? x + region.width : x, top: y - 8 / zoom }}>
+      <div className="absolute z-30 h-0" style={{ left: rtl ? barX + barW : barX, top: barY - 8 / zoom }}>
         <div className={`absolute bottom-0 ${rtl ? "right-0 origin-bottom-right" : "left-0 origin-bottom-left"}`} style={{ transform: `scale(${1 / zoom})` }}>
           <FormatBar
             style={sel.style}
@@ -125,7 +130,7 @@ export default function InlineEditor({ block, field, number, meta, mode, zoom, t
         }}
         multiline={region.multiline}
         dir={rtl ? "rtl" : "auto"}
-        placeholder={ghost ?? (region.answer ? t("Model answer…") : t("Type here…"))}
+        placeholder={region.bare ? undefined : ghost ?? (region.answer ? t("Model answer…") : t("Type here…"))}
         onKeyDown={(e) => {
           if (e.key === "Enter" && !e.shiftKey && !e.ctrlKey && LIST_FIELDS.includes(field.kind)) {
             e.preventDefault();
@@ -138,7 +143,7 @@ export default function InlineEditor({ block, field, number, meta, mode, zoom, t
             onNext(e.shiftKey);
           }
         }}
-        className="absolute z-20 rounded-[3px] outline-2 outline-offset-2 outline-indigo-500"
+        className={`absolute z-20 ${region.bare ? "outline-none" : "rounded-[3px] outline-2 outline-offset-2 outline-indigo-500"}`}
         style={{
           left: x,
           top: y,
@@ -152,7 +157,9 @@ export default function InlineEditor({ block, field, number, meta, mode, zoom, t
           textDecoration: [font.underline && "underline", font.strike && "line-through"].filter(Boolean).join(" ") || undefined,
           color: font.color,
           textAlign: region.align ?? "start",
-          background: region.answer ? "#fbfdfb" : "#ffffff",
+          background: region.bare ? "transparent" : region.answer ? "#fbfdfb" : "#ffffff",
+          ...(region.bare ? { outline: "none" } : {}),
+          ...(turn ? { transformOrigin: "0 0", transform: `rotate(${turn.rot === 270 ? -90 : 90}deg) translate(${region.x}px, ${region.y}px)` } : {}),
         }}
       />
     </div>

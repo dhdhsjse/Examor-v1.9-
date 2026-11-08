@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ClipboardEvent,
 import type { TableLayout } from "@/app/_lib/blockLayout";
 import RichEditable, { type RichHandle } from "@/app/_components/rich/RichEditable";
 import { fontStack } from "@/app/_lib/fonts";
-import { plainText } from "@/app/_lib/richText";
 import {
   anchorOf,
   cellLook,
@@ -14,41 +13,36 @@ import {
   displayGrid,
   tableMirrored,
   fillRange,
+  hEdgeLook,
   hEdgeShown,
   isCovered,
   isFormula,
   keyOf,
   mergeAt,
-  parseTable,
-  pasteMatrix,
   rangeName,
   rowsOf,
   setCell,
   showsError,
-  textOf,
-  toTabText,
+  vEdgeLook,
   vEdgeShown,
   wholeMerges,
   type CellPos,
   type CellRange,
-  type TableCellStyle,
   type TableData,
+  type TableLine,
   type TablePatch,
 } from "@/app/_lib/table";
 import { useT } from "@/app/_lib/uiLang";
 import { RichSpan } from "./RichSpan";
 import type { TableActions } from "./tableActions";
 import { cellSel, rangeSel, selRange, type Sel } from "./tableSel";
+import { copyTableCells, pasteTableCells } from "./tableClipboard";
 
 const HEAD_W = 34; // the row numbers
 const HEAD_H = 22; // the column letters
 const INK = "#111827";
 const FAINT = "#d7dce4"; // the lines of the editor's grid that the table does not draw
 const ACCENT = "#4f46e5";
-
-// What was last copied in the grid: the cells as typed (formulas as formulas) and their looks, to paste them inside the app exactly; the
-// text on the system clipboard is what the cells show, for other programs. Pasting text that is not this copy reads it as a table.
-let held: { text: string; raw: string[][]; styles: (TableCellStyle | undefined)[][]; from: CellPos } | null = null;
 
 const clampTo = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(v, hi));
 const FIRST = cellSel(0, 0);
@@ -383,14 +377,7 @@ export default function TableGrid({ table, lang, sel, onSelect, onChange, onUndo
   const copy = (e: ClipboardEvent<HTMLDivElement>, cut: boolean) => {
     if (e.target !== e.currentTarget || !hasSel) return;
     e.preventDefault();
-    const text = toTabText(Array.from({ length: range.r1 - range.r0 + 1 }, (_, i) => Array.from({ length: range.c1 - range.c0 + 1 }, (_, j) => plainText(shown[range.r0 + i]?.[range.c0 + j] ?? ""))));
-    e.clipboardData.setData("text/plain", text);
-    held = {
-      text,
-      raw: textOf(table, range),
-      styles: Array.from({ length: range.r1 - range.r0 + 1 }, (_, i) => Array.from({ length: range.c1 - range.c0 + 1 }, (_, j) => table.cellStyles?.[keyOf(range.r0 + i, range.c0 + j)])),
-      from: { r: range.r0, c: range.c0 },
-    };
+    e.clipboardData.setData("text/plain", copyTableCells(table, range, lang));
     if (cut) actions.clear();
   };
 
@@ -398,24 +385,9 @@ export default function TableGrid({ table, lang, sel, onSelect, onChange, onUndo
     if (e.target !== e.currentTarget || !hasSel) return;
     e.preventDefault();
     const text = e.clipboardData.getData("text/plain");
-    const own = held && held.text === text ? held : null;
-    const matrix = own ? own.raw : parseTable(text);
-    const at = { r: range.r0, c: range.c0 };
-    const result = pasteMatrix(table, at, matrix, own?.from);
+    const result = pasteTableCells(table, { r: range.r0, c: range.c0 }, text);
     if (!result) return;
-    const patch: TablePatch = { ...result.patch };
-    if (own) {
-      const styles = { ...(patch.cellStyles ?? table.cellStyles ?? {}) };
-      own.styles.forEach((row, i) =>
-        row.forEach((s, j) => {
-          const key = keyOf(at.r + i, at.c + j);
-          if (s) styles[key] = { ...s };
-          else delete styles[key];
-        }),
-      );
-      patch.cellStyles = Object.keys(styles).length ? styles : undefined;
-    }
-    onChange(patch, `paste:${Date.now()}`);
+    onChange(result.patch, `paste:${Date.now()}`);
     onSelect(rangeSel(result.range));
   };
 
@@ -453,7 +425,8 @@ export default function TableGrid({ table, lang, sel, onSelect, onChange, onUndo
       const selected = inRange(r, c);
       const inFill = !!fillBox && r >= fillBox.r0 && r <= fillBox.r1 && c >= fillBox.c0 && c <= fillBox.c1 && !selected;
       const text = shown[r]?.[c] ?? "";
-      const edge = (on: boolean) => `1px solid ${on ? INK : FAINT}`;
+      const edge = (on: boolean, l?: TableLine) =>
+        !on ? `1px solid ${FAINT}` : !l ? `1px solid ${table.borderColor ?? INK}` : `${l.dash === "double" ? Math.max(3, (l.w ?? 1) * 2) : Math.max(1, Math.round(l.w ?? 1))}px ${l.dash ?? "solid"} ${l.color ?? table.borderColor ?? INK}`;
       const style: CSSProperties = {
         gridRow: `${r + 2} / span ${rs}`,
         gridColumn: `${c + 2} / span ${cs}`,
@@ -468,16 +441,16 @@ export default function TableGrid({ table, lang, sel, onSelect, onChange, onUndo
         justifyContent: look.align === "center" ? "center" : look.align === "right" ? "flex-end" : look.align === "left" ? "flex-start" : "flex-start",
         textAlign: look.align ?? undefined,
         alignItems: look.valign === "top" ? "flex-start" : look.valign === "bottom" ? "flex-end" : "center",
-        borderBottom: edge(hEdgeShown(table, rows, r + rs, c)),
-        borderTop: r === 0 ? edge(hEdgeShown(table, rows, 0, c)) : undefined,
+        borderBottom: edge(hEdgeShown(table, rows, r + rs, c), hEdgeLook(table, r + rs, c)),
+        borderTop: r === 0 ? edge(hEdgeShown(table, rows, 0, c), hEdgeLook(table, 0, c)) : undefined,
         outline: isActive ? `2px solid ${ACCENT}` : inFill ? `1px dashed ${ACCENT}` : undefined,
         outlineOffset: isActive ? -2 : -1,
         zIndex: isActive ? 2 : undefined,
         ...pageText(look.size),
       };
       // each cell draws the edge after it (its end side) and the first column the edge before it: an edge is drawn once. The grid reads right to left in Arabic.
-      const end = edge(vEdgeShown(table, cols, c + cs, r));
-      const start = c === 0 ? edge(vEdgeShown(table, cols, 0, r)) : undefined;
+      const end = edge(vEdgeShown(table, cols, c + cs, r), vEdgeLook(table, c + cs, r));
+      const start = c === 0 ? edge(vEdgeShown(table, cols, 0, r), vEdgeLook(table, 0, r)) : undefined;
       style.borderRight = rtl ? start : end;
       style.borderLeft = rtl ? end : start;
       const lastCell = (m ? m.r + m.rs - 1 : r) === range.r1 && (m ? m.c + m.cs - 1 : c) === range.c1;
@@ -533,7 +506,11 @@ export default function TableGrid({ table, lang, sel, onSelect, onChange, onUndo
             </div>
           ) : (
             // (in the narrow panel a cell shows one line, cut with "…" rather than broken in the middle of its words)
-            <span className={`min-w-0 ${compact ? "truncate" : "whitespace-pre-wrap"} ${showsError(text) ? "text-red-700" : ""}`}>
+            <span
+              className={`min-w-0 ${compact ? "truncate" : "whitespace-pre-wrap"} ${showsError(text) ? "text-red-700" : ""}`}
+              // (sideways text: from the top down, or turned round to read from the bottom up)
+              style={look.rot ? { writingMode: "vertical-rl", transform: look.rot === 270 ? "rotate(180deg)" : undefined, maxHeight: "100%" } : undefined}
+            >
               <RichSpan text={text} />
             </span>
           )}

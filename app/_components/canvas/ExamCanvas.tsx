@@ -105,6 +105,7 @@ interface Props {
   // meanwhile (`hiddenId`), and `mover` snaps it and drops it like a block dragged on the canvas.
   hiddenId?: string | null;
   typingId?: string | null; // the text box being typed in: the page draws only its fill and border (its editor is see-through)
+  typingCell?: { id: string; r: number; c: number } | null; // the table cell being typed in: its text is the editor's, not drawn by the page
   mover?: RefObject<BlockMover | null>;
 }
 
@@ -802,6 +803,7 @@ export default function ExamCanvas(props: Props) {
             drawing={drawing || erasing || (stamping && !sticker(b))}
             erasable={erasing && props.eraser?.mode === "stroke" && rubbable(b)}
             typing={b.id === props.typingId}
+            typingCell={props.typingCell?.id === b.id ? props.typingCell : undefined}
             onSelect={(alt, shift) => pick(b, !!alt, !!shift)}
             onDragStart={() => handleDragStart(b)}
             onEdit={(field) => props.onEdit?.(b.id, field)}

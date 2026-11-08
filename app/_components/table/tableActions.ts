@@ -1,3 +1,4 @@
+import { sideLook, type TableLine } from "@/app/_lib/table";
 import { blankCells, cellLook, clearRange, colsOf, deleteLines, insertLines, isBorderOn, mergeCells, rowsOf, setBorders, setStyle, sortRows, unmergeCells, type BorderMode, type BorderSide, type CellLook, type CellRange, type NumberFormat, type TableCellStyle, type TableData, type TablePatch } from "@/app/_lib/table";
 import { cellSel, rangeSel, type Sel } from "./tableSel";
 
@@ -19,7 +20,7 @@ export interface TableActions {
   toggle: (key: "bold" | "italic") => void;
   isOn: (key: "bold" | "italic") => boolean;
   /** Draws a side (or all, the outside, the inside…) of the selection, or of each selected cell alone (`each`). A side that is drawn is taken off instead. */
-  borders: (mode: BorderMode, each?: boolean) => void;
+  borders: (mode: BorderMode, each?: boolean, look?: TableLine) => void;
   /** Whether a side of the selection (or of each cell of it) is drawn: its button shows it */
   borderOn: (side: BorderSide, each?: boolean) => boolean;
   setFormat: (fmt: NumberFormat | undefined) => void;
@@ -96,12 +97,13 @@ export function makeActions(table: TableData, selected: CellRange | null, rtl: b
       if (p) apply(p, `style:${key}`);
     },
     isOn,
-    borders(mode, each = false) {
+    borders(mode, each = false, look) {
       // "left" and "right" are what is seen: in a table with the first column on the right they are the other way round
       const m: BorderMode = rtl ? (mode === "left" ? "right" : mode === "right" ? "left" : mode) : mode;
       const side = m === "top" || m === "bottom" || m === "left" || m === "right";
       // a side that is drawn is taken off, so a single line of a cell can be removed
-      const p = setBorders(table, range, m, { each, show: side ? !isBorderOn(table, range, m, each) : undefined });
+      const same = !side || JSON.stringify(sideLook(table, range, m, each) ?? null) === JSON.stringify(look ?? null);
+      const p = setBorders(table, range, m, { each, look, show: side ? !(isBorderOn(table, range, m, each) && same) : undefined });
       if (p) apply(p, unique("borders"));
     },
     borderOn(side, each = false) {

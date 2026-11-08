@@ -265,9 +265,12 @@ h1,
 h2 {
   letter-spacing: -0.015em;
 }
-:focus-visible {
-  outline: 2px solid var(--color-accent);
-  outline-offset: 2px;
+/* (in the base layer: what says outline-none, like the text typed on the page, keeps no ring) */
+@layer base {
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
 }
 a {
   color: var(--color-accent-strong);
@@ -429,8 +432,10 @@ a {
     0 0 0 1px rgb(148 163 214 / 0.18),
     0 14px 36px rgb(2 4 12 / 0.6);
 }
-:root[data-theme="dark"] :focus-visible {
-  outline-color: var(--dark-focus);
+@layer base {
+  :root[data-theme="dark"] :focus-visible {
+    outline-color: var(--dark-focus);
+  }
 }
 :root[data-theme="dark"] ::selection {
   background: rgb(99 102 241 / 0.45);

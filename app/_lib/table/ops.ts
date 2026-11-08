@@ -4,7 +4,7 @@ import { plainText } from "@/app/_lib/richText";
 import { createSheet, adjustFormula, isError, isFormula, shiftFormula } from "./formula";
 import { parseNumber } from "./format";
 import { MAX_COLS, MAX_ROWS, clampRange, intersects, keyOf, parseKey, type CellPos, type CellRange } from "./refs";
-import { colsOf, hEdgeShown, isCovered, mergeRange as rangeOfMerge, rowsOf, styleAt, vEdgeShown, type TableCellStyle, type TableData, type TableMerge } from "./model";
+import { EDGE_FIELDS, colsOf, hEdgeLook, hEdgeShown, isCovered, mergeRange as rangeOfMerge, rowsOf, styleAt, vEdgeLook, vEdgeShown, type TableCellStyle, type TableData, type TableLine, type TableMerge } from "./model";
 
 export type TablePatch = Partial<TableData>;
 
@@ -138,8 +138,8 @@ export function insertLines(t: TableData, axis: Axis, at: number, count = 1): Ta
       if ((row ? p.r : p.c) !== model) continue;
       for (let i = 0; i < count; i++) {
         const nk = row ? keyOf(at + i, p.c) : keyOf(p.r, at + i);
-        next[nk] = { ...s, bT: undefined, bB: undefined, bL: undefined, bR: undefined };
-        for (const f of ["bT", "bB", "bL", "bR"] as const) if (next[nk][f] === undefined) delete next[nk][f];
+        next[nk] = { ...s };
+        for (const f of EDGE_FIELDS) delete next[nk][f];
       }
     }
     patch.cellStyles = next;
@@ -251,6 +251,8 @@ export interface BorderOptions {
   each?: boolean;
   /** Draw (true) or hide (false) the lines (default: draw, except for "none") */
   show?: boolean;
+  /** How the lines that are drawn look (missing: the table's plain line) */
+  look?: TableLine;
 }
 
 type Edge = { horizontal: boolean; line: number; at: number };
@@ -269,6 +271,13 @@ function sideEdges(g: CellRange, side: BorderSide, each: boolean): Edge[] {
   return out;
 }
 
+/** The look all the lines of a side share (undefined when they differ, or are plain) */
+export function sideLook(t: TableData, g: CellRange, side: BorderSide, each = false): TableLine | undefined {
+  const looks = sideEdges(g, side, each).map((e) => (e.horizontal ? hEdgeLook(t, e.line, e.at) : vEdgeLook(t, e.line, e.at)));
+  const first = JSON.stringify(looks[0] ?? null);
+  return looks.every((l) => JSON.stringify(l ?? null) === first) ? looks[0] : undefined;
+}
+
 /** Whether a side of a range is drawn (every line of it): a button of the side shows it, and takes it off when it is on */
 export function isBorderOn(t: TableData, g: CellRange, side: BorderSide, each = false): boolean {
   const rows = rowsOf(t);
@@ -282,12 +291,16 @@ export function isBorderOn(t: TableData, g: CellRange, side: BorderSide, each = 
  */
 export function setBorders(t: TableData, g: CellRange, mode: BorderMode, options: BorderOptions = {}): TablePatch | null {
   const next: Record<string, TableCellStyle> = { ...(t.cellStyles ?? {}) };
+  const look = options.look && Object.keys(options.look).length ? options.look : undefined;
   const put = (r: number, c: number, flag: "bT" | "bR" | "bB" | "bL", on: boolean | undefined) => {
     if (r < 0 || c < 0) return;
     const key = keyOf(r, c);
     const s: TableCellStyle = { ...next[key] };
+    const lf = `l${flag[1]}` as "lT" | "lR" | "lB" | "lL";
     if (on === undefined) delete s[flag];
     else s[flag] = on;
+    if (on && look) s[lf] = { ...look };
+    else delete s[lf];
     if (Object.keys(s).length) next[key] = s;
     else delete next[key];
   };
