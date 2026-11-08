@@ -12,7 +12,7 @@ import type { ExamMeta } from "@/app/_lib/types";
 import { useT } from "@/app/_lib/uiLang";
 import Dropdown, { type MenuItem } from "@/app/_features/core/Dropdown";
 import { ColorGrid } from "../rich/FormatBar";
-import { MenuSelect, Segmented, Stepper } from "./fields";
+import { MenuSelect, Segmented, SmallButton, Stepper } from "./fields";
 
 const round = (n: number) => Math.round(n * 1000) / 1000;
 
@@ -65,7 +65,7 @@ const actionBtn =
   "h-5 shrink-0 rounded-[4px] px-1.5 text-[11px] font-medium text-accent transition-colors outline-none hover:bg-hover focus-visible:ring-2 focus-visible:ring-accent";
 
 // The right panel while the correction sheet is shown and nothing is selected. Most used first: what the marks add up to, what needs a look (and
-// the button that fixes it), the frame, the look. What is done rarely (make it again, fit the answers, close up the rows, delete) is in the ⋯ menu.
+// the button that fixes it), the rows (fit the answers to the frame, close them up), the frame, the look. Make it again and delete are in the ⋯ menu.
 export default function SheetSettings({ sheet, scores, full, onFullMark, onGoTo, meta, report, fix, onChange, onMeta, onRemake, onDelete }: {
   sheet: SheetConfig;
   scores: SheetScores;
@@ -90,7 +90,6 @@ export default function SheetSettings({ sheet, scores, full, onFullMark, onGoTo,
   const fromExam = linked && report.template !== "blank";
   const over = scores.total > full;
   const ok = scores.rows.length > 0 && Math.abs(scores.total - full) < 1e-6;
-  const pct = full > 0 ? Math.min(100, (scores.total / full) * 100) : 0;
   const size = meta.answerSize ?? meta.fontSize ?? DEFAULT_SIZE;
   const fmt = (v: number) => formatMark(v, sheet.pad);
   const qs = (ns: number[]) => ns.map((n) => t("Q{n}", { n })).join(" + ");
@@ -171,13 +170,7 @@ export default function SheetSettings({ sheet, scores, full, onFullMark, onGoTo,
 
   // ---- The ⋯ menu ----
   const menu: MenuItem[] = [
-    ...(linked
-      ? [
-          { label: t("Fit the answers to the frame"), onClick: fix.refit },
-          { label: t("Close up the rows"), onClick: fix.pack },
-        ]
-      : []),
-    { label: t("Make it again…"), separator: linked, onClick: onRemake },
+    { label: t("Make it again…"), onClick: onRemake },
     { label: t("Delete the correction sheet…"), separator: true, onClick: () => setSure(true) },
   ];
 
@@ -224,41 +217,50 @@ export default function SheetSettings({ sheet, scores, full, onFullMark, onGoTo,
       )}
 
       <div className="flex flex-col divide-y divide-line">
-        {/* What the marks add up to, out of the full mark (typed here) */}
+        {/* What the marks add up to, out of the full mark (typed here), big in the middle */}
         <Section>
-          <div className="flex items-baseline justify-between gap-2">
-            <span className="text-xs text-muted">{t("Marks")}</span>
-            <span className="flex items-baseline gap-1 tabular-nums">
-              <span data-testid="sheet-total" className={`text-lg font-semibold tracking-[-0.02em] ${tone}`}>
-                {fmt(scores.total)}
+          <div className="flex justify-center py-2">
+            <span
+              data-testid="sheet-total-line"
+              className={`flex items-baseline gap-2 text-4xl font-semibold tracking-[-0.03em] tabular-nums ${tone}`}
+              title={over ? t("The marks add up to more than the full mark!") : t("What the marks of the sheet add up to / the full mark of the exam")}
+            >
+              {over && <TriangleAlert size={20} strokeWidth={2} aria-hidden className="self-center" />}
+              <span data-testid="sheet-total">{fmt(scores.total)}</span>
+              <span className="flex items-baseline gap-0.5 text-2xl font-medium text-faint">
+                <span aria-hidden>/</span>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  min={1}
+                  max={200}
+                  step={1}
+                  value={draft ?? round(full)}
+                  aria-label={t("Full mark")}
+                  title={t("Full mark")}
+                  data-testid="sheet-full-mark"
+                  style={{ width: `${String(draft ?? round(full)).length + 2}ch` }}
+                  onChange={(e) => {
+                    setDraft(e.target.value);
+                    const v = Number(e.target.value);
+                    if (e.target.value.trim() !== "" && Number.isFinite(v) && v >= 1) onFullMark(v);
+                  }}
+                  onBlur={() => setDraft(null)}
+                  className="rounded-lg bg-transparent px-1 text-center text-2xl font-medium text-ink tabular-nums outline-none [appearance:textfield] hover:bg-subtle focus:bg-subtle focus-visible:ring-2 focus-visible:ring-accent [&::-webkit-inner-spin-button]:appearance-none"
+                />
               </span>
-              <span className="text-sm text-faint" aria-hidden>
-                /
-              </span>
-              <input
-                type="number"
-                inputMode="numeric"
-                min={1}
-                max={200}
-                step={1}
-                value={draft ?? round(full)}
-                aria-label={t("Full mark")}
-                title={t("Full mark")}
-                data-testid="sheet-full-mark"
-                style={{ width: `${String(draft ?? round(full)).length + 1.5}ch` }}
-                onChange={(e) => {
-                  setDraft(e.target.value);
-                  const v = Number(e.target.value);
-                  if (e.target.value.trim() !== "" && Number.isFinite(v) && v >= 1) onFullMark(v);
-                }}
-                onBlur={() => setDraft(null)}
-                className="h-6 rounded-[5px] bg-transparent text-center text-sm font-medium text-ink tabular-nums outline-none [appearance:textfield] hover:bg-subtle focus:bg-subtle focus-visible:ring-2 focus-visible:ring-accent [&::-webkit-inner-spin-button]:appearance-none"
-              />
             </span>
           </div>
-          <div className="h-1 overflow-hidden rounded-full bg-subtle" aria-hidden>
-            <div className={`h-full rounded-full transition-[width] duration-200 ${over ? "bg-red-600" : "bg-emerald-600"}`} style={{ width: `${over ? 100 : pct}%` }} />
-          </div>
+        </Section>
+
+        {/* (any sheet: its answers wrapped to the frame again, its rows closed up) */}
+        <Section title={t("Rows")}>
+          <SmallButton onClick={fix.refit} title={t("Wraps the answers and the copies to the answer column again, after you moved its columns or edges. The rows under make room.")}>
+            {t("Fit the answers to the frame")}
+          </SmallButton>
+          <SmallButton onClick={fix.pack} title={t("Lays the rows out again from the first one, page after page: rows pushed to the next page come back when they fit, and empty pages go.")}>
+            {t("Close up the rows")}
+          </SmallButton>
         </Section>
 
         {checks.length > 0 && (

@@ -5,6 +5,7 @@ import { Segmented } from "@/app/_components/inspector/fields";
 import type { Ctx } from "@/app/_features/core/types";
 import { BORDER_GROUPS, DEFAULT_BORDER, MAX_BORDER_INSET, MAX_BORDER_WIDTH, MIN_BORDER_INSET, MIN_BORDER_WIDTH, borderPaths } from "@/app/_lib/pageBorder";
 import type { PageBorder } from "@/app/_lib/types";
+import MoreColors from "@/app/_components/inspector/MoreColors";
 
 type Scope = "all" | "page";
 
@@ -109,13 +110,7 @@ export default function PageBorderInspector({ ctx }: { ctx: Ctx }) {
                   style={{ background: c }}
                 />
               ))}
-              <input
-                type="color"
-                aria-label={t("Color")}
-                value={border.color}
-                onChange={(e) => patch({ color: e.target.value }, "color")}
-                className="size-6 cursor-pointer rounded-full border-0 bg-transparent p-0 [&::-webkit-color-swatch]:rounded-full [&::-webkit-color-swatch]:border [&::-webkit-color-swatch]:border-black/15 [&::-webkit-color-swatch-wrapper]:p-0"
-              />
+              <MoreColors value={border.color} colors={COLORS} label={t("Color")} onPick={(color) => patch({ color }, "color")} />
             </div>
           </div>
           <label className="flex flex-col gap-1.5 text-xs font-medium text-muted">

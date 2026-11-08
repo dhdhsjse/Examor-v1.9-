@@ -9,6 +9,14 @@ export const stickersPanel: Feature = {
   render: ({ ctx }) => {
     const { shell } = ctx;
     const sheet = shell.sheet?.config;
-    return <StickerPanel stamp={shell.canvasTool === "stamp" ? shell.stamp : null} onPick={shell.setStamp} pad={!!sheet?.pad} />;
+    return (
+      <StickerPanel
+        stamp={shell.canvasTool === "stamp" ? shell.stamp : null}
+        onPick={shell.setStamp}
+        pad={!!sheet?.pad}
+        auto={sheet?.autoTotals !== false}
+        onAuto={(on) => shell.setSheet({ autoTotals: on ? undefined : false })}
+      />
+    );
   },
 };

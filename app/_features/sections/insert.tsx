@@ -4,11 +4,12 @@ import { insertContentOption } from "@/app/_features/options/insert.content";
 import { insertGraphsOption } from "@/app/_features/options/insert.graphs";
 import { insertMediaOption } from "@/app/_features/options/insert.media";
 import { insertQuestionsOption } from "@/app/_features/options/insert.questions";
+import { insertShapesOption } from "@/app/_features/options/insert.shapes";
 
 export const insertSection: Section = {
   id: "section.insert",
   order: 20,
   label: (t) => t("Insert"),
   icon: <Type size={18} strokeWidth={1.7} />,
-  options: [insertQuestionsOption, insertContentOption, insertGraphsOption, insertMediaOption],
+  options: [insertQuestionsOption, insertContentOption, insertShapesOption, insertGraphsOption, insertMediaOption],
 };

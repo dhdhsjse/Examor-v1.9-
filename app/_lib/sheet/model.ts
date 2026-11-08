@@ -45,6 +45,8 @@ export interface SheetConfig {
   line: { color: string; width: number };
   /** Whole marks under ten written with a zero first: "01" (always, now: the panel has no switch for it) */
   pad: boolean;
+  /** false: the totals are not calculated (a total shows only what is typed in it); missing = calculated */
+  autoTotals?: boolean;
 }
 
 export const MIN_COLUMN = 36;
@@ -97,5 +99,6 @@ export function normalizeSheet(raw: Partial<SheetConfig> | undefined, lang: Lang
     frame: { top: side(f.top), right: side(f.right), bottom: side(f.bottom), left: side(f.left), firstTop: num(f.firstTop, 0, 0, 600) },
     line: { color: typeof raw.line?.color === "string" ? raw.line.color : d.line.color, width: num(raw.line?.width, d.line.width, 0.5, 6) },
     pad: true, // (older sheets too: whole marks are always written 01, 02)
+    ...(raw.autoTotals === false ? { autoTotals: false } : {}),
   };
 }

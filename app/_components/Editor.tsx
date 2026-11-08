@@ -58,6 +58,7 @@ import { defaultSize, picturesOf, shapeDef } from "@/app/_lib/shapes";
 import type { DrawnBox, DrawnInk } from "./canvas/ExamCanvas";
 import { FREEHAND_ID } from "@/app/_lib/shapes";
 import { drawnTablePreset } from "@/app/_lib/table/draw";
+import { frameOf } from "@/app/_lib/sheet/frame";
 import type { TableDrawMode } from "./workspace/TableDrawLayer";
 import { setTableSel, tableSelOf } from "./table/tableSelStore";
 import { cellSel, selRange } from "./table/tableSel";
@@ -196,7 +197,7 @@ export default function Editor() {
   const numbers = useMemo(() => questionNumbers(doc.blocks, doc.pages), [doc]);
   const drawnHeights = useMemo(() => screenHeights(doc, heights, selectedId), [doc, heights, selectedId]);
   const fullDoc = exam.fullDoc; // the exam and its correction sheet (what is saved, kept in the history and exported)
-  const scores = useMemo(() => (exam.part === "sheet" ? sheetScores(doc) : null), [doc, exam.part]); // the marks of the correction sheet
+  const scores = useMemo(() => (exam.part === "sheet" ? sheetScores(doc, doc.sheet?.autoTotals !== false) : null), [doc, exam.part]); // the marks of the correction sheet
   const sheetReport = useMemo(() => (exam.part === "sheet" ? linkReport(fullDoc) : null), [fullDoc, exam.part]); // the sheet against its exam
   const stats = useMemo(() => {
     // The correction sheet: the rows that carry a mark, and what they add up to, out of the exam's full mark
@@ -624,6 +625,10 @@ export default function Editor() {
   // its first line on the click (cut at the page's right margin).
   const drawTextbox = ({ pageIndex, x, y, width, height }: DrawnBox) => {
     if (width || height) return runTool({ kind: "block", type: "textbox", preset: { width, height } }, { pageIndex, x, y, corner: true });
+    // (a click in the column of the marks or of the totals of a correction sheet: a box as wide as that column)
+    const geo = doc.sheet?.paper === "bordered" ? frameOf(doc, pageIndex) : null;
+    const col = geo && [geo.marks, geo.total].find((c) => c && x >= c.x0 && x <= c.x1);
+    if (col) return runTool({ kind: "block", type: "textbox", preset: { width: col.x1 - col.x0 - 4, height: 0, sizing: "auto-height" } }, { pageIndex, x: col.x0 + 2, y: y - 14, corner: true });
     const room = pageSize(doc.pages[pageIndex]).width - pageMargins(doc, pageIndex).right - x;
     const w = Math.max(80, Math.min(CLICK_TEXTBOX_WIDTH, room));
     runTool({ kind: "block", type: "textbox", preset: { width: w, height: 0, sizing: "auto-height" } }, { pageIndex, x, y: y - 14, corner: true });
@@ -1109,6 +1114,7 @@ export default function Editor() {
               reveal={exam.reveal}
               tool={tool === "stamp" && exam.part !== "sheet" ? "select" : tool}
               onStamp={(at) => placeStamp(at)}
+              stamp={stamp}
               onSheet={exam.setSheet}
               editing={editing}
               marginEdit={marginEdit && { margins: marginEdit.draft ?? pageMargins(doc, exam.activePage), dragging: marginEdit.dragging }}

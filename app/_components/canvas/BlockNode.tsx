@@ -100,7 +100,8 @@ function Content({ block: real, number, meta, mode, interactive, selected, total
     case "graph":
       return <GraphView b={block} />;
     case "shape":
-      return <ShapeView b={block} />;
+      // (its text being typed on the page: the editor over it shows the words)
+      return <ShapeView b={typing ? { ...block, text: "" } : block} />;
     case "divider":
       return <DividerView b={block} />;
     case "mark":
@@ -250,7 +251,7 @@ export default function BlockNode(props: Props) {
       )}
 
       {/* Invisible areas on top of the texts: double-click, click a selected block (or click with
-          the T tool) to type there. A text box types on the first click, anywhere inside it. */}
+          the T tool) to type there. A text box: a first click selects it, the next one types anywhere inside it. */}
       {interactive &&
         !props.erasable &&
         editRegions(withHints(block, props.meta.lang, { statement: selected }), props.number, props.meta, props.mode).map((r, k) => (
@@ -261,7 +262,7 @@ export default function BlockNode(props: Props) {
             stroke={hover && (textTool || selected) && !r.hit ? "#e0e7ff" : undefined}
             strokeWidth={1}
             cornerRadius={3}
-            onMouseEnter={(e) => setCursor(e, textTool || selected || r.direct ? "text" : moveCursor)}
+            onMouseEnter={(e) => setCursor(e, textTool || selected ? "text" : moveCursor)}
             onMouseLeave={(e) => setCursor(e, moveCursor)}
             onClick={(e) => {
               if (passedOn.current) return;
@@ -277,7 +278,7 @@ export default function BlockNode(props: Props) {
                 if (one && cur.anchor.r === row && cur.anchor.c === col) return onEdit(r.field);
                 return setTableSel(block.id, cellSel(row, col));
               }
-              if (!textTool && !wasSelected.current && !r.direct) return;
+              if (!textTool && !wasSelected.current) return;
               e.cancelBubble = true;
               onEdit(r.field);
             }}

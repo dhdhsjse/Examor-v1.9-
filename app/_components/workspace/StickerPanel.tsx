@@ -24,10 +24,13 @@ const same = (a: ToolAction | null, b: ToolAction) => !!a && JSON.stringify(a) =
 // off again with its tiny ×; the usual ones stay), then the line that cuts the rows, ✓ and ✗ (the total of each row is made with the sheet: see generate.ts
 // stickersFor). One is chosen, then each click on the page puts it there (the Stamp tool stays in hand: a barème is many marks); it can also be
 // dragged onto the page. A sticker on the page can be clicked even then, to move it or delete it.
-export default function StickerPanel({ stamp, onPick, pad }: {
+export default function StickerPanel({ stamp, onPick, pad, auto, onAuto }: {
   stamp: ToolAction | null;
   onPick: (action: ToolAction | null) => void;
   pad: boolean;
+  /** The totals are calculated from the marks of their row (off: a total shows only what is typed in it) */
+  auto: boolean;
+  onAuto: (on: boolean) => void;
 }) {
   const t = useT();
   const [typed, setTyped] = useState("");
@@ -152,6 +155,18 @@ export default function StickerPanel({ stamp, onPick, pad }: {
           {chip(line, "―", t("Line"))}
           {SIGNS.map(fixedChip)}
         </div>
+        <div className="h-px bg-line" />
+        <label className="flex h-7 cursor-pointer items-center justify-between gap-2 px-0.5 text-xs text-ink">
+          {t("Automatic totals")}
+          <input
+            type="checkbox"
+            role="switch"
+            checked={auto}
+            data-testid="auto-totals"
+            onChange={(e) => onAuto(e.target.checked)}
+            className="relative h-4 w-7 shrink-0 cursor-pointer appearance-none rounded-full bg-muted/40 transition-colors outline-none before:absolute before:top-0.5 before:left-0.5 before:size-3 before:rounded-full before:bg-[#fff] before:shadow-sm before:transition-transform before:content-[''] checked:bg-emerald-600 checked:before:translate-x-3 focus-visible:ring-2 focus-visible:ring-accent rtl:before:right-0.5 rtl:before:left-auto rtl:checked:before:-translate-x-3"
+          />
+        </label>
       </div>
     </section>
   );

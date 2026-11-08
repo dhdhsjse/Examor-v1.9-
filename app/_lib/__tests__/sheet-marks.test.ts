@@ -84,6 +84,14 @@ describe("the calculation of a row", () => {
 describe("the rows of a sheet", () => {
   it("makes one row of everything when there is no line, and adds it up", () => {
     const s = sheetScores(sheet([num("a", "p1", 100, 1), num("b", "p1", 200, 1), total("t", "p1", 150)]));
+    // (automatic totals turned off: nothing is calculated; only a typed total counts)
+    const off = sheetScores(sheet([num("a", "p1", 100, 1), num("b", "p1", 200, 1), total("t", "p1", 150)]), false);
+    expect(off.shown.has("t")).toBe(false);
+    expect(off.total).toBe(0);
+    const typed = sheetScores(sheet([num("a", "p1", 100, 1), total("t", "p1", 150, { manual: true, value: 3 })]), false);
+    expect(typed.shown.get("t")).toBe(3);
+    expect(typed.total).toBe(3);
+    expect(typed.issues).toEqual([]);
     expect(s.rows).toHaveLength(1);
     expect(s.rows[0].auto).toBe(2);
     expect(s.shown.get("t")).toBe(2);

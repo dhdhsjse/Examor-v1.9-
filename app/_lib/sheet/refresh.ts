@@ -34,7 +34,8 @@ import {
   type Template,
 } from "./generate";
 import { RULE_HEIGHT, isMark, isRule, markHeight } from "./marks";
-import { settleSheet } from "./settle";
+import { frameOf } from "./frame";
+import { columnOf, settleSheet } from "./settle";
 
 const round2 = (v: number) => Math.round(v * 100) / 100;
 
@@ -389,6 +390,45 @@ export function refitSheet(exam: ExamDoc, sheet: ExamDoc, template: Template): E
   doc = settleTextboxes(fixOverflow(doc));
   doc = alignMarks(exam, doc, questionsOf(exam));
   return settleSheet(doc);
+}
+
+/**
+ * The blocks of a sheet that are not made from the exam (written or put there by the teacher: texts, text boxes, pictures, tables…) fitted to the
+ * answer column as it is now: a text takes the column's width, anything else wider than it is narrowed to it (its height in step) and anything
+ * sticking out is moved into it. The rows under make room. Marks, lines and shapes stay where they are, and so does what is above the frame's rows
+ * (the sheet's title).
+ */
+export function refitLoose(exam: ExamDoc, sheet: ExamDoc): ExamDoc {
+  if (!sheet.sheet) return sheet;
+  const index0 = new Map(sheet.pages.map((p, i) => [p.id, i]));
+  const fromExam = new Set(exam.blocks.map((b) => b.id));
+  const ids = sheet.blocks
+    .filter((b) => !b.meta?.role && !b.meta?.slot && !isMark(b) && !isRule(b) && b.type !== "shape" && !(b.meta?.source && fromExam.has(b.meta.source.id)))
+    .sort((a, z) => (index0.get(a.layout.pageId) ?? 0) - (index0.get(z.layout.pageId) ?? 0) || a.layout.y - z.layout.y)
+    .map((b) => b.id);
+  let doc = sheet;
+  for (const id of ids) {
+    const cur = doc.blocks.find((b) => b.id === id);
+    if (!cur) continue;
+    const page = doc.pages.findIndex((p) => p.id === cur.layout.pageId);
+    const room = boundsOf(ctxFor(exam, doc), Math.max(0, page));
+    const width = room.right - room.left;
+    // (above the frame's rows, or held by the column of the marks or of the totals: it stays)
+    if (!(width > 0) || cur.layout.y < room.top - 0.5 || columnOf(cur, frameOf(doc, Math.max(0, page)))) continue;
+    const flows = cur.type === "text" || isQuestion(cur);
+    const w = flows ? width : Math.min(cur.layout.width, width);
+    const k = cur.layout.width > 0 ? w / cur.layout.width : 1;
+    const x = flows ? room.left : Math.max(room.left, Math.min(cur.layout.x, room.right - w));
+    const height = !flows && cur.layout.height > 0 && k !== 1 ? cur.layout.height * k : cur.layout.height;
+    if (Math.abs(x - cur.layout.x) < 0.01 && Math.abs(w - cur.layout.width) < 0.01 && Math.abs(height - cur.layout.height) < 0.01) continue; // (it fits already)
+    const before = measurer(doc)(cur);
+    const next = { ...cur, layout: { ...cur.layout, x, width: w, height } } as Block;
+    const settled = settleTextboxes({ ...doc, blocks: doc.blocks.map((b) => (b.id === id ? next : b)) });
+    const now = settled.blocks.find((b) => b.id === id)!;
+    doc = shiftBelow(settled, Math.max(0, page), cur.layout.y + before, now.layout.y + measurer(settled)(now) - (cur.layout.y + before), new Set([id]));
+  }
+  if (doc === sheet) return sheet;
+  return settleSheet(settleTextboxes(fixOverflow(doc)));
 }
 
 // ---- the look of the answers ----

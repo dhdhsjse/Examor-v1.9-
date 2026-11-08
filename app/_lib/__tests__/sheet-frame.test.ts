@@ -356,4 +356,16 @@ describe("keeping the stickers and the lines on the frame", () => {
     expect(columnOf(n, null)).toBeNull();
     expect(columnOf(mark("w", 300, { kind: "text", text: "x" }), geo)).toBeNull();
   });
+
+  it("holds a text box put in the column of the marks or of the totals, at that column's width", () => {
+    const box = (id: string, x: number, width: number) => ({ ...createBlock("textbox", "fr", "p1", { text: "1,5", width, height: 30 }), id, layout: { pageId: "p1", x, y: 300, width, height: 30 } }) as Block;
+    const inMarks = box("m", geo.marks!.x0 + 10, 90); // (wider than the column, its middle in it)
+    const inTotal = box("t", geo.total!.x0 - 5, 40);
+    const inAnswer = box("a", geo.answer.x0 + 20, 120);
+    const d = settleSheet(docOf([inMarks, inTotal, inAnswer]));
+    expect(at(d, "m")).toMatchObject({ x: geo.marks!.x0 + 2, width: geo.marks!.x1 - geo.marks!.x0 - 4, y: 300, height: 30 });
+    expect(at(d, "t")).toMatchObject({ x: geo.total!.x0 + 2, width: geo.total!.x1 - geo.total!.x0 - 4 });
+    expect(at(d, "a")).toEqual(inAnswer.layout);
+    expect(settleSheet(d)).toBe(d);
+  });
 });

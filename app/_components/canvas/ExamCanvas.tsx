@@ -185,7 +185,7 @@ export default function ExamCanvas(props: Props) {
   const rtl = isRtl(meta.lang);
   // (the frame starts under the header of its page and stops over its footer)
   const geos = useMemo<(FrameGeometry | null)[]>(() => (sheet ? pages.map((_, i) => frameOf(doc, i)) : []), [sheet, pages, doc]);
-  const sheetInfo = useMemo<SheetInfo | undefined>(() => (sheet ? { pad: sheet.pad, shown: sheetScores(doc).shown, line: sheet.line, hideTotals: sheet.paper === "bordered" && !sheet.total } : undefined), [sheet, doc]);
+  const sheetInfo = useMemo<SheetInfo | undefined>(() => (sheet ? { pad: sheet.pad, shown: sheetScores(doc, sheet.autoTotals !== false).shown, line: sheet.line, hideTotals: sheet.paper === "bordered" && !sheet.total, manualTotals: sheet.autoTotals === false } : undefined), [sheet, doc]);
   // The room for text on a page, as margins: the answer column of its frame (the guides blocks snap to), else the page's margins
   const snapMargins = (i: number) => {
     if (!sheet) return pages[i].margins;
@@ -424,7 +424,8 @@ export default function ExamCanvas(props: Props) {
     const snapped = guidesOn && !turn ? snapBox(box, others, { ...page, margins: snapMargins(i) }, SNAP_PX / zoom) : { ...box, guides: [] };
     setSnap({ page: i, guides: snapped.guides });
     // (a mark or a line held by the frame only moves up and down, in its column; a line of free paper only up and down too)
-    const column = columnOf(b, geos[i] ?? null) ?? (b.type === "rule" ? { x: b.layout.x, width: b.layout.width } : null);
+    // (a text box moves freely: dropped in a mark column, it takes the column's width, see settleSheet)
+    const column = b.type === "textbox" ? null : (columnOf(b, geos[i] ?? null) ?? (b.type === "rule" ? { x: b.layout.x, width: b.layout.width } : null));
     // (a turned text box is kept inside the page by where it really is, and is not snapped)
     const pos = turn ? keepTurnedInside(snapped.x, snapped.y, b.layout.width, h, turn, page.width, page.height) : { x: column ? column.x : clamp(snapped.x, 0, page.width - b.layout.width), y: clamp(snapped.y, 0, page.height - h) };
     if (dragAt?.pageId !== pages[i].id || dragAt.y !== pos.y) setDragAt({ id: b.id, pageId: pages[i].id, y: pos.y });

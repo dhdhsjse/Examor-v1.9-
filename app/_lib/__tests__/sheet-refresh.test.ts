@@ -459,6 +459,24 @@ describe("fitting the answers to the frame again", () => {
   it("changes nothing when the answers already fit", () => {
     expect(refitAnswers(made)).toBe(made);
   });
+  it("fits what the teacher wrote or put on a blank sheet too, and leaves what already fits", () => {
+    const sheet = make(exam).correction!.sheet;
+    const blank: ExamDoc = { ...exam, correction: { sheet, pages: [{ id: "c1" }], blocks: [], template: "blank" } };
+    const room = contentBounds(sheetOf(blank), 0);
+    const on = <T extends Block>(b: T, x: number, y: number, width: number, height = b.layout.height): T => ({ ...b, layout: { ...b.layout, pageId: "c1", x, y: room.top + y, width, height } });
+    const text = on(createBlock("text", "fr", "c1", { text: "Une réponse tapée à la main" }), room.left - 30, 10, 900);
+    const pic = on(createBlock("image", "fr", "c1", { src: "data:,", ratio: 2, width: 900, height: 450 }), room.left, 80, 900, 450);
+    const ok = on(createBlock("image", "fr", "c1", { src: "data:,", ratio: 2, width: 100, height: 50 }), room.left + 10, 600, 100, 50);
+    const full: ExamDoc = { ...blank, correction: { ...blank.correction!, blocks: [text, pic, ok] } };
+    const fitted = sheetOf(refitAnswers(full)).blocks;
+    const get = (id: string) => fitted.find((b) => b.id === id)!;
+    expect(get(text.id).layout.x).toBeCloseTo(room.left, 1);
+    expect(get(text.id).layout.width).toBeCloseTo(room.right - room.left, 1);
+    expect(get(pic.id).layout.width).toBeCloseTo(room.right - room.left, 1);
+    expect(get(pic.id).layout.height).toBeCloseTo((room.right - room.left) / 2, 1);
+    expect(get(ok.id).layout.width).toBe(100);
+    expect(get(ok.id).layout.x).toBe(room.left + 10);
+  });
 });
 
 describe("the title of an exercise typed in a text box", () => {

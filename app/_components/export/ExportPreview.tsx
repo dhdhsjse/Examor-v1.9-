@@ -110,7 +110,7 @@ export default function ExportPreview({ doc, busy, renderPages, onExport, onMake
 
     // Correction sheet: the marks of its stickers against the full mark of the exam
     if (sheet) {
-      const scores = sheetScores(sheet);
+      const scores = sheetScores(sheet, sheet.sheet?.autoTotals !== false);
       const outOf = examFullMark(doc);
       const report = linkReport(doc);
       out.push(

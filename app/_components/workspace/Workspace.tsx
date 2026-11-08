@@ -31,6 +31,8 @@ import type { InkTools } from "@/app/_lib/ink/useInkTools";
 import type { EraserTool } from "@/app/_lib/ink/useEraserTool";
 import type { DrawnInk, InkInHand } from "../canvas/ExamCanvas";
 import ZoomBar from "./ZoomBar";
+import StampCursor from "./StampCursor";
+import ShapeTextEditor from "./ShapeTextEditor";
 import TableDrawBar from "./TableDrawBar";
 import TableDrawDock from "./TableDrawDock";
 import TableDrawLayer, { isDrawable, tableGeo, type TableDrawMode } from "./TableDrawLayer";
@@ -91,7 +93,8 @@ interface Props {
   tableMode: TableDrawMode;
   onTableMode: (mode: TableDrawMode) => void;
   onOpenTableStudio: (id: string) => void; // the floating bar of the tables: this table in the Table Studio
-  onStamp: (at: DropPoint) => void; // a click with the Stamp tool: the sticker of the correction sheet in hand goes there
+  onStamp: (at: DropPoint) => void;
+  stamp: ToolAction | null; // the sticker the Stamp tool puts down (shown next to the pointer) // a click with the Stamp tool: the sticker of the correction sheet in hand goes there
   onSheet: (patch: Partial<SheetConfig>, key?: string) => void; // the frame of the correction sheet dragged on the page
   drawShape?: "box" | "line"; // the Shapes tool is in hand: what it draws
   shapeToDraw: string | null; // (the shape of the Shapes tool)
@@ -450,7 +453,7 @@ export default function Workspace(props: Props) {
                     }}
                     onResizing={(id, r) => setLiveBox(r && editing?.id === id ? { ...r, id } : null)}
                     hiddenId={movingId}
-                    typingId={editing && editBlock?.type === "textbox" ? editBlock.id : null}
+                    typingId={editing && (editBlock?.type === "textbox" || editBlock?.type === "shape") ? editBlock.id : null}
                     typingCell={editing && editBlock?.type === "table" && editing.field.kind === "cell" ? { id: editBlock.id, r: editing.field.r, c: editing.field.c } : null}
                     mover={mover}
                   />
@@ -515,8 +518,20 @@ export default function Workspace(props: Props) {
                   />
                 )}
 
+                {/* Typing the text of a shape right on it */}
+                {editing && editBlock?.type === "shape" && (
+                  <ShapeTextEditor
+                    key={editBlock.id}
+                    block={editBlock}
+                    left={blockLeft(editBlock)}
+                    top={blockTop(editBlock)}
+                    onChange={props.onEditChange}
+                    onDone={() => props.onEditDone(editBlock.id)}
+                  />
+                )}
+
                 {/* Typing directly on the page */}
-                {editing && editBlock && editBlock.type !== "textbox" && (
+                {editing && editBlock && editBlock.type !== "textbox" && editBlock.type !== "shape" && (
                   <InlineEditor
                     block={editBlock}
                     field={editing.field}
@@ -603,6 +618,9 @@ export default function Workspace(props: Props) {
             {tableBar}
           </TableDrawDock>
         )}
+
+        {/* The sticker in hand rides along with the pointer */}
+        {props.tool === "stamp" && props.stamp && <StampCursor stamp={props.stamp} pad={!!doc.sheet?.pad} area={scrollRef} />}
 
         {/* Warning before a page goes */}
         {askDelete && (

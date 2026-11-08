@@ -24,6 +24,8 @@ import { toggleMcq } from "./blocks";
 import { chromeTextField } from "./onboarding/headerFooterLibrary";
 import { isRtl } from "./i18n";
 import { cellLook, isFixedTable } from "./table/model";
+import { DEFAULT_FONT_SIZE, DEFAULT_TEXT_COLOR, LINE_HEIGHT, SHAPE_FONT, isLine, isPicture, textRect } from "./shapes";
+import { fontStack } from "./fonts";
 import type { Block, ExamMeta, HeaderFields, OpenPart, ViewMode } from "./types";
 import type { BlockPatch } from "./useExam";
 
@@ -56,7 +58,6 @@ export interface EditRegion {
   multiline: boolean; // Enter = new line (otherwise Enter = done)
   align?: "left" | "right" | "center" | "justify";
   hit?: { x: number; y: number; width: number; height: number }; // where a click types here (missing = the text itself)
-  direct?: boolean; // one click types here even when the block was not selected (a text box, like in Word)
   turn?: { x: number; y: number; rot: 90 | 270 }; // sideways text: x, y, width are in the cell turned about this corner (see TableCellBox.rot)
   bare?: boolean; // typed with no frame and see-through, right where the text is drawn (a table cell: the page leaves its text out meanwhile)
 }
@@ -169,11 +170,22 @@ export function editRegions(b: Block, n: number, meta: ExamMeta, mode: ViewMode 
       return [{ field: { kind: "text" }, x: L.x, y: L.text.y, width: L.width, height: L.text.height, spec: L.spec, multiline: b.style === "body", align: L.align }];
     }
     case "textbox": {
-      // Clicking anywhere in the box types in it; its edge (a few px wide) is left for dragging the box.
+      // A first click selects the box; a click anywhere in the selected box types in it. Its edge (a few px wide) is left for dragging it.
       const L = layoutTextbox(b, meta);
       const edge = Math.min(TEXTBOX_EDGE, b.layout.width / 4, L.height / 4);
       const hit = { x: edge, y: edge, width: b.layout.width - edge * 2, height: L.height - edge * 2 };
-      return [{ field: { kind: "text" }, x: L.x, y: L.y, width: L.width, height: L.content, spec: L.spec, multiline: true, align: L.align, hit, direct: true }];
+      return [{ field: { kind: "text" }, x: L.x, y: L.y, width: L.width, height: L.content, spec: L.spec, multiline: true, align: L.align, hit }];
+    }
+    case "shape": {
+      // the room for its text (a line, a picture or a drawing has none); a click anywhere on the selected shape types in it
+      if (isLine(b) || isPicture(b) || b.ink) return [];
+      const r = textRect(b, b.layout.width, b.layout.height);
+      const size = b.fontSize ?? DEFAULT_FONT_SIZE;
+      const spec: Spec = {
+        font: { family: b.fontFamily ? fontStack(b.fontFamily) : SHAPE_FONT, size, bold: !!b.bold, italic: !!b.italic, underline: false, color: b.textColor ?? DEFAULT_TEXT_COLOR },
+        line: size * LINE_HEIGHT,
+      };
+      return [{ field: { kind: "text" }, x: r.x, y: r.y, width: r.w, height: r.h, spec, multiline: true, hit: { x: 0, y: 0, width: b.layout.width, height: b.layout.height } }];
     }
     case "table": {
       if (isFixedTable(b)) return []; // (fixed like a picture: its cells are typed in the Table Studio)

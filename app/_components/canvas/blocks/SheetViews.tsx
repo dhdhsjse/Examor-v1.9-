@@ -15,6 +15,8 @@ export interface SheetInfo {
   line: { color: string; width: number };
   /** The column of the totals is off: nothing is written where the totals go */
   hideTotals?: boolean;
+  /** The totals are not calculated: a total shows only what is typed in it */
+  manualTotals?: boolean;
 }
 
 const INK = "#111111";
@@ -25,7 +27,7 @@ export function MarkView({ b, meta, info, interactive }: { b: MarkBlock; meta: E
   if (b.kind === "total" && info?.hideTotals) return null;
   const w = b.layout.width;
   const h = markHeight(b, meta.fontSize);
-  const text = markText(b, info?.shown.get(b.id), !!info?.pad);
+  const text = b.kind === "total" && info?.manualTotals && !b.manual ? "" : markText(b, info?.shown.get(b.id), !!info?.pad);
   const size = b.size ?? meta.fontSize ?? MARK_DEFAULT_SIZE;
   const color = b.color ?? INK;
   const look = b.look ?? "plain";

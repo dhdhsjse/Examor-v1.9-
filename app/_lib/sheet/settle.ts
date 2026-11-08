@@ -1,16 +1,23 @@
-// What follows the frame of a correction sheet: the mark stickers sit in their column, the row lines run across the frame, and a total is in the
-// middle (or the top, or the bottom) of its row. Run after every change of the sheet; it returns the same document when nothing has to move.
+// What follows the frame of a correction sheet: the mark stickers sit in their column, the row lines run across the frame, a total is in the
+// middle (or the top, or the bottom) of its row, and a text box put in the column of the marks or of the totals takes that column's width. Run after every change of the sheet; it returns the same document when nothing has to move.
 import type { Block, ExamDoc, MarkBlock } from "../types";
 import { contentBounds, frameOf, type FrameGeometry } from "./frame";
 import { RULE_HEIGHT, isMark, isRule, markHeight, rowGroups } from "./marks";
 
 const GAP = 4; // between a total at the top or bottom of its row and the line
+const INSET = 2; // between a text box held by a mark column and the column's lines
 const round2 = (v: number) => Math.round(v * 100) / 100;
 
 /** Where a sticker or a line is held across the page by the frame (its x and width); null: it can be put anywhere */
 export function columnOf(b: Block, geo: FrameGeometry | null): { x: number; width: number } | null {
   if (!geo) return null;
   if (isRule(b)) return { x: geo.frame.x, width: geo.frame.width };
+  // a text box whose middle is in the column of the marks or of the totals (not one placed in another text box's text)
+  if (b.type === "textbox" && !b.meta?.slot) {
+    const mid = b.layout.x + b.layout.width / 2;
+    const col = [geo.marks, geo.total].find((c) => c && mid >= c.x0 && mid <= c.x1);
+    return col ? { x: col.x0 + INSET, width: Math.max(8, col.x1 - col.x0 - INSET * 2) } : null;
+  }
   if (!isMark(b)) return null;
   const col = b.kind === "total" ? geo.total : b.kind === "number" || b.kind === "op" ? geo.marks : null;
   return col ? { x: col.x0, width: col.x1 - col.x0 } : null;
@@ -60,11 +67,13 @@ export function settleSheet(doc: ExamDoc): ExamDoc {
 
   let changed = false;
   const blocks = doc.blocks.map((b): Block => {
-    if (!isMark(b) && !isRule(b)) return b;
+    const box = b.type === "textbox";
+    if (!isMark(b) && !isRule(b) && !box) return b;
     const i = index.get(b.layout.pageId);
     if (i === undefined) return b;
     const geo = geos[i];
-    const height = isMark(b) ? markHeight(b, doc.meta.fontSize) : RULE_HEIGHT;
+    if (box && !columnOf(b, geo)) return b;
+    const height = isMark(b) ? markHeight(b, doc.meta.fontSize) : box ? b.layout.height : RULE_HEIGHT;
     let { x, y, width } = b.layout;
     const col = columnOf(b, geo);
     if (col) {

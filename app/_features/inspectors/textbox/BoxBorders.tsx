@@ -5,6 +5,7 @@ import { ChoiceGrid } from "@/app/_components/inspector/fields";
 import type { Ctx } from "@/app/_features/core/types";
 import { BORDER_KINDS, CORNER_STYLES, DEFAULT_CORNER_SIZE, SIDES, boxFillPath, boxLines, cornerOf, kindOf, sidesOf, type BorderKind, type CornerStyle, type SideKey } from "@/app/_lib/boxBorder";
 import type { TextboxBlock } from "@/app/_lib/types";
+import MoreColors from "@/app/_components/inspector/MoreColors";
 
 // Properties → Borders of a text box: the border of the box as a whole (not of its text) — its kind (line, dashes, double, shadow…), its corners
 // (square, rounded, chamfered, scooped, leaf), which sides have it, its colour and thickness, and the fill. Each choice is a small drawing of the
@@ -62,14 +63,7 @@ function Swatches({ value, colors, none, onPick, label }: { value: string | unde
       {colors.map((c) => (
         <button key={c} type="button" aria-label={c} aria-pressed={value?.toLowerCase() === c} onClick={() => onPick(c)} className={ring(value?.toLowerCase() === c)} style={{ background: c }} />
       ))}
-      <input
-        type="color"
-        aria-label={label}
-        title={label}
-        value={value && /^#[0-9a-f]{6}$/i.test(value) ? value : "#3b82f6"}
-        onChange={(e) => onPick(e.target.value)}
-        className="size-6 cursor-pointer rounded-full border-0 bg-transparent p-0 [&::-webkit-color-swatch]:rounded-full [&::-webkit-color-swatch]:border [&::-webkit-color-swatch]:border-black/15 [&::-webkit-color-swatch-wrapper]:p-0"
-      />
+      <MoreColors value={value} colors={colors} label={label} onPick={onPick} />
     </div>
   );
 }

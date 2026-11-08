@@ -11,7 +11,7 @@ import type { SheetTemplate } from "./model";
 import { settleSheet } from "./settle";
 import { mergeView, viewOf, withCorrection } from "./part";
 import { addTotals } from "./totals";
-import { addQuestions, packSheet, refitSheet, refreshSources, restyleAnswers, staleSources, type AnswerLook, type StaleSource } from "./refresh";
+import { addQuestions, packSheet, refitLoose, refitSheet, refreshSources, restyleAnswers, staleSources, type AnswerLook, type StaleSource } from "./refresh";
 
 export interface MarksDiff {
   /** The questions of the row (several when the line between them is gone) */
@@ -150,12 +150,15 @@ export function refreshStale(full: ExamDoc, ids?: string[]): ExamDoc {
   return onSheet(full, (sheet, exam) => refreshSources(exam, sheet, template, wanted));
 }
 
-/** The answers and copies fitted to the answer column as it is now: after the frame or its columns were changed */
+/**
+ * The answers and copies fitted to the answer column as it is now (after the frame or its columns were changed), and what the teacher wrote or put
+ * on the sheet too. Any sheet, whatever it was made from.
+ */
 export function refitAnswers(full: ExamDoc): ExamDoc {
   const c = full.correction;
-  if (!c || (c.template !== "answers" && c.template !== "copy")) return full;
+  if (!c) return full;
   const template = c.template;
-  return onSheet(full, (sheet, exam) => refitSheet(exam, sheet, template));
+  return onSheet(full, (sheet, exam) => refitLoose(exam, template === "answers" || template === "copy" ? refitSheet(exam, sheet, template) : sheet));
 }
 
 /** The answers of a sheet of the answers in a new size and/or color */
@@ -173,8 +176,7 @@ export function addRowTotals(full: ExamDoc): ExamDoc {
 
 /** The rows laid out again from the first one, page after page */
 export function packRows(full: ExamDoc): ExamDoc {
-  const c = full.correction;
-  if (!c || (c.template !== "answers" && c.template !== "copy")) return full;
+  if (!full.correction) return full;
   return onSheet(full, (sheet) => packSheet(sheet));
 }
 

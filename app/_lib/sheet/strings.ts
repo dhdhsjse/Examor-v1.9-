@@ -97,6 +97,9 @@ export const SHEET_FR: Record<string, string> = {
   "Use sheet": "Garder la feuille",
   "1 row of a deleted question": "1 ligne d'une question supprimée",
   "{n} rows of deleted questions": "{n} lignes de questions supprimées",
+  "Wraps the answers and the copies to the answer column again, after you moved its columns or edges. The rows under make room.": "Reprend les réponses et les copies à la largeur de la colonne des réponses, après avoir déplacé ses colonnes ou ses bords. Les lignes en dessous font de la place.",
+  "Lays the rows out again from the first one, page after page: rows pushed to the next page come back when they fit, and empty pages go.": "Replace les lignes depuis la première, page après page : celles repoussées à la page suivante reviennent quand elles tiennent, et les pages vides disparaissent.",
+  "Automatic totals": "Totaux automatiques",
 };
 
 export const SHEET_AR: Record<string, string> = {
@@ -194,4 +197,7 @@ export const SHEET_AR: Record<string, string> = {
   "Use sheet": "اعتماد الورقة",
   "1 row of a deleted question": "صف لسؤال محذوف",
   "{n} rows of deleted questions": "{n} صفوف لأسئلة محذوفة",
+  "Wraps the answers and the copies to the answer column again, after you moved its columns or edges. The rows under make room.": "يعيد ملاءمة الأجوبة والنسخ مع عمود الإجابات بعد تحريك أعمدته أو حوافه. تُفسح الصفوف التي تحتها المجال.",
+  "Lays the rows out again from the first one, page after page: rows pushed to the next page come back when they fit, and empty pages go.": "يعيد ترتيب الصفوف من الأولى، صفحة بعد صفحة : تعود الصفوف المدفوعة إلى الصفحة التالية إن اتسعت، وتختفي الصفحات الفارغة.",
+  "Automatic totals": "المجاميع التلقائية",
 };
