@@ -32,6 +32,7 @@ import type { SheetChoice, SheetConfig } from "./sheet/model";
 import { createCorrection, dropCorrection, mergeView, partChanged, readCorrection, viewOf, withCorrection, withSheetChrome, type Part } from "./sheet/part";
 import { settleSheet } from "./sheet/settle";
 import { addTotals } from "./sheet/totals";
+import { createSaver, type Saver } from "./autosave";
 import { saveAutosave } from "./storage";
 import { moveSlotTo, removeBlock, settleTextboxes, stepSlot } from "./textboxSlots";
 import { buildDoc, type Template } from "./templates";
@@ -186,22 +187,38 @@ export function useExam(initial: ExamDoc, t?: T) {
     setHist((cur) => (cur.future.length ? { past: [...cur.past, cur.present], present: cur.future[0], future: cur.future.slice(1) } : cur));
   }, [setPart]);
 
-  // Autosave shortly after each change (the top bar shows "Saving…" then "Saved ✓").
+  // Autosave shortly after each change (the top bar shows "Saving…" then "Saved ✓"; a failed save stays "Not saved!" and is tried again).
   // Compared with what was saved last (not with the opened exam): undoing back to it must be saved too.
   const savedDoc = useRef(full);
+  const latest = useRef(full);
+  const saver = useRef<Saver<ExamDoc> | null>(null);
   useEffect(() => {
+    const s = createSaver<ExamDoc>(saveAutosave, (status, doc) => {
+      if (status === "saved") savedDoc.current = doc;
+      // (a newer change waiting keeps "Saving…")
+      setSave({ status: status === "saved" && latest.current !== doc ? "saving" : status, at: Date.now() });
+    });
+    saver.current = s;
+    return () => s.stop();
+  }, []);
+  const debounce = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  useEffect(() => {
+    latest.current = full;
     if (full === savedDoc.current) return; // nothing new to save
     const pending = setTimeout(() => setSave((s) => (s.status === "saving" ? s : { ...s, status: "saving" })), 0);
-    const t = setTimeout(() => {
-      const ok = saveAutosave(full);
-      if (ok) savedDoc.current = full;
-      setSave({ status: ok ? "saved" : "error", at: Date.now() });
-    }, 400);
+    debounce.current = setTimeout(() => saver.current?.request(full), 400);
     return () => {
       clearTimeout(pending);
-      clearTimeout(t);
+      clearTimeout(debounce.current);
     };
   }, [full]);
+  // Everything written now (the window is closing): resolves true when the exam is saved
+  const flushSave = useCallback(async () => {
+    clearTimeout(debounce.current);
+    if (latest.current !== savedDoc.current) saver.current?.request(latest.current);
+    await saver.current?.idle();
+    return latest.current === savedDoc.current;
+  }, []);
 
   const updateBlock = useCallback(
     (id: string, patch: BlockPatch, opts?: { key?: string; silent?: boolean }) => {
@@ -694,6 +711,7 @@ export function useExam(initial: ExamDoc, t?: T) {
     setActivePage,
     reveal,
     save,
+    flushSave,
     canUndo: hist.past.length > 0,
     canRedo: hist.future.length > 0,
     undo,

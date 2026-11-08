@@ -25,3 +25,8 @@ tauri = { version = "2.12.3", features = [] }
 tauri-plugin-log = "2"
 tauri-plugin-dialog = "2"
 tauri-plugin-fs = "2"
+
+# the PDF of the exam written by WebView2 itself (src/lib.rs: export_pdf)
+[target.'cfg(windows)'.dependencies]
+webview2-com = "0.39"
+windows-core = "0.62"

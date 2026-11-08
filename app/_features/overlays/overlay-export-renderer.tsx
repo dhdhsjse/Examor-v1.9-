@@ -8,6 +8,6 @@ export const exportRendererOverlay: Feature = {
   label: "Export renderer",
   render: ({ ctx }) => {
     const job = ctx.shell.exportJob;
-    return job ? <ExportRenderer key={job.mode} doc={job.doc} mode={job.mode} onReady={job.resolve} /> : null;
+    return job ? <ExportRenderer key={job.id} doc={job.doc} mode={job.mode} onReady={job.resolve} /> : null;
   },
 };

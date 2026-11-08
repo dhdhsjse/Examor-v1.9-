@@ -16,7 +16,7 @@ export const statusIndicatorPanel: Feature = {
       : null;
     const look =
       save.status === "error"
-        ? { text: t("Not saved!"), icon: <CloudAlert size={12} strokeWidth={2} aria-hidden />, cls: "bg-red-50 text-red-700 ring-1 ring-red-200", tip: t("This computer's storage is full. Save the exam to a file (Ctrl+S) to keep your work.") }
+        ? { text: t("Not saved!"), icon: <CloudAlert size={12} strokeWidth={2} aria-hidden />, cls: "bg-red-50 text-red-700 ring-1 ring-red-200", tip: t("Your latest changes are not saved on this computer") }
         : save.status === "saving"
           ? { text: t("Saving…"), icon: null, cls: "text-faint", tip: t("Saving your changes on this computer…") }
           : {
@@ -25,15 +25,25 @@ export const statusIndicatorPanel: Feature = {
               cls: "text-faint hover:bg-hover hover:text-ink",
               tip: time ? t("Saved on this computer at {time}. Click to see the version history.", { time }) : t("Everything is saved on this computer. Click to see the version history."),
             };
+    const file = ctx.shell.examFile;
     return (
-      <button
-        onClick={ctx.shell.showHistory}
-        title={look.tip}
-        className={`flex h-6 shrink-0 items-center gap-1 rounded-[5px] px-1.5 text-xs whitespace-nowrap transition-colors outline-none focus-visible:ring-2 focus-visible:ring-accent ${look.cls}`}
-      >
-        {look.icon}
-        {look.text}
-      </button>
+      <span className="flex min-w-0 items-center gap-1">
+        {/* the exam's file (desktop app): a dot while it has changes Ctrl+S has not written yet */}
+        {file && (
+          <span data-testid="exam-file" title={file.changed ? t("Changes not saved to the file yet (Ctrl+S)") : undefined} className="max-w-48 truncate text-xs text-muted">
+            {file.name}
+            {file.changed && <span className="ms-1 text-accent">●</span>}
+          </span>
+        )}
+        <button
+          onClick={ctx.shell.showHistory}
+          title={look.tip}
+          className={`flex h-6 shrink-0 items-center gap-1 rounded-[5px] px-1.5 text-xs whitespace-nowrap transition-colors outline-none focus-visible:ring-2 focus-visible:ring-accent ${look.cls}`}
+        >
+          {look.icon}
+          {look.text}
+        </button>
+      </span>
     );
   },
 };

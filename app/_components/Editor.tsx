@@ -6,7 +6,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { CONTENT_WIDTH, PAGE_MARGIN } from "@/app/_lib/a4";
 import { readChart } from "@/app/_lib/chart/types";
 import { pageMargins } from "@/app/_lib/onboarding/applyOnboarding";
-import { pageSize } from "@/app/_lib/pageFormats";
+import { getPageMm, pageSize } from "@/app/_lib/pageFormats";
 import { focusMathfield } from "@/app/_lib/activeMathfield";
 import { examFullMark } from "@/app/_lib/examMark";
 import { rowHasTotalAt } from "@/app/_lib/sheet/marks";
@@ -36,15 +36,20 @@ import { isRich, parseRich, plainText } from "@/app/_lib/richText";
 import { docParagraphs, richFromDoc, textboxDoc } from "@/app/_lib/textboxDoc";
 import type { StyleMark } from "@/app/_lib/textboxEditor";
 import { BUILTIN_ASSETS, svgUrl, type Asset, type AssetKind } from "@/app/_lib/library";
-import { imagesToPdf, stagePageImages } from "@/app/_lib/pdf";
+import { grayImages, imagesToPdf, stagePageImages, stagePageSvgs } from "@/app/_lib/pdf";
+import { pdfSheets, printSheets } from "@/app/_lib/print";
+import { sheetsOf, type PrintLayout } from "@/app/_lib/printLayout";
+import { examVersion, type VersionPlan } from "@/app/_lib/examVersions";
+import { dataUrlBytes, examToDocx, isPictureBlock, type Picture, type WordCopy } from "@/app/_lib/wordExport";
+import { pageBoxes } from "@/app/_lib/pageStack";
 import { addMissing, addRowTotals, adoptMarks, linkReport, packRows, refitAnswers, restyleFull, refreshStale, removeOrphans, resetMarks } from "@/app/_lib/sheet/links";
 import { sheetScores } from "@/app/_lib/sheet/marks";
 import { viewOf } from "@/app/_lib/sheet/part";
-import { loadAutosave, loadUserAssets, parseExamFile, pickFile, saveFile, saveUserAssets } from "@/app/_lib/storage";
+import { isTauri, openExamFile, parseExamFile, pickFile, saveExamAs, saveFile, saveUserAssets, writeExamAt, fileNameOf } from "@/app/_lib/storage";
 import { ALL_CYCLES, type Subject } from "@/app/_lib/subjects";
 import { buildDoc, templateById, type Template } from "@/app/_lib/templates";
 import { assetToBlock, type ToolAction } from "@/app/_lib/tools";
-import type { Block, BlockType, PageMargins, ViewMode } from "@/app/_lib/types";
+import type { Block, BlockType, ExamDoc, Page, PageMargins, ViewMode } from "@/app/_lib/types";
 import { useThemeMode } from "@/app/_lib/theme";
 import { UiProvider, loadUiLang, saveUiLang, translate, type UiLang } from "@/app/_lib/uiLang";
 import { useBlockClipboard } from "@/app/_lib/useBlockClipboard";
@@ -113,13 +118,18 @@ const TYPE_ON_ADD: BlockType[] = ["mcq", "truefalse", "blank", "open", "match", 
 // The shell: owns the state and the actions. The screen itself is drawn from appLayout (app/_features/app.ts).
 // The Stamp tool's "click on the page" message is shown the first time a sticker is picked, not each time
 let stampHinted = false;
+// Copies drawn off-screen for printing so far: each one a new drawing (see ExportRenderer)
+let exportJobs = 0;
 
-export default function Editor() {
+// What the app opens with (read before the editor shows, see ClientApp): the exam being worked on (null: none yet) and the library.
+export interface Start {
+  doc: ExamDoc | null;
+  assets: Asset[];
+}
+
+export default function Editor({ start }: { start: Start }) {
   // Reopen the last exam (autosave), or start with the template picker.
-  const [initial] = useState(() => {
-    const saved = loadAutosave();
-    return { doc: saved ?? buildDoc(templateById("classic-fr")), fresh: !saved };
-  });
+  const [initial] = useState(() => ({ doc: start.doc ?? buildDoc(templateById("classic-fr")), fresh: !start.doc }));
   const [uiLang, setUiLang] = useState<UiLang>(loadUiLang);
   const [themeMode, setThemeMode] = useThemeMode();
   const tr = (text: string, vars?: Record<string, string | number>) => translate(uiLang, text, vars);
@@ -137,7 +147,7 @@ export default function Editor() {
   const marginTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const [library, setLibrary] = useState<{ kind: AssetKind | "all"; n: number }>({ kind: "all", n: 0 });
   const [picker, setPicker] = useState<{ open: boolean; mustPick: boolean }>({ open: false, mustPick: false });
-  const [userAssets, setUserAssets] = useState<Asset[]>(loadUserAssets);
+  const [userAssets, setUserAssets] = useState<Asset[]>(start.assets);
   const [exportJob, setExportJob] = useState<Shell["exportJob"]>(null);
   const [preview, setPreview] = useState(false);
   const [history, setHistory] = useState(false);
@@ -302,7 +312,7 @@ export default function Editor() {
     const asset: Asset = { id: `user-${newId()}`, name: file.name.replace(/\.[^.]+$/, ""), kind: "image", subjects: "all", cycles: ALL_CYCLES, src, ratio };
     const next = [asset, ...userAssets];
     setUserAssets(next);
-    if (!saveUserAssets(next)) notify(tr("Library storage is full — the image is only kept in this exam"));
+    void saveUserAssets(next).then((ok) => !ok && notify(tr("Library storage is full — the image is only kept in this exam")));
     if (addToPage) {
       const { type, preset } = assetToBlock(asset, doc.meta.lang);
       exam.addBlock(type, preset);
@@ -338,13 +348,13 @@ export default function Editor() {
     };
     const next = [asset, ...userAssets];
     setUserAssets(next);
-    notify(saveUserAssets(next) ? tr("Saved in your library (Library → My blocks)") : tr("Library storage is full — the block could not be kept"));
+    void saveUserAssets(next).then((ok) => notify(ok ? tr("Saved in your library (Library → My blocks)") : tr("Library storage is full — the block could not be kept")));
   };
 
   const deleteUserAsset = (id: string) => {
     const next = userAssets.filter((a) => a.id !== id);
     setUserAssets(next);
-    saveUserAssets(next);
+    void saveUserAssets(next);
   };
 
   // ---- Tools (click in the toolbox, or drop on the page) ----
@@ -675,22 +685,45 @@ export default function Editor() {
 
   // ---- Files ----
 
-  const save = async () => {
+  // The exam's own file (desktop app): where it was opened from or saved to, and the exam as it is in it (null: none yet, or a
+  // browser). Ctrl+S writes it again without asking, like Word; Save as… asks where.
+  const [file, setFile] = useState<{ path: string; saved: ExamDoc } | null>(null);
+
+  const saveAs = async () => {
     try {
-      const ok = await saveFile(JSON.stringify(fullDoc), `${fileName(doc.meta.title)}.exam.json`, { name: "Exam", extensions: ["json"] });
-      if (ok) notify(tr("Exam saved"));
+      const path = await saveExamAs(JSON.stringify(fullDoc), file ? fileNameOf(file.path) : `${fileName(doc.meta.title)}.exam.json`);
+      if (path === null) return;
+      setFile(path ? { path, saved: fullDoc } : null);
+      notify(path ? tr("Saved to “{file}”", { file: fileNameOf(path) }) : tr("Exam saved"));
+    } catch (e) {
+      notify(tr("Could not save: {error}", { error: String(e) }));
+    }
+  };
+
+  const save = async () => {
+    if (!file || !isTauri()) return saveAs();
+    try {
+      await writeExamAt(file.path, JSON.stringify(fullDoc));
+      setFile({ path: file.path, saved: fullDoc });
+      notify(tr("Saved to “{file}”", { file: fileNameOf(file.path) }));
     } catch (e) {
       notify(tr("Could not save: {error}", { error: String(e) }));
     }
   };
 
   const open = async () => {
-    const file = await pickFile(".json,application/json");
-    if (!file) return;
-    const opened = parseExamFile(await file.text());
+    let picked: Awaited<ReturnType<typeof openExamFile>>;
+    try {
+      picked = await openExamFile();
+    } catch (e) {
+      return notify(tr("Could not open: {error}", { error: String(e) }));
+    }
+    if (!picked) return;
+    const opened = parseExamFile(picked.text);
     if (!opened) return notify(tr("This file is not an Exam Builder file"));
     keepCopy(tr("Before opening “{title}”", { title: opened.meta.title }));
     exam.replaceDoc(opened);
+    setFile(picked.path ? { path: picked.path, saved: opened } : null);
     setEditing(null);
     setSession((s) => s + 1);
     notify(tr("Opened “{title}”", { title: opened.meta.title }));
@@ -709,8 +742,7 @@ export default function Editor() {
   // The document that goes out for each way of printing: the exam, or the correction sheet
   const printed = (m: ViewMode) => viewOf(fullDoc, m === "key" && fullDoc.correction ? "sheet" : "exam");
 
-  const renderPages = async (m: ViewMode, pixelRatio: number, quality: number) => {
-    const target = printed(m);
+  const drawCopy = async <T,>(target: ExamDoc, m: ViewMode, take: (stage: Konva.Stage, pages: Page[]) => T): Promise<T> => {
     const srcs = target.blocks.flatMap((b) => (b.type === "image" ? [b.src, ...(b.srcAnswer ? [b.srcAnswer] : [])] : b.type === "equation" && b.svg ? [svgUrl(b.svg)] : b.type === "table" ? picturesOf(b.shapes) : []));
     // The formulas written in the text — of the text boxes, and of every other block (questions, tables, headers…): their drawings
     // (made by MathJax first for those that keep none), loaded before the copy is drawn, else the page is taken without them.
@@ -733,32 +765,74 @@ export default function Editor() {
         .map((m) => inlineMathUrl(m) ?? drawInlineMath(m.latex).then((d) => d.url, () => "")),
     );
     await Promise.all([preloadImages([...srcs, ...formulas]), document.fonts.ready]);
-    const stage = await new Promise<Konva.Stage>((resolve) => setExportJob({ doc: target, mode: m, resolve }));
+    const stage = await new Promise<Konva.Stage>((resolve) => setExportJob({ id: ++exportJobs, doc: target, mode: m, resolve }));
     try {
-      return stagePageImages(stage, target.pages, pixelRatio, quality);
+      return take(stage, target.pages);
     } finally {
       setExportJob(null);
     }
   };
+  // The documents that go out for a copy, each with how it is drawn. With versions: each version, and each one's correction (that
+  // version with its answers), all the exams first.
+  const copiesOf = (which: ViewMode | "both", plan: VersionPlan): { doc: ExamDoc; mode: ViewMode }[] => {
+    const modes: ViewMode[] = which === "both" ? ["exam", "key"] : [which];
+    if (plan.count <= 1) return modes.map((m) => ({ doc: printed(m), mode: m }));
+    const exam = viewOf(fullDoc, "exam");
+    const versions = Array.from({ length: plan.count }, (_, i) => examVersion(exam, i, plan));
+    return modes.flatMap((mode) => versions.map((doc) => ({ doc, mode })));
+  };
 
-  // Turn each page into a PDF page (from the print preview).
-  const exportPdf = async (which: ViewMode | "both") => {
-    if (busy) return;
-    // (the correction copy is the correction sheet: until it is made there is nothing to print of it)
-    const modes = (which === "both" ? ["exam", "key"] : [which]).filter((m) => m === "exam" || !!fullDoc.correction) as ViewMode[];
-    if (!modes.length) {
+  // The pages that go out for a copy of the print preview (the exam, the correction sheet, or both one after the other) as sharp images,
+  // with their pages, in black and white when `color` is off. Null (and the correction sheet's wizard opened) when it is the correction
+  // sheet and there is none yet.
+  const outgoing = async (which: ViewMode | "both", color: boolean, vector: boolean, plan: VersionPlan) => {
+    if (which !== "exam" && !fullDoc.correction && plan.count <= 1) {
       notify(tr("Make the correction sheet first"));
-      return setSheetWizard({ open: true, rebuild: false });
+      setSheetWizard({ open: true, rebuild: false });
+      return null;
     }
+    const images: string[] = [];
+    const pages: Page[] = [];
+    for (const [k, c] of copiesOf(which, plan).entries()) {
+      images.push(...(await drawCopy(c.doc, c.mode, (stage, p) => (vector ? stagePageSvgs(stage, p, !color, `c${k}-`) : stagePageImages(stage, p, 3, 0.92)))));
+      pages.push(...c.doc.pages);
+    }
+    return { images: color || vector ? images : await grayImages(images), pages };
+  };
+  const previewCopy = async (which: ViewMode | "both", plan: VersionPlan) => {
+    const images: string[] = [];
+    const pages: Page[] = [];
+    for (const c of copiesOf(which, plan)) {
+      images.push(...(await drawCopy(c.doc, c.mode, (stage, p) => stagePageImages(stage, p, 1.25, 0.85))));
+      pages.push(...c.doc.pages);
+    }
+    return { images, pages };
+  };
+  const sheetsFor = (pages: Page[], layout: PrintLayout) => sheetsOf(pages.map((p) => getPageMm(p.format)), layout, fullDoc.meta.lang === "ar");
+  const outName = (which: ViewMode | "both", plan: VersionPlan) =>
+    `${fileName(doc.meta.title)}${which === "key" ? ` - ${tr("correction")}` : which === "both" ? ` - ${tr("exam and correction")}` : ""}${plan.count > 1 ? ` (${plan.count} ${tr("versions")})` : ""}`;
+
+  // Each page into the PDF, on its sheets of paper (from the print preview).
+  const exportPdf = async (which: ViewMode | "both", layout: PrintLayout, plan: VersionPlan) => {
+    if (busy) return;
     setBusy(true);
     try {
-      for (const m of modes) {
-        const bytes = await imagesToPdf(await renderPages(m, 3, 0.92), printed(m).pages);
-        const name = `${fileName(doc.meta.title)}${m === "key" ? ` - ${tr("correction")}` : ""}.pdf`;
-        if (await saveFile(bytes, name, { name: "PDF", extensions: ["pdf"] })) {
-          notify(m === "key" ? tr("Correction sheet exported") : tr("Exam exported"));
-        }
+      // In the desktop app: vector pages written by its browser engine (text that can be selected, small files). In a browser: page
+      // pictures (it has no way to write a PDF of its own).
+      if (isTauri()) {
+        const { save } = await import("@tauri-apps/plugin-dialog");
+        const path = await save({ defaultPath: `${outName(which, plan)}.pdf`, filters: [{ name: "PDF", extensions: ["pdf"] }] });
+        if (!path) return;
+        const out = await outgoing(which, layout.color, true, plan);
+        if (!out) return;
+        await pdfSheets(out.images, sheetsFor(out.pages, layout), path);
+      } else {
+        const out = await outgoing(which, layout.color, false, plan);
+        if (!out) return;
+        const bytes = await imagesToPdf(out.images, out.pages, layout, fullDoc.meta.lang === "ar");
+        if (!(await saveFile(bytes, `${outName(which, plan)}.pdf`, { name: "PDF", extensions: ["pdf"] }))) return;
       }
+      notify(which === "key" ? tr("Correction sheet exported") : tr("Exam exported"));
     } catch (e) {
       notify(tr("Export failed: {error}", { error: String(e) }));
     } finally {
@@ -766,6 +840,120 @@ export default function Editor() {
       setBusy(false);
     }
   };
+
+  // The exam as a Word document (editable): each copy's texts and tables, and its drawn blocks cut from its pages as pictures. The
+  // correction is the exam with its answers written in (Word has no correction sheet of its own).
+  const exportWord = async (which: ViewMode | "both", plan: VersionPlan) => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const modes: ViewMode[] = which === "both" ? ["exam", "key"] : [which];
+      const exam = viewOf(fullDoc, "exam");
+      const docs = plan.count <= 1 ? [exam] : Array.from({ length: plan.count }, (_, i) => examVersion(exam, i, plan));
+      const copies: WordCopy[] = [];
+      for (const mode of modes)
+        for (const d of docs) {
+          const drawn = d.blocks.filter(isPictureBlock);
+          const pictures = drawn.length
+            ? await drawCopy(d, mode, (stage, pages) => {
+                const boxes = pageBoxes(pages);
+                const heights = blockHeights(d);
+                const out = new Map<string, Picture>();
+                for (const b of drawn) {
+                  const box = boxes[pages.findIndex((p) => p.id === b.layout.pageId)];
+                  if (!box) continue;
+                  const width = b.layout.width + 4;
+                  const height = (heights.get(b.id) ?? b.layout.height) + 4;
+                  const url = stage.toDataURL({ x: box.left + b.layout.x - 2, y: box.top + b.layout.y - 2, width, height, pixelRatio: 2, mimeType: "image/png" });
+                  out.set(b.id, { data: dataUrlBytes(url), width, height });
+                }
+                return out;
+              })
+            : new Map<string, Picture>();
+          copies.push({ doc: d, mode, pictures });
+        }
+      const bytes = await examToDocx(copies);
+      if (await saveFile(bytes, `${outName(which, plan)}.docx`, { name: "Word", extensions: ["docx"] })) notify(tr("Word document exported"));
+    } catch (e) {
+      notify(tr("Export failed: {error}", { error: String(e) }));
+    } finally {
+      setExportJob(null);
+      setBusy(false);
+    }
+  };
+
+  // The same pages straight to the printer (the system's print window).
+  const printOut = async (which: ViewMode | "both", layout: PrintLayout, plan: VersionPlan) => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const out = await outgoing(which, layout.color, true, plan);
+      if (!out) return;
+      await printSheets(out.images, sheetsFor(out.pages, layout), outName(which, plan));
+    } catch (e) {
+      notify(tr("Printing failed: {error}", { error: String(e) }));
+    } finally {
+      setExportJob(null);
+      setBusy(false);
+    }
+  };
+
+  // The window's name (taskbar, Alt+Tab): the exam's file, with a dot while it has changes not written to it
+  const windowTitle = file ? `${fileNameOf(file.path)}${file.saved !== fullDoc ? " •" : ""} — Examor` : "Examor";
+  useEffect(() => {
+    document.title = windowTitle;
+    if (isTauri()) void import("@tauri-apps/api/window").then(({ getCurrentWindow }) => getCurrentWindow().setTitle(windowTitle)).catch(() => undefined);
+  }, [windowTitle]);
+
+  // ---- Closing: nothing lost ----
+  // The desktop window waits for the last change to be written before it closes, and asks only when it could not be. In a browser the
+  // change is written when the tab is hidden, and leaving asks while one is not saved.
+  const flushRef = useRef(exam.flushSave);
+  const saveStatus = useRef(exam.save.status);
+  const trRef = useRef(tr);
+  useEffect(() => {
+    flushRef.current = exam.flushSave;
+    saveStatus.current = exam.save.status;
+    trRef.current = tr;
+  });
+  useEffect(() => {
+    if (isTauri()) {
+      let unlisten: (() => void) | undefined;
+      let stopped = false;
+      void import("@tauri-apps/api/window").then(({ getCurrentWindow }) =>
+        getCurrentWindow()
+          .onCloseRequested(async (e) => {
+            if (await flushRef.current()) return;
+            const { ask } = await import("@tauri-apps/plugin-dialog");
+            const tr = trRef.current;
+            const leave = await ask(tr("Your latest changes could not be saved on this computer. Close anyway and lose them?"), {
+              title: "Examor",
+              kind: "warning",
+              okLabel: tr("Close anyway"),
+              cancelLabel: tr("Cancel"),
+            });
+            if (!leave) e.preventDefault();
+          })
+          .then((fn) => (stopped ? fn() : (unlisten = fn))),
+      );
+      return () => {
+        stopped = true;
+        unlisten?.();
+      };
+    }
+    const hidden = () => document.visibilityState === "hidden" && void flushRef.current();
+    const leaving = (e: BeforeUnloadEvent) => {
+      if (saveStatus.current === "saved") return;
+      void flushRef.current();
+      e.preventDefault();
+    };
+    document.addEventListener("visibilitychange", hidden);
+    window.addEventListener("beforeunload", leaving);
+    return () => {
+      document.removeEventListener("visibilitychange", hidden);
+      window.removeEventListener("beforeunload", leaving);
+    };
+  }, []);
 
   // ---- Keyboard shortcuts ----
 
@@ -785,7 +973,7 @@ export default function Editor() {
 
       if (mod && key === "s") {
         e.preventDefault();
-        void save();
+        void (e.shiftKey ? saveAs() : save());
         return;
       }
       if (mod && key === "p") {
@@ -957,6 +1145,9 @@ export default function Editor() {
     },
     openExam: () => void open(),
     saveExam: () => void save(),
+    saveExamAs: () => void saveAs(),
+    examFile: file ? { name: fileNameOf(file.path), changed: file.saved !== fullDoc } : null,
+    startedFresh: initial.fresh,
     showHistory: () => setHistory(true),
     showPreview: () => setPreview(true),
     mode,
@@ -1029,14 +1220,17 @@ export default function Editor() {
     pickTemplate: (template: Template) => {
       if (!picker.mustPick) keepCopy(tr("Before starting a new exam"));
       exam.newFromTemplate(template);
+      setFile(null); // (a new exam: not in a file yet)
       setEditing(null);
       setSession((s) => s + 1);
       setPicker({ open: false, mustPick: false });
     },
     preview,
     closePreview: () => setPreview(false),
-    exportPdf: (which) => void exportPdf(which),
-    renderPages,
+    exportPdf: (which, layout, plan) => void exportPdf(which, layout, plan),
+    printOut: (which, layout, plan) => void printOut(which, layout, plan),
+    exportWord: (which, plan) => void exportWord(which, plan),
+    previewCopy,
     history,
     closeHistory: () => setHistory(false),
     molecule,

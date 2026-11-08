@@ -13,8 +13,10 @@ export const previewOverlay: Feature = {
       <ExportPreview
         doc={fullDoc}
         busy={ctx.shell.busy}
-        renderPages={(m) => ctx.shell.renderPages(m, 1.25, 0.85)}
-        onExport={(w) => ctx.shell.exportPdf(w)}
+        renderCopy={(which, plan) => ctx.shell.previewCopy(which, plan)}
+        onExport={(w, layout, plan) => ctx.shell.exportPdf(w, layout, plan)}
+        onPrint={(w, layout, plan) => ctx.shell.printOut(w, layout, plan)}
+        onWord={(w, plan) => ctx.shell.exportWord(w, plan)}
         onMakeSheet={() => {
           ctx.shell.closePreview();
           ctx.shell.openSheetWizard(false);

@@ -2,10 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { pageSize } from "@/app/_lib/pageFormats";
-import { blockHeights, isQuestion } from "@/app/_lib/blocks";
+import { blockHeights } from "@/app/_lib/blocks";
 import type { ExamDoc } from "@/app/_lib/types";
 import { useUi } from "@/app/_lib/uiLang";
-import { addVersion, deleteVersion, listVersions, type Version } from "@/app/_lib/versions";
+import { addVersion, deleteVersion, listVersions, loadVersion, type Version, type VersionInfo } from "@/app/_lib/versions";
 import { PageBars } from "../workspace/PageStrip";
 
 interface Props {
@@ -20,8 +20,9 @@ const THUMB_W = 120;
 // work, and before opening another exam) and the ones you name yourself. Restore any of them.
 export default function VersionHistory({ current, onRestore, onClose }: Props) {
   const { t, lang } = useUi();
-  const [versions, setVersions] = useState<Version[] | null>(null);
+  const [versions, setVersions] = useState<VersionInfo[] | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [opened, setOpened] = useState<Version | null>(null); // the chosen one, read from its file
   const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(null);
 
@@ -35,6 +36,18 @@ export default function VersionHistory({ current, onRestore, onClose }: Props) {
   useEffect(() => {
     void reload();
   }, [reload]);
+
+  // (each copy is read only when it is chosen)
+  useEffect(() => {
+    if (!selectedId) return;
+    let alive = true;
+    loadVersion(selectedId)
+      .then((v) => alive && setOpened(v))
+      .catch((e) => alive && setError(String(e)));
+    return () => {
+      alive = false;
+    };
+  }, [selectedId]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
@@ -64,8 +77,9 @@ export default function VersionHistory({ current, onRestore, onClose }: Props) {
   };
 
   const selected = versions?.find((v) => v.id === selectedId) ?? null;
+  const doc = opened && opened.id === selectedId ? opened.doc : null;
   const groups = useMemo(() => {
-    const out: { day: string; items: Version[] }[] = [];
+    const out: { day: string; items: VersionInfo[] }[] = [];
     for (const v of versions ?? []) {
       const d = day(v.time);
       if (out[out.length - 1]?.day !== d) out.push({ day: d, items: [] });
@@ -75,7 +89,7 @@ export default function VersionHistory({ current, onRestore, onClose }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [versions, locale]);
 
-  const kindLabel = (v: Version) =>
+  const kindLabel = (v: VersionInfo) =>
     v.kind === "manual" ? v.label || t("Saved version") : v.kind === "before" ? v.label || t("Before a change") : t("Automatic copy");
 
   return (
@@ -115,7 +129,6 @@ export default function VersionHistory({ current, onRestore, onClose }: Props) {
                 <section key={g.day} className="mb-2">
                   <h3 className="px-2 pt-2 pb-1 text-[11px] font-semibold uppercase tracking-wider text-faint">{g.day}</h3>
                   {g.items.map((v) => {
-                    const q = v.doc.blocks.filter(isQuestion);
                     return (
                       <button
                         key={v.id}
@@ -133,7 +146,7 @@ export default function VersionHistory({ current, onRestore, onClose }: Props) {
                             </span>
                           </span>
                           <span className="block truncate text-xs text-muted" dir="auto">
-                            {v.doc.meta.title} · {t("{q} q. · {p} pts · {n} p.", { q: q.length, p: q.reduce((s, x) => s + x.points, 0), n: v.doc.pages.length })}
+                            {v.title} · {t("{q} q. · {p} pts · {n} p.", { q: v.questions, p: v.points, n: v.pages })}
                           </span>
                         </span>
                       </button>
@@ -152,13 +165,13 @@ export default function VersionHistory({ current, onRestore, onClose }: Props) {
                   <p className="mb-3 text-xs text-muted" dir="auto">
                     <b className="font-semibold text-ink">{kindLabel(selected)}</b> — {day(selected.time)}, {hour(selected.time)}
                   </p>
-                  <VersionPages doc={selected.doc} />
+                  {doc ? <VersionPages doc={doc} /> : <p className="text-xs text-muted">{t("Loading…")}</p>}
                 </div>
                 <div className="flex justify-end gap-2 border-t border-line bg-white p-3">
                   <button onClick={() => void remove(selected.id)} className="rounded-md border border-red-200 px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50">
                     {t("Delete")}
                   </button>
-                  <button onClick={() => onRestore(selected)} className="rounded-md bg-accent px-3 py-1.5 text-xs font-semibold text-white hover:bg-accent-strong">
+                  <button disabled={!doc} onClick={() => opened && doc && onRestore(opened)} className="rounded-md bg-accent disabled:opacity-60 px-3 py-1.5 text-xs font-semibold text-white hover:bg-accent-strong">
                     {t("Restore this version")}
                   </button>
                 </div>

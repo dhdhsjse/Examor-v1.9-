@@ -6,6 +6,7 @@ import { fileReconfigureAction } from "@/app/_features/actions/file-reconfigure"
 import { fileOpenAction } from "@/app/_features/actions/file-open";
 import { filePreviewAction } from "@/app/_features/actions/file-preview";
 import { fileSaveAction } from "@/app/_features/actions/file-save";
+import { fileSaveAsAction } from "@/app/_features/actions/file-save-as";
 import { themeDarkAction } from "@/app/_features/actions/theme-dark";
 import { themeLightAction } from "@/app/_features/actions/theme-light";
 import { themeSystemAction } from "@/app/_features/actions/theme-system";
@@ -33,6 +34,7 @@ export const fileGroup: Group = {
     fileReconfigureAction,
     fileOpenAction,
     fileSaveAction,
+    fileSaveAsAction,
     fileHistoryAction,
     filePreviewAction,
     langEnAction,

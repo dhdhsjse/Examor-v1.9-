@@ -2,8 +2,10 @@ import type { ReactNode } from 'react';
 import type { Editor as TextEditor } from '@tiptap/core';
 import type Konva from 'konva';
 import type { ThemeMode } from '@/app/_lib/theme';
-import type { Block, BlockType, ExamDoc, ExamMeta, HeaderFooterConfig, PageBorder, PageFormat, PageMargins, ViewMode } from '@/app/_lib/types';
+import type { Block, BlockType, ExamDoc, ExamMeta, HeaderFooterConfig, Page, PageBorder, PageFormat, PageMargins, ViewMode } from '@/app/_lib/types';
 import type { ChromeKind } from '@/app/_lib/pageChrome';
+import type { PrintLayout } from '@/app/_lib/printLayout';
+import type { VersionPlan } from '@/app/_lib/examVersions';
 import type { BlockPreset } from '@/app/_lib/blocks';
 import type { BlockOrder } from '@/app/_lib/blockOrder';
 import type { ToolAction } from '@/app/_lib/tools';
@@ -98,7 +100,10 @@ export type Shell = {
   // Replace the exam with a ready document (onboarding). `keepOld` saves the current one in the history first.
   applyDoc: (doc: ExamDoc, keepOld: boolean) => void;
   openExam: () => void;
-  saveExam: () => void;
+  saveExam: () => void; // Ctrl+S: over its file when it has one (desktop app), else like Save as
+  saveExamAs: () => void; // Ctrl+Shift+S: asks where
+  examFile: { name: string; changed: boolean } | null; // the file the exam was opened from or saved to (desktop app), and whether it changed since
+  startedFresh: boolean; // the app opened with no exam of before (first launch)
   showHistory: () => void;
   showPreview: () => void;
   // view
@@ -149,8 +154,11 @@ export type Shell = {
   pickTemplate: (template: Template) => void;
   preview: boolean;
   closePreview: () => void;
-  exportPdf: (which: ViewMode | 'both') => void;
-  renderPages: (mode: ViewMode, pixelRatio: number, quality: number) => Promise<string[]>;
+  exportPdf: (which: ViewMode | 'both', layout: PrintLayout, plan: VersionPlan) => void;
+  printOut: (which: ViewMode | 'both', layout: PrintLayout, plan: VersionPlan) => void; // straight to the printer
+  exportWord: (which: ViewMode | 'both', plan: VersionPlan) => void; // an editable .docx
+  // the print preview's pages of a copy (and its versions), as pictures, with their pages
+  previewCopy: (which: ViewMode | 'both', plan: VersionPlan) => Promise<{ images: string[]; pages: Page[] }>;
   history: boolean;
   closeHistory: () => void;
   // Molecule Studio: `blockId` = the molecule block being edited, null = a new molecule.
@@ -189,7 +197,7 @@ export type Shell = {
   openImageStudio: (blockId: string) => void;
   closeImageStudio: () => void;
   restore: (version: Version) => void;
-  exportJob: { doc: ExamDoc; mode: ViewMode; resolve: (stage: Konva.Stage) => void } | null;
+  exportJob: { id: number; doc: ExamDoc; mode: ViewMode; resolve: (stage: Konva.Stage) => void } | null; // (id: each copy drawn anew)
   toast: string | null;
   // side bars the user has closed (ids of bars with `collapse`), remembered in the browser
   hiddenBars: string[];

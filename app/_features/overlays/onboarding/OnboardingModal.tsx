@@ -21,7 +21,6 @@ import {
 } from "@/app/_lib/onboarding";
 import type { BuildType } from "@/app/_lib/onboardingTypes";
 import { chromeRuleOf } from "@/app/_lib/pageChrome";
-import { loadAutosave } from "@/app/_lib/storage";
 import { templateById } from "@/app/_lib/templates";
 import type { ExamDoc, PageScope } from "@/app/_lib/types";
 import BuildCard from "./cards/BuildCard";
@@ -88,7 +87,7 @@ const DESCRIPTIONS: Record<BuildType, string> = {
 // The setup window, in three steps: welcome (first run only), margins, page structure.
 // It opens on every launch, and again from File → "Configure page layout…".
 export function OnboardingModal({ ctx }: { ctx: Ctx }) {
-  const [mode, setMode] = useState<Mode>(() => (loadAutosave() === null ? "fresh" : "existing"));
+  const [mode, setMode] = useState<Mode>(() => (ctx.shell.startedFresh ? "fresh" : "existing"));
   const [open, setOpen] = useState(true);
   const [draft, setDraft] = useState<Draft>(() => (mode === "fresh" ? FRESH : draftFromDoc(ctx.doc, "welcome")));
   const requests = useSyncExternalStore(subscribeOnboarding, onboardingRequests, () => 0);

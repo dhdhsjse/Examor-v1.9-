@@ -225,8 +225,8 @@ function ghostBank(hint: string, b: Block, F: Fonts, y: number): WordBank {
 
 // Blanks: "[answer]" becomes "________" on the exam, "« answer »" (answer color) on the key.
 export const blankAnswers = (s: string) => [...plainText(s).matchAll(/\[([^\]]*)\]/g)].map((m) => m[1]);
-const blankExam = (s: string) => serializeRich(replaceBlanks(s, (a) => ({ text: "_".repeat(Math.max(8, a.length + 4)) })));
-const blankKey = (s: string, color: string) => serializeRich(replaceBlanks(s, (a) => ({ text: `« ${a} »`, style: { color, b: true } })));
+export const blankExam = (s: string) => serializeRich(replaceBlanks(s, (a) => ({ text: "_".repeat(Math.max(8, a.length + 4)) })));
+export const blankKey = (s: string, color: string) => serializeRich(replaceBlanks(s, (a) => ({ text: `« ${a} »`, style: { color, b: true } })));
 
 export function layoutBlank(b: BlankBlock, n: number, meta: ExamMeta) {
   const F = blockFonts(b, meta);
