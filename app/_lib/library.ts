@@ -1,10 +1,12 @@
 import type { BlockPreset } from "./blocks";
 import type { Params } from "./figures";
+import { PACK_CATEGORIES, PACK_DIR, PACK_ITEMS, type Names } from "./libraryPack";
+import { matchesQuery, searchTerms } from "./searchText";
 import type { Cycle, SchoolSubject } from "./subjects";
 import type { BlockType } from "./types";
 
-// "block" = a block the teacher saved (My blocks).
-export type AssetKind = "diagram" | "table" | "image" | "block";
+// "block" = a block the teacher saved (My blocks). "picture" = the picture pack (libraryPack.ts).
+export type AssetKind = "diagram" | "table" | "picture" | "image" | "block";
 
 // One item of the smart library (right panel).
 export interface Asset {
@@ -20,6 +22,12 @@ export interface Asset {
   ratio?: number; // imported images
   cells?: string[][]; // tables
   block?: { type: BlockType; preset: BlockPreset }; // saved blocks, and ready-made blocks
+  // The picture pack: an svg file of the app (read when put on the page, see withDrawing), its names in each language,
+  // its place in the pack, and every word it is found by (searchText.ts).
+  file?: string;
+  names?: Names;
+  pack?: { category: string; subcategory?: string };
+  terms?: string;
 }
 
 const empty = (rows: number, cols: number) => Array.from({ length: rows }, () => Array<string>(cols).fill(""));
@@ -33,6 +41,26 @@ const CURVE_PREVIEW = (() => {
 })();
 
 const fig = (id: string, params?: Params) => ({ id, params });
+
+// The picture pack, as library items: for every subject and cycle, found by their names, aliases and categories in the three languages.
+export const PACK_ASSETS: Asset[] = PACK_ITEMS.map((p) => {
+  const category = PACK_CATEGORIES.find((c) => c.id === p.category);
+  const sub = category?.subcategories?.find((s) => s.id === p.subcategory);
+  const words = [p.names, p.aliases, category?.names, category?.aliases, sub?.names, sub?.aliases].flatMap((group) =>
+    group ? Object.values(group).flat() : [],
+  );
+  return {
+    id: `pack-${p.id}`,
+    name: p.names.en,
+    kind: "picture",
+    subjects: "all",
+    cycles: ALL3,
+    file: PACK_DIR + p.file,
+    names: p.names,
+    pack: { category: p.category, subcategory: p.subcategory },
+    terms: searchTerms(words),
+  };
+});
 
 export const BUILTIN_ASSETS: Asset[] = [
   // Math
@@ -79,7 +107,27 @@ export const BUILTIN_ASSETS: Asset[] = [
   // Everyone
   { id: "table-2x3", name: "Table 3 × 3", kind: "table", subjects: "all", cycles: ALL3, cells: empty(3, 3) },
   { id: "table-4x4", name: "Table 4 × 4", kind: "table", subjects: "all", cycles: ALL3, cells: empty(4, 4) },
+  // Pictures
+  ...PACK_ASSETS,
 ];
+
+// A picture of the pack is a file: its drawing is read once (then kept for the next time), and the block gets the drawing itself,
+// so the exam is the same when printed, exported or opened elsewhere.
+const drawings = new Map<string, Promise<string>>();
+export function withDrawing(a: Asset): Promise<Asset> {
+  const file = a.file;
+  if (!file || a.svg) return Promise.resolve(a);
+  let drawing = drawings.get(file);
+  if (!drawing) {
+    drawing = fetch(file).then((r) => {
+      if (!r.ok) throw new Error(`${file}: ${r.status}`);
+      return r.text();
+    });
+    drawings.set(file, drawing);
+    drawing.catch(() => drawings.delete(file)); // (tried again next time)
+  }
+  return drawing.then((svg) => ({ ...a, svg }));
+}
 
 export interface LibraryFilter {
   query: string;
@@ -94,7 +142,7 @@ export function matchesFilter(a: Asset, f: LibraryFilter): boolean {
   if (f.cycle !== "all" && !a.cycles.includes(f.cycle)) return false;
   if (f.year !== "all" && a.years && !a.years.includes(f.year)) return false;
   if (f.subject !== "all" && a.subjects !== "all" && !a.subjects.includes(f.subject)) return false;
-  return !f.query || a.name.toLowerCase().includes(f.query.toLowerCase());
+  return !f.query || matchesQuery(a.terms ?? searchTerms([a.name]), f.query);
 }
 
 // Size of an svg string (from its width/height attributes).

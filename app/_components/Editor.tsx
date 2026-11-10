@@ -35,7 +35,7 @@ import { drawInlineMath, inlineMathUrl, type InlineMath } from "@/app/_lib/inlin
 import { isRich, parseRich, plainText } from "@/app/_lib/richText";
 import { docParagraphs, richFromDoc, textboxDoc } from "@/app/_lib/textboxDoc";
 import type { StyleMark } from "@/app/_lib/textboxEditor";
-import { BUILTIN_ASSETS, svgUrl, type Asset, type AssetKind } from "@/app/_lib/library";
+import { BUILTIN_ASSETS, svgUrl, withDrawing, type Asset, type AssetKind } from "@/app/_lib/library";
 import { grayImages, imagesToPdf, stagePageImages, stagePageSvgs } from "@/app/_lib/pdf";
 import { pdfSheets, printSheets } from "@/app/_lib/print";
 import { sheetsOf, type PrintLayout } from "@/app/_lib/printLayout";
@@ -458,10 +458,15 @@ export default function Editor({ start }: { start: Start }) {
       case "asset": {
         const asset = [...userAssets, ...BUILTIN_ASSETS].find((a) => a.id === action.assetId);
         if (!asset) return;
-        const { type, preset } = assetToBlock(asset, doc.meta.lang);
-        exam.addBlock(type, preset, at);
-        setTab("properties");
-        setActiveInspectorId(inspectorFor({ type } as Block));
+        const add = (a: Asset) => {
+          const { type, preset } = assetToBlock(a, doc.meta.lang);
+          exam.addBlock(type, preset, at);
+          setTab("properties");
+          setActiveInspectorId(inspectorFor({ type } as Block));
+        };
+        // (a picture of the pack is read from its file first)
+        if (asset.file) void withDrawing(asset).then(add, () => notify(tr("Could not load the picture “{name}”", { name: asset.name })));
+        else add(asset);
         break;
       }
       case "importImage":
