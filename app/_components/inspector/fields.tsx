@@ -256,7 +256,8 @@ export function NumberInput(props: { value: number; onChange: (v: number) => voi
 }
 
 // Row of buttons where one is active. The labels share the width evenly; one too long for its button ends in "…" (the whole of it on hover).
-export function Segmented<T extends string>(props: { value: T; options: { value: T; label: string }[]; onChange: (v: T) => void }) {
+// `fit`: each button is as wide as its label asks (and they share what is left), for many labels of unequal lengths in a narrow panel.
+export function Segmented<T extends string>(props: { value: T; options: { value: T; label: string }[]; onChange: (v: T) => void; fit?: boolean }) {
   return (
     <div className="flex min-w-0 rounded-[5px] bg-subtle p-0.5">
       {props.options.map((o) => (
@@ -266,7 +267,7 @@ export function Segmented<T extends string>(props: { value: T; options: { value:
           title={o.label}
           onClick={() => props.onChange(o.value)}
           aria-pressed={o.value === props.value}
-          className={`h-6 min-w-0 flex-1 truncate rounded-[4px] px-1.5 text-xs transition-colors outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+          className={`h-6 min-w-0 truncate rounded-[4px] text-xs transition-colors ${props.fit ? "flex-auto px-1" : "flex-1 px-1.5"} outline-none focus-visible:ring-2 focus-visible:ring-accent ${
             o.value === props.value ? "bg-white font-semibold text-ink ring-1 ring-line" : "text-muted hover:text-ink"
           }`}
         >

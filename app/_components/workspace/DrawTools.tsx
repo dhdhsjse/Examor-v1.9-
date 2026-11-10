@@ -28,7 +28,7 @@ const SPRING = "cubic-bezier(0.22, 1.2, 0.36, 1)"; // (a little past the end, th
 // The Draw button of the floating tool bar: a pencil standing in it. Clicked, the tool bar stretches and the brush and the
 // highlighter come out on each side of it; the one in hand stands up higher. Over the bar, a bubble says how it draws: its color,
 // its size and how much the hand is steadied (with a picture of the stroke). Clicking the tool in hand hides / shows the bubble.
-export default function DrawTools({ open, ink, onOpen }: { open: boolean; ink: InkTools; onOpen: () => void }) {
+export default function DrawTools({ open, ink, onOpen, onDark }: { open: boolean; ink: InkTools; onOpen: () => void; /** In a dark bar (the table tools' bar): the tool in hand and the one under the mouse are lit, not shaded */ onDark?: boolean }) {
   const t = useT();
   const [bubble, setBubble] = useState(true);
   const slots = useRef<Partial<Record<InkTool, HTMLButtonElement | null>>>({});
@@ -119,7 +119,7 @@ export default function DrawTools({ open, ink, onOpen }: { open: boolean; ink: I
                 title={label}
                 tabIndex={shown ? 0 : -1}
                 data-testid={`ink-${tool}`}
-                className={`group absolute inset-y-0 ${tool === "brush" ? "right-0" : "left-0"} w-[34px] rounded-[6px] outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent ${inHand ? "bg-black/[0.07]" : "hover:bg-black/[0.04]"}`}
+                className={`group absolute inset-y-0 ${tool === "brush" ? "right-0" : "left-0"} w-[34px] rounded-[6px] outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent ${onDark ? (inHand ? "bg-[#ffffff2e]" : "hover:bg-[#ffffff1f]") : inHand ? "bg-black/[0.07]" : "hover:bg-black/[0.04]"}`}
               >
                 <span
                   className="absolute start-1/2 top-0 block"

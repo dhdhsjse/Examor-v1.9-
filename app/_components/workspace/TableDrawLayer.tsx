@@ -307,7 +307,7 @@ export default function TableDrawLayer({ blocks, meta, pageIds, boxes, zoom, wid
       const y1 = Math.max(box.top, Math.min(box.top + box.height, p.y));
       const w = Math.abs(x1 - d.x0);
       const h = Math.abs(y1 - d.y0);
-      if (w < MIN_BOX.width || h < MIN_BOX.height) return;
+      if (w < MIN_BOX.width || h < MIN_BOX.height) return onSelect(null); // (a click on the paper: away from the table)
       onCreate({ pageIndex: d.page, x: Math.min(d.x0, x1) - box.left, y: Math.min(d.y0, y1) - box.top, width: Math.round(w), height: Math.round(h) });
     } else if (d.kind === "line") {
       const g = byId(d.id);

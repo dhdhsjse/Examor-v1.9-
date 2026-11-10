@@ -164,7 +164,7 @@ export default function Editor({ start }: { start: Start }) {
   const toastTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const eqTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const [tool, setTool] = useState<CanvasTool>("select");
-  const [tableMode, setTableMode] = useState<TableDrawMode>("draw");
+  const [tableMode, setTableMode] = useState<TableDrawMode>("select");
   const [stamp, setStamp] = useState<ToolAction | null>(null); // (the sticker of the correction sheet the Stamp tool puts on the page)
   const [shapeToDraw, setShapeToDraw] = useState<string | null>(null); // (Insert → Shapes: what the Shapes tool draws)
   const ink = useInkTools(); // the Draw tool: its brush, pencil and highlighter and how each draws (kept between sessions)
@@ -363,7 +363,7 @@ export default function Editor({ start }: { start: Start }) {
   const setCanvasTool = (next: CanvasTool) => {
     if (next === "table") {
       setEditing(null);
-      setTableMode("draw");
+      setTableMode("select");
     }
     setTool(next);
     if (next === "textbox" && tool !== "textbox") notify(tr("Drag on the page to draw a text box — Esc to cancel"));

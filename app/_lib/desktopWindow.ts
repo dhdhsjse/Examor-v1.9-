@@ -36,7 +36,8 @@ export function watchMaximized(onChange: (maximized: boolean) => void): () => vo
 
 // A Studio covers the whole window, but the window buttons stay above it (they are the title bar): its header keeps their corner
 // free, so its Insert and close buttons are never under them, and its empty parts move the window like the top bar.
-export const studioHeaderProps = () => ({
-  className: `flex items-center gap-3 border-b border-line px-4 py-2.5${hasWindowControls() ? " pe-[150px]" : ""}`,
+// `compact`: a header no higher than it has to be (as high as the top bar and the window buttons).
+export const studioHeaderProps = (compact = false) => ({
+  className: `flex items-center border-b border-line ${compact ? "h-9 shrink-0 gap-2 px-3" : "gap-3 px-4 py-2.5"}${hasWindowControls() ? " pe-[150px]" : ""}`,
   "data-tauri-drag-region": hasWindowControls() ? "" : undefined,
 });

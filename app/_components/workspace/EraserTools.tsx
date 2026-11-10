@@ -18,7 +18,7 @@ const MODES: { mode: EraserMode; label: string; hint: string; Icon: typeof Erase
 // The Eraser button of a floating tool bar (put it in the bar, which is `relative`). In hand, a bubble over it says how it rubs:
 // a real eraser (the parts of the drawings it goes over) or the stroke eraser (whole drawings and shapes), and how big it is. The
 // bubble steps aside when the eraser starts rubbing; clicking the button again brings it back (or hides it).
-export default function EraserTools({ open, eraser, onOpen, shortcut, corner = "rounded-[5px]" }: { open: boolean; eraser: EraserTool; onOpen: () => void; shortcut?: string; /** The button's corners, like the other buttons of its bar */ corner?: string }) {
+export default function EraserTools({ open, eraser, onOpen, shortcut, corner = "rounded-[5px]", button }: { open: boolean; eraser: EraserTool; onOpen: () => void; shortcut?: string; /** The button's corners, like the other buttons of its bar */ corner?: string; /** The button's whole look, for a bar in other colors (the table tools' bar) */ button?: (on: boolean) => string }) {
   const t = useT();
   const [bubble, setBubble] = useState(true);
   const shown = open && bubble;
@@ -49,7 +49,7 @@ export default function EraserTools({ open, eraser, onOpen, shortcut, corner = "
         title={label}
         aria-label={label}
         data-testid="eraser-tool"
-        className={toolBtn(open, corner)}
+        className={button ? button(open) : toolBtn(open, corner)}
       >
         <Eraser aria-hidden />
       </button>

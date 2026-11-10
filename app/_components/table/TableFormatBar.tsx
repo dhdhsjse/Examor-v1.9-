@@ -54,11 +54,13 @@ interface Props {
   /** …and with the "Image from this computer…" entry of its menu (none = no such entry) */
   onPickImage?: () => void;
   shapesActive?: boolean;
+  /** Less room above and under the buttons (the Studio: its bars are no higher than they have to be) */
+  dense?: boolean;
 }
 
 // The format bar of a table, for the Studio and for the right panel: what is done to the selected cells. Pressing a button never
 // takes the focus from the grid (or from the cell being typed in).
-export default function TableFormatBar({ table, range, active, actions, examFont, onPickShape, onPickImage, shapesActive }: Props) {
+export default function TableFormatBar({ table, range, active, actions, examFont, onPickShape, onPickImage, shapesActive, dense }: Props) {
   const t = useT();
   const none = !actions.hasSelection || !range || !active; // (what needs cells: rows, columns, sorting)
   const at = active ?? { r: 0, c: 0 };
@@ -78,7 +80,7 @@ export default function TableFormatBar({ table, range, active, actions, examFont
   const fmtOrNone = (next: NumberFormat) => actions.setFormat(Object.keys(next).filter((k) => next[k as keyof NumberFormat] !== undefined && next[k as keyof NumberFormat] !== false).length ? next : undefined);
 
   return (
-    <div ref={root} data-testid="table-format-bar" className="flex flex-col gap-1 border-b border-line bg-white px-2 py-1.5" onMouseDown={(e) => !(e.target instanceof HTMLElement && e.target.closest("input, select, textarea, label")) && e.preventDefault()}>
+    <div ref={root} data-testid="table-format-bar" className={`flex flex-col gap-1 border-b border-line bg-white px-2 ${dense ? "py-1" : "py-1.5"}`} onMouseDown={(e) => !(e.target instanceof HTMLElement && e.target.closest("input, select, textarea, label")) && e.preventDefault()}>
       <RibbonRow>
         <FontSelect value={actions.fontName} onChange={(family) => {
             actions.setFont(family);

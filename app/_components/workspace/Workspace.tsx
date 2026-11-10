@@ -343,6 +343,21 @@ export default function Workspace(props: Props) {
   };
   const [toolsUsed, setToolsUsed] = useState(false);
   if (tableTools && !toolsUsed) setToolsUsed(true);
+  // Selecting a table takes the Free table tool in hand (before the paint: the bar under the table is never seen), and when the tools came
+  // that way they go when no table is selected any more. Only when the selection changes: Close puts them down and the table stays selected.
+  const selectedTable = isDrawable(selected, doc.blocks) && !props.groupIds.length ? selected.id : null;
+  const toolsCameWithTable = useRef(false);
+  useLayoutEffect(() => {
+    if (props.tool !== "table") toolsCameWithTable.current = false;
+  }, [props.tool]);
+  useLayoutEffect(() => {
+    if (selectedTable) {
+      if (props.tool !== "select" || editing) return;
+      toolsCameWithTable.current = true;
+      props.onToolChange("table");
+    } else if (toolsCameWithTable.current) closeTableTools();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedTable]);
   // The bucket: it comes in hand, and what is selected takes its color at once
   const [cellFill, setCellFill] = useState<string | undefined>("#ffff00");
   // Its colors, open or not: kept here, so they stay open when a color chosen under a table brings the bar to the bottom of the worksheet

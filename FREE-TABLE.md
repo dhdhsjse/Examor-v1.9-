@@ -1,8 +1,10 @@
 # Free table
 
-Insert → **Free table** activates the worksheet pen. Drag a rectangle on any page to create the table, then draw horizontal or vertical dividers inside it. A divider extends across each cell it touches and snaps to nearby grid lines. The preview shows the resulting cut before release.
+Insert → **Free table** brings up the table tools, starting on Select. With the Pen, drag a rectangle on any page to create the table, then draw horizontal or vertical dividers inside it. A divider extends across each cell it touches and snaps to nearby grid lines. The preview shows the resulting cut before release.
 
-While the tools are in hand, their bar (in its own colors) takes the place of the floating tool bar, centered at the bottom of the worksheet. Its Close button puts them down and brings the floating tool bar back; so does Escape. The same bar also appears next to an ordinary editable table when it is selected:
+Selecting an editable table takes the same tools in hand, also starting on Select. Tools that came this way go again when the table is no longer selected (a click on the paper).
+
+While the tools are in hand, their bar (in its own colors) pops up in the place of the floating tool bar, centered at the bottom of the worksheet. Its Close button puts them down and brings the floating tool bar back; so does Escape. After Close, the table stays selected and the same bar appears next to it:
 
 - **Select:** the page works as with the usual Select tool (select and move blocks, type in cells) and the bar stays. V is its shortcut.
 
@@ -13,6 +15,8 @@ While the tools are in hand, their bar (in its own colors) takes the place of th
 - **Merge:** uses Table Studio's rules: the first cell retains its content, and the underlying rows and columns remain available to Split.
 - **Split:** choose rows and columns for each selected cell. A merged cell defaults to its existing grid divisions. Impossible splits are disabled; no partial changes are applied.
 - **Escape during a drawing or eraser gesture** cancels that gesture.
+
+**Text style** in the table's right Properties panel (font, size, color) goes to the selected cells, picked in the panel's grid or on the page; with no cell selected, to the whole table.
 
 **Open in Table Studio** is in the table's right Properties panel: edit the same table, then Update it in place.
 

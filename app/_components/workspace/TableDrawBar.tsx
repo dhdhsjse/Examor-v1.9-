@@ -1,7 +1,7 @@
 "use client";
 
 import { ChevronDown, Eraser, PaintBucket, PenLine, SquareDashedMousePointer, X } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import ColorPicker from "@/app/_components/inspector/ColorPicker";
 import { ColorGrid } from "@/app/_components/rich/FormatBar";
 import { COMMON_COLORS } from "@/app/_lib/fonts";
@@ -16,6 +16,8 @@ const pressable = "transition-[background-color,color,scale] duration-150 outlin
 const onBar = (on: boolean) => (on ? "bg-[#fff] text-[color:var(--table-bar)] shadow-sm" : "text-[#fff] hover:bg-[#ffffff1f]");
 const toolBtn = (on: boolean) => `ui-icon grid size-8 place-items-center rounded-[7px] ${pressable} disabled:pointer-events-none disabled:opacity-40 ${onBar(on)}`;
 const sep = <span aria-hidden className="mx-0.5 h-5 w-px bg-[#ffffff33]" />;
+/** A button and a separator of the bar, for the tools another screen adds to it (the Table Studio's) */
+export { toolBtn as tableBarButton, sep as tableBarSep };
 
 // A cell, with what is drawn in it (the stroke's width comes from .ui-icon, like the icons next to it)
 function CellIcon({ children }: { children: React.ReactNode }) {
@@ -52,16 +54,20 @@ interface Props {
   fillOpen: boolean;
   onFillOpen: (open: boolean) => void;
   /** Puts the table tools down and brings the page's tool bar back (only shown while they are in hand) */
-  onClose: () => void;
+  onClose?: () => void;
   /** Something to tell for a moment */
   message: string | null;
+  /** The Table Studio's bar: its own tools (drawing, text box, eraser, image, keyboard) after Split. Select is always there and picks the
+   *  cells too (no Select cells), and there is nothing to close. `mode` null: one of the Studio's own tools is in hand. */
+  studio?: ReactNode;
 }
 
 // The floating bar of the tables, under the selected table, or at the bottom of the worksheet in the place of the page's tool bar while
 // the tools are in hand: Select (the page works as usual, the bar stays), the pen, the eraser, the selection of cells, the bucket, Merge
 // and Split, and the button that closes the tools.
-export default function TableDrawBar({ mode, onMode, hasTable, cells, span, onMerge, onSplit, canSplit, fill, onBucket, onFill, fillOpen, onFillOpen: setFillOpen, onClose, message }: Props) {
+export default function TableDrawBar({ mode, onMode, hasTable, cells, span, onMerge, onSplit, canSplit, fill, onBucket, onFill, fillOpen, onFillOpen: setFillOpen, onClose, message, studio }: Props) {
   const t = useT();
+  const inStudio = studio !== undefined;
   const fillRef = useRef<HTMLDivElement>(null);
   const [splitOpen, setSplitOpen] = useState(false);
   const [cols, setCols] = useState("2");
@@ -140,10 +146,10 @@ export default function TableDrawBar({ mode, onMode, hasTable, cells, span, onMe
       className="table-tools-bar pointer-events-auto relative w-max max-w-full rounded-[11px] p-1.5"
     >
       <div role="toolbar" aria-label={t("Table tools")} className="flex flex-wrap items-center gap-0.5">
-        {mode && tool("select", "Select and move", <SelectIcon />, "table-tool-select")}
+        {(mode || inStudio) && tool("select", "Select and move", <SelectIcon />, "table-tool-select")}
         {tool("draw", "Draw a table: pen", <PenLine aria-hidden />, "table-tool-draw")}
         {tool("erase", "Erase a line", <Eraser aria-hidden />, "table-tool-erase")}
-        {tool("cells", "Select cells", <SquareDashedMousePointer aria-hidden />, "table-tool-cells")}
+        {!inStudio && tool("cells", "Select cells", <SquareDashedMousePointer aria-hidden />, "table-tool-cells")}
         <div ref={fillRef} className="relative flex items-center">
           <button type="button" onClick={onBucket} aria-pressed={mode === "fill"} title={t("Cell fill")} aria-label={t("Cell fill")} data-testid="table-tool-fill" className={`${toolBtn(mode === "fill")} relative rounded-e-none`}>
             <PaintBucket aria-hidden />
@@ -208,8 +214,10 @@ export default function TableDrawBar({ mode, onMode, hasTable, cells, span, onMe
             </div>
           )}
         </div>
-        {mode && sep}
-        {mode && (
+        {inStudio && sep}
+        {studio}
+        {mode && onClose && sep}
+        {mode && onClose && (
           <button type="button" onClick={onClose} title={t("Close table tools")} aria-label={t("Close table tools")} data-testid="table-tools-close" className={`ui-icon grid size-8 place-items-center rounded-[7px] text-[#fff] ${pressable} hover:bg-[#ef4444]`}>
             <X aria-hidden />
           </button>

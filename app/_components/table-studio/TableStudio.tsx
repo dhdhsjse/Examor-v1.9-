@@ -1,7 +1,7 @@
 "use client";
 
 import { Redo2, Trash2, TriangleAlert, Undo2, X } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { StudioKeyboard } from "@/app/_components/math-keyboard/StudioKeyboard";
 import DiscardDialog from "@/app/_components/molecule-studio/DiscardDialog";
 import ShapeProperties from "@/app/_components/shapes/ShapeProperties";
@@ -9,7 +9,8 @@ import TableFormatBar from "@/app/_components/table/TableFormatBar";
 import TableGrid from "@/app/_components/table/TableGrid";
 import TableSettings from "@/app/_components/table/TableSettings";
 import { makeActions } from "@/app/_components/table/tableActions";
-import { clampSel, selRange, type Sel } from "@/app/_components/table/tableSel";
+import { cellSel, clampSel, rangeSel, selRange, type Sel } from "@/app/_components/table/tableSel";
+import TableDrawLayer, { type TableDrawMode } from "@/app/_components/workspace/TableDrawLayer";
 import { CONTENT_WIDTH } from "@/app/_lib/a4";
 import { layoutTable } from "@/app/_lib/blockLayout";
 import { DEFAULT_FONT } from "@/app/_lib/fonts";
@@ -18,12 +19,13 @@ import { eraseStrokes } from "@/app/_lib/ink/eraser";
 import { useEraserTool } from "@/app/_lib/ink/useEraserTool";
 import { useInkTools } from "@/app/_lib/ink/useInkTools";
 import { FREEHAND_ID, addShape, newPictureItem, newShapeId, duplicateShape, isLine, isPicture, removeShape, reorderShape, updateShape, type Order, type ShapeItem, type ShapeStyle } from "@/app/_lib/shapes";
-import { anchorOf, colsOf, rowsOf, tableMirrored, wholeMerges } from "@/app/_lib/table";
+import { anchorOf, colsOf, rowsOf, setStyle, tableMirrored, wholeMerges, type TablePatch } from "@/app/_lib/table";
+import { cellsOf, rangeIn, splitRange, type Frame } from "@/app/_lib/table/draw";
 import type { ExamMeta, TableBlock } from "@/app/_lib/types";
 import { useUi } from "@/app/_lib/uiLang";
-import { blankStudioTable, studioTableOf } from "./tablePreset";
+import { blankStudioTable, studioBlock, studioTableOf } from "./tablePreset";
 import TableDrawingLayer, { type TableTool } from "./TableDrawingLayer";
-import TableToolDock from "./TableToolDock";
+import TableStudioBar from "./TableStudioBar";
 import { useTableStudio, type StudioTable } from "./useTableStudio";
 import { studioHeaderProps } from "@/app/_lib/desktopWindow";
 
@@ -43,10 +45,15 @@ interface Props {
 // A text box drawn on the table that was left empty goes away (it would be an invisible box).
 const emptyTextBox = (s: ShapeItem | undefined) => !!s && !s.text?.trim() && s.fill === null && s.stroke === null;
 
+/** The table tools of the bar that work on the lines and the cells of the table (see workspace/TableDrawLayer) */
+type LineTool = Exclude<TableDrawMode, "select" | "cells">;
+const PEN_ID = "studio"; // (the table, as the block the page's table tools work on)
+
 // The Table Studio: a full-screen spreadsheet for the table of an exam: cells to type in, select, copy and paste (also from Excel),
 // merge and fill; looks, lines, fonts, number formats and formulas. The cells are drawn at the sizes the page gives them, and what is
 // drawn over the table (the brush, pencil and highlighter of the floating bar, shapes, text boxes) is drawn right on them, where the page
-// will show it. What is true of the whole table, or of the selected shape, is on the right. What is inserted is an ordinary table
+// will show it. The floating bar is the page's bar of the tables with the Studio's own tools after it: its pen draws the lines of the
+// table, its eraser rubs them out, its bucket colors the cells, as on the page (the same layer, workspace/TableDrawLayer). What is true of the whole table, or of the selected shape, is on the right. What is inserted is an ordinary table
 // block, so it can be changed again from the right panel, with the same tools, or here (the block's panel has a button back to the Studio).
 export default function TableStudio({ meta, editing, startShape, onInsert, onUpdate, onClose }: Props) {
   const { t } = useUi();
@@ -61,6 +68,11 @@ export default function TableStudio({ meta, editing, startShape, onInsert, onUpd
   const [shapeId, setShapeId] = useState<string | null>(null);
   const [textId, setTextId] = useState<string | null>(null); // the shape whose text is being typed on the table
   const [confirmClose, setConfirmClose] = useState(false);
+  const [lineTool, setLineTool] = useState<LineTool | null>(null); // the table tool in hand (the Studio's own tool is then Select)
+  const [cellFill, setCellFill] = useState<string | undefined>("#ffff00"); // the color of the bucket
+  const [fillOpen, setFillOpen] = useState(false);
+  const [barNote, setBarNote] = useState<string | null>(null);
+  const gesture = useRef(0); // (a key of its own for each change made from the bar: one step of the undo each)
   const sel = clampSel(picked, rowsOf(table), colsOf(table));
   const range = sel ? wholeMerges(table, selRange(sel)) : null;
   const active = sel ? anchorOf(table, sel.focus.r, sel.focus.c) : null;
@@ -73,6 +85,11 @@ export default function TableStudio({ meta, editing, startShape, onInsert, onUpd
     const { width, ...data } = table;
     return layoutTable({ ...data, id: "studio", type: "table", layout: { pageId: "p", x: 0, y: 0, width, height: 0 } }, meta);
   }, [table, meta]);
+  // The same table for the page's table tools: one block (without what is drawn over it) on one page of its size.
+  const frame = useMemo<Frame>(() => ({ colW: layout.colW, rowH: layout.rows.map((row) => row.height) }), [layout]);
+  const penBlocks = useMemo(() => [studioBlock(table, PEN_ID, false)], [table]);
+  const penBoxes = useMemo(() => [{ left: 0, top: 0, width: table.width, height: layout.height }], [table.width, layout.height]);
+  const pickedCells = range ? cellsOf(table).filter((c) => c.r >= range.r0 && c.r <= range.r1 && c.c >= range.c0 && c.c <= range.c1) : [];
   const textStyle = useMemo<Partial<ShapeStyle>>(
     () => ({ fontFamily: table.font?.family ?? meta.fontFamily, fontSize: layout.F.body.font.size, textAlign: lang === "ar" ? "right" : "left", textVAlign: "top" }),
     [table.font?.family, meta.fontFamily, layout.F.body.font.size, lang],
@@ -84,8 +101,42 @@ export default function TableStudio({ meta, editing, startShape, onInsert, onUpd
 
   const pickTool = (next: TableTool) => {
     setTool(next);
+    setLineTool(null);
     if (next !== "select") setShapeId(null);
   };
+  // A table tool of the bar: Select (it picks the cells too), or the pen, the eraser of lines, the bucket.
+  const pickLineTool = (mode: TableDrawMode) => {
+    const line = mode === "select" || mode === "cells" ? null : mode;
+    setTool("select");
+    setLineTool(line);
+    if (line) setShapeId(null);
+  };
+  const nextKey = (name: string) => `${name}:${++gesture.current}`;
+  // What the pen, the eraser of lines and the bucket did: one step of the undo, and the cells are let go of (as on the page).
+  const applyLines = (patch: TablePatch, key: string) => {
+    apply(patch, key);
+    setSel(null);
+  };
+  // The bucket: it comes in hand, and the selected cells take its color at once.
+  const bucket = (color: string | undefined) => {
+    setCellFill(color);
+    const patch = range ? setStyle(table, range, { fill: color }) : null;
+    if (patch) apply(patch, nextKey("fill"));
+    pickLineTool("fill");
+  };
+  const splitPicked = (cols: number, rows: number) => {
+    if (!range) return;
+    const out = splitRange(table, frame, range, cols, rows);
+    if (!out) return setBarNote("This split does not fit. Choose fewer rows or columns, or enlarge the cells.");
+    apply(out.patch, nextKey("split"));
+    const area = rangeIn({ ...table, ...out.patch }, out.frame, out.area);
+    setSel(area ? rangeSel(area) : null);
+  };
+  useEffect(() => {
+    if (!barNote) return;
+    const id = setTimeout(() => setBarNote(null), 3500);
+    return () => clearTimeout(id);
+  }, [barNote]);
   const pickShape = (kind: string) => {
     if (kind === FREEHAND_ID) return pickTool("draw");
     setShapeKind(kind);
@@ -106,7 +157,7 @@ export default function TableStudio({ meta, editing, startShape, onInsert, onUpd
     if (!picture) return;
     const item = newPictureItem(picture, { w: table.width, h: Math.max(layout.height, 60) });
     apply({ shapes: addShape(shapes, item) }, `add:${item.id}`);
-    setTool("select");
+    pickTool("select");
     selectShape(item.id);
   };
   // Another image for a picture: it keeps its place and width, and takes the proportions of the new one.
@@ -161,7 +212,8 @@ export default function TableStudio({ meta, editing, startShape, onInsert, onUpd
       const key = e.key.toLowerCase();
       if (e.key === "Escape") {
         if (typing) return;
-        if (tool !== "select") setTool("select");
+        if (lineTool) setLineTool(null);
+        else if (tool !== "select") setTool("select");
         else if (shapeId) setShapeId(null);
         else requestClose();
       } else if ((e.ctrlKey || e.metaKey) && !typing && (key === "z" || key === "y")) {
@@ -188,11 +240,17 @@ export default function TableStudio({ meta, editing, startShape, onInsert, onUpd
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [confirmClose, dirty, undo, redo, onClose, tool, shapeId, shape, shapes]);
+  }, [confirmClose, dirty, undo, redo, onClose, tool, lineTool, shapeId, shape, shapes]);
 
-  const iconButton = "grid size-8 place-items-center rounded-lg text-muted enabled:hover:bg-subtle enabled:hover:text-ink disabled:opacity-40";
+  const iconButton = "grid size-7 shrink-0 place-items-center rounded-md text-muted enabled:hover:bg-subtle enabled:hover:text-ink disabled:opacity-40";
   const hint =
-    tool === "draw"
+    lineTool === "draw"
+      ? t("Drag across the table to draw a line: it cuts the cells it crosses · Esc to stop")
+      : lineTool === "erase"
+        ? t("Click a line to rub it out: the cells on both sides are merged")
+        : lineTool === "fill"
+          ? t("Click a cell to color it, or drag over several · Esc to stop")
+          : tool === "draw"
       ? t("Drag on the table to draw freely · Esc to stop")
       : tool === "shape"
         ? t("Drag on the table to draw the shape (Shift: a square or a 45° line, Alt: from the centre), or click to put it at its usual size · Esc to stop")
@@ -204,10 +262,10 @@ export default function TableStudio({ meta, editing, startShape, onInsert, onUpd
 
   return (
     <div data-testid="table-studio" className="fixed inset-0 z-50 flex flex-col bg-white">
-      <header {...studioHeaderProps()}>
-        <h2 className="shrink-0 text-base font-semibold text-ink">{t("Table Studio")}</h2>
-        <span className="shrink-0 rounded-full bg-accent-soft px-2.5 py-0.5 text-xs font-medium text-accent-strong">{t("Spreadsheet")}</span>
-        <div className="mx-2 h-5 w-px bg-line" />
+      <header {...studioHeaderProps(true)}>
+        <h2 className="shrink-0 text-sm font-semibold text-ink">{t("Table Studio")}</h2>
+        <span className="shrink-0 rounded-full bg-accent-soft px-2 py-px text-[11px] font-medium text-accent-strong">{t("Spreadsheet")}</span>
+        <div className="mx-1 h-4 w-px bg-line" />
         <button onClick={undo} disabled={!canUndo} title={`${t("Undo")} (Ctrl+Z)`} aria-label={t("Undo")} data-testid="undo" className={iconButton}>
           <Undo2 size={16} />
         </button>
@@ -217,17 +275,17 @@ export default function TableStudio({ meta, editing, startShape, onInsert, onUpd
         <p data-testid="studio-hint" className="hidden min-w-0 flex-1 truncate text-xs text-muted lg:block">
           {hint}
         </p>
-        <button onClick={() => (editing ? onUpdate(table) : onInsert(table))} data-testid="insert" className="ms-auto shrink-0 rounded-lg bg-accent px-4 py-1.5 text-sm font-medium text-white hover:bg-accent-strong">
+        <button onClick={() => (editing ? onUpdate(table) : onInsert(table))} data-testid="insert" className="ms-auto h-[26px] shrink-0 rounded-md bg-accent px-3.5 text-[13px] font-medium text-white hover:bg-accent-strong">
           {editing ? t("Update") : t("Insert")}
         </button>
-        <button onClick={requestClose} className="grid size-8 shrink-0 place-items-center rounded-lg text-muted hover:bg-subtle hover:text-ink" title={t("Close (Esc)")} aria-label={t("Close (Esc)")}>
-          <X size={18} />
+        <button onClick={requestClose} className="grid size-7 shrink-0 place-items-center rounded-md text-muted hover:bg-subtle hover:text-ink" title={t("Close (Esc)")} aria-label={t("Close (Esc)")}>
+          <X size={16} />
         </button>
       </header>
 
       <div className="flex min-h-0 flex-1">
         <main className="studio-desk relative flex min-w-0 flex-1 flex-col">
-          <TableFormatBar table={table} range={range} active={active} actions={actions} examFont={meta.fontFamily ?? DEFAULT_FONT} onPickShape={pickShape} onPickImage={chooseImage} shapesActive={tool === "shape"} />
+          <TableFormatBar table={table} range={range} active={active} actions={actions} examFont={meta.fontFamily ?? DEFAULT_FONT} onPickShape={pickShape} onPickImage={chooseImage} shapesActive={tool === "shape"} dense />
           <TableGrid
             table={table}
             lang={lang}
@@ -242,33 +300,82 @@ export default function TableStudio({ meta, editing, startShape, onInsert, onUpd
               layout,
               width: table.width,
               overlay: (scale) => (
-                <TableDrawingLayer
-                  width={table.width}
-                  rowsHeight={layout.height}
-                  scale={scale}
-                  shapes={shapes}
-                  tool={tool}
-                  shapeKind={shapeKind}
-                  ink={ink}
-                  textStyle={textStyle}
-                  selectedId={shapeId}
-                  editingId={textId}
-                  onSelect={selectShape}
-                  onChange={changeShape}
-                  onAdd={addItem}
-                  eraser={eraser}
-                  onErase={eraseShapes}
-                  onEraseInk={eraseInk}
-                  onEdit={endText}
-                />
+                <div dir="ltr" className="relative">
+                  <TableDrawingLayer
+                    width={table.width}
+                    rowsHeight={layout.height}
+                    scale={scale}
+                    shapes={shapes}
+                    tool={tool}
+                    shapeKind={shapeKind}
+                    ink={ink}
+                    textStyle={textStyle}
+                    selectedId={shapeId}
+                    editingId={textId}
+                    onSelect={selectShape}
+                    onChange={changeShape}
+                    onAdd={addItem}
+                    eraser={eraser}
+                    onErase={eraseShapes}
+                    onEraseInk={eraseInk}
+                    onEdit={endText}
+                  />
+                  {/* the pen, the eraser of lines and the bucket: the page's own layer, over the cells (in page px, drawn at their scale) */}
+                  {lineTool && (
+                    <div className="pointer-events-auto absolute top-0 left-0 origin-top-left" style={{ width: table.width, height: layout.height, transform: `scale(${scale})` }}>
+                      <TableDrawLayer
+                        blocks={penBlocks}
+                        meta={meta}
+                        pageIds={["p"]}
+                        boxes={penBoxes}
+                        zoom={scale}
+                        width={table.width}
+                        height={layout.height}
+                        mode={lineTool}
+                        fill={cellFill}
+                        selectedId={PEN_ID}
+                        onSelect={() => {}}
+                        onPatch={(_, patch, key) => applyLines(patch as unknown as TablePatch, key)}
+                        onCreate={() => {}}
+                        onExit={() => setLineTool(null)}
+                        onEditCell={(_, r, c) => {
+                          setLineTool(null);
+                          selectCells(cellSel(r, c));
+                        }}
+                        onMessage={setBarNote}
+                      />
+                    </div>
+                  )}
+                </div>
               ),
             }}
           />
-          {/* the floating tool bar: what it draws goes on the table */}
-          <TableToolDock tool={tool} onTool={pickTool} ink={ink} eraser={eraser} />
+          {/* the floating tool bar: the tools of the table, and what is drawn on it */}
+          <TableStudioBar
+            table={{
+              mode: lineTool ?? (tool === "select" ? "select" : null),
+              onMode: pickLineTool,
+              cells: pickedCells.length,
+              span: pickedCells.length === 1 ? { rows: pickedCells[0].rs, cols: pickedCells[0].cs } : null,
+              onMerge: actions.merge,
+              onSplit: splitPicked,
+              canSplit: (cols, rows) => !!(range && splitRange(table, frame, range, cols, rows)),
+              fill: cellFill,
+              onBucket: () => bucket(cellFill),
+              onFill: bucket,
+              fillOpen,
+              onFillOpen: setFillOpen,
+              message: barNote,
+            }}
+            tool={lineTool ? "select" : tool}
+            onTool={pickTool}
+            ink={ink}
+            eraser={eraser}
+            onImage={chooseImage}
+          />
         </main>
 
-        <aside className="flex w-[320px] shrink-0 flex-col gap-4 overflow-y-auto border-line bg-white p-4 ltr:border-l rtl:border-r">
+        <aside className="flex w-64 shrink-0 flex-col gap-3 overflow-y-auto border-line bg-white p-3 ltr:border-l rtl:border-r">
           {shapes.length > 0 && (
             <div role="note" data-testid="table-fixed-warning" className="flex gap-2.5 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2.5 text-[12px] leading-snug text-amber-900">
               <TriangleAlert size={16} className="mt-0.5 shrink-0 text-amber-700" />
@@ -283,7 +390,7 @@ export default function TableStudio({ meta, editing, startShape, onInsert, onUpd
             </div>
           )}
           {shape ? (
-            <section className="-mx-4 -mt-4">
+            <section className="-mx-3 -mt-3">
               <ShapeProperties
                 key={shape.id}
                 item={shape}

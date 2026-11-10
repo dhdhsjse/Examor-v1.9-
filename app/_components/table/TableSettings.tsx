@@ -5,7 +5,6 @@ import { Field, NumberInput, Segmented, SmallButton, Toggle } from "@/app/_compo
 import { MAX_COLS, MAX_ROWS, TABLE_HEADER_FILL, colsOf, resizeTable, rowsOf, type TableBorders, type TableData, type TablePatch } from "@/app/_lib/table";
 import { useT } from "@/app/_lib/uiLang";
 
-const BANDED = "#eef2ff";
 const BORDER_STYLES: { value: TableBorders; label: string }[] = [
   { value: "grid", label: "Grid" },
   { value: "box", label: "Box" },
@@ -31,7 +30,7 @@ interface Props {
   children?: ReactNode;
 }
 
-// What is true of the whole table: its size, the header, the first column, banded rows, the lines, formulas. Used by the Studio and by
+// What is true of the whole table: its size, the header, the first column, the lines, formulas. Used by the Studio and by
 // the right panel, so the two say the same things.
 export default function TableSettings({ table, onChange, width, children }: Props) {
   const t = useT();
@@ -65,15 +64,9 @@ export default function TableSettings({ table, onChange, width, children }: Prop
         </div>
       )}
       <Toggle checked={!!table.flip} onChange={(on) => set({ flip: on || undefined }, "flip")} label={t("Flip the table")} hint={t("The columns in the other order: A B C D… becomes …D C B A. The text keeps its direction.")} />
-      <Toggle checked={!!table.banded} onChange={(on) => set({ banded: on ? BANDED : undefined }, "banded")} label={t("Shade every second row")} />
-      {table.banded && (
-        <div className="ps-6">
-          <Color label={t("Shading color")} value={table.banded} onChange={(banded) => set({ banded }, "bandedColor")} />
-        </div>
-      )}
 
       <Field label={t("Lines")} group>
-        <Segmented value={table.borders ?? "grid"} options={BORDER_STYLES.map((o) => ({ value: o.value, label: t(o.label) }))} onChange={(borders) => set({ borders: borders === "grid" ? undefined : borders }, "borders")} />
+        <Segmented fit value={table.borders ?? "grid"} options={BORDER_STYLES.map((o) => ({ value: o.value, label: t(o.label) }))} onChange={(borders) => set({ borders: borders === "grid" ? undefined : borders }, "borders")} />
       </Field>
       {(table.borders ?? "grid") !== "none" && <Color label={t("Line color")} value={table.borderColor ?? "#111827"} onChange={(borderColor) => set({ borderColor }, "borderColor")} />}
 

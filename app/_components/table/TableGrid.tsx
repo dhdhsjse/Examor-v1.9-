@@ -538,11 +538,12 @@ export default function TableGrid({ table, lang, sel, onSelect, onChange, onUndo
   return (
     <div ref={holder} className="flex min-h-0 min-w-0 flex-col" data-testid={testId}>
       {/* the formula bar: the name of the cell, and what is in it as typed */}
-      <div className="flex items-center gap-2 border-b border-line bg-white px-2 py-1.5" dir="ltr">
-        <span data-testid="table-cell-name" className="grid h-7 min-w-14 place-items-center rounded-md border border-line bg-subtle px-2 text-xs font-semibold text-ink tabular-nums">
+      {/* (in the Studio it is no higher than it has to be) */}
+      <div className={`flex items-center gap-2 border-b border-line bg-white px-2 ${page ? "py-1" : "py-1.5"}`} dir="ltr">
+        <span data-testid="table-cell-name" className={`grid min-w-14 place-items-center rounded-md border border-line bg-subtle px-2 text-xs font-semibold text-ink tabular-nums ${page ? "h-[26px]" : "h-7"}`}>
           {hasSel ? rangeName(range) : "—"}
         </span>
-        <div className={`min-w-0 flex-1 rounded-md border border-line bg-white px-2 py-1 text-[13px] focus-within:border-indigo-400 ${hasSel ? "" : "pointer-events-none opacity-50"}`} dir={textRtl ? "rtl" : "ltr"} data-testid="table-formula-bar">
+        <div className={`min-w-0 flex-1 rounded-md border border-line bg-white px-2 text-[13px] focus-within:border-indigo-400 ${page ? "py-[3px]" : "py-1"} ${hasSel ? "" : "pointer-events-none opacity-50"}`} dir={textRtl ? "rtl" : "ltr"} data-testid="table-formula-bar">
           <RichEditable
             value={edit ? edit.draft : hasSel ? raw : ""}
             onChange={(draft) => setEdit((cur) => (cur ? { ...cur, draft } : hasSel ? { r: active.r, c: active.c, draft, from: "bar" } : cur))}
