@@ -1,20 +1,20 @@
 "use client";
 
-import { ChevronDown, Eraser, PaintBucket, PenLine, SquareDashedMousePointer } from "lucide-react";
+import { ChevronDown, Eraser, PaintBucket, PenLine, SquareDashedMousePointer, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { ColorGrid } from "@/app/_components/rich/FormatBar";
-import { FILL_COLORS } from "@/app/_lib/fonts";
+import { COMMON_COLORS } from "@/app/_lib/fonts";
 import { useT } from "@/app/_lib/uiLang";
 import { MAX_COLS, MAX_ROWS } from "@/app/_lib/table";
 import type { TableDrawMode } from "./TableDrawLayer";
 import { SelectIcon } from "./ToolRail";
 
-const FILLS = ["#ffffff", ...FILL_COLORS];
-
-// (the buttons of the page's floating tool bar, ToolRail)
-const toolBtn = (on: boolean) =>
-  `ui-icon grid size-8 place-items-center rounded-[5px] transition-colors outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:pointer-events-none disabled:opacity-40 ${on ? "bg-accent text-white" : "text-ink hover:bg-hover"}`;
-const sep = <span aria-hidden className="mx-0.5 h-5 w-px bg-line" />;
+// White on the bar's own colors (globals.css, .table-tools-bar), the tool in use a white tile. (Written as colors: in the dark look
+// `bg-white` and the accent's shades mean something else.)
+const pressable = "transition-[background-color,color,scale] duration-150 outline-none active:scale-95 focus-visible:ring-2 focus-visible:ring-[#fff]";
+const onBar = (on: boolean) => (on ? "bg-[#fff] text-[#27272a] shadow-sm" : "text-[#fff] hover:bg-[#ffffff1f]");
+const toolBtn = (on: boolean) => `ui-icon grid size-8 place-items-center rounded-[7px] ${pressable} disabled:pointer-events-none disabled:opacity-40 ${onBar(on)}`;
+const sep = <span aria-hidden className="mx-0.5 h-5 w-px bg-[#ffffff33]" />;
 
 // A cell, with what is drawn in it (the stroke's width comes from .ui-icon, like the icons next to it)
 function CellIcon({ children }: { children: React.ReactNode }) {
@@ -47,15 +47,16 @@ interface Props {
   onBucket: () => void;
   /** A color is chosen: the same, with that color */
   onFill: (color: string | undefined) => void;
-  /** Puts the table tools down (only shown while they are in hand) */
-  onExit: () => void;
+  /** Puts the table tools down and brings the page's tool bar back (only shown while they are in hand) */
+  onClose: () => void;
   /** Something to tell for a moment */
   message: string | null;
 }
 
 // The floating bar of the tables, under the selected table, or at the bottom of the worksheet in the place of the page's tool bar while
-// the tools are in hand: the arrow that puts them down, the pen, the eraser, the selection of cells, the bucket, then Merge and Split.
-export default function TableDrawBar({ mode, onMode, hasTable, cells, span, onMerge, onSplit, canSplit, fill, onBucket, onFill, onExit, message }: Props) {
+// the tools are in hand: Select (the page works as usual, the bar stays), the pen, the eraser, the selection of cells, the bucket, Merge
+// and Split, and the button that closes the tools.
+export default function TableDrawBar({ mode, onMode, hasTable, cells, span, onMerge, onSplit, canSplit, fill, onBucket, onFill, onClose, message }: Props) {
   const t = useT();
   const [fillOpen, setFillOpen] = useState(false);
   const fillRef = useRef<HTMLDivElement>(null);
@@ -133,21 +134,17 @@ export default function TableDrawBar({ mode, onMode, hasTable, cells, span, onMe
       data-testid="table-draw-bar"
       dir="ltr"
       onMouseDown={(e) => !(e.target as HTMLElement).closest("input") && e.preventDefault()}
-      className="pointer-events-auto relative w-max max-w-full rounded-md border border-line bg-surface p-1 shadow-sm"
+      className="table-tools-bar pointer-events-auto relative w-max max-w-full rounded-[11px] p-1.5"
     >
       <div role="toolbar" aria-label={t("Table tools")} className="flex flex-wrap items-center gap-0.5">
-        {mode && (
-          <button type="button" onClick={onExit} title={t("Select and move")} aria-label={t("Select and move")} data-testid="table-tool-exit" className={toolBtn(false)}>
-            <SelectIcon />
-          </button>
-        )}
+        {mode && tool("select", "Select and move", <SelectIcon />, "table-tool-select")}
         {tool("draw", "Draw a table: pen", <PenLine aria-hidden />, "table-tool-draw")}
         {tool("erase", "Erase a line", <Eraser aria-hidden />, "table-tool-erase")}
         {tool("cells", "Select cells", <SquareDashedMousePointer aria-hidden />, "table-tool-cells")}
         <div ref={fillRef} className="relative flex items-center">
           <button type="button" onClick={onBucket} aria-pressed={mode === "fill"} title={t("Cell fill")} aria-label={t("Cell fill")} data-testid="table-tool-fill" className={`${toolBtn(mode === "fill")} relative rounded-e-none`}>
             <PaintBucket aria-hidden />
-            <span aria-hidden data-testid="table-fill-swatch" className="absolute inset-x-2 bottom-[3px] h-[3px] rounded-full ring-1 ring-black/20" style={{ background: fill ?? "transparent" }} />
+            <span aria-hidden data-testid="table-fill-swatch" className={`absolute inset-x-2 bottom-[3px] h-[3px] rounded-full ring-1 ${mode === "fill" ? "ring-black/25" : "ring-[#ffffffb3]"}`} style={{ background: fill ?? "transparent" }} />
           </button>
           <button
             type="button"
@@ -157,7 +154,7 @@ export default function TableDrawBar({ mode, onMode, hasTable, cells, span, onMe
             title={t("Fill color")}
             aria-label={t("Fill color")}
             data-testid="table-fill-menu"
-            className={`grid h-8 w-4 place-items-center rounded-e-[5px] transition-colors outline-none focus-visible:ring-2 focus-visible:ring-accent ${mode === "fill" ? "bg-accent-strong text-white" : "text-muted hover:bg-hover hover:text-ink"}`}
+            className={`grid h-8 w-4 place-items-center rounded-e-[7px] ${pressable} ${onBar(mode === "fill")}`}
           >
             <ChevronDown size={12} strokeWidth={2} aria-hidden />
           </button>
@@ -166,7 +163,7 @@ export default function TableDrawBar({ mode, onMode, hasTable, cells, span, onMe
               <ColorGrid
                 value={fill}
                 autoLabel={t("None")}
-                colors={FILLS}
+                colors={COMMON_COLORS}
                 onChange={(color) => {
                   onFill(color);
                   setFillOpen(false);
@@ -205,9 +202,15 @@ export default function TableDrawBar({ mode, onMode, hasTable, cells, span, onMe
             </div>
           )}
         </div>
+        {mode && sep}
+        {mode && (
+          <button type="button" onClick={onClose} title={t("Close table tools")} aria-label={t("Close table tools")} data-testid="table-tools-close" className={`ui-icon grid size-8 place-items-center rounded-[7px] text-[#fff] ${pressable} hover:bg-[#ef4444]`}>
+            <X aria-hidden />
+          </button>
+        )}
       </div>
       {message && (
-        <p dir="auto" role="status" data-testid="table-bar-note" className="mx-1.5 mt-1 max-w-80 pb-0.5 text-xs leading-relaxed font-medium text-amber-700">
+        <p dir="auto" role="status" data-testid="table-bar-note" className="mx-1.5 mt-1 max-w-80 pb-0.5 text-xs leading-relaxed font-medium text-[#fde68a]">
           {t(message)}
         </p>
       )}

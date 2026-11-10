@@ -19,8 +19,9 @@ import { copyTableCells, pasteTableCells } from "../table/tableClipboard";
 // What a press on a table does while the table tools are in hand (the floating bar of the tables, TableDrawBar):
 // "draw" = the pen: a drag on the paper draws a new table (a box), a drag on a table draws a line across it (horizontal or vertical, the way the
 // mouse went); "erase" = a click on a line rubs it out; "cells" = a drag selects cells (the right panel, Merge and Split work on them), a
-// double-click types in a cell; "fill" = the bucket: a click colors the cell under it, a drag every cell it goes over.
-export type TableDrawMode = "draw" | "erase" | "cells" | "fill";
+// double-click types in a cell; "fill" = the bucket: a click colors the cell under it, a drag every cell it goes over; "select" = this layer
+// lets everything through: the page works as with the Select tool, and the bar of the tables stays.
+export type TableDrawMode = "select" | "draw" | "erase" | "cells" | "fill";
 
 const ACCENT = "var(--color-accent)";
 const ERASE = "#ef4444";
@@ -108,8 +109,8 @@ interface Props {
   zoom: number;
   width: number;
   height: number;
-  /** null: the tools are not in hand (only the selected cells of the selected table are shown) */
-  mode: TableDrawMode | null;
+  /** null: nothing is drawn with it (the tools are not in hand, or Select is: only the selected cells of the selected table are shown) */
+  mode: Exclude<TableDrawMode, "select"> | null;
   /** The color of the bucket (undefined: it takes the fill off) */
   fill: string | undefined;
   selectedId: string | null;
@@ -117,7 +118,7 @@ interface Props {
   onPatch: (id: string, patch: BlockPatch, key: string) => void;
   /** A box drawn on the paper with the pen: a new table of one cell */
   onCreate: (box: DrawnBox) => void;
-  /** A click on the paper away from the tables: the tools are put down */
+  /** Esc: the tools are put down */
   onExit: () => void;
   onEditCell: (id: string, r: number, c: number) => void;
   /** Something to tell (the table cannot take another line) */
@@ -258,16 +259,11 @@ export default function TableDrawLayer({ blocks, meta, pageIds, boxes, zoom, wid
     } else if (mode === "draw") {
       const page = pageAt(y, boxes);
       const box = boxes[page];
-      if (!box || x < box.left || x > box.left + box.width || y < box.top || y > box.top + box.height) return void exitAway();
+      if (!box || x < box.left || x > box.left + box.width || y < box.top || y > box.top + box.height) return onSelect(null);
       setDrag({ kind: "box", page, x0: x, y0: y, x1: x, y1: y });
-    } else return void exitAway();
+    } else return onSelect(null); // (away from the tables: the tools stay in hand, the bar's button closes them)
     pointer.current = e.pointerId;
     ref.current?.setPointerCapture(e.pointerId);
-  };
-
-  const exitAway = () => {
-    onSelect(null);
-    onExit();
   };
 
   const move = (e: ReactPointerEvent) => {

@@ -85,6 +85,7 @@ export const TABLE_FR: Record<string, string> = {
   "Draw a table": "Dessiner un tableau",
   "Free table": "Tableau libre",
   "Table tools": "Outils de tableau",
+  "Close table tools": "Fermer les outils de tableau",
   "Table drawing area": "Zone de dessin du tableau",
   "This split does not fit. Choose fewer rows or columns, or enlarge the cells.": "Ce fractionnement ne tient pas. Réduisez le nombre de lignes ou de colonnes, ou agrandissez les cellules.",
   "Draw a table: pen": "Dessiner un tableau : stylo",
@@ -106,6 +107,7 @@ export const TABLE_FR: Record<string, string> = {
 export const TABLE_AR: Record<string, string> = {
   "Free table": "جدول حر",
   "Table tools": "أدوات الجدول",
+  "Close table tools": "إغلاق أدوات الجدول",
   "Table drawing area": "مساحة رسم الجدول",
   "This split does not fit. Choose fewer rows or columns, or enlarge the cells.": "لا توجد مساحة كافية لهذا التقسيم. قلّل عدد الصفوف أو الأعمدة، أو كبّر الخلايا.",
   "Table Studio": "استوديو الجداول",

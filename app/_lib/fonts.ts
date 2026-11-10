@@ -52,3 +52,5 @@ export function installedFonts(): Promise<Set<string>> {
 export const TEXT_COLORS = ["#111827", "#4b5563", "#dc2626", "#ea580c", "#ca8a04", "#15803d", "#0d9488", "#2563eb", "#4f46e5", "#9333ea", "#db2777"];
 // Light fills (text box background): dark text stays readable on them, also when printed.
 export const FILL_COLORS = ["#fef08a", "#fed7aa", "#fecaca", "#fbcfe8", "#e9d5ff", "#bfdbfe", "#a5f3fc", "#bbf7d0", "#f3f4f6", "#e5e7eb"];
+// The plain colors everyone knows (the cell fill of the table tools, the text color of a table in the right panel).
+export const COMMON_COLORS = ["#ffffff", "#d9d9d9", "#808080", "#000000", "#ff0000", "#ffa500", "#ffff00", "#00b050", "#0070c0", "#7030a0", "#ffc0cb"];

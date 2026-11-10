@@ -1,7 +1,7 @@
 "use client";
 
 import { DEFAULT_SIZE, textSpec } from "@/app/_lib/blockLayout";
-import { DEFAULT_FONT } from "@/app/_lib/fonts";
+import { COMMON_COLORS, DEFAULT_FONT } from "@/app/_lib/fonts";
 import { isFixedTable } from "@/app/_lib/table";
 import type { Block, BlockFont, ExamMeta } from "@/app/_lib/types";
 import { useT } from "@/app/_lib/uiLang";
@@ -32,7 +32,7 @@ export function BlockFontControls({ b, meta, onChange }: { b: Block; meta: ExamM
         <FontSelect value={font.family} onChange={(family) => set({ family })} defaultLabel={`${t("Exam font")} (${meta.fontFamily ?? DEFAULT_FONT})`} className={`${inputCls} h-7 flex-1 truncate`} />
         {!header && <Stepper value={size} min={8} max={60} onChange={(v) => set({ size: v })} title={t("Font size")} />}
       </div>
-      {!header && <ColorGrid value={font.color} autoLabel={t("Auto")} onChange={(color) => set({ color })} />}
+      {!header && <ColorGrid value={font.color} autoLabel={t("Auto")} colors={b.type === "table" ? COMMON_COLORS : undefined} onChange={(color) => set({ color })} />}
     </Group>
   );
 }

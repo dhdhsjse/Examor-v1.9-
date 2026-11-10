@@ -327,8 +327,20 @@ export default function Workspace(props: Props) {
   const pickTableTool = (m: TableDrawMode) => {
     props.onTableMode(m);
   };
+  // Closing the tools: the bar goes down first, then the tool bar comes back (it springs up only after they have been used, not when the app opens)
+  const [barLeaving, setBarLeaving] = useState(false);
+  const closeTableTools = () => {
+    if (barLeaving) return;
+    setBarLeaving(true);
+    setTimeout(() => {
+      setBarLeaving(false);
+      props.onToolChange("select");
+    }, 140);
+  };
+  const [toolsUsed, setToolsUsed] = useState(false);
+  if (tableTools && !toolsUsed) setToolsUsed(true);
   // The bucket: it comes in hand, and what is selected takes its color at once
-  const [cellFill, setCellFill] = useState<string | undefined>("#fef08a");
+  const [cellFill, setCellFill] = useState<string | undefined>("#ffff00");
   const bucket = (color: string | undefined) => {
     setCellFill(color);
     const patch = drawn && picked ? setStyle(drawn, picked, { fill: color }) : null;
@@ -352,7 +364,7 @@ export default function Workspace(props: Props) {
   };
   const tableBar = (drawn || tableTools) && (
     <TableDrawBar
-      key={drawn?.id ?? "new"}
+      key={tableTools ? "tools" : drawn?.id ?? "new"}
       mode={tableTools ? tableMode : null}
       onMode={pickTableTool}
       hasTable={!!drawn}
@@ -364,7 +376,7 @@ export default function Workspace(props: Props) {
       fill={cellFill}
       onBucket={() => bucket(cellFill)}
       onFill={bucket}
-      onExit={() => props.onToolChange("select")}
+      onClose={closeTableTools}
       message={barNote}
     />
   );
@@ -479,15 +491,15 @@ export default function Workspace(props: Props) {
                     zoom={zoom}
                     width={canvasSize.width}
                     height={height}
-                    mode={tableTools ? tableMode : null}
+                    mode={tableTools && tableMode !== "select" ? tableMode : null}
                     fill={cellFill}
                     selectedId={selectedId}
                     onSelect={props.onSelect}
                     onPatch={(id, patch, key) => props.onPatch(id, patch, key)}
                     onCreate={props.onDrawTable}
-                    onExit={() => props.onToolChange("select")}
+                    onExit={closeTableTools}
                     onEditCell={(id, r, c) => {
-                      props.onToolChange("select");
+                      props.onTableMode("select");
                       props.onEditStart(id, { kind: "cell", r, c });
                     }}
                     onMessage={setBarNote}
@@ -681,14 +693,16 @@ export default function Workspace(props: Props) {
           dir="ltr"
         >
           {!tableTools && (
-            <ToolRail
-              tool={props.tool}
-              onChange={props.onToolChange}
-              shape={props.shapeToDraw}
-              onPickShape={props.onPickShape}
-              ink={props.ink}
-              eraser={props.eraser}
-              keyboardOpen={props.mathKeyboard} onToggleKeyboard={props.onToggleMathKeyboard} />
+            <div className={toolsUsed ? "tool-rail-back" : undefined}>
+              <ToolRail
+                tool={props.tool}
+                onChange={props.onToolChange}
+                shape={props.shapeToDraw}
+                onPickShape={props.onPickShape}
+                ink={props.ink}
+                eraser={props.eraser}
+                keyboardOpen={props.mathKeyboard} onToggleKeyboard={props.onToggleMathKeyboard} />
+            </div>
           )}
           <ZoomBar
             zoom={zoom}
@@ -703,14 +717,14 @@ export default function Workspace(props: Props) {
 
         {/* While the table tools are in hand their bar takes the place of the tool bar: in the middle at the bottom (one row up when the
             worksheet is too narrow for it to clear the zoom bar). "above": what it opens goes up. */}
-        {tableBar && !editing && tableTools && (
+        {tableBar && tableTools && (
           <div
             data-side="above"
             className="group/table-dock @container pointer-events-none absolute inset-x-0 z-30 flex justify-center"
             style={{ bottom: `calc(var(${DOCKED_HEIGHT_VAR}, 0px) + 1rem)` }}
             dir="ltr"
           >
-            <div className="table-bar-pop max-w-[calc(100%-24px)] @max-[550px]:mb-12">{tableBar}</div>
+            <div className={`table-bar-pop max-w-[calc(100%-24px)] @max-[600px]:mb-12 ${barLeaving ? "table-bar-leave" : ""}`}>{tableBar}</div>
           </div>
         )}
       </div>

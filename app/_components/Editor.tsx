@@ -1045,7 +1045,9 @@ export default function Editor({ start }: { start: Start }) {
       } else if (!mod && key === "b") {
         setCanvasTool("textbox");
       } else if (!mod && key === "v") {
-        setTool("select");
+        // (with the table tools in hand: their Select, the bar of the tables stays)
+        if (tool === "table") setTableMode("select");
+        else setTool("select");
       } else if (!mod && !e.altKey && key === "p") {
         // P: the Draw tool (again: the next of its brush, pencil and highlighter)
         if (tool === "draw") ink.cycle();

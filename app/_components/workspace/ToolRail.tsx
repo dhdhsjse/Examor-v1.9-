@@ -18,7 +18,7 @@ import EraserTools from "./EraserTools";
 // "stamp" = a click on a page of the correction sheet puts the sticker in hand there (it stays in hand: a barème is many marks).
 // "table" = the table tools (Insert → Draw a table, and the floating bar of a selected table): draw a table and its lines, rub lines out,
 // select cells, color cells (workspace/TableDrawLayer). While they are in hand their bar takes the place of this one. They stay in hand until
-// its arrow, Esc or a click on the paper away from the tables.
+// its Close button or Esc.
 export type CanvasTool = "select" | "text" | "textbox" | "shape" | "draw" | "eraser" | "stamp" | "table";
 
 // The shapes of the Shapes button's menu, like Figma's (the whole gallery is in Insert → Shapes). `key` = its shortcut (Editor).
