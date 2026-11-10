@@ -1188,7 +1188,7 @@ export default function Editor({ start }: { start: Start }) {
     setStamp: (action) => {
       setStamp(action);
       setTool(action ? "stamp" : "select");
-      // (said once: the green sticker and the cross cursor tell the rest)
+      // (said once: the mouse in the shape of the sticker tells the rest)
       if (action && !stampHinted) {
         stampHinted = true;
         notify(tr("Click on the page to put the sticker — Esc to stop"));

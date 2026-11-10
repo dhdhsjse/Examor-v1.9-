@@ -7,8 +7,8 @@ import type { EraserTool } from "@/app/_lib/ink/useEraserTool";
 import { useT } from "@/app/_lib/uiLang";
 
 // (the buttons of the floating tool bars)
-const toolBtn = (on: boolean) =>
-  `ui-icon grid size-8 place-items-center rounded-[5px] transition-colors outline-none focus-visible:ring-2 focus-visible:ring-accent ${on ? "bg-accent text-white" : "text-ink hover:bg-hover"}`;
+const toolBtn = (on: boolean, corner: string) =>
+  `ui-icon grid size-8 place-items-center ${corner} transition-colors outline-none focus-visible:ring-2 focus-visible:ring-accent ${on ? "bg-accent text-white" : "text-ink hover:bg-hover"}`;
 
 const MODES: { mode: EraserMode; label: string; hint: string; Icon: typeof Eraser }[] = [
   { mode: "partial", label: "Eraser", hint: "Rubs out the parts of the drawings it goes over", Icon: Eraser },
@@ -18,7 +18,7 @@ const MODES: { mode: EraserMode; label: string; hint: string; Icon: typeof Erase
 // The Eraser button of a floating tool bar (put it in the bar, which is `relative`). In hand, a bubble over it says how it rubs:
 // a real eraser (the parts of the drawings it goes over) or the stroke eraser (whole drawings and shapes), and how big it is. The
 // bubble steps aside when the eraser starts rubbing; clicking the button again brings it back (or hides it).
-export default function EraserTools({ open, eraser, onOpen, shortcut }: { open: boolean; eraser: EraserTool; onOpen: () => void; shortcut?: string }) {
+export default function EraserTools({ open, eraser, onOpen, shortcut, corner = "rounded-[5px]" }: { open: boolean; eraser: EraserTool; onOpen: () => void; shortcut?: string; /** The button's corners, like the other buttons of its bar */ corner?: string }) {
   const t = useT();
   const [bubble, setBubble] = useState(true);
   const shown = open && bubble;
@@ -49,7 +49,7 @@ export default function EraserTools({ open, eraser, onOpen, shortcut }: { open: 
         title={label}
         aria-label={label}
         data-testid="eraser-tool"
-        className={toolBtn(open)}
+        className={toolBtn(open, corner)}
       >
         <Eraser aria-hidden />
       </button>

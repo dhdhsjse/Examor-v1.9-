@@ -30,8 +30,8 @@ import ToolRail, { type CanvasTool } from "./ToolRail";
 import type { InkTools } from "@/app/_lib/ink/useInkTools";
 import type { EraserTool } from "@/app/_lib/ink/useEraserTool";
 import type { DrawnInk, InkInHand } from "../canvas/ExamCanvas";
+import { stampCursor } from "@/app/_lib/sheet/stampCursor";
 import ZoomBar from "./ZoomBar";
-import StampCursor from "./StampCursor";
 import ShapeTextEditor from "./ShapeTextEditor";
 import TableDrawBar from "./TableDrawBar";
 import TableDrawDock from "./TableDrawDock";
@@ -93,7 +93,7 @@ interface Props {
   tableMode: TableDrawMode;
   onTableMode: (mode: TableDrawMode) => void;
   onStamp: (at: DropPoint) => void;
-  stamp: ToolAction | null; // the sticker the Stamp tool puts down (shown next to the pointer) // a click with the Stamp tool: the sticker of the correction sheet in hand goes there
+  stamp: ToolAction | null; // the sticker the Stamp tool puts down (the mouse takes its shape) // a click with the Stamp tool: the sticker of the correction sheet in hand goes there
   onSheet: (patch: Partial<SheetConfig>, key?: string) => void; // the frame of the correction sheet dragged on the page
   drawShape?: "box" | "line"; // the Shapes tool is in hand: what it draws
   shapeToDraw: string | null; // (the shape of the Shapes tool)
@@ -122,6 +122,10 @@ export default function Workspace(props: Props) {
   const erasing = props.tool === "eraser";
   const { mode: eraserMode, size: eraserSize } = props.eraser;
   const eraserInHand = useMemo(() => (erasing ? { mode: eraserMode, size: eraserSize } : null), [erasing, eraserMode, eraserSize]);
+  // The sticker in hand: the mouse takes its shape over the pages
+  const stampInHand = props.tool === "stamp" ? props.stamp : null;
+  const padMarks = !!doc.sheet?.pad;
+  const mouseSticker = useMemo(() => (stampInHand ? stampCursor(stampInHand, padMarks) : undefined), [stampInHand, padMarks]);
   const { pages } = doc;
   const scrollRef = useRef<HTMLDivElement>(null);
   const stackRef = useRef<HTMLDivElement>(null);
@@ -341,6 +345,9 @@ export default function Workspace(props: Props) {
   if (tableTools && !toolsUsed) setToolsUsed(true);
   // The bucket: it comes in hand, and what is selected takes its color at once
   const [cellFill, setCellFill] = useState<string | undefined>("#ffff00");
+  // Its colors, open or not: kept here, so they stay open when a color chosen under a table brings the bar to the bottom of the worksheet
+  const [fillOpen, setFillOpen] = useState(false);
+  if (fillOpen && (editing || !(drawn || tableTools))) setFillOpen(false);
   const bucket = (color: string | undefined) => {
     setCellFill(color);
     const patch = drawn && picked ? setStyle(drawn, picked, { fill: color }) : null;
@@ -376,6 +383,8 @@ export default function Workspace(props: Props) {
       fill={cellFill}
       onBucket={() => bucket(cellFill)}
       onFill={bucket}
+      fillOpen={fillOpen}
+      onFillOpen={setFillOpen}
       onClose={closeTableTools}
       message={barNote}
     />
@@ -399,6 +408,7 @@ export default function Workspace(props: Props) {
           dir="ltr"
           onScroll={handleScroll}
           className="workspace-dots absolute inset-0 overflow-auto"
+          style={{ cursor: mouseSticker }}
           // Clicking the grey area clears the selection.
           onMouseDown={(e) => e.target === e.currentTarget && props.onSelect(null)}
         >
@@ -435,7 +445,7 @@ export default function Workspace(props: Props) {
                     onDelete={doc.pages.length > 1 ? () => setAskDelete(page.id) : undefined}
                   />
                 ))}
-                <div className={`absolute inset-0 ${props.tool === "textbox" || props.tool === "shape" || props.tool === "stamp" ? "cursor-crosshair" : ""}`}>
+                <div className={`absolute inset-0 ${props.tool === "textbox" || props.tool === "shape" ? "cursor-crosshair" : ""}`}>
                   <ExamCanvas
                     doc={doc}
                     heights={heights}
@@ -637,12 +647,9 @@ export default function Workspace(props: Props) {
 
         {tableBar && !editing && !tableTools && (
           <TableDrawDock scroll={scrollRef} stack={stackRef} anchor={geo ? { left: geo.left * zoom, top: geo.top * zoom, bottom: (geo.top + geo.h) * zoom } : null}>
-            {tableBar}
+            <div key={drawn?.id} className="table-bar-pop">{tableBar}</div>
           </TableDrawDock>
         )}
-
-        {/* The sticker in hand rides along with the pointer */}
-        {props.tool === "stamp" && props.stamp && <StampCursor stamp={props.stamp} pad={!!doc.sheet?.pad} area={scrollRef} />}
 
         {/* Warning before a page goes */}
         {askDelete && (
@@ -685,48 +692,47 @@ export default function Workspace(props: Props) {
           />
         )}
 
-        {/* Select / Text tools, the math keyboard + zoom (bottom-right, away from the "Page 1 of 2" labels). Sits on the math keyboard
-            while it is docked at the bottom of the screen (FloatingKeyboard sets the variable). */}
+        {/* The bottom row of the worksheet: the floating tool bar in the middle (the table tools' bar in its place while they are in hand) and
+            the zoom on the right. The two sides share what is left, so the zoom, stretching under the mouse to show its slider, pushes the tool bar
+            to the left instead of going over it (its slider gets shorter when the worksheet is narrow). Sits on the math keyboard while it is docked
+            at the bottom of the screen (FloatingKeyboard sets the variable). "above": what the table bar opens goes up. */}
         <div
-          className="pointer-events-none absolute right-4 flex items-center gap-2"
+          data-side="above"
+          className="group/table-dock @container pointer-events-none absolute inset-x-0 z-30"
           style={{ bottom: `calc(var(${DOCKED_HEIGHT_VAR}, 0px) + 1rem)` }}
           dir="ltr"
         >
-          {!tableTools && (
-            <div className={toolsUsed ? "tool-rail-back" : undefined}>
-              <ToolRail
-                tool={props.tool}
-                onChange={props.onToolChange}
-                shape={props.shapeToDraw}
-                onPickShape={props.onPickShape}
-                ink={props.ink}
-                eraser={props.eraser}
-                keyboardOpen={props.mathKeyboard} onToggleKeyboard={props.onToggleMathKeyboard} />
+          <div className="flex items-end gap-2 px-4">
+            <span aria-hidden className="min-w-0 flex-1" />
+            {tableTools ? (
+              <div className={`table-bar-pop min-w-0 ${barLeaving ? "table-bar-leave" : ""}`}>{tableBar}</div>
+            ) : (
+              <div className={`min-w-0 ${toolsUsed ? "tool-rail-back" : ""}`}>
+                <ToolRail
+                  tool={props.tool}
+                  onChange={props.onToolChange}
+                  shape={props.shapeToDraw}
+                  onPickShape={props.onPickShape}
+                  ink={props.ink}
+                  eraser={props.eraser}
+                  keyboardOpen={props.mathKeyboard} onToggleKeyboard={props.onToggleMathKeyboard} />
+              </div>
+            )}
+            <div className="flex min-w-max flex-1 justify-end">
+              <ZoomBar
+                zoom={zoom}
+                fitMode={fitMode}
+                showGuides={showGuides}
+                onZoom={(z) => zoomTo(z)}
+                onFitPage={() => fitTo()}
+                onFitWidth={() => fitTo(true)}
+                onToggleGuides={() => setShowGuides(!showGuides)}
+                // (the folded zoom, the row's padding and gaps: 166px; + the tool bar as wide as it is now, or it would wrap)
+                reserved={166 + (tableTools ? 314 : props.tool === "draw" ? 308 : 240)}
+              />
             </div>
-          )}
-          <ZoomBar
-            zoom={zoom}
-            fitMode={fitMode}
-            showGuides={showGuides}
-            onZoom={(z) => zoomTo(z)}
-            onFitPage={() => fitTo()}
-            onFitWidth={() => fitTo(true)}
-            onToggleGuides={() => setShowGuides(!showGuides)}
-          />
-        </div>
-
-        {/* While the table tools are in hand their bar takes the place of the tool bar: in the middle at the bottom (one row up when the
-            worksheet is too narrow for it to clear the zoom bar). "above": what it opens goes up. */}
-        {tableBar && tableTools && (
-          <div
-            data-side="above"
-            className="group/table-dock @container pointer-events-none absolute inset-x-0 z-30 flex justify-center"
-            style={{ bottom: `calc(var(${DOCKED_HEIGHT_VAR}, 0px) + 1rem)` }}
-            dir="ltr"
-          >
-            <div className={`table-bar-pop max-w-[calc(100%-24px)] @max-[600px]:mb-12 ${barLeaving ? "table-bar-leave" : ""}`}>{tableBar}</div>
           </div>
-        )}
+        </div>
       </div>
     </div>
   );

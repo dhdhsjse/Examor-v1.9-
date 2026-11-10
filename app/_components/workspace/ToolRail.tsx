@@ -42,10 +42,10 @@ export function SelectIcon() {
 
 // 32px buttons with a 16px icon (ui-icon); the tool in use is filled with the accent, as in Figma's toolbar.
 const toolBtn = (on: boolean) =>
-  `ui-icon grid size-8 place-items-center rounded-[5px] transition-colors outline-none focus-visible:ring-2 focus-visible:ring-accent ${on ? "bg-accent text-white" : "text-ink hover:bg-hover"}`;
+  `ui-icon grid size-8 place-items-center rounded-[7px] transition-colors outline-none focus-visible:ring-2 focus-visible:ring-accent ${on ? "bg-accent text-white" : "text-ink hover:bg-hover"}`;
 
-// Small floating toolbar next to the zoom bar (bottom-right), away from the page labels: Select, Shapes (its arrow opens the menu of
-// shapes), Text box. After a line, the math keyboard: it is not a tool (the tool stays as it is), it shows / hides the keyboard that
+// The floating toolbar in the middle at the bottom of the worksheet, the size and shape of the table tools' bar: Select, Shapes (its arrow
+// opens the menu of shapes), Text box. After a line, the math keyboard: it is not a tool (the tool stays as it is), it shows / hides the keyboard that
 // types in the text being written.
 export default function ToolRail({ tool, onChange, shape, onPickShape, ink, eraser, keyboardOpen, onToggleKeyboard }: {
   tool: CanvasTool;
@@ -83,7 +83,7 @@ export default function ToolRail({ tool, onChange, shape, onPickShape, ink, eras
 
   const tip = (label: string, key: string) => (key ? `${t(label)} (${key})` : t(label));
   return (
-    <div className="pointer-events-auto relative flex items-center gap-0.5 rounded-md border border-line bg-surface p-1 shadow-sm">
+    <div className="floating-bar-shadow pointer-events-auto relative flex w-max max-w-full flex-wrap items-center gap-0.5 rounded-[11px] border border-line bg-surface p-1.5">
       <button onClick={() => onChange("select")} aria-pressed={tool === "select"} title={tip("Select and move", "V")} className={toolBtn(tool === "select")}>
         <SelectIcon />
       </button>
@@ -107,7 +107,7 @@ export default function ToolRail({ tool, onChange, shape, onPickShape, ink, eras
           title={t("Shapes")}
           aria-label={t("Shapes")}
           data-testid="shape-menu"
-          className={`grid h-8 w-4 place-items-center rounded-e-[5px] transition-colors outline-none focus-visible:ring-2 focus-visible:ring-accent ${shapeOn ? "bg-accent-strong text-white" : "text-muted hover:bg-hover hover:text-ink"}`}
+          className={`grid h-8 w-4 place-items-center rounded-e-[7px] transition-colors outline-none focus-visible:ring-2 focus-visible:ring-accent ${shapeOn ? "bg-accent-strong text-white" : "text-muted hover:bg-hover hover:text-ink"}`}
         >
           <ChevronDown size={12} strokeWidth={2} aria-hidden />
         </button>
@@ -138,7 +138,7 @@ export default function ToolRail({ tool, onChange, shape, onPickShape, ink, eras
         <Type aria-hidden />
       </button>
 
-      <EraserTools open={tool === "eraser"} eraser={eraser} onOpen={() => onChange("eraser")} shortcut="E" />
+      <EraserTools open={tool === "eraser"} eraser={eraser} onOpen={() => onChange("eraser")} shortcut="E" corner="rounded-[7px]" />
 
       <span aria-hidden className="mx-0.5 h-5 w-px bg-line" />
       <button

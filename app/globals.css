@@ -245,23 +245,31 @@ body[data-painter="on"] * {
 .keyboard-rise {
   animation: keyboard-rise 160ms ease-out;
 }
-/* The table tools' bar: one graphite, the same in both looks, so it is never taken for the floating tool bar
-   (darker than that bar in the light look, lighter and more neutral than it in the dark one). */
+/* The table tools' bar: one dark brown, the same in both looks, so it is never taken for the floating tool bar
+   (darker and warmer than that bar in both). The tool in use is written in it. */
 .table-tools-bar {
-  background: #27272a;
+  --table-bar: #3b1e12;
+  background: var(--table-bar);
   border: 1px solid rgb(255 255 255 / 0.1);
+}
+/* (the page's floating tool bar is raised the same way) */
+.table-tools-bar,
+.floating-bar-shadow {
   box-shadow: 0 8px 20px -8px rgb(0 0 0 / 0.4), 0 2px 5px rgb(0 0 0 / 0.18);
 }
 
-/* It fades in with a small rise when it takes the place of the floating tool bar, and fades the same way on its way back. */
+/* It fades in with a small rise, growing a little, when it takes the place of the floating tool bar or comes up next to a table, and
+   fades the same way on its way back. */
 @keyframes table-bar-pop {
   from {
     opacity: 0;
     translate: 0 8px;
+    scale: 0.96;
   }
   to {
     opacity: 1;
     translate: 0 0;
+    scale: 1;
   }
 }
 @keyframes table-bar-leave {
@@ -281,7 +289,8 @@ body[data-painter="on"] * {
   }
 }
 .table-bar-pop {
-  animation: table-bar-pop 180ms cubic-bezier(0.2, 0, 0, 1) backwards;
+  animation: table-bar-pop 200ms cubic-bezier(0.2, 0, 0, 1) backwards;
+  transform-origin: 50% 100%;
 }
 /* (140ms: closeTableTools in Workspace.tsx waits this long before the tool bar comes back) */
 .table-bar-pop.table-bar-leave {

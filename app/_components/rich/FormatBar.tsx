@@ -46,8 +46,9 @@ export function FontSelect({ value, onChange, defaultLabel, className }: { value
   );
 }
 
-// Color swatches + a custom color. `value` undefined = automatic. `colors`: the swatches (text colors by default).
-export function ColorGrid({ value, onChange, autoLabel, colors = TEXT_COLORS }: { value: string | undefined; onChange: (v: string | undefined) => void; autoLabel?: string; colors?: string[] }) {
+// Color swatches + a custom color. `value` undefined = automatic. `colors`: the swatches (text colors by default). `custom` false: the
+// swatches alone (what shows them has its own way to any other color).
+export function ColorGrid({ value, onChange, autoLabel, colors = TEXT_COLORS, custom = true }: { value: string | undefined; onChange: (v: string | undefined) => void; autoLabel?: string; colors?: string[]; custom?: boolean }) {
   const t = useT();
   return (
     <div className="flex flex-wrap items-center gap-1">
@@ -72,10 +73,12 @@ export function ColorGrid({ value, onChange, autoLabel, colors = TEXT_COLORS }: 
           style={{ background: c }}
         />
       ))}
-      <label className="relative grid size-5 cursor-pointer place-items-center rounded-[3px] text-muted ring-1 ring-line hover:text-ink hover:ring-faint" title={t("Custom color")}>
-        <Plus size={12} strokeWidth={2} aria-hidden />
-        <input type="color" value={value ?? colors[0]} onChange={(e) => onChange(e.target.value)} className="absolute inset-0 cursor-pointer opacity-0" />
-      </label>
+      {custom && (
+        <label className="relative grid size-5 cursor-pointer place-items-center rounded-[3px] text-muted ring-1 ring-line hover:text-ink hover:ring-faint" title={t("Custom color")}>
+          <Plus size={12} strokeWidth={2} aria-hidden />
+          <input type="color" value={value ?? colors[0]} onChange={(e) => onChange(e.target.value)} className="absolute inset-0 cursor-pointer opacity-0" />
+        </label>
+      )}
     </div>
   );
 }

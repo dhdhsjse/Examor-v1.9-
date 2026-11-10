@@ -1,7 +1,7 @@
 "use client";
 
 import { Check } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { useT } from "@/app/_lib/uiLang";
 import { ZOOM_MAX, ZOOM_MIN, ZOOM_PRESETS, clampZoom, type FitMode } from "@/app/_lib/useZoom";
 
@@ -13,6 +13,8 @@ interface Props {
   onFitPage: () => void;
   onFitWidth: () => void;
   onToggleGuides: () => void;
+  /** What the worksheet's bottom row needs with this bar folded, in px: it opens only into what is left of the row's width */
+  reserved: number;
 }
 
 const iconBtn =
@@ -25,7 +27,7 @@ const toSlider = (z: number) => Math.round(((Math.log(z) - LOG_MIN) / (LOG_MAX -
 const fromSlider = (v: number) => Math.exp(LOG_MIN + (v / 1000) * (LOG_MAX - LOG_MIN));
 
 // Slim frosted bar (bottom-right): guides toggle, − slider + (pops out on hover), a typed % and a preset menu.
-export default function ZoomBar({ zoom, fitMode, showGuides, onZoom, onFitPage, onFitWidth, onToggleGuides }: Props) {
+export default function ZoomBar({ zoom, fitMode, showGuides, onZoom, onFitPage, onFitWidth, onToggleGuides, reserved }: Props) {
   const t = useT();
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState<string | null>(null); // the % being typed
@@ -75,8 +77,10 @@ export default function ZoomBar({ zoom, fitMode, showGuides, onZoom, onFitPage, 
 
       {/* Only shown while the mouse is on the bar (or the slider is in use), to save room */}
       <div
-        className={`flex items-center gap-0.5 overflow-hidden transition-all duration-200 ease-out group-focus-within:max-w-48 group-focus-within:opacity-100 group-hover:max-w-48 group-hover:opacity-100 ${
-          open ? "max-w-48 opacity-100" : "max-w-0 opacity-0"
+        // (it opens as far as the worksheet's bottom row has room, Workspace: the slider gets shorter first, then the buttons)
+        style={{ "--zoom-room": `clamp(0px, calc(100cqw - ${reserved}px), 12rem)` } as CSSProperties}
+        className={`flex items-center gap-0.5 overflow-hidden transition-all duration-200 ease-out group-focus-within:max-w-[var(--zoom-room)] group-focus-within:opacity-100 group-hover:max-w-[var(--zoom-room)] group-hover:opacity-100 ${
+          open ? "max-w-[var(--zoom-room)] opacity-100" : "max-w-0 opacity-0"
         }`}
       >
         <button className={iconBtn} onClick={() => onZoom(zoom / 1.2)} title={`${t("Zoom out")} (Ctrl −)`}>
@@ -94,7 +98,7 @@ export default function ZoomBar({ zoom, fitMode, showGuides, onZoom, onFitPage, 
           onPointerUp={(e) => e.currentTarget.blur() /* let the bar fold again */}
           title={t("Drag to zoom")}
           aria-label={t("Zoom")}
-          className="h-1 w-24 cursor-pointer accent-indigo-600"
+          className="h-1 w-24 min-w-0 shrink-[100] cursor-pointer accent-indigo-600"
         />
 
         <button className={iconBtn} onClick={() => onZoom(zoom * 1.2)} title={`${t("Zoom in")} (Ctrl +)`}>

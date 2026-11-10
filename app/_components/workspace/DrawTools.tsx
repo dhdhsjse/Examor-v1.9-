@@ -139,7 +139,7 @@ export default function DrawTools({ open, ink, onOpen }: { open: boolean; ink: I
         })}
       </div>
 
-      {/* the bubble over the bar (bottom-right of the screen: it is held by the bar's right end, its notch points at the tool) */}
+      {/* the bubble over the bar (held by the bar's start, its notch points at the tool) */}
       <div
         ref={panel}
         role="group"

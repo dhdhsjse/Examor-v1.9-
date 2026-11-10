@@ -8,7 +8,7 @@ export const PAGE_GAP = 36; // space between a page and the next label
 // Room around the page stack on screen (screen pixels: the same at every zoom).
 export const LABEL_HEIGHT = 26; // the "Page 1 of 3" label: 12px text, padding and a 4px gap
 export const CANVAS_TOP_GAP = 12; // above the first label
-export const CANVAS_BOTTOM_SPACE = 72; // under the last item: the floating tools / zoom bar (38px, 16px off the bottom) + margin
+export const CANVAS_BOTTOM_SPACE = 72; // under the last item: the floating tools (46px, 16px off the bottom) + margin
 
 // Space above the stack so the first label is never cut off (the label space shrinks with the zoom,
 // the label does not).

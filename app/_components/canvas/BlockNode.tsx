@@ -230,7 +230,7 @@ export default function BlockNode(props: Props) {
       onMouseLeave={(e) => {
         if (props.erasable) return;
         setHover(false);
-        setCursor(e, "default");
+        setCursor(e, ""); // (back to what the workspace shows: the arrow, or the sticker in hand)
       }}
     >
       {/* Background: also the area you can click and drag. Never opaque: the blocks may lie on top of each other (the paper is white) */}

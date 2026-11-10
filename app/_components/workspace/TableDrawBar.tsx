@@ -2,6 +2,7 @@
 
 import { ChevronDown, Eraser, PaintBucket, PenLine, SquareDashedMousePointer, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import ColorPicker from "@/app/_components/inspector/ColorPicker";
 import { ColorGrid } from "@/app/_components/rich/FormatBar";
 import { COMMON_COLORS } from "@/app/_lib/fonts";
 import { useT } from "@/app/_lib/uiLang";
@@ -12,7 +13,7 @@ import { SelectIcon } from "./ToolRail";
 // White on the bar's own colors (globals.css, .table-tools-bar), the tool in use a white tile. (Written as colors: in the dark look
 // `bg-white` and the accent's shades mean something else.)
 const pressable = "transition-[background-color,color,scale] duration-150 outline-none active:scale-95 focus-visible:ring-2 focus-visible:ring-[#fff]";
-const onBar = (on: boolean) => (on ? "bg-[#fff] text-[#27272a] shadow-sm" : "text-[#fff] hover:bg-[#ffffff1f]");
+const onBar = (on: boolean) => (on ? "bg-[#fff] text-[color:var(--table-bar)] shadow-sm" : "text-[#fff] hover:bg-[#ffffff1f]");
 const toolBtn = (on: boolean) => `ui-icon grid size-8 place-items-center rounded-[7px] ${pressable} disabled:pointer-events-none disabled:opacity-40 ${onBar(on)}`;
 const sep = <span aria-hidden className="mx-0.5 h-5 w-px bg-[#ffffff33]" />;
 
@@ -47,6 +48,9 @@ interface Props {
   onBucket: () => void;
   /** A color is chosen: the same, with that color */
   onFill: (color: string | undefined) => void;
+  /** The colors are open (kept by the worksheet: the bar is made again when the bucket comes in hand, and they stay open) */
+  fillOpen: boolean;
+  onFillOpen: (open: boolean) => void;
   /** Puts the table tools down and brings the page's tool bar back (only shown while they are in hand) */
   onClose: () => void;
   /** Something to tell for a moment */
@@ -56,9 +60,8 @@ interface Props {
 // The floating bar of the tables, under the selected table, or at the bottom of the worksheet in the place of the page's tool bar while
 // the tools are in hand: Select (the page works as usual, the bar stays), the pen, the eraser, the selection of cells, the bucket, Merge
 // and Split, and the button that closes the tools.
-export default function TableDrawBar({ mode, onMode, hasTable, cells, span, onMerge, onSplit, canSplit, fill, onBucket, onFill, onClose, message }: Props) {
+export default function TableDrawBar({ mode, onMode, hasTable, cells, span, onMerge, onSplit, canSplit, fill, onBucket, onFill, fillOpen, onFillOpen: setFillOpen, onClose, message }: Props) {
   const t = useT();
-  const [fillOpen, setFillOpen] = useState(false);
   const fillRef = useRef<HTMLDivElement>(null);
   const [splitOpen, setSplitOpen] = useState(false);
   const [cols, setCols] = useState("2");
@@ -94,7 +97,7 @@ export default function TableDrawBar({ mode, onMode, hasTable, cells, span, onMe
       window.removeEventListener("pointerdown", away);
       window.removeEventListener("keydown", esc, true);
     };
-  }, [fillOpen]);
+  }, [fillOpen, setFillOpen]);
 
   const tool = (m: TableDrawMode, label: string, icon: React.ReactNode, testId: string) => (
     <button type="button" onClick={() => { setSplitOpen(false); onMode(m); }} aria-pressed={mode === m} title={t(label)} aria-label={t(label)} data-testid={testId} className={toolBtn(mode === m)}>
@@ -159,16 +162,19 @@ export default function TableDrawBar({ mode, onMode, hasTable, cells, span, onMe
             <ChevronDown size={12} strokeWidth={2} aria-hidden />
           </button>
           {fillOpen && (
-            <div role="dialog" aria-label={t("Fill color")} data-testid="table-fill-pop" className="absolute top-full right-0 z-40 mt-2 w-[196px] rounded-lg border border-line bg-surface p-2 shadow-lg group-data-[side=above]/table-dock:top-auto group-data-[side=above]/table-dock:bottom-full group-data-[side=above]/table-dock:mt-0 group-data-[side=above]/table-dock:mb-2">
+            <div role="dialog" aria-label={t("Fill color")} data-testid="table-fill-pop" className="absolute top-full right-0 z-40 mt-2 flex w-[196px] flex-col gap-2 rounded-lg border border-line bg-surface p-2 shadow-lg group-data-[side=above]/table-dock:top-auto group-data-[side=above]/table-dock:bottom-full group-data-[side=above]/table-dock:mt-0 group-data-[side=above]/table-dock:mb-2">
               <ColorGrid
                 value={fill}
                 autoLabel={t("None")}
                 colors={COMMON_COLORS}
+                custom={false}
                 onChange={(color) => {
                   onFill(color);
                   setFillOpen(false);
                 }}
               />
+              {/* Any other color: it stays open, to try more than one */}
+              <ColorPicker value={fill} onChange={onFill} />
             </div>
           )}
         </div>

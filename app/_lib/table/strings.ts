@@ -102,6 +102,10 @@ export const TABLE_FR: Record<string, string> = {
   "Text across": "Texte horizontal",
   "Text from the top down": "Texte de haut en bas",
   "Text from the bottom up": "Texte de bas en haut",
+  "Shade": "Nuance",
+  "Hue": "Teinte",
+  "Color code": "Code de la couleur",
+  "Pick a color from the screen": "Prélever une couleur à l'écran",
 };
 
 export const TABLE_AR: Record<string, string> = {
@@ -204,4 +208,8 @@ export const TABLE_AR: Record<string, string> = {
   "Text across": "نص أفقي",
   "Text from the top down": "نص من الأعلى إلى الأسفل",
   "Text from the bottom up": "نص من الأسفل إلى الأعلى",
+  "Shade": "درجة اللون",
+  "Hue": "تدرج الألوان",
+  "Color code": "رمز اللون",
+  "Pick a color from the screen": "التقاط لون من الشاشة",
 };
