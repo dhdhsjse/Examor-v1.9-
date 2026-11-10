@@ -213,7 +213,7 @@ export default function MoleculeStudio({ editing, onInsert, onUpdate, onInsertMo
             </Notice></div>
           )}
           {rep && (
-            <div dir="ltr" data-testid="representation-preview" className="relative grid min-h-0 flex-1 place-items-center overflow-auto bg-subtle/60 p-6">
+            <div dir="ltr" data-testid="representation-preview" data-paper="" className="studio-desk relative grid min-h-0 flex-1 place-items-center overflow-auto bg-subtle/60 p-6">
               {empty ? (
                 <p className="text-sm text-muted">{t("Draw a molecule to see its representations.")}</p>
               ) : preview.status === "ready" ? (

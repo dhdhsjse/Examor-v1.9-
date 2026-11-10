@@ -119,7 +119,7 @@ export default function GraphCanvas({ studio, ink, eraser }: { studio: GraphStud
   };
 
   return (
-    <div ref={box} dir="ltr" data-testid="graph-canvas" className="relative grid min-h-0 flex-1 place-items-center overflow-auto bg-subtle/60 p-4">
+    <div ref={box} dir="ltr" data-testid="graph-canvas" className="studio-desk relative grid min-h-0 flex-1 place-items-center overflow-auto bg-subtle/60 p-4">
       <div className="relative shadow-sm" style={{ width: total.w * scale, height: total.h * scale, cursor: tool ? "crosshair" : undefined }} aria-label={t("Graph paper preview")} role="img">
         <Stage width={total.w * scale} height={total.h * scale} scaleX={scale} scaleY={scale}>
           <Layer listening={!student}>

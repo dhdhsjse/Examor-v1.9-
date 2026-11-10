@@ -312,7 +312,7 @@ export default function MoleculeStudio({ editing, onInsert, onUpdate, onInsertTe
           <MoleculeBrowser candidates={result?.candidates ?? []} message={message} picked={picked} onPickCandidate={pickCandidate} onPickEntry={pickEntry} />
         </aside>
 
-        <main className={`relative flex min-h-0 min-w-0 flex-col ${block ? "bg-subtle" : "bg-white"}`}>
+        <main className={`relative flex min-h-0 min-w-0 flex-col ${block ? "studio-desk bg-subtle" : "bg-white"}`}>
           {block ? (
             <div ref={stage} className="relative min-h-0 flex-1" aria-label={t("Print preview of the drawing")}>
               {rendered && (

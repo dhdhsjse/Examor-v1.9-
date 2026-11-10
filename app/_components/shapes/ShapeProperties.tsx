@@ -163,7 +163,7 @@ export default function ShapeProperties({ item, onChange, geometry, position, on
       {picture ? (
         <Section title={t("Image")} testId="picture-section">
           {/* eslint-disable-next-line @next/next/no-img-element -- local data URL preview */}
-          <img src={item.src} alt="" className="max-h-32 w-full rounded-md border border-line bg-subtle object-contain" />
+          <img src={item.src} alt="" data-paper="" className="max-h-32 w-full rounded-md border border-line bg-subtle object-contain" />
           <div className="flex items-center gap-1">
             {onReplaceImage && (
               <button type="button" onClick={onReplaceImage} data-testid="picture-replace" className={`${textBtn} text-ink hover:border-accent`}>

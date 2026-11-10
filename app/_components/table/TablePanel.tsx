@@ -48,8 +48,8 @@ function Count({ label, value, max, onChange, testId }: { label: string; value: 
 }
 
 // The properties of a selected table, in the right panel, kept small: a preview of the table (its cells are typed in and selected
-// there), its rows and columns, the header row and header column, reversing the columns and merging the selected cells. Everything else (the look of the cells, lines,
-// formulas, shapes) is in the Table Studio. Every change is one of the block's own updates, so it is part of the exam's undo history.
+// there), its rows and columns, how the text sits in the cells, the header row and header column, reversing the columns and merging the selected cells. Everything else
+// (the font, colors, lines, formulas, shapes) is in the Table Studio. Every change is one of the block's own updates, so it is part of the exam's undo history.
 export default function TablePanel({ b, lang, onChange, examFont, onOpenStudio }: Props) {
   const t = useT();
   // (shared with the page: cells picked there with the table tools are selected here too)
@@ -100,7 +100,7 @@ export default function TablePanel({ b, lang, onChange, examFont, onOpenStudio }
       </div>
 
       <div className="overflow-hidden rounded-[5px] border border-line">
-        <TableGrid table={b} lang={lang} sel={sel} onSelect={setSel} onChange={apply} compact maxHeight={260} actions={actions} examFont={examFont} testId="panel-grid" />
+        <TableGrid table={b} lang={lang} sel={sel} onSelect={setSel} onChange={apply} compact maxHeight={420} actions={actions} examFont={examFont} testId="panel-grid" />
       </div>
 
       <div className="flex gap-2">
@@ -108,7 +108,7 @@ export default function TablePanel({ b, lang, onChange, examFont, onOpenStudio }
         <Count label={t("Columns")} value={cols} max={MAX_COLS} onChange={(n) => apply(resizeTable(b, rows, n), "size")} testId="table-cols" />
       </div>
 
-      <TableStyleSection table={b} actions={actions} examFont={examFont} onWhole={() => setSel(null)} />
+      <TableStyleSection actions={actions} onWhole={() => setSel(null)} />
 
       {/* the headers: across the top and down the first column (bold and shaded) */}
       <span className="-mb-1 text-xs text-muted">{t("Headers")}</span>

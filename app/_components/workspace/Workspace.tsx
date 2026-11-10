@@ -38,7 +38,7 @@ import TableDrawDock from "./TableDrawDock";
 import TableDrawLayer, { isDrawable, tableGeo, type TableDrawMode } from "./TableDrawLayer";
 import { setTableSel, useTableSel } from "../table/tableSelStore";
 import { clampSel, rangeSel, selRange } from "../table/tableSel";
-import { colsOf, rowsOf, wholeMerges } from "@/app/_lib/table";
+import { colsOf, rowsOf, setStyle, wholeMerges } from "@/app/_lib/table";
 import { cellRange, cellsOf, mergeRange, rangeIn, splitRange } from "@/app/_lib/table/draw";
 
 export interface Editing {
@@ -92,7 +92,6 @@ interface Props {
   onDrawTable: (box: DrawnBox) => void; // a box drawn on the paper with the table tools' pen: a new table of one cell
   tableMode: TableDrawMode;
   onTableMode: (mode: TableDrawMode) => void;
-  onOpenTableStudio: (id: string) => void; // the floating bar of the tables: this table in the Table Studio
   onStamp: (at: DropPoint) => void;
   stamp: ToolAction | null; // the sticker the Stamp tool puts down (shown next to the pointer) // a click with the Stamp tool: the sticker of the correction sheet in hand goes there
   onSheet: (patch: Partial<SheetConfig>, key?: string) => void; // the frame of the correction sheet dragged on the page
@@ -328,6 +327,14 @@ export default function Workspace(props: Props) {
   const pickTableTool = (m: TableDrawMode) => {
     props.onTableMode(m);
   };
+  // The bucket: it comes in hand, and what is selected takes its color at once
+  const [cellFill, setCellFill] = useState<string | undefined>("#fef08a");
+  const bucket = (color: string | undefined) => {
+    setCellFill(color);
+    const patch = drawn && picked ? setStyle(drawn, picked, { fill: color }) : null;
+    if (drawn && patch) props.onPatch(drawn.id, patch as BlockPatch, tableActionKey("fill"));
+    pickTableTool("fill");
+  };
   const mergePicked = () => {
     if (!drawn || !geo || !picked) return;
     const out = mergeRange(drawn, geo.frame, picked);
@@ -354,8 +361,10 @@ export default function Workspace(props: Props) {
       onMerge={mergePicked}
       onSplit={splitPicked}
       canSplit={(cols, rows) => !!(drawn && geo && picked && splitRange(drawn, geo.frame, picked, cols, rows))}
-      onOpenStudio={() => { if (drawn) { props.onToolChange("select"); props.onOpenTableStudio(drawn.id); } }}
-      onDone={() => props.onToolChange("select")}
+      fill={cellFill}
+      onBucket={() => bucket(cellFill)}
+      onFill={bucket}
+      onExit={() => props.onToolChange("select")}
       message={barNote}
     />
   );
@@ -471,6 +480,7 @@ export default function Workspace(props: Props) {
                     width={canvasSize.width}
                     height={height}
                     mode={tableTools ? tableMode : null}
+                    fill={cellFill}
                     selectedId={selectedId}
                     onSelect={props.onSelect}
                     onPatch={(id, patch, key) => props.onPatch(id, patch, key)}
@@ -613,7 +623,7 @@ export default function Workspace(props: Props) {
           </div>
         </div>
 
-        {tableBar && !editing && (
+        {tableBar && !editing && !tableTools && (
           <TableDrawDock scroll={scrollRef} stack={stackRef} anchor={geo ? { left: geo.left * zoom, top: geo.top * zoom, bottom: (geo.top + geo.h) * zoom } : null}>
             {tableBar}
           </TableDrawDock>
@@ -670,14 +680,16 @@ export default function Workspace(props: Props) {
           style={{ bottom: `calc(var(${DOCKED_HEIGHT_VAR}, 0px) + 1rem)` }}
           dir="ltr"
         >
-          <ToolRail
-            tool={props.tool}
-            onChange={props.onToolChange}
-            shape={props.shapeToDraw}
-            onPickShape={props.onPickShape}
-            ink={props.ink}
-            eraser={props.eraser}
-            keyboardOpen={props.mathKeyboard} onToggleKeyboard={props.onToggleMathKeyboard} />
+          {!tableTools && (
+            <ToolRail
+              tool={props.tool}
+              onChange={props.onToolChange}
+              shape={props.shapeToDraw}
+              onPickShape={props.onPickShape}
+              ink={props.ink}
+              eraser={props.eraser}
+              keyboardOpen={props.mathKeyboard} onToggleKeyboard={props.onToggleMathKeyboard} />
+          )}
           <ZoomBar
             zoom={zoom}
             fitMode={fitMode}
@@ -688,6 +700,19 @@ export default function Workspace(props: Props) {
             onToggleGuides={() => setShowGuides(!showGuides)}
           />
         </div>
+
+        {/* While the table tools are in hand their bar takes the place of the tool bar: in the middle at the bottom (one row up when the
+            worksheet is too narrow for it to clear the zoom bar). "above": what it opens goes up. */}
+        {tableBar && !editing && tableTools && (
+          <div
+            data-side="above"
+            className="group/table-dock @container pointer-events-none absolute inset-x-0 z-30 flex justify-center"
+            style={{ bottom: `calc(var(${DOCKED_HEIGHT_VAR}, 0px) + 1rem)` }}
+            dir="ltr"
+          >
+            <div className="table-bar-pop max-w-[calc(100%-24px)] @max-[550px]:mb-12">{tableBar}</div>
+          </div>
+        )}
       </div>
     </div>
   );

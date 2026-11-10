@@ -12,7 +12,7 @@ function DrawTableIcon() {
 }
 
 // Draw a table freely on the page, like with a pen: a box on the paper is a table of one cell, lines drawn inside it cut its cells. The
-// floating bar of the tables (workspace/TableDrawBar) has the pen, horizontal and vertical lines, the eraser, Select cells, Merge and Split.
+// floating bar of the tables (workspace/TableDrawBar) has the pen, the eraser, Select cells, Merge and Split.
 // What it makes is an ordinary table: the right panel and the Table Studio change it.
 export const toolDrawTable: Feature = {
   id: "tool.draw-table",

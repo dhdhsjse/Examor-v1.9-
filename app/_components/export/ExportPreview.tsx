@@ -239,7 +239,7 @@ export default function ExportPreview({ doc, busy, renderCopy, onExport, onPrint
                 : t(printed.every((p) => !p.format || (p.format.size === "A4" && p.format.orientation === "portrait")) ? "{n} A4 page(s)" : "{n} page(s)", { n: printed.length })}
             </span>
           </div>
-          <div className="flex-1 overflow-y-auto p-6">
+          <div data-paper="" className="studio-desk flex-1 overflow-y-auto p-6">
             {noSheet ? (
               <div className="mx-auto mt-10 flex max-w-sm flex-col items-center gap-3 text-center" data-testid="preview-no-sheet">
                 <p className="text-sm font-semibold text-ink">{t("There is no correction sheet yet")}</p>

@@ -269,7 +269,7 @@ export default function ProbaCanvas({ studio, ink, eraser, inlineRequest, onInli
 
   return (
     <div className="relative flex min-h-0 flex-1">
-      <div ref={box} data-testid="proba-canvas" className="min-h-0 flex-1 overflow-auto bg-canvas">
+      <div ref={box} data-testid="proba-canvas" className="studio-desk min-h-0 flex-1 overflow-auto bg-canvas">
         <div className="flex min-h-full min-w-full items-center justify-center p-4" style={{ width: "max-content", height: "max-content" }}>
           <div dir="ltr" className="relative shrink-0 outline outline-line" style={{ width, height, cursor: placing ? "crosshair" : undefined }} aria-label={t("Probability drawing area")} role="img">
             <Stage

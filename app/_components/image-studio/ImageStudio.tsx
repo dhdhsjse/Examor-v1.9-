@@ -223,10 +223,10 @@ export default function ImageStudio({ editing, madeElsewhere = false, onUpdate, 
       </header>
 
       <div className="flex min-h-0 flex-1">
-        <main className="relative flex min-w-0 flex-1 flex-col bg-subtle">
+        <main className="studio-desk relative flex min-w-0 flex-1 flex-col bg-subtle">
           <div ref={area} className="grid min-h-0 flex-1 place-items-center overflow-auto p-6 pb-20">
             {cropping ? (
-              <div dir="ltr" className="relative bg-white shadow-sm" style={{ width: W * scale, height: H * scale }}>
+              <div dir="ltr" data-paper="" className="relative bg-white shadow-sm" style={{ width: W * scale, height: H * scale }}>
                 {/* eslint-disable-next-line @next/next/no-img-element -- the block's own picture (a data URL) */}
                 <img src={base} alt="" draggable={false} className="absolute inset-0 block size-full select-none" />
                 {/* eslint-disable-next-line @next/next/no-img-element -- the drawings, as they will be on the picture */}
@@ -234,7 +234,7 @@ export default function ImageStudio({ editing, madeElsewhere = false, onUpdate, 
                 <CropFrame width={W} height={H} scale={scale} crop={crop} ratio={ratio} onChange={setCrop} />
               </div>
             ) : (
-              <div dir="ltr" className="relative overflow-hidden bg-white shadow-sm" style={{ width: crop.w * scale, height: crop.h * scale }}>
+              <div dir="ltr" data-paper="" className="relative overflow-hidden bg-white shadow-sm" style={{ width: crop.w * scale, height: crop.h * scale }}>
                 {/* eslint-disable-next-line @next/next/no-img-element -- the block's own picture (a data URL) */}
                 <img
                   src={base}

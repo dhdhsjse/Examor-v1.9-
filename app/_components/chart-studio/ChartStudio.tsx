@@ -293,9 +293,9 @@ export default function ChartStudio({ editing, onInsert, onUpdate, onClose }: Pr
           </Section>
         </aside>
 
-        <main className="relative flex min-w-0 flex-1 flex-col bg-subtle">
+        <main className="studio-desk relative flex min-w-0 flex-1 flex-col bg-subtle">
           <div ref={area} className="grid min-h-0 flex-1 place-items-center overflow-auto p-6 pb-20">
-            <div dir="ltr" className="relative bg-white shadow-sm" style={{ width: chart.width * scale, height: chart.height * scale }}>
+            <div dir="ltr" data-paper="" className="relative bg-white shadow-sm" style={{ width: chart.width * scale, height: chart.height * scale }}>
               {/* eslint-disable-next-line @next/next/no-img-element -- the chart's own SVG, as the page will show it */}
               <img src={src} alt={t("Chart")} data-testid="chart-preview" draggable={false} className="block size-full select-none" />
               {/* the drawings, shapes and text boxes of the floating bar, over the chart */}

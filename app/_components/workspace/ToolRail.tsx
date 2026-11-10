@@ -17,7 +17,8 @@ import EraserTools from "./EraserTools";
 // other blocks stay: they are deleted as blocks.
 // "stamp" = a click on a page of the correction sheet puts the sticker in hand there (it stays in hand: a barème is many marks).
 // "table" = the table tools (Insert → Draw a table, and the floating bar of a selected table): draw a table and its lines, rub lines out,
-// select cells (workspace/TableDrawLayer). They stay in hand until Done, Esc or a click on the paper away from the tables.
+// select cells, color cells (workspace/TableDrawLayer). While they are in hand their bar takes the place of this one. They stay in hand until
+// its arrow, Esc or a click on the paper away from the tables.
 export type CanvasTool = "select" | "text" | "textbox" | "shape" | "draw" | "eraser" | "stamp" | "table";
 
 // The shapes of the Shapes button's menu, like Figma's (the whole gallery is in Insert → Shapes). `key` = its shortcut (Editor).
@@ -29,6 +30,15 @@ export const QUICK_SHAPES: { id: string; label: string; key: string; Icon: typeo
   { id: "triangle", label: "Triangle", key: "", Icon: Triangle },
   { id: "star5", label: "Star", key: "", Icon: Star },
 ];
+
+/** The arrow of the Select tool */
+export function SelectIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden>
+      <path d="M3 1.5l9.5 7.2-4.3.6 2.6 4.9-1.9 1-2.6-5-3.3 3z" />
+    </svg>
+  );
+}
 
 // 32px buttons with a 16px icon (ui-icon); the tool in use is filled with the accent, as in Figma's toolbar.
 const toolBtn = (on: boolean) =>
@@ -75,9 +85,7 @@ export default function ToolRail({ tool, onChange, shape, onPickShape, ink, eras
   return (
     <div className="pointer-events-auto relative flex items-center gap-0.5 rounded-md border border-line bg-surface p-1 shadow-sm">
       <button onClick={() => onChange("select")} aria-pressed={tool === "select"} title={tip("Select and move", "V")} className={toolBtn(tool === "select")}>
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden>
-          <path d="M3 1.5l9.5 7.2-4.3.6 2.6 4.9-1.9 1-2.6-5-3.3 3z" />
-        </svg>
+        <SelectIcon />
       </button>
 
       <DrawTools open={tool === "draw"} ink={ink} onOpen={() => onChange("draw")} />

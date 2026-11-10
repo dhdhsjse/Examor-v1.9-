@@ -1,39 +1,39 @@
 "use client";
 
-import { Check, Eraser, PenLine, SquareArrowOutUpRight, SquareDashedMousePointer, TableCellsMerge, TableCellsSplit } from "lucide-react";
+import { ChevronDown, Eraser, PaintBucket, PenLine, SquareDashedMousePointer } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { ColorGrid } from "@/app/_components/rich/FormatBar";
+import { FILL_COLORS } from "@/app/_lib/fonts";
 import { useT } from "@/app/_lib/uiLang";
 import { MAX_COLS, MAX_ROWS } from "@/app/_lib/table";
 import type { TableDrawMode } from "./TableDrawLayer";
+import { SelectIcon } from "./ToolRail";
+
+const FILLS = ["#ffffff", ...FILL_COLORS];
 
 // (the buttons of the page's floating tool bar, ToolRail)
 const toolBtn = (on: boolean) =>
   `ui-icon grid size-8 place-items-center rounded-[5px] transition-colors outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:pointer-events-none disabled:opacity-40 ${on ? "bg-accent text-white" : "text-ink hover:bg-hover"}`;
 const sep = <span aria-hidden className="mx-0.5 h-5 w-px bg-line" />;
 
-// A cell cut across (down): the icons of the horizontal and vertical line tools
-function LineIcon({ axis }: { axis: "h" | "v" }) {
+// A cell, with what is drawn in it (the stroke's width comes from .ui-icon, like the icons next to it)
+function CellIcon({ children }: { children: React.ReactNode }) {
   return (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden>
-      <rect x="2" y="2" width="12" height="12" rx="1.5" strokeOpacity="0.55" />
-      {axis === "h" ? <path d="M2 8h12" strokeDasharray="2 1.6" strokeWidth="1.8" /> : <path d="M8 2v12" strokeDasharray="2 1.6" strokeWidth="1.8" />}
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <rect x="2.5" y="4" width="19" height="16" rx="2" />
+      {children}
     </svg>
   );
 }
-
-const HINTS: Record<TableDrawMode, string> = {
-  draw: "Drag on the paper to draw a table, then drag inside it to draw its lines",
-  h: "Click a cell to cut it across, or drag over several cells",
-  v: "Click a cell to cut it down, or drag over several cells",
-  erase: "Erase a border; adjoining rectangular cells merge. Other borders are hidden.",
-  cells: "Drag to select · Shift extends · Enter or double-click to edit · Delete clears",
-};
+// Merge: one cell, two arrows closing in. Split: the cell cut in two, the arrows moving apart.
+const MergeIcon = () => <CellIcon><path d="M5.5 12H11M8 9l3 3-3 3M18.5 12H13M16 9l-3 3 3 3" /></CellIcon>;
+const SplitIcon = () => <CellIcon><path d="M12 4v16M10 12H5M8 9l-3 3 3 3M14 12h5M16 9l3 3-3 3" /></CellIcon>;
 
 interface Props {
   /** The tool in hand (null: the table tools are not in hand) */
   mode: TableDrawMode | null;
   onMode: (mode: TableDrawMode) => void;
-  /** A table is selected (Merge, Split and the Table Studio work on it) */
+  /** A table is selected (Merge and Split work on it) */
   hasTable: boolean;
   /** Cells of it are selected, and how many (a merged cell counts once); `span`: one merged cell alone, its rows and columns */
   cells: number;
@@ -41,17 +41,24 @@ interface Props {
   onMerge: () => void;
   onSplit: (cols: number, rows: number) => void;
   canSplit: (cols: number, rows: number) => boolean;
-  onOpenStudio: () => void;
-  onDone: () => void;
-  /** Something to tell for a moment instead of the hint */
+  /** The color of the bucket (undefined: it takes the fill off) */
+  fill: string | undefined;
+  /** The bucket is pressed: it comes in hand (and colors the selected cells) */
+  onBucket: () => void;
+  /** A color is chosen: the same, with that color */
+  onFill: (color: string | undefined) => void;
+  /** Puts the table tools down (only shown while they are in hand) */
+  onExit: () => void;
+  /** Something to tell for a moment */
   message: string | null;
 }
 
-// The floating bar of the tables, under the selected table (or at the top of the pages while the tools are in hand and no table is
-// selected), like the page's tool bar: the pen, the horizontal and vertical lines, the eraser, the selection of cells, then Merge and
-// Split, the Table Studio, and Done. The hint of the tool in hand is at its end.
-export default function TableDrawBar({ mode, onMode, hasTable, cells, span, onMerge, onSplit, canSplit, onOpenStudio, onDone, message }: Props) {
+// The floating bar of the tables, under the selected table, or at the bottom of the worksheet in the place of the page's tool bar while
+// the tools are in hand: the arrow that puts them down, the pen, the eraser, the selection of cells, the bucket, then Merge and Split.
+export default function TableDrawBar({ mode, onMode, hasTable, cells, span, onMerge, onSplit, canSplit, fill, onBucket, onFill, onExit, message }: Props) {
   const t = useT();
+  const [fillOpen, setFillOpen] = useState(false);
+  const fillRef = useRef<HTMLDivElement>(null);
   const [splitOpen, setSplitOpen] = useState(false);
   const [cols, setCols] = useState("2");
   const [rows, setRows] = useState("1");
@@ -68,6 +75,25 @@ export default function TableDrawBar({ mode, onMode, hasTable, cells, span, onMe
       window.removeEventListener("pointerdown", close);
     };
   }, [splitOpen]);
+
+  useEffect(() => {
+    if (!fillOpen) return;
+    const away = (e: Event) => {
+      if (!fillRef.current?.contains(e.target as Node)) setFillOpen(false);
+    };
+    // (first, so that Esc closes the colors and not the table tools)
+    const esc = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      e.stopPropagation();
+      setFillOpen(false);
+    };
+    window.addEventListener("pointerdown", away);
+    window.addEventListener("keydown", esc, true);
+    return () => {
+      window.removeEventListener("pointerdown", away);
+      window.removeEventListener("keydown", esc, true);
+    };
+  }, [fillOpen]);
 
   const tool = (m: TableDrawMode, label: string, icon: React.ReactNode, testId: string) => (
     <button type="button" onClick={() => { setSplitOpen(false); onMode(m); }} aria-pressed={mode === m} title={t(label)} aria-label={t(label)} data-testid={testId} className={toolBtn(mode === m)}>
@@ -110,14 +136,48 @@ export default function TableDrawBar({ mode, onMode, hasTable, cells, span, onMe
       className="pointer-events-auto relative w-max max-w-full rounded-md border border-line bg-surface p-1 shadow-sm"
     >
       <div role="toolbar" aria-label={t("Table tools")} className="flex flex-wrap items-center gap-0.5">
+        {mode && (
+          <button type="button" onClick={onExit} title={t("Select and move")} aria-label={t("Select and move")} data-testid="table-tool-exit" className={toolBtn(false)}>
+            <SelectIcon />
+          </button>
+        )}
         {tool("draw", "Draw a table: pen", <PenLine aria-hidden />, "table-tool-draw")}
-        {tool("h", "Horizontal line", <LineIcon axis="h" />, "table-tool-h")}
-        {tool("v", "Vertical line", <LineIcon axis="v" />, "table-tool-v")}
         {tool("erase", "Erase a line", <Eraser aria-hidden />, "table-tool-erase")}
         {tool("cells", "Select cells", <SquareDashedMousePointer aria-hidden />, "table-tool-cells")}
+        <div ref={fillRef} className="relative flex items-center">
+          <button type="button" onClick={onBucket} aria-pressed={mode === "fill"} title={t("Cell fill")} aria-label={t("Cell fill")} data-testid="table-tool-fill" className={`${toolBtn(mode === "fill")} relative rounded-e-none`}>
+            <PaintBucket aria-hidden />
+            <span aria-hidden data-testid="table-fill-swatch" className="absolute inset-x-2 bottom-[3px] h-[3px] rounded-full ring-1 ring-black/20" style={{ background: fill ?? "transparent" }} />
+          </button>
+          <button
+            type="button"
+            onClick={() => setFillOpen(!fillOpen)}
+            aria-expanded={fillOpen}
+            aria-haspopup="dialog"
+            title={t("Fill color")}
+            aria-label={t("Fill color")}
+            data-testid="table-fill-menu"
+            className={`grid h-8 w-4 place-items-center rounded-e-[5px] transition-colors outline-none focus-visible:ring-2 focus-visible:ring-accent ${mode === "fill" ? "bg-accent-strong text-white" : "text-muted hover:bg-hover hover:text-ink"}`}
+          >
+            <ChevronDown size={12} strokeWidth={2} aria-hidden />
+          </button>
+          {fillOpen && (
+            <div role="dialog" aria-label={t("Fill color")} data-testid="table-fill-pop" className="absolute top-full right-0 z-40 mt-2 w-[196px] rounded-lg border border-line bg-surface p-2 shadow-lg group-data-[side=above]/table-dock:top-auto group-data-[side=above]/table-dock:bottom-full group-data-[side=above]/table-dock:mt-0 group-data-[side=above]/table-dock:mb-2">
+              <ColorGrid
+                value={fill}
+                autoLabel={t("None")}
+                colors={FILLS}
+                onChange={(color) => {
+                  onFill(color);
+                  setFillOpen(false);
+                }}
+              />
+            </div>
+          )}
+        </div>
         {sep}
         <button type="button" onClick={needCells(onMerge)} disabled={!hasTable || cells === 1} title={t(cells ? "Merge cells" : "Select the cells to merge first")} aria-label={t("Merge cells")} data-testid="table-bar-merge" className={toolBtn(false)}>
-          <TableCellsMerge aria-hidden />
+          <MergeIcon />
         </button>
         <div ref={splitRef} className="relative" onKeyDown={(e) => {
           if (!splitOpen) return;
@@ -125,7 +185,7 @@ export default function TableDrawBar({ mode, onMode, hasTable, cells, span, onMe
           if (e.key === "Enter" && (e.target as HTMLElement).tagName === "INPUT") { e.preventDefault(); e.stopPropagation(); submitSplit(); }
         }}>
           <button type="button" onClick={needCells(() => (splitOpen ? setSplitOpen(false) : openSplit()))} disabled={!hasTable} aria-expanded={splitOpen} title={t(cells ? "Split cells" : "Select the cells to split first")} aria-label={t("Split cells")} data-testid="table-bar-split" className={toolBtn(splitOpen)}>
-            <TableCellsSplit aria-hidden />
+            <SplitIcon />
           </button>
           {splitOpen && (
             <div role="dialog" aria-label={t("Split cells")} data-testid="table-split-pop" className="absolute top-full right-0 z-40 mt-2 flex w-52 flex-col gap-2 rounded-lg border border-line bg-surface p-3 shadow-lg group-data-[side=above]/table-dock:top-auto group-data-[side=above]/table-dock:bottom-full group-data-[side=above]/table-dock:mt-0 group-data-[side=above]/table-dock:mb-2">
@@ -145,19 +205,10 @@ export default function TableDrawBar({ mode, onMode, hasTable, cells, span, onMe
             </div>
           )}
         </div>
-        {sep}
-        <button type="button" onClick={onOpenStudio} disabled={!hasTable} title={t("Open in Table Studio")} aria-label={t("Open in Table Studio")} data-testid="table-bar-studio" className={toolBtn(false)}>
-          <SquareArrowOutUpRight aria-hidden />
-        </button>
-        {mode && (
-          <button type="button" onClick={onDone} title={t("Done (Esc)")} aria-label={t("Done (Esc)")} data-testid="table-bar-done" className={toolBtn(false)}>
-            <Check aria-hidden />
-          </button>
-        )}
       </div>
-      {(message || mode) && (
-        <p dir="auto" role="status" data-testid="table-bar-hint" className={`mx-1.5 mt-1 max-w-80 pb-0.5 text-xs leading-relaxed ${message ? "font-medium text-amber-700" : "text-muted"}`}>
-          {t(message ?? HINTS[mode!])}
+      {message && (
+        <p dir="auto" role="status" data-testid="table-bar-note" className="mx-1.5 mt-1 max-w-80 pb-0.5 text-xs leading-relaxed font-medium text-amber-700">
+          {t(message)}
         </p>
       )}
     </div>

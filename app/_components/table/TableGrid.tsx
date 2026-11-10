@@ -589,7 +589,7 @@ export default function TableGrid({ table, lang, sel, onSelect, onChange, onUndo
         onCopy={(e) => copy(e, false)}
         onCut={(e) => copy(e, true)}
         onPaste={paste}
-        className="min-h-0 flex-1 overflow-auto bg-white outline-none focus-visible:ring-2 focus-visible:ring-indigo-300 focus-visible:ring-inset"
+        className="studio-desk min-h-0 flex-1 overflow-auto bg-white outline-none focus-visible:ring-2 focus-visible:ring-indigo-300 focus-visible:ring-inset"
         style={{ maxHeight }}
       >
         <div

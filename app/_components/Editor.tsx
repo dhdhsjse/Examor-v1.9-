@@ -1323,7 +1323,6 @@ export default function Editor({ start }: { start: Start }) {
               onDrawTable={drawTable}
               tableMode={tableMode}
               onTableMode={(next) => { setEditing(null); setTableMode(next); setTool("table"); }}
-              onOpenTableStudio={(id) => setTableStudio({ open: true, blockId: id, shape: undefined })}
               ink={ink}
               onInk={drawInk}
               eraser={eraser}

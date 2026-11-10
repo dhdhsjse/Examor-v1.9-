@@ -79,7 +79,7 @@ export function ImageEditor({ b, lang, meta, onChange, onReplace, onOpenChartStu
     <>
       <div className="relative">
         {/* eslint-disable-next-line @next/next/no-img-element -- local data URL preview */}
-        <img src={b.src} alt="" className="max-h-36 w-full rounded-[5px] border border-line bg-subtle object-contain" />
+        <img src={b.src} alt="" data-paper="" className="max-h-36 w-full rounded-[5px] border border-line bg-subtle object-contain" />
         <button
           type="button"
           onClick={onOpenImageStudio}

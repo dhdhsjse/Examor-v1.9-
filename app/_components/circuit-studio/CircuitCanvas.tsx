@@ -121,7 +121,7 @@ export default function CircuitCanvas({ studio, ink, eraser }: { studio: Circuit
   };
 
   return (
-    <div ref={box} dir="ltr" data-testid="circuit-canvas" className="relative grid min-h-0 flex-1 place-items-center overflow-auto bg-subtle/60 p-4">
+    <div ref={box} dir="ltr" data-testid="circuit-canvas" className="studio-desk relative grid min-h-0 flex-1 place-items-center overflow-auto bg-subtle/60 p-4">
       <div className="relative shadow-sm" style={{ width: config.width * scale, height: config.height * scale, cursor: placing || tool === "wire" ? "crosshair" : undefined }} aria-label={t("Circuit drawing area")} role="img">
         <Stage
           width={config.width * scale}

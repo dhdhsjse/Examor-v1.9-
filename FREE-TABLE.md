@@ -2,15 +2,17 @@
 
 Insert → **Free table** activates the worksheet pen. Drag a rectangle on any page to create the table, then draw horizontal or vertical dividers inside it. A divider extends across each cell it touches and snaps to nearby grid lines. The preview shows the resulting cut before release.
 
-The floating table tools also appear when an ordinary editable table is selected:
+While the tools are in hand, their bar takes the place of the floating tool bar, centered at the bottom of the worksheet; its arrow puts them down. The same bar also appears next to an ordinary editable table when it is selected:
 
-- **Horizontal / vertical line:** click to divide one cell, or drag across several cells.
+- **Pen:** drag on the paper to draw a table, or inside a table to draw a horizontal or vertical divider.
 - **Erase:** preview the borders to remove, then release to apply the whole gesture in one undo step. Adjacent cells merge when they form a rectangle; other erased borders are hidden. Hidden borders remain dotted while drawing and can be drawn back.
 - **Select cells:** drag a range, Shift-click to extend, or use the arrow keys. Enter or double-click opens the existing worksheet cell editor. Delete clears cells. Copy, cut and paste share the properties grid and Table Studio clipboard, including formulas and formatting.
+- **Bucket:** click a cell to color it, or drag over several cells, in one undo step. Its arrow chooses the color, or None to take the fill off. With cells selected, the bucket colors them at once.
 - **Merge:** uses Table Studio's rules: the first cell retains its content, and the underlying rows and columns remain available to Split.
 - **Split:** choose rows and columns for each selected cell. A merged cell defaults to its existing grid divisions. Impossible splits are disabled; no partial changes are applied.
-- **Open in Table Studio:** edit the same table, then Update it in place.
-- **Done / Escape:** put the drawing tools down. Escape during a drawing or eraser gesture cancels that gesture.
+- **Escape:** put the drawing tools down. Escape during a drawing or eraser gesture cancels that gesture.
+
+**Open in Table Studio** is in the table's right Properties panel: edit the same table, then Update it in place.
 
 Tables use the existing `TableBlock` model, properties, layout, save format and PDF renderer. No raster conversion or separate table format is involved. Cells remain rectangular; arbitrary polygonal cells are outside the existing table model. Tables with overlaid shapes/images follow the existing fixed-table rule and are edited in Studio.
 

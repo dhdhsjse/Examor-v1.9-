@@ -12,9 +12,8 @@ describe("the interface strings of the Table Studio and the table panel", () => 
   const used = new Set(files.flatMap((f) => [...readFileSync(f, "utf8").matchAll(T_CALL)].map((m) => m[1])));
   // (the names the start buttons, the border styles and the list of borders are looked up by)
   for (const k of ["Grid", "Box", "Rows", "Columns", "None", "All borders", "Outside borders", "Inside borders", "Top border", "Bottom border", "Left border", "Right border", "No borders"]) used.add(k);
-  // (the hints of the table tools' bar, looked up by the tool in hand)
+  // (the names of the table tools' bar, given to its helpers)
   const bar = readFileSync(join(__dirname, "../../_components/workspace/TableDrawBar.tsx"), "utf8");
-  for (const m of bar.slice(bar.indexOf("const HINTS"), bar.indexOf("};", bar.indexOf("const HINTS"))).matchAll(/: "([^"]*)"/g)) used.add(m[1]);
   for (const m of bar.matchAll(/tool\("[^"]+", "([^"]+)"/g)) used.add(m[1]);
   for (const m of bar.matchAll(/count\("([^"]+)"/g)) used.add(m[1]);
 

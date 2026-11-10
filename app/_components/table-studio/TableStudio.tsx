@@ -226,7 +226,7 @@ export default function TableStudio({ meta, editing, startShape, onInsert, onUpd
       </header>
 
       <div className="flex min-h-0 flex-1">
-        <main className="relative flex min-w-0 flex-1 flex-col">
+        <main className="studio-desk relative flex min-w-0 flex-1 flex-col">
           <TableFormatBar table={table} range={range} active={active} actions={actions} examFont={meta.fontFamily ?? DEFAULT_FONT} onPickShape={pickShape} onPickImage={chooseImage} shapesActive={tool === "shape"} />
           <TableGrid
             table={table}
