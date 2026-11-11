@@ -12,6 +12,13 @@
 // `names` is what the card shows (in the app's language); the search finds the item by its names and aliases in all three
 // languages, and by its category and subcategory names. The search ignores case, accents, Arabic vowel marks and the
 // forms of hamza and alef (see searchText.ts): aliases are for other words, not for other spellings of the same word.
+//
+// A subject's category (`subject`, e.g. Sciences) is not a shelf of pictures: its items are diagrams of that subject's shelf,
+// and its subcategories (the topics of the curriculum) are the parts of that shelf. Its items are either a drawing
+// (`file`) or a figure drawn from settings (`figure`: see figures/sciences/), which the teacher changes on the page.
+
+import type { Params } from "./figures/types";
+import type { Cycle, SchoolSubject } from "./subjects";
 
 export type PackLang = "en" | "fr" | "ar";
 export type Names = Record<PackLang, string>;
@@ -19,7 +26,9 @@ export type Aliases = Partial<Record<PackLang, string[]>>;
 
 export interface PackCategory {
   id: string;
-  group: "pictures" | "learning"; // its section on the Library's home page
+  group: "pictures" | "learning" | "subjects"; // its section on the Library's home page ("subjects": in its subject's shelf)
+  subject?: SchoolSubject; // a subject's category: its items join that subject's shelf, as diagrams
+  cycles?: Cycle[]; // (missing: every cycle)
   names: Names;
   aliases?: Aliases;
   subcategories?: { id: string; names: Names; aliases?: Aliases }[];
@@ -29,7 +38,8 @@ export interface PackItem {
   id: string; // unique in the pack
   category: string; // a PACK_CATEGORIES id
   subcategory?: string; // one of its subcategories (a category with subcategories gives one to each item)
-  file: string; // under public/library/
+  file?: string; // under public/library/
+  figure?: { id: string; params?: Params }; // or a figure drawn from settings (figures/), instead of a file
   names: Names;
   aliases?: Aliases;
 }
@@ -154,6 +164,28 @@ export const PACK_CATEGORIES: PackCategory[] = [
       { id: "writing", names: { en: "Writing", fr: "Écriture", ar: "الكتابة" }, aliases: { en: ["write", "lines"], fr: ["écrire", "lignes"], ar: ["سطور", "خط"] } },
       { id: "math", names: { en: "Math", fr: "Maths", ar: "الرياضيات" }, aliases: { en: ["numbers"], fr: ["nombres", "mathématiques"], ar: ["أعداد", "حساب"] } },
       { id: "organizers", names: { en: "Organizers", fr: "Organisateurs", ar: "منظمات" }, aliases: { en: ["layout", "boxes"], fr: ["cases", "mise en page"], ar: ["خانات", "تنظيم"] } },
+    ],
+  },
+  {
+    id: "sciences",
+    group: "subjects",
+    subject: "Sciences",
+    cycles: ["lycee"],
+    names: { en: "Life sciences", fr: "SVT", ar: "علوم الحياة" },
+    aliases: { en: ["biology", "life sciences", "svt", "natural sciences"], fr: ["biologie", "sciences de la vie", "sciences naturelles"], ar: ["علوم طبيعية", "بيولوجيا", "علوم الحياة والأرض"] },
+    // the topics of the curriculum (the parts of the Sciences shelf)
+    subcategories: [
+      { id: "matter", names: { en: "Using matter and its origin", fr: "Utilisation de la matière et son origine", ar: "استعمال المادة وتحديد مصدرها" }, aliases: { en: ["organic matter", "autotroph", "heterotroph", "exao"], fr: ["matière organique", "autotrophe", "hétérotrophe", "exao"], ar: ["المادة العضوية", "ذاتي التغذية", "غير ذاتي التغذية", "التجريب المدعم بالحاسوب"] } },
+      { id: "growth", names: { en: "Growth and cell renewal", fr: "Croissance et renouvellement cellulaire", ar: "النمو والتجديد الخلوي" }, aliases: { en: ["meristem", "mitosis", "cell division", "cell cycle"], fr: ["méristème", "mitose", "division cellulaire", "cycle cellulaire"], ar: ["المرستيم", "الانقسام المتساوي", "الانقسام الخيطي", "الدورة الخلوية"] } },
+      { id: "cell", names: { en: "The cell, a structural unit", fr: "La cellule, unité structurale", ar: "الخلية وحدة بنائية" }, aliases: { en: ["organelles", "ultrastructure", "microscope"], fr: ["organites", "ultrastructure", "microscope"], ar: ["العضيات", "البنية الدقيقة", "المجهر"] } },
+      { id: "nervous", names: { en: "Nervous and hormonal regulation", fr: "Régulation nerveuse et hormonale", ar: "التنظيم العصبي والهرموني" }, aliases: { en: ["neuron", "nerve", "synapse", "hormone", "reflex"], fr: ["neurone", "nerf", "synapse", "hormone", "réflexe"], ar: ["عصبون", "عصب", "مشبك", "هرمون", "منعكس"] } },
+      { id: "mutations", names: { en: "Mutations and biodiversity", fr: "Mutations et diversité biologique", ar: "الطفرات وأسس التنوع البيولوجي" }, aliases: { en: ["mutation", "karyotype", "chromosome", "genetic diversity", "meiosis"], fr: ["mutation", "caryotype", "chromosome", "brassage", "diversité génétique"], ar: ["طفرة", "النمط النووي", "الصبغيات", "التنوع الوراثي"] } },
+      { id: "synthesis", names: { en: "Protein synthesis", fr: "Synthèse des protéines", ar: "آلية تركيب البروتين" }, aliases: { en: ["dna", "rna", "transcription", "translation", "genetic code"], fr: ["adn", "arn", "transcription", "traduction", "code génétique"], ar: ["الاستنساخ", "الترجمة", "الشفرة الوراثية", "الحمض النووي"] } },
+      { id: "structure", names: { en: "Protein structure and function", fr: "Structure et fonction des protéines", ar: "العلاقة بين بنية ووظيفة البروتين" }, aliases: { en: ["amino acid", "peptide", "polypeptide", "electrophoresis"], fr: ["acide aminé", "peptide", "polypeptide", "électrophorèse"], ar: ["حمض أميني", "ببتيد", "الهجرة الكهربائية"] } },
+      { id: "enzymes", names: { en: "Enzyme activity", fr: "Activité enzymatique", ar: "النشاط الإنزيمي" }, aliases: { en: ["enzyme", "active site", "substrate", "catalysis"], fr: ["enzyme", "site actif", "substrat", "catalyse"], ar: ["إنزيم", "الموقع الفعال", "مادة التفاعل", "تحفيز"] } },
+      { id: "immunity", names: { en: "Immunology (self-defense)", fr: "Immunologie (défense de l'organisme)", ar: "دور البروتينات في الدفاع عن الذات" }, aliases: { en: ["immunity", "antibody", "antigen", "lymphocyte", "hiv", "aids"], fr: ["immunité", "anticorps", "antigène", "lymphocyte", "vih", "sida"], ar: ["المناعة", "جسم مضاد", "مولد الضد", "خلية لمفاوية", "السيدا"] } },
+      { id: "photosynthesis", names: { en: "Photosynthesis", fr: "Photosynthèse", ar: "التركيب الضوئي" }, aliases: { en: ["chloroplast", "light energy", "calvin"], fr: ["chloroplaste", "énergie lumineuse", "calvin"], ar: ["الصانعة الخضراء", "الطاقة الضوئية", "البناء الضوئي", "كالفن"] } },
+      { id: "respiration", names: { en: "Cellular respiration", fr: "Respiration cellulaire", ar: "التنفس الخلوي" }, aliases: { en: ["atp", "mitochondrion", "glycolysis", "krebs", "fermentation", "energy"], fr: ["atp", "mitochondrie", "glycolyse", "krebs", "fermentation", "énergie"], ar: ["الميتوكوندري", "التحلل السكري", "كريبس", "التخمر", "الطاقة"] } },
     ],
   },
 ];
@@ -693,7 +725,147 @@ const ARABIC: PackItem[] = ARABIC_LETTERS.map(([letter, en, fr, ar], i) => ({
   aliases: { en: [letter], fr: [letter], ar: [letter, `حرف ال${ar}`] },
 }));
 
-export const PACK_ITEMS: PackItem[] = [...DRAWN, ...NUMBERS, ...FRACTIONS, ...TIME, ...LATIN, ...ARABIC].sort(
+// ---- Sciences: the topics of the life-sciences curriculum ----
+// Drawings (public/library/sciences/) and figures drawn from settings (figures/sciences/). A labeled diagram comes twice:
+// with its names, and numbered to label (on the page the teacher switches between names, numbers, lines to fill or none).
+type Three = [en: string, fr: string, ar: string];
+type Words = [en: string[], fr: string[], ar: string[]];
+const sciNames = ([en, fr, ar]: Three): Names => ({ en, fr, ar });
+const sciAliases = (a?: Words): Aliases | undefined => (a ? { en: a[0], fr: a[1], ar: a[2] } : undefined);
+const drawing = (topic: string, key: string, names: Three, aliases?: Words): PackItem => ({
+  id: `sci-${topic}-${key}`,
+  category: "sciences",
+  subcategory: topic,
+  file: `sciences/${key}.svg`,
+  names: sciNames(names),
+  aliases: sciAliases(aliases),
+});
+const figure = (topic: string, key: string, id: string, params: Params, names: Three, aliases?: Words): PackItem => ({
+  id: `sci-${topic}-${key}`,
+  category: "sciences",
+  subcategory: topic,
+  figure: { id, params },
+  names: sciNames(names),
+  aliases: sciAliases(aliases),
+});
+// The labeled and the "to label" version of a diagram.
+const labeledPair = (topic: string, key: string, id: string, params: Params, [en, fr, ar]: Three, aliases?: Words): PackItem[] => [
+  figure(topic, key, id, { ...params, labels: "names" }, [`${en} (labeled)`, `${fr} (légendé)`, `${ar} (مع البيانات)`], aliases),
+  figure(topic, `${key}-to-label`, id, { ...params, labels: "numbers" }, [`${en} (to label)`, `${fr} (à légender)`, `${ar} (للتسمية)`], aliases),
+];
+
+const SCIENCES: PackItem[] = [
+  // Using matter and its origin
+  ...labeledPair("matter", "exao", "sci-exao", {}, ["ExAO set-up", "Montage ExAO", "تركيب ExAO"], [["bioreactor", "probe", "oxygen"], ["bioréacteur", "sonde", "oxygène"], ["المفاعل الحيوي", "مسبار", "الأكسجين"]]),
+  drawing("matter", "elodea", ["Elodea giving off oxygen", "Élodée et dégagement d'oxygène", "الإيلوديا وانطلاق الأكسجين"], [["oxygen", "photosynthesis", "bubbles"], ["oxygène", "photosynthèse", "bulles"], ["الأكسجين", "فقاعات"]]),
+  drawing("matter", "starch-leaf", ["Starch test on a masked leaf", "Test de l'amidon sur une feuille cachée", "الكشف عن النشاء في ورقة مغطاة"], [["iodine", "leaf", "light"], ["eau iodée", "feuille", "lumière"], ["ماء اليود", "ورقة", "الضوء"]]),
+  drawing("matter", "limewater", ["Limewater test (CO₂)", "Test à l'eau de chaux (CO₂)", "الكشف بماء الجير (CO₂)"], [["carbon dioxide", "co2", "cloudy"], ["dioxyde de carbone", "co2", "trouble"], ["ثنائي أكسيد الكربون", "co2", "تعكر"]]),
+  drawing("matter", "autoradiography", ["¹⁴CO₂ and autoradiography", "¹⁴CO₂ et autoradiographie", "¹⁴CO₂ والتصوير الإشعاعي الذاتي"], [["radioactive carbon", "14c", "bell jar"], ["carbone radioactif", "14c", "cloche"], ["الكربون المشع", "14c", "ناقوس"]]),
+  drawing("matter", "yeast", ["Yeast and limewater", "Levures et eau de chaux", "الخميرة وماء الجير"], [["fermentation", "respiration", "flask"], ["fermentation", "respiration", "fiole"], ["التخمر", "التنفس", "دورق"]]),
+
+  // Growth and cell renewal
+  figure("growth", "mitosis", "sci-mitosis", { phase: "all", labels: "names" }, ["Mitosis: the phases", "Mitose : les phases", "الانقسام المتساوي: الأطوار"], [["prophase", "metaphase", "anaphase", "telophase"], ["prophase", "métaphase", "anaphase", "télophase"], ["الطور التمهيدي", "الطور الاستوائي", "الطور الانفصالي", "الطور النهائي"]]),
+  figure("growth", "mitosis-order", "sci-mitosis", { phase: "all", cell: "plant", mixed: true, labels: "numbers" }, ["Mitosis: phases to put in order", "Mitose : phases à remettre en ordre", "الانقسام المتساوي: أطوار للترتيب"], [["prophase", "metaphase", "anaphase", "telophase", "plant cell"], ["prophase", "métaphase", "anaphase", "télophase", "cellule végétale"], ["الطور التمهيدي", "الطور الاستوائي", "خلية نباتية"]]),
+  ...labeledPair("growth", "root-tip", "sci-root-tip", {}, ["Root tip", "Extrémité de la racine", "قمة الجذر"], [["meristem", "root cap", "root hair"], ["méristème", "coiffe", "poil absorbant"], ["المرستيم", "القلنسوة", "الأوبار الماصة"]]),
+  ...labeledPair("growth", "chromosome", "sci-chromosome", {}, ["Chromosome", "Chromosome", "صبغي"], [["chromatid", "centromere"], ["chromatide", "centromère"], ["صبيغي", "الجزيء المركزي", "كروموسوم"]]),
+  figure("growth", "cell-cycle", "sci-cell-cycle", { labels: "names" }, ["Cell cycle", "Cycle cellulaire", "الدورة الخلوية"], [["interphase", "g1", "g2"], ["interphase", "g1", "g2"], ["المرحلة البينية"]]),
+  figure("growth", "dna-curve", "sci-dna-curve", {}, ["DNA quantity during the cell cycle", "Quantité d'ADN au cours du cycle cellulaire", "تغير كمية ADN خلال الدورة الخلوية"], [["graph", "curve", "replication"], ["graphique", "courbe", "réplication"], ["منحنى", "تضاعف"]]),
+  drawing("growth", "root-tip-cells", ["Root tip cells under the microscope", "Cellules de pointe de racine au microscope", "خلايا قمة الجذر تحت المجهر"], [["onion", "mitosis", "meristem"], ["oignon", "mitose", "méristème"], ["البصل", "الانقسام", "المرستيم"]]),
+  drawing("growth", "root-marks", ["Root growth (ink marks)", "Croissance de la racine (repères)", "نمو الجذر (علامات)"], [["elongation", "experiment"], ["élongation", "expérience"], ["الاستطالة", "تجربة"]]),
+
+  // The cell, a structural unit
+  ...labeledPair("cell", "ultra-animal", "sci-ultrastructure", { type: "animal" }, ["Animal cell, electron microscope", "Cellule animale au microscope électronique", "خلية حيوانية بالمجهر الإلكتروني"], [["ultrastructure", "organelles", "golgi", "mitochondrion"], ["ultrastructure", "organites", "golgi", "mitochondrie"], ["البنية الدقيقة", "عضيات", "غولجي"]]),
+  ...labeledPair("cell", "ultra-plant", "sci-ultrastructure", { type: "plant" }, ["Plant cell, electron microscope", "Cellule végétale au microscope électronique", "خلية نباتية بالمجهر الإلكتروني"], [["ultrastructure", "organelles", "chloroplast", "vacuole"], ["ultrastructure", "organites", "chloroplaste", "vacuole"], ["البنية الدقيقة", "عضيات", "صانعة خضراء"]]),
+  ...labeledPair("cell", "microscope", "sci-microscope", {}, ["Light microscope", "Microscope optique", "المجهر الضوئي"], [["eyepiece", "objective", "stage"], ["oculaire", "objectif", "platine"], ["العينية", "الشيئية", "المنصة"]]),
+  ...labeledPair("cell", "membrane", "sci-membrane", {}, ["Plasma membrane", "Membrane plasmique", "الغشاء الهيولي"], [["fluid mosaic", "phospholipid", "bilayer"], ["mosaïque fluide", "phospholipide", "bicouche"], ["الفسيفساء المائعة", "فوسفوليبيد"]]),
+  drawing("cell", "bacterium", ["Bacterium (prokaryotic cell)", "Bactérie (cellule procaryote)", "بكتيريا (خلية بدائية النواة)"], [["prokaryote", "flagellum", "plasmid"], ["procaryote", "flagelle", "plasmide"], ["بدائية النواة", "سوط", "بلازميد"]]),
+  drawing("cell", "onion-epidermis", ["Onion epidermis under the microscope", "Épiderme d'oignon au microscope", "بشرة البصل تحت المجهر"], [["cells", "observation"], ["cellules", "observation"], ["خلايا", "ملاحظة"]]),
+  drawing("cell", "golgi", ["Golgi apparatus", "Appareil de Golgi", "جهاز غولجي"], [["vesicles", "organelle"], ["vésicules", "organite"], ["حويصلات", "عضية"]]),
+  drawing("cell", "rer", ["Rough endoplasmic reticulum", "Réticulum endoplasmique granuleux", "الشبكة الهيولية الفعالة"], [["ribosomes", "organelle", "rer"], ["ribosomes", "organite", "reg"], ["ريبوزومات", "عضية"]]),
+
+  // Nervous and hormonal regulation
+  ...labeledPair("nervous", "neuron", "sci-neuron", {}, ["Neuron", "Neurone", "عصبون"], [["axon", "dendrite", "myelin", "nerve cell"], ["axone", "dendrite", "myéline", "cellule nerveuse"], ["محور أسطواني", "تغصن", "خلية عصبية"]]),
+  ...labeledPair("nervous", "synapse", "sci-synapse", {}, ["Synapse", "Synapse", "مشبك"], [["neurotransmitter", "vesicle", "cleft"], ["neurotransmetteur", "vésicule", "fente"], ["الوسيط الكيميائي", "حويصلة"]]),
+  ...labeledPair("nervous", "reflex-arc", "sci-reflex-arc", {}, ["Reflex arc", "Arc réflexe", "القوس الانعكاسية"], [["spinal cord", "motor neuron", "sensory neuron"], ["moelle épinière", "motoneurone", "neurone sensitif"], ["النخاع الشوكي", "عصبون حركي", "عصبون حسي"]]),
+  figure("nervous", "action-potential", "sci-action-potential", { labels: "names" }, ["Action potential", "Potentiel d'action", "كمون العمل"], [["depolarization", "resting potential", "oscilloscope"], ["dépolarisation", "potentiel de repos", "oscilloscope"], ["زوال الاستقطاب", "كمون الراحة"]]),
+  figure("nervous", "regulation-loop", "sci-regulation-loop", {}, ["Hormonal regulation loop", "Boucle de régulation hormonale", "حلقة التنظيم الهرموني"], [["insulin", "glycemia", "feedback", "pancreas"], ["insuline", "glycémie", "rétrocontrôle", "pancréas"], ["الأنسولين", "نسبة السكر", "التنظيم الرجعي", "البنكرياس"]]),
+  figure("nervous", "regulation-loop-empty", "sci-regulation-loop", { empty: true }, ["Regulation loop (empty boxes)", "Boucle de régulation (cases vides)", "حلقة التنظيم (خانات فارغة)"], [["hormone", "feedback"], ["hormone", "rétrocontrôle"], ["هرمون", "التنظيم الرجعي"]]),
+  drawing("nervous", "nerve-recording", ["Stimulating and recording a nerve", "Stimulation et enregistrement d'un nerf", "تنبيه عصب وتسجيل نشاطه"], [["oscilloscope", "electrodes", "stimulator"], ["oscilloscope", "électrodes", "stimulateur"], ["راسم الاهتزاز", "مساري", "منبه"]]),
+
+  // Mutations and biodiversity
+  figure("mutations", "gene-mutation", "sci-gene-mutation", {}, ["Gene mutation (sequence)", "Mutation génique (séquence)", "طفرة مورثية (تتابع)"], [["substitution", "deletion", "insertion", "allele", "codon"], ["substitution", "délétion", "insertion", "allèle", "codon"], ["استبدال", "حذف", "إضافة", "أليل"]]),
+  figure("mutations", "chromosome-mutations", "sci-chromosome-mutation", { kind: "all", labels: "numbers" }, ["Chromosome mutations", "Mutations chromosomiques", "الطفرات الصبغية"], [["deletion", "duplication", "inversion", "translocation"], ["délétion", "duplication", "inversion", "translocation"], ["الحذف", "التضاعف", "الانقلاب", "الانتقال"]]),
+  figure("mutations", "karyotype", "sci-karyotype", { sex: "XY", trisomy: "none" }, ["Human karyotype", "Caryotype humain", "النمط النووي للإنسان"], [["chromosomes", "pairs"], ["chromosomes", "paires"], ["الصبغيات", "أزواج"]]),
+  figure("mutations", "karyotype-21", "sci-karyotype", { sex: "XX", trisomy: "21" }, ["Karyotype with trisomy 21", "Caryotype avec trisomie 21", "نمط نووي مع تثلث الصبغي 21"], [["down syndrome", "anomaly"], ["syndrome de down", "anomalie"], ["متلازمة داون", "شذوذ"]]),
+  drawing("mutations", "crossing-over", ["Crossing-over", "Crossing-over (enjambement)", "العبور الصبغي"], [["meiosis", "chiasma", "recombination"], ["méiose", "chiasma", "brassage intrachromosomique"], ["الانقسام المنصف", "التصالب", "التخلط"]]),
+  drawing("mutations", "sickle-cells", ["Normal and sickle red blood cells", "Hématies normales et falciformes", "كريات حمراء عادية ومنجلية"], [["sickle cell anemia", "hemoglobin"], ["drépanocytose", "hémoglobine"], ["فقر الدم المنجلي", "الهيموغلوبين"]]),
+  drawing("mutations", "homologous-pair", ["Homologous chromosomes and alleles", "Chromosomes homologues et allèles", "صبغيان متماثلان وأليلات"], [["genes", "alleles", "locus"], ["gènes", "allèles", "locus"], ["مورثات", "أليلات"]]),
+
+  // Protein synthesis
+  figure("synthesis", "dna", "sci-dna-strands", {}, ["DNA: the two strands", "ADN : les deux brins", "ADN: السلسلتان"], [["complementary", "base pairs", "nucleotides"], ["complémentaire", "paires de bases", "nucléotides"], ["التكامل", "القواعد الآزوتية", "نيكليوتيدات"]]),
+  figure("synthesis", "dna-to-fill", "sci-dna-strands", { blank: true }, ["DNA: complementary strand to fill", "ADN : brin complémentaire à compléter", "ADN: سلسلة متكاملة للإكمال"], [["complementary", "exercise"], ["complémentaire", "exercice"], ["التكامل", "تمرين"]]),
+  ...labeledPair("synthesis", "transcription", "sci-transcription", {}, ["Transcription", "Transcription", "الاستنساخ"], [["rna polymerase", "mrna"], ["arn polymérase", "arnm"], ["ARN بوليميراز"]]),
+  ...labeledPair("synthesis", "translation", "sci-translation", {}, ["Translation", "Traduction", "الترجمة"], [["ribosome", "trna", "codon", "anticodon"], ["ribosome", "arnt", "codon", "anticodon"], ["ريبوزوم", "رامزة"]]),
+  drawing("synthesis", "genetic-code", ["Genetic code table", "Tableau du code génétique", "جدول الشفرة الوراثية"], [["codons", "amino acids"], ["codons", "acides aminés"], ["الرامزات", "الأحماض الأمينية"]]),
+  drawing("synthesis", "trna", ["Transfer RNA (tRNA)", "ARN de transfert (ARNt)", "ARN الناقل (ARNt)"], [["anticodon", "cloverleaf"], ["anticodon", "feuille de trèfle"], ["الرامزة المضادة"]]),
+  drawing("synthesis", "nucleotide", ["Nucleotide", "Nucléotide", "نيكليوتيد"], [["phosphate", "sugar", "base"], ["phosphate", "sucre", "base azotée"], ["فوسفات", "سكر", "قاعدة آزوتية"]]),
+  drawing("synthesis", "polysome", ["Polysome", "Polysome", "متعدد الريبوزوم"], [["ribosomes", "polypeptides"], ["ribosomes", "polypeptides"], ["ريبوزومات", "ببتيدات"]]),
+  drawing("synthesis", "dna-helix", ["DNA double helix", "Double hélice d'ADN", "اللولب المضاعف ADN"], [["helix"], ["hélice"], ["لولب"]]),
+
+  // Protein structure and function
+  figure("structure", "amino-acid", "sci-amino-acid", { form: "neutral", labels: "names" }, ["Amino acid: general formula", "Acide aminé : formule générale", "الحمض الأميني: الصيغة العامة"], [["radical", "amine", "carboxyl"], ["radical", "amine", "carboxyle"], ["الجذر", "الأمينية", "الكربوكسيلية"]]),
+  figure("structure", "amino-acid-ions", "sci-amino-acid", { form: "zwitterion", labels: "none", frames: false }, ["Amino acid: charged forms", "Acide aminé : formes ionisées", "الحمض الأميني: الأشكال المتأينة"], [["zwitterion", "isoelectric", "phi", "cation", "anion"], ["ion dipolaire", "isoélectrique", "phi", "cation", "anion"], ["الشاردة الثنائية القطب", "نقطة التعادل الكهربائي"]]),
+  figure("structure", "peptide-bond", "sci-peptide-bond", {}, ["Peptide bond", "Liaison peptidique", "الرابطة الببتيدية"], [["dipeptide", "condensation", "water"], ["dipeptide", "condensation", "eau"], ["ثنائي الببتيد", "تكاثف", "الماء"]]),
+  figure("structure", "electrophoresis", "sci-electrophoresis", {}, ["Electrophoresis", "Électrophorèse", "الهجرة الكهربائية"], [["migration", "ph", "isoelectric"], ["migration", "ph", "isoélectrique"], ["الهجرة", "التعادل الكهربائي"]]),
+  drawing("structure", "protein-primary", ["Primary structure (chain)", "Structure primaire (chaîne)", "البنية الأولية (سلسلة)"], [["polypeptide", "sequence"], ["polypeptide", "séquence"], ["متعدد الببتيد", "تتابع"]]),
+  drawing("structure", "alpha-helix", ["Alpha helix", "Hélice alpha", "الحلزون ألفا"], [["secondary structure", "α"], ["structure secondaire", "α"], ["البنية الثانوية"]]),
+  drawing("structure", "beta-sheet", ["Beta sheet", "Feuillet bêta", "الوريقة بيتا"], [["secondary structure", "β", "pleated"], ["structure secondaire", "β", "plissé"], ["البنية الثانوية"]]),
+  drawing("structure", "protein-tertiary", ["Tertiary structure", "Structure tertiaire", "البنية الثالثية"], [["folding", "disulfide"], ["repliement", "pont disulfure"], ["الانطواء", "جسر ثنائي الكبريت"]]),
+  drawing("structure", "protein-quaternary", ["Quaternary structure", "Structure quaternaire", "البنية الرابعية"], [["hemoglobin", "subunits"], ["hémoglobine", "sous-unités"], ["الهيموغلوبين", "تحت الوحدات"]]),
+
+  // Enzyme activity
+  ...labeledPair("enzymes", "enzyme-substrate", "sci-enzyme-substrate", { steps: "all" }, ["Enzyme and substrate", "Enzyme et substrat", "الإنزيم ومادة التفاعل"], [["active site", "complex", "lock and key"], ["site actif", "complexe", "clé serrure"], ["الموقع الفعال", "المعقد"]]),
+  figure("enzymes", "curve-temperature", "sci-enzyme-curve", { factor: "temperature", optimum: 37 }, ["Enzyme activity and temperature", "Activité enzymatique et température", "النشاط الإنزيمي ودرجة الحرارة"], [["optimum", "curve", "graph"], ["optimum", "courbe", "graphique"], ["المثلى", "منحنى"]]),
+  figure("enzymes", "curve-ph", "sci-enzyme-curve", { factor: "ph", optimum: 7 }, ["Enzyme activity and pH", "Activité enzymatique et pH", "النشاط الإنزيمي و pH"], [["optimum", "curve", "acidity"], ["optimum", "courbe", "acidité"], ["المثلى", "منحنى", "الحموضة"]]),
+  figure("enzymes", "curve-substrate", "sci-enzyme-curve", { factor: "substrate" }, ["Reaction rate and substrate concentration", "Vitesse et concentration du substrat", "السرعة وتركيز مادة التفاعل"], [["vmax", "michaelis", "saturation"], ["vmax", "michaelis", "saturation"], ["السرعة القصوى", "التشبع"]]),
+  figure("enzymes", "curve-time", "sci-enzyme-curve", { factor: "time" }, ["Product formed over time", "Produit formé en fonction du temps", "كمية الناتج بدلالة الزمن"], [["kinetics", "curve"], ["cinétique", "courbe"], ["حركية", "منحنى"]]),
+  drawing("enzymes", "competitive-inhibition", ["Competitive inhibition", "Inhibition compétitive", "التثبيط التنافسي"], [["inhibitor", "active site"], ["inhibiteur", "site actif"], ["مثبط", "الموقع الفعال"]]),
+  drawing("enzymes", "water-bath", ["Test tubes at 0, 37 and 90 °C", "Tubes à 0, 37 et 90 °C", "أنابيب في 0 و37 و90 °C"], [["temperature", "experiment", "water bath"], ["température", "expérience", "bain-marie"], ["درجة الحرارة", "تجربة", "حمام مائي"]]),
+
+  // Immunology
+  ...labeledPair("immunity", "antibody", "sci-antibody", {}, ["Antibody", "Anticorps", "جسم مضاد"], [["immunoglobulin", "heavy chain", "light chain"], ["immunoglobuline", "chaîne lourde", "chaîne légère"], ["الغلوبيلين المناعي", "سلسلة ثقيلة", "سلسلة خفيفة"]]),
+  figure("immunity", "ouchterlony", "sci-ouchterlony", {}, ["Ouchterlony test", "Test d'Ouchterlony", "اختبار أوشترلوني"], [["immunodiffusion", "precipitation", "agar"], ["immunodiffusion", "précipitation", "gélose"], ["الانتشار المناعي", "الترسيب"]]),
+  ...labeledPair("immunity", "hiv", "sci-hiv", {}, ["HIV", "VIH", "فيروس فقدان المناعة"], [["aids", "virus", "retrovirus"], ["sida", "virus", "rétrovirus"], ["السيدا", "فيروس"]]),
+  figure("immunity", "immune-response", "sci-immune-response", {}, ["Primary and secondary immune responses", "Réponses immunitaires primaire et secondaire", "الاستجابة المناعية الأولية والثانوية"], [["antibodies", "memory", "vaccination"], ["anticorps", "mémoire", "vaccination"], ["الأجسام المضادة", "الذاكرة", "التلقيح"]]),
+  drawing("immunity", "immune-complex", ["Antigen–antibody complex", "Complexe antigène–anticorps", "معقد مولد الضد–جسم مضاد"], [["neutralization", "agglutination"], ["neutralisation", "agglutination"], ["إبطال المفعول", "ارتصاص"]]),
+  drawing("immunity", "phagocytosis", ["Phagocytosis (4 steps)", "Phagocytose (4 étapes)", "البلعمة (4 مراحل)"], [["macrophage", "bacteria"], ["macrophage", "bactérie"], ["البلعميات", "بكتيريا"]]),
+  drawing("immunity", "cytotoxic-t", ["Cytotoxic T cell and infected cell", "Lymphocyte T cytotoxique et cellule infectée", "خلية لمفاوية Tc وخلية مصابة"], [["perforin", "lymphocyte"], ["perforine", "lymphocyte"], ["البرفورين", "خلية لمفاوية"]]),
+  drawing("immunity", "b-lymphocyte", ["B lymphocyte", "Lymphocyte B", "خلية لمفاوية B"], [["receptors", "antibodies"], ["récepteurs", "anticorps"], ["مستقبلات", "أجسام مضادة"]]),
+  drawing("immunity", "plasma-cell", ["Plasma cell", "Plasmocyte", "خلية بلازمية"], [["antibodies", "secretion"], ["anticorps", "sécrétion"], ["أجسام مضادة", "إفراز"]]),
+  drawing("immunity", "macrophage", ["Macrophage", "Macrophage", "بلعمية كبيرة"], [["phagocyte"], ["phagocyte"], ["البلعميات"]]),
+
+  // Photosynthesis
+  ...labeledPair("photosynthesis", "chloroplast", "sci-chloroplast", {}, ["Chloroplast", "Chloroplaste", "الصانعة الخضراء"], [["thylakoid", "stroma", "granum"], ["thylakoïde", "stroma", "granum"], ["التيلاكويد", "الحشوة"]]),
+  ...labeledPair("photosynthesis", "leaf-section", "sci-leaf-section", {}, ["Leaf cross-section", "Coupe transversale de feuille", "مقطع عرضي في ورقة"], [["stoma", "palisade", "mesophyll"], ["stomate", "palissadique", "mésophylle"], ["ثغر", "النسيج العمادي"]]),
+  figure("photosynthesis", "phases", "sci-photosynthesis", {}, ["Photosynthesis: the two phases", "Photosynthèse : les deux phases", "التركيب الضوئي: المرحلتان"], [["light phase", "calvin", "thylakoid", "stroma"], ["phase photochimique", "calvin", "thylakoïde", "stroma"], ["المرحلة الكيموضوئية", "المرحلة الكيموحيوية"]]),
+  figure("photosynthesis", "phases-to-fill", "sci-photosynthesis", { blank: true }, ["Photosynthesis: molecules to fill", "Photosynthèse : molécules à compléter", "التركيب الضوئي: جزيئات للإكمال"], [["exercise", "calvin"], ["exercice", "calvin"], ["تمرين"]]),
+  figure("photosynthesis", "calvin", "sci-calvin", {}, ["Calvin cycle", "Cycle de Calvin", "حلقة كالفن"], [["rudp", "apg", "pgal", "carboxylation"], ["rudp", "apg", "pgal", "carboxylation"], ["التثبيت", "الإرجاع"]]),
+  figure("photosynthesis", "spectrum", "sci-spectrum", {}, ["Absorption and action spectra", "Spectres d'absorption et d'action", "طيف الامتصاص وطيف النشاط"], [["chlorophyll", "wavelength", "pigments"], ["chlorophylle", "longueur d'onde", "pigments"], ["اليخضور", "طول الموجة", "الأصبغة"]]),
+  drawing("photosynthesis", "thylakoid-membrane", ["Thylakoid membrane (light phase)", "Membrane du thylakoïde (phase photochimique)", "غشاء التيلاكويد (المرحلة الكيموضوئية)"], [["photosystem", "electron transport", "atp synthase"], ["photosystème", "chaîne photosynthétique", "atp synthase"], ["النظام الضوئي", "نقل الإلكترونات"]]),
+  drawing("photosynthesis", "chromatography", ["Pigment chromatography", "Chromatographie des pigments", "الفصل الكروماتوغرافي للأصبغة"], [["chlorophyll", "pigments", "paper"], ["chlorophylle", "pigments", "papier"], ["اليخضور", "الأصبغة"]]),
+  drawing("photosynthesis", "stoma", ["Stoma (surface view)", "Stomate (vue de face)", "ثغر (منظر سطحي)"], [["guard cells", "epidermis"], ["cellules de garde", "épiderme"], ["الخليتان الحارستان", "البشرة"]]),
+
+  // Cellular respiration
+  ...labeledPair("respiration", "mitochondrion", "sci-mitochondrion", {}, ["Mitochondrion", "Mitochondrie", "الميتوكوندري"], [["cristae", "matrix", "atp synthase"], ["crêtes", "matrice", "atp synthase"], ["الأعراف", "المادة الأساسية"]]),
+  figure("respiration", "stages", "sci-respiration", {}, ["Respiration: the three stages", "Respiration : les trois étapes", "التنفس: المراحل الثلاث"], [["glycolysis", "krebs", "respiratory chain"], ["glycolyse", "krebs", "chaîne respiratoire"], ["التحلل السكري", "حلقة كريبس", "السلسلة التنفسية"]]),
+  figure("respiration", "stages-to-fill", "sci-respiration", { blank: true }, ["Respiration: molecules to fill", "Respiration : molécules à compléter", "التنفس: جزيئات للإكمال"], [["exercise", "glycolysis", "krebs"], ["exercice", "glycolyse", "krebs"], ["تمرين"]]),
+  drawing("respiration", "atp", ["ATP molecule", "Molécule d'ATP", "جزيئة ATP"], [["adenosine triphosphate", "phosphate"], ["adénosine triphosphate", "phosphate"], ["فوسفات"]]),
+  drawing("respiration", "atp-cycle", ["ATP / ADP cycle", "Cycle ATP / ADP", "دورة ATP / ADP"], [["energy", "hydrolysis"], ["énergie", "hydrolyse"], ["الطاقة", "الإماهة"]]),
+  drawing("respiration", "respiratory-chain", ["Respiratory chain", "Chaîne respiratoire", "السلسلة التنفسية"], [["oxidative phosphorylation", "atp synthase", "cristae"], ["phosphorylation oxydative", "atp synthase", "crêtes"], ["الفسفرة التأكسدية", "الأعراف"]]),
+  drawing("respiration", "krebs", ["Krebs cycle", "Cycle de Krebs", "حلقة كريبس"], [["citric acid", "acetyl-coa", "matrix"], ["acide citrique", "acétyl-coa", "matrice"], ["المادة الأساسية"]]),
+];
+
+export const PACK_ITEMS: PackItem[] = [...DRAWN, ...NUMBERS, ...FRACTIONS, ...TIME, ...LATIN, ...ARABIC, ...SCIENCES].sort(
   (a, b) => PACK_CATEGORIES.findIndex((c) => c.id === a.category) - PACK_CATEGORIES.findIndex((c) => c.id === b.category),
 );
 

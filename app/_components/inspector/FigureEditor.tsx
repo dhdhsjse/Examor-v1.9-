@@ -1,7 +1,7 @@
 "use client";
 
 import { RotateCcw, SlidersHorizontal } from "lucide-react";
-import { changeFigure, figureDef, figureParams, renderFigure, type FigureParam, type Params } from "@/app/_lib/figures";
+import { changeFigure, figureDef, figureParams, fullFigureParams, renderFigure, type FigureParam, type Params } from "@/app/_lib/figures";
 import { svgSize, svgUrl } from "@/app/_lib/library";
 import type { FigureSpec, FigureValue, ImageBlock, Lang } from "@/app/_lib/types";
 import { useT } from "@/app/_lib/uiLang";
@@ -15,7 +15,8 @@ export function FigureEditor({ b, figure, lang, onChange }: { b: ImageBlock; fig
   const t = useT();
   const def = figureDef(figure.id);
   if (!def) return null;
-  const params = renderFigure(def.id, figure.params, lang)?.params ?? figure.params;
+  // (the settings only: the drawing is made when one changes)
+  const params = fullFigureParams(def, figure.params, lang);
 
   const apply = (next: Params, field: string) => {
     const r = renderFigure(def.id, next, lang);

@@ -40,7 +40,8 @@ import { grayImages, imagesToPdf, stagePageImages, stagePageSvgs } from "@/app/_
 import { pdfSheets, printSheets } from "@/app/_lib/print";
 import { sheetsOf, type PrintLayout } from "@/app/_lib/printLayout";
 import { examVersion, type VersionPlan } from "@/app/_lib/examVersions";
-import { dataUrlBytes, examToDocx, isPictureBlock, type Picture, type WordCopy } from "@/app/_lib/wordExport";
+// (Word export is loaded when used: the docx library is large)
+import type { Picture, WordCopy } from "@/app/_lib/wordExport";
 import { pageBoxes } from "@/app/_lib/pageStack";
 import { addMissing, addRowTotals, adoptMarks, linkReport, packRows, refitAnswers, restyleFull, refreshStale, removeOrphans, resetMarks } from "@/app/_lib/sheet/links";
 import { sheetScores } from "@/app/_lib/sheet/marks";
@@ -852,6 +853,7 @@ export default function Editor({ start }: { start: Start }) {
     if (busy) return;
     setBusy(true);
     try {
+      const { dataUrlBytes, examToDocx, isPictureBlock } = await import("@/app/_lib/wordExport");
       const modes: ViewMode[] = which === "both" ? ["exam", "key"] : [which];
       const exam = viewOf(fullDoc, "exam");
       const docs = plan.count <= 1 ? [exam] : Array.from({ length: plan.count }, (_, i) => examVersion(exam, i, plan));

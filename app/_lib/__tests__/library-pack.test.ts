@@ -1,9 +1,14 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { FIGURES, figureDef, renderFigure } from "../figures";
+import { SCIENCE_FIGURES } from "../figures/sciences";
+import { aminoAcid, codonsOf, toRNA } from "../figures/sciences/genetic";
+import { mutate } from "../figures/sciences/mutations";
 import { BUILTIN_ASSETS, PACK_ASSETS, matchesFilter, type LibraryFilter } from "../library";
 import { PACK_CATEGORIES, PACK_ITEMS } from "../libraryPack";
 import { foldText, matchesQuery, searchTerms } from "../searchText";
+import { AR, FR } from "../uiStrings";
 
 const PUBLIC = join(__dirname, "../../../public/library");
 const read = (file: string) => readFileSync(join(PUBLIC, file), "utf8");
@@ -27,8 +32,10 @@ describe("the picture pack", () => {
     }
   });
 
-  it("has a print-friendly svg file for every item", () => {
+  it("has a print-friendly svg file for every item (or a figure drawn from settings)", () => {
     for (const p of PACK_ITEMS) {
+      expect(Boolean(p.file) !== Boolean(p.figure), `${p.id}: a file or a figure`).toBe(true);
+      if (!p.file) continue;
       expect(existsSync(join(PUBLIC, p.file)), p.file).toBe(true);
       const svg = read(p.file);
       expect(svg.startsWith("<svg "), p.file).toBe(true);
@@ -41,13 +48,20 @@ describe("the picture pack", () => {
     }
   });
 
-  it("is in the library, as pictures for every subject", () => {
+  it("is in the library: pictures for every subject, a subject's category as diagrams of that subject", () => {
     expect(PACK_ASSETS).toHaveLength(PACK_ITEMS.length);
     const ids = new Set(BUILTIN_ASSETS.map((a) => a.id));
     expect(ids.size).toBe(BUILTIN_ASSETS.length);
     for (const a of PACK_ASSETS) expect(ids.has(a.id)).toBe(true);
+    const subjectCategories = new Set(PACK_CATEGORIES.filter((c) => c.subject).map((c) => c.id));
+    const pictures = PACK_ASSETS.filter((a) => !subjectCategories.has(a.pack!.category));
     const physics: LibraryFilter = { query: "", cycle: "all", year: "all", subject: "Physics", kind: "picture" };
-    expect(PACK_ASSETS.every((a) => matchesFilter(a, physics))).toBe(true);
+    expect(pictures.every((a) => matchesFilter(a, physics))).toBe(true);
+    const sciences = PACK_ASSETS.filter((a) => a.pack!.category === "sciences");
+    const sciencesShelf: LibraryFilter = { query: "", cycle: "lycee", year: "all", subject: "Sciences", kind: "diagram" };
+    expect(sciences.length).toBeGreaterThan(0);
+    expect(sciences.every((a) => matchesFilter(a, sciencesShelf))).toBe(true);
+    expect(sciences.some((a) => matchesFilter(a, physics) || matchesFilter(a, { ...sciencesShelf, subject: "Math" }))).toBe(false);
   });
 });
 
@@ -89,5 +103,97 @@ describe("the library search", () => {
     expect(find("sea turtle")).toEqual(["pack-animals-turtle"]);
     expect(find("…")).toEqual([]);
     expect(matchesQuery(searchTerms(["Right triangle"]), "tri")).toBe(true);
+  });
+});
+
+describe("the Sciences pack", () => {
+  const items = PACK_ITEMS.filter((p) => p.category === "sciences");
+  const sciences = PACK_CATEGORIES.find((c) => c.id === "sciences")!;
+  const find = (query: string) => PACK_ASSETS.filter((a) => matchesQuery(a.terms!, query)).map((a) => a.id);
+
+  it("covers every topic with drawings and editable figures", () => {
+    expect(sciences.subcategories!.map((s) => s.id)).toEqual(["matter", "growth", "cell", "nervous", "mutations", "synthesis", "structure", "enzymes", "immunity", "photosynthesis", "respiration"]);
+    for (const s of sciences.subcategories!) expect(items.filter((p) => p.subcategory === s.id).length, s.id).toBeGreaterThanOrEqual(4);
+    expect(items.some((p) => p.file)).toBe(true);
+    expect(items.some((p) => p.figure)).toBe(true);
+  });
+
+  it("has static drawings without words, so they serve exams in any language", () => {
+    for (const p of items.filter((i) => i.file)) {
+      const words = [...read(p.file!).matchAll(/<text[^>]*>(.*?)<\/text>/g)].map((m) => m[1].replace(/<[^>]+>/g, ""));
+      for (const w of words) expect(w, p.file).not.toMatch(/[؀-ۿ]|\b(the|le|la|les|de|of)\b/i);
+    }
+  });
+
+  it("refers to figures that exist, are registered and draw in French and Arabic", () => {
+    for (const p of items.filter((i) => i.figure)) {
+      expect(figureDef(p.figure!.id), p.id).toBeDefined();
+      for (const lang of ["fr", "ar"] as const) {
+        const svg = renderFigure(p.figure!.id, p.figure!.params, lang)!.svg;
+        expect(svg, `${p.id} ${lang}`).toMatch(/^<svg [^>]* width="\d+" height="\d+"/);
+        expect(svg, `${p.id} ${lang}`).not.toMatch(/NaN|undefined|Infinity/);
+      }
+    }
+    for (const f of SCIENCE_FIGURES) expect(FIGURES).toContain(f);
+  });
+
+  it("draws every figure with every choice of every setting", () => {
+    for (const f of SCIENCE_FIGURES) {
+      for (const param of f.params) {
+        const values = param.kind === "select" ? param.options.map((o) => o.value) : param.kind === "bool" ? [true, false] : param.kind === "number" ? [param.min, param.max] : param.kind === "text" ? ["", "x"] : [];
+        for (const v of values)
+          for (const lang of ["fr", "ar"] as const) {
+            const svg = renderFigure(f.id, { [param.key]: v }, lang)!.svg;
+            expect(svg, `${f.id} ${param.key}=${v} ${lang}`).not.toMatch(/NaN|undefined|Infinity/);
+          }
+      }
+    }
+  });
+
+  it("has the words of its figures and their settings in French and Arabic", () => {
+    const symbols = /^[\dA-Z₂ +.,()=<>]*$|^pH$|^O₂$/;
+    for (const f of SCIENCE_FIGURES) {
+      const keys = [f.name, f.hint, ...f.params.flatMap((p) => [p.label, ...(p.kind === "select" ? p.options.map((o) => o.label) : [])])].filter((k): k is string => !!k && !symbols.test(k));
+      for (const k of keys) {
+        expect(FR[k], `FR: ${k}`).toBeTruthy();
+        expect(AR[k], `AR: ${k}`).toBeTruthy();
+      }
+    }
+  });
+
+  it("writes the names, numbers or the teacher's own names on a labeled diagram", () => {
+    expect(renderFigure("sci-neuron", { labels: "names" }, "fr")!.svg).toContain("Axone");
+    expect(renderFigure("sci-neuron", { labels: "names" }, "ar")!.svg).toContain("محور أسطواني");
+    const numbered = renderFigure("sci-neuron", { labels: "numbers" }, "fr")!.svg;
+    expect(numbered).not.toContain("Axone");
+    expect(numbered).toContain(">1<");
+    const own = renderFigure("sci-chromosome", { labels: "names", own: "un, deux" }, "fr")!.svg;
+    expect(own).toContain(">un<");
+    expect(own).toContain(">deux<");
+    expect(renderFigure("sci-neuron", { labels: "none" }, "fr")!.svg).not.toMatch(/<text/);
+  });
+
+  it("writes Arabic right to left, so Latin words stay in their place", () => {
+    expect(renderFigure("sci-dna-curve", {}, "ar")!.svg).toMatch(/direction="rtl">كمية ADN/);
+  });
+
+  it("works out a gene mutation and its amino acids", () => {
+    const dna = "TACAAACGT";
+    expect(mutate(dna, "substitution", 5, "T")).toEqual({ seq: "TACATACGT", at: 4 });
+    expect(mutate(dna, "substitution", 1, "T").seq).toBe("CACAAACGT"); // (the same base would be no mutation)
+    expect(mutate(dna, "deletion", 4, "").seq).toBe("TACAACGT");
+    expect(mutate(dna, "insertion", 4, "G").seq).toBe("TACGAAACGT");
+    expect(toRNA(dna, true)).toBe("AUGUUUGCA");
+    expect(toRNA("ATG", false)).toBe("AUG");
+    expect(codonsOf(toRNA(dna, true)).map(aminoAcid)).toEqual(["Met", "Phe", "Ala"]);
+    expect(aminoAcid("UAA")).toBe("Stop");
+  });
+
+  it("is found by its topics and names in the three languages", () => {
+    for (const q of ["mitosis", "mitose", "الانقسام المتساوي"]) expect(find(q), q).toContain("pack-sci-growth-mitosis");
+    for (const q of ["antibody", "anticorps", "جسم مضاد"]) expect(find(q), q).toContain("pack-sci-immunity-antibody");
+    for (const q of ["photosynthese", "التركيب الضوئي"]) expect(find(q), q).toContain("pack-sci-photosynthesis-chloroplast");
+    expect(find("krebs")).toEqual(expect.arrayContaining(["pack-sci-respiration-krebs", "pack-sci-respiration-stages"]));
+    expect(find("svt")).toHaveLength(items.length);
   });
 });

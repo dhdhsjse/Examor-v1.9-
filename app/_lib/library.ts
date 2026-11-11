@@ -42,7 +42,8 @@ const CURVE_PREVIEW = (() => {
 
 const fig = (id: string, params?: Params) => ({ id, params });
 
-// The picture pack, as library items: for every subject and cycle, found by their names, aliases and categories in the three languages.
+// The picture pack, as library items: found by their names, aliases and categories in the three languages. The pictures are
+// for every subject and cycle; the items of a subject's category (Sciences) are diagrams of that subject.
 export const PACK_ASSETS: Asset[] = PACK_ITEMS.map((p) => {
   const category = PACK_CATEGORIES.find((c) => c.id === p.category);
   const sub = category?.subcategories?.find((s) => s.id === p.subcategory);
@@ -52,10 +53,10 @@ export const PACK_ASSETS: Asset[] = PACK_ITEMS.map((p) => {
   return {
     id: `pack-${p.id}`,
     name: p.names.en,
-    kind: "picture",
-    subjects: "all",
-    cycles: ALL3,
-    file: PACK_DIR + p.file,
+    kind: category?.subject ? "diagram" : "picture",
+    subjects: category?.subject ? [category.subject] : "all",
+    cycles: category?.cycles ?? ALL3,
+    ...(p.figure ? { figure: p.figure } : { file: PACK_DIR + p.file }),
     names: p.names,
     pack: { category: p.category, subcategory: p.subcategory },
     terms: searchTerms(words),

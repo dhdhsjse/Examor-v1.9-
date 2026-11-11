@@ -13,6 +13,7 @@ import { inclineFigure } from "./incline";
 import { lensFigure } from "./lens";
 import { numberLineFigure } from "./numberLine";
 import { quadrilateralFigure } from "./quadrilateral";
+import { SCIENCE_FIGURES } from "./sciences";
 import { solidFigure } from "./solid";
 import { thermometerFigure } from "./thermometer";
 import { triangleFigure } from "./triangle";
@@ -38,6 +39,7 @@ export const FIGURES: FigureDef[] = [
   cellFigure,
   foodChainFigure,
   waterCycleFigure,
+  ...SCIENCE_FIGURES,
 ];
 
 // Every figure can change the color of its lines.
@@ -46,12 +48,18 @@ const INK: FigureParam = { key: "ink", label: "Line color", kind: "color" };
 export const figureDef = (id: string) => FIGURES.find((f) => f.id === id);
 export const figureParams = (def: FigureDef): FigureParam[] => [...def.params, INK];
 
+// The full settings (defaults filled in), without drawing the figure.
+export function fullFigureParams(def: FigureDef, params: Partial<Params> | undefined, lang: Lang): Params {
+  const full: Params = { ink: "#111111", ...def.defaults(lang) };
+  for (const [k, v] of Object.entries(params ?? {})) if (v !== undefined) full[k] = v;
+  return full;
+}
+
 // The full settings (defaults filled in) and the drawing.
 export function renderFigure(id: string, params: Partial<Params> | undefined, lang: Lang): { svg: string; params: Params } | null {
   const def = figureDef(id);
   if (!def) return null;
-  const full: Params = { ink: "#111111", ...def.defaults(lang) };
-  for (const [k, v] of Object.entries(params ?? {})) if (v !== undefined) full[k] = v;
+  const full = fullFigureParams(def, params, lang);
   return { svg: def.build(full, lang), params: full };
 }
 

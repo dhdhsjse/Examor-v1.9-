@@ -1,7 +1,7 @@
 "use client";
 
 import { Bookmark, ChevronLeft, Grid2x2, Grid3x3, ImagePlus, Search, SearchX, Square, Trash2, Upload, X } from "lucide-react";
-import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
+import { memo, useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import { BLOCK_TYPE_NAMES } from "@/app/_lib/blocks";
 import { renderFigure } from "@/app/_lib/figures";
 import { BUILTIN_ASSETS, PACK_ASSETS, svgUrl, type Asset, type AssetKind } from "@/app/_lib/library";
@@ -81,11 +81,22 @@ function buildShelves(userAssets: Asset[], subject: Subject, t: T, uiLang: "en" 
         ]
       : [];
   };
+  // A subject with its own category in the pack (Sciences): its first part is the other diagrams and tables, then one part per topic.
+  const byTopic = (subject: SchoolSubject, items: Asset[]) => {
+    const category = PACK_CATEGORIES.find((c) => c.subject === subject);
+    if (!category) return byKind(items);
+    const others = items.filter((a) => a.pack?.category !== category.id);
+    return [
+      ...(others.length ? [{ id: "general", label: t("General"), items: others }] : []),
+      ...(category.subcategories ?? []).map((s) => ({ id: s.id, label: s.names[uiLang], items: items.filter((a) => a.pack?.category === category.id && a.pack.subcategory === s.id) })),
+    ];
+  };
   const shelf = (id: string, label: string, items: Asset[], parts = byKind(items)): Shelf => ({ id, group: "subjects", label, items, parts });
+  const subjectShelf = (subject: SchoolSubject) => shelf(subject, t(subject), of([subject]), byTopic(subject, of([subject])));
   const subjects = [
-    shelf("Math", t("Math"), of(["Math"])),
-    shelf("Physics", t("Physics"), of(["Physics"])),
-    shelf("Sciences", t("Sciences"), of(["Sciences"])),
+    subjectShelf("Math"),
+    subjectShelf("Physics"),
+    subjectShelf("Sciences"),
     shelf("languages", t("Languages"), of(["French", "Arabic"]), [
       { id: "French", label: t("French"), items: of(["French"]) },
       { id: "Arabic", label: t("Arabic"), items: of(["Arabic"]) },
@@ -96,11 +107,12 @@ function buildShelves(userAssets: Asset[], subject: Subject, t: T, uiLang: "en" 
   const first = subject === "French" || subject === "Arabic" ? "languages" : subject;
   subjects.sort((a, b) => Number(b.id === first) - Number(a.id === first));
 
-  const pictures: Shelf[] = PACK_CATEGORIES.map((c) => {
+  // (a subject's category is in its subject's shelf)
+  const pictures: Shelf[] = PACK_CATEGORIES.filter((c) => c.group !== "subjects").map((c) => {
     const items = PACK_ASSETS.filter((a) => a.pack?.category === c.id);
     return {
       id: `pack-${c.id}`,
-      group: c.group,
+      group: c.group as Shelf["group"],
       label: c.names[uiLang],
       items,
       parts: (c.subcategories ?? []).map((s) => ({ id: s.id, label: s.names[uiLang], items: items.filter((a) => a.pack?.subcategory === s.id) })),
@@ -126,6 +138,13 @@ export default function LibraryPanel({ lang, subject, initialKind, userAssets, o
   const id = useId();
   const list = useRef<HTMLDivElement>(null);
   const search = useRef<HTMLInputElement>(null);
+  // The panel redraws with the page (every edit): the cards keep the same handlers, so they are not drawn again.
+  const onUseRef = useRef(onUse);
+  const onDeleteRef = useRef(onDeleteUserAsset);
+  useEffect(() => {
+    onUseRef.current = onUse;
+    onDeleteRef.current = onDeleteUserAsset;
+  });
 
   const [view, setView] = useState<string | null>(initialKind === "image" ? "mine-images" : initialKind === "block" ? "mine-blocks" : null);
   const [part, setPart] = useState("all");
@@ -175,41 +194,47 @@ export default function LibraryPanel({ lang, subject, initialKind, userAssets, o
     list.current?.scrollTo({ top: 0 });
   }, [view, part, q]);
 
-  const open = (shelfId: string | null) => {
+  const open = useCallback((shelfId: string | null) => {
     setView(shelfId);
     setPart("all");
     setQuery("");
-  };
+  }, []);
   const changeSize = (s: Size) => {
     setSize(s);
     save(SIZE_KEY, s);
   };
-  const remember = (assetId: string) =>
-    setRecentIds((ids) => {
-      const next = [assetId, ...ids.filter((x) => x !== assetId)].slice(0, RECENT_MAX);
-      save(RECENT_KEY, JSON.stringify(next));
-      return next;
-    });
-  const use = (a: Asset) => {
-    remember(a.id);
-    onUse(a);
-  };
+  const remember = useCallback(
+    (assetId: string) =>
+      setRecentIds((ids) => {
+        const next = [assetId, ...ids.filter((x) => x !== assetId)].slice(0, RECENT_MAX);
+        save(RECENT_KEY, JSON.stringify(next));
+        return next;
+      }),
+    [],
+  );
+  const use = useCallback(
+    (a: Asset) => {
+      remember(a.id);
+      onUseRef.current(a);
+    },
+    [remember],
+  );
   const clearSearch = () => {
     setQuery("");
     search.current?.focus();
   };
 
   // After a removal the keyboard stays in the list: on the card that took the place of the removed one.
-  const remove = (assetId: string) => {
+  const remove = useCallback((assetId: string) => {
     const cards = [...(list.current?.querySelectorAll<HTMLElement>("[data-asset]") ?? [])];
     const i = cards.findIndex((c) => c.dataset.asset === assetId);
     const next = (cards[i + 1] ?? cards[i - 1])?.dataset.asset;
-    onDeleteUserAsset(assetId);
+    onDeleteRef.current(assetId);
     requestAnimationFrame(() => {
       const card = next ? list.current?.querySelector<HTMLElement>(`[data-asset="${CSS.escape(next)}"] button`) : null;
       (card ?? list.current)?.focus();
     });
-  };
+  }, []);
 
   const grid = (items: Asset[], s: Size = size) => (
     <ul className={GRID[s]}>
@@ -256,7 +281,7 @@ export default function LibraryPanel({ lang, subject, initialKind, userAssets, o
             {shelves
               .filter((s) => s.group === group)
               .map((s) => (
-                <ShelfTile key={s.id} shelf={s} lang={lang} onOpen={() => open(s.id)} />
+                <ShelfTile key={s.id} shelf={s} lang={lang} onOpen={open} />
               ))}
           </ul>
         </section>
@@ -403,17 +428,22 @@ export default function LibraryPanel({ lang, subject, initialKind, userAssets, o
             <SizeToggle value={size} onChange={changeSize} />
           </div>
         )}
+      </div>
+
+      <div ref={list} tabIndex={-1} className="min-h-0 flex-1 overflow-y-auto px-3 pb-3 outline-none">
+        {/* (the parts of a shelf scroll with its items: a shelf with many topics keeps room for them) */}
         {!q && shelf && parts.length > 0 && (
-          <div role="group" aria-label={shelf.label} className="flex flex-wrap gap-1">
+          <div role="group" aria-label={shelf.label} className="flex flex-wrap gap-1 pt-3">
             {[{ id: "all", label: t("All"), items: shelf.items }, ...parts].map((p) => (
               <button
                 key={p.id}
                 type="button"
+                title={p.label}
                 aria-pressed={part === p.id}
                 onClick={() => {
                   setPart(p.id);
                 }}
-                className={`h-6 rounded-full px-2.5 text-xs font-medium whitespace-nowrap outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent ${
+                className={`h-6 max-w-full truncate rounded-full px-2.5 text-xs font-medium whitespace-nowrap outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent ${
                   part === p.id ? "bg-accent-soft text-accent-strong" : "bg-subtle text-muted hover:bg-hover hover:text-ink"
                 }`}
               >
@@ -422,9 +452,6 @@ export default function LibraryPanel({ lang, subject, initialKind, userAssets, o
             ))}
           </div>
         )}
-      </div>
-
-      <div ref={list} tabIndex={-1} className="min-h-0 flex-1 overflow-y-auto px-3 pb-3 outline-none">
         {q ? searchView() : shelf ? shelfView(shelf) : home()}
       </div>
     </div>
@@ -531,12 +558,12 @@ function CardFace({ preview, name, count, small }: { preview: ReactNode; name?: 
 }
 
 // A shelf on the home page: its first item, its name and how many it has.
-function ShelfTile({ shelf, lang, onOpen }: { shelf: Shelf; lang: Lang; onOpen: () => void }) {
+const ShelfTile = memo(function ShelfTile({ shelf, lang, onOpen }: { shelf: Shelf; lang: Lang; onOpen: (shelfId: string) => void }) {
   const t = useT();
   const cover = shelf.items[0];
   return (
     <li>
-      <button type="button" onClick={onOpen} title={t("{name}: {n} items", { name: shelf.label, n: shelf.items.length })} className={cardCls}>
+      <button type="button" onClick={() => onOpen(shelf.id)} title={t("{name}: {n} items", { name: shelf.label, n: shelf.items.length })} className={cardCls}>
         <CardFace
           preview={cover ? <AssetPreview asset={cover} lang={lang} /> : <span className="grid size-10 place-items-center rounded-full bg-surface text-muted">{shelf.icon}</span>}
           name={shelf.label}
@@ -545,9 +572,9 @@ function ShelfTile({ shelf, lang, onOpen }: { shelf: Shelf; lang: Lang; onOpen: 
       </button>
     </li>
   );
-}
+});
 
-function AssetCard({ asset, lang, size, onUse, onDrag, onDelete }: { asset: Asset; lang: Lang; size: Size; onUse: (a: Asset) => void; onDrag: (id: string) => void; onDelete?: (id: string) => void }) {
+const AssetCard = memo(function AssetCard({ asset, lang, size, onUse, onDrag, onDelete }: { asset: Asset; lang: Lang; size: Size; onUse: (a: Asset) => void; onDrag: (id: string) => void; onDelete?: (id: string) => void }) {
   const t = useT();
   const { lang: uiLang } = useUi();
   // Pictures have their names in each language; other built-in items have English names (translated); imported images keep their file name.
@@ -573,7 +600,7 @@ function AssetCard({ asset, lang, size, onUse, onDrag, onDelete }: { asset: Asse
       {onDelete && <DeleteButton name={name} onDelete={() => onDelete(asset.id)} />}
     </li>
   );
-}
+});
 
 // Removes an item of the teacher's. Always there (no hover needed: keyboard, touch), so it asks once: the first press arms it
 // ("Remove?"), the second removes. It disarms by itself: Escape, moving on, or a few seconds.
@@ -614,10 +641,21 @@ function DeleteButton({ name, onDelete }: { name: string; onDelete: () => void }
   );
 }
 
+// The picture of a card, made once per item and exam language: figures are drawn from their settings, and a drawing becomes
+// a data URL. (Shelves open and close, and the cards come back: the Sciences figures are not drawn again.)
+const previews = new WeakMap<Asset, Map<Lang, string | undefined>>();
+function previewSrc(asset: Asset, lang: Lang, savedPicture: string | undefined): string | undefined {
+  let byLang = previews.get(asset);
+  if (!byLang) previews.set(asset, (byLang = new Map()));
+  if (byLang.has(lang)) return byLang.get(lang);
+  const svg = (asset.figure ? renderFigure(asset.figure.id, asset.figure.params, lang)?.svg : undefined) ?? asset.svg;
+  const src = svg ? svgUrl(svg) : (savedPicture ?? asset.src ?? asset.file);
+  byLang.set(lang, src);
+  return src;
+}
+
 function AssetPreview({ asset, lang }: { asset: Asset; lang: Lang }) {
   const t = useT();
-  // Figures are drawn from their default settings (only once per card).
-  const figureSvg = useMemo(() => (asset.figure ? renderFigure(asset.figure.id, asset.figure.params, lang)?.svg : undefined), [asset.figure, lang]);
   // A saved picture or figure shows itself.
   const savedPicture = asset.block?.preset && "src" in asset.block.preset ? asset.block.preset.src : undefined;
   if (asset.block && !asset.svg && !savedPicture) {
@@ -645,8 +683,7 @@ function AssetPreview({ asset, lang }: { asset: Asset; lang: Lang }) {
       </span>
     );
   }
-  const svg = figureSvg ?? asset.svg;
-  const src = svg ? svgUrl(svg) : (savedPicture ?? asset.src ?? asset.file);
+  const src = previewSrc(asset, lang, savedPicture);
   // eslint-disable-next-line @next/next/no-img-element -- local data URL preview (or a picture file of the app)
   return <img src={src} alt="" loading="lazy" className="size-full object-contain" draggable={false} />;
 }
