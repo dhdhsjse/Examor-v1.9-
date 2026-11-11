@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { COALESCE_MS, canRedoStudio, canUndoStudio, editStudioHistory, isStudioDirty, redoStudioHistory, startStudioHistory, undoStudioHistory } from "../../studioHistory";
 import { GRID, HALF_LENGTH, axisOf, endsOf, extendPath, junctionPoints, lastAxis, moveEndpoint, normRotation, onPath, orthogonalPath, outwardOf, simplifyPath, snap, snapTarget, terminalsOf, translatePath } from "../geometry";
-import { addComponent, addWire, moveComponent, moveWire, newComponent, newWire, placeAt, removeComponent, removeWire, resizeArea, rotateComponent, updateComponent } from "../ops";
+import { addComponent, addWire, moveComponent, moveWire, newComponent, newComponentOnWire, newWire, placeAt, removeComponent, removeWire, resizeArea, rotateComponent, updateComponent } from "../ops";
 import { buildCircuitScene, contentBounds } from "../scene";
 import { COMPONENT_SPECS, COMPONENT_TYPES, drawComponent } from "../symbols";
 import { renderCircuitSvg } from "../svg";
@@ -164,6 +164,35 @@ describe("placing and moving components", () => {
   it("adds and removes a component with its id", () => {
     const added = addComponent(C, newComponent(C, "lamp", 100, 100, 0, "L1"));
     expect(added.components.map((x) => x.id)).toEqual(["L1"]);
+  });
+});
+
+describe("a component put on a wire", () => {
+  it("cuts the wire under the symbol, leaving two wires that end on its terminals", () => {
+    const wired = addWire(C, [0, 100, 300, 100], "w");
+    const out = addComponent(wired, newComponent(wired, "battery", 100, 100, 0, "b"));
+    expect(out.wires.map((w) => w.points)).toEqual([[0, 100, 60, 100], [140, 100, 300, 100]]);
+  });
+  it("turns to follow a vertical wire", () => {
+    const wired = addWire(C, [100, 0, 100, 300], "w");
+    const c = newComponentOnWire(wired, "battery", 100, 100, 0, "b");
+    expect(c.rotation).toBe(90);
+    expect(addComponent(wired, c).wires.map((w) => w.points)).toEqual([[100, 0, 100, 60], [100, 140, 100, 300]]);
+  });
+  it("in a space too small for it, takes the wire to its terminals", () => {
+    // a 40 px high step: down the left, across the bottom, with the symbol (80 long) on the vertical run
+    const wired = addWire(C, [200, 100, 100, 100, 100, 140, 200, 140], "w");
+    const c = newComponentOnWire(wired, "ammeter", 100, 120, 0, "a");
+    expect(c.rotation).toBe(90);
+    const out = addComponent(wired, c);
+    const ends = out.wires.flatMap((w) => [w.points.slice(0, 2), w.points.slice(-2)]);
+    expect(ends).toContainEqual([100, 80]);
+    expect(ends).toContainEqual([100, 160]);
+    out.wires.forEach((w) => expect(w.points.length).toBeGreaterThanOrEqual(4));
+  });
+  it("leaves a wire alone that only passes by", () => {
+    const wired = addWire(C, [0, 140, 300, 140], "w");
+    expect(addComponent(wired, newComponent(wired, "battery", 100, 100, 0, "b")).wires).toEqual(wired.wires);
   });
 });
 

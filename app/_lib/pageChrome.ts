@@ -1,9 +1,9 @@
 import { DEFAULT_MARGINS } from "./a4";
 import { blockHeight } from "./blockLayout";
-import { chromeTextField, headerInsetIn, defaultFooterId, defaultHeaderId, footerById, headerById, headerTemplateForStyle } from "./onboarding/headerFooterLibrary";
+import { chromeTextField, headerInset, headerInsetIn, defaultFooterId, defaultHeaderId, footerById, headerById, headerTemplateForStyle } from "./onboarding/headerFooterLibrary";
 import { encodeStyle, parseRich, plainText } from "./richText";
 import { scopePages } from "./onboarding/pageScope";
-import { borderReach } from "./pageBorder";
+import { borderBox, borderReach } from "./pageBorder";
 import { pageSize } from "./pageFormats";
 import type { Block, BlockFont, ChromeRule, ExamDoc, HeaderBlock, HeaderFields, HeaderFooterConfig, Page, PageScope } from "./types";
 import type { T } from "./uiLang";
@@ -102,22 +102,33 @@ export function buildChrome(doc: ExamDoc, i: number, kind: ChromeKind, t: T, c =
   return fitInBorder(blocks, kind, page, doc.meta);
 }
 
-// A page with a border (Page layout → Page borders): the header and the footer stay inside it. The exam header block goes from border to
-// border (its bands too), its texts at the margins counted from there; the whole header is moved down, the whole footer up, when the border
-// is nearer to the edge of the paper than the margin is; a text line is kept between the sides of the border.
+// Where a page header goes across its page, and the room it is drawn in: one box for the header and the border (pageBorder.ts
+// `borderBox`). The block spans the room (the paper, or the inside of the border), its bands fill it and are cut to its corners, its texts
+// stay at the page margins (never nearer than 12 px to the room's sides).
+export function headerBox(page: Page) {
+  const { width, height } = pageSize(page);
+  const m = page.margins ?? DEFAULT_MARGINS;
+  if (!borderReach(page.border)) return { x: 0, width, inset: headerInset(m), frame: undefined };
+  const box = borderBox(page.border, width, height);
+  return { x: box.x0, width: box.x1 - box.x0, inset: headerInsetIn(m, box.x0), frame: { top: box.y0, corner: box.corner, r: Math.round(box.r * 100) / 100 } };
+}
+
+// A page with a border (Page layout → Page borders): the header and the footer stay inside it. The exam header block is placed in the room
+// inside the border (headerBox); the whole header is moved down, the whole footer up, when the border is nearer to the edge of the paper
+// than the margin is; a text line is kept between the sides of the border.
 const EDGE_PAD = 4;
 function fitInBorder(blocks: Block[], kind: ChromeKind, page: Page, meta: ExamDoc["meta"]): Block[] {
   const r = borderReach(page.border);
   if (!r || !blocks.length) return blocks;
   const { width, height } = pageSize(page);
-  const m = page.margins ?? DEFAULT_MARGINS;
   const dy =
     kind === "header"
       ? Math.max(0, r - Math.min(...blocks.map((b) => b.layout.y)))
       : Math.min(0, height - r - Math.max(...blocks.map((b) => b.layout.y + blockHeight(b, 1, meta))));
+  const hb = headerBox(page);
   return blocks.map((b) => {
     const layout = { ...b.layout, y: b.layout.y + dy };
-    if (b.type === "header") return { ...b, inset: headerInsetIn(m, r), layout: { ...layout, x: r, width: width - 2 * r } } as Block;
+    if (b.type === "header") return { ...b, inset: hb.inset, frame: hb.frame, layout: { ...layout, x: hb.x, width: hb.width } } as Block;
     const left = Math.max(layout.x, r + EDGE_PAD);
     const right = Math.min(layout.x + layout.width, width - r - EDGE_PAD);
     return { ...b, layout: { ...layout, x: left, width: Math.max(40, right - left) } } as Block;
@@ -142,7 +153,7 @@ export function syncChrome(before: ExamDoc, after: ExamDoc, t: T, opts: { pageCo
       const counts = opts.pageCount && now?.enabled && chromeTemplate(kind, now.templateId).countsPages;
       // (a border that comes, goes or changes moves the header and the footer: they are placed again)
       const reach = borderReach(page.border);
-      const edged = reach !== borderReach(before.pages[j].border);
+      const edged = reach !== borderReach(before.pages[j].border) || JSON.stringify(headerBox(page).frame) !== JSON.stringify(headerBox(before.pages[j]).frame);
       if (!counts && !edged && shown(now) === shown(chromeConfig(before, j, kind))) continue;
       const old = blocks.filter((b) => b.layout.pageId === page.id && b.meta?.role === kind);
       // A rebuilt block of the same type keeps its id and height on the page: text being typed on the
@@ -215,12 +226,14 @@ export function stretchHeaders(doc: ExamDoc): ExamDoc {
     if (b.type !== "header" || b.meta?.role !== "header") return b;
     const page = doc.pages.find((p) => p.id === b.layout.pageId);
     if (!page) return b;
-    const width = pageSize(page).width;
-    const r = borderReach(page.border);
-    const inset = headerInsetIn(page.margins ?? DEFAULT_MARGINS, r);
-    if (b.layout.x === r && b.layout.width === width - 2 * r && b.inset?.left === inset.left && b.inset.right === inset.right) return b;
+    const hb = headerBox(page);
+    const sameFrame = JSON.stringify(b.frame ?? null) === JSON.stringify(hb.frame ?? null);
+    if (b.layout.x === hb.x && b.layout.width === hb.width && b.inset?.left === hb.inset.left && b.inset.right === hb.inset.right && sameFrame) return b;
     changed = true;
-    return { ...b, inset, layout: { ...b.layout, x: r, width: width - 2 * r } };
+    const next = { ...b, inset: hb.inset, layout: { ...b.layout, x: hb.x, width: hb.width } };
+    if (hb.frame) next.frame = hb.frame;
+    else delete next.frame;
+    return next;
   });
   return changed ? { ...doc, blocks } : doc;
 }

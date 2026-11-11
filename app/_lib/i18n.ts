@@ -22,6 +22,10 @@ const WORDS = {
     appreciation: "Appréciation",
     signature: "Signature des parents",
     teacher: "Visa du professeur",
+    instructions: "Consignes",
+    studentId: "N° d'inscription",
+    total: "Total",
+    exercise: "Ex.",
   },
   ar: {
     true: "صحيح",
@@ -43,6 +47,10 @@ const WORDS = {
     appreciation: "الملاحظة",
     signature: "توقيع ولي الأمر",
     teacher: "توقيع الأستاذ(ة)",
+    instructions: "التعليمات",
+    studentId: "رقم التسجيل",
+    total: "المجموع",
+    exercise: "تمرين",
   },
 };
 

@@ -1,7 +1,7 @@
 // The edits of a circuit, as pure functions from one CircuitConfig to the next. A wire is connected to a component when one of its
 // ends is on one of its terminals: moving or turning the component carries those ends along (the wire stays orthogonal), and
 // nothing needs to be stored to remember the connection. Unit-tested.
-import { GRID, HALF_LENGTH, endsOf, moveEndpoint, normRotation, pathLength, simplifyPath, snap, subPath, terminalsOf, translatePath, type P, type Section } from "./geometry";
+import { GRID, HALF_LENGTH, axisOf, distanceAlong, endsOf, moveEndpoint, normRotation, onPath, pathLength, simplifyPath, snap, subPath, terminalsOf, translatePath, type P, type Section } from "./geometry";
 import { COMPONENT_SPECS } from "./symbols";
 import type { CircuitComponent, CircuitConfig, ComponentType } from "./types";
 
@@ -22,7 +22,85 @@ export function newComponent(config: CircuitConfig, type: ComponentType, x: numb
   return { id, type, x: at.x, y: at.y, rotation: r, label: COMPONENT_SPECS[type].label, value: "" };
 }
 
-export const addComponent = (config: CircuitConfig, component: CircuitComponent): CircuitConfig => ({ ...config, components: [...config.components, component] });
+/** The wire a component lies along: both its terminals and its middle on it, with straight wire between the terminals. */
+function wireUnder(config: CircuitConfig, c: CircuitComponent): { id: string; section: Section } | null {
+  const [t0, t1] = terminalsOf(c);
+  for (const w of config.wires) {
+    if (!onPath(w.points, t0) || !onPath(w.points, t1) || !onPath(w.points, { x: c.x, y: c.y })) continue;
+    const a = distanceAlong(w.points, t0);
+    const b = distanceAlong(w.points, t1);
+    // (the wire must run straight between the terminals, not leave and come back)
+    if (Math.abs(Math.abs(b - a) - 2 * HALF_LENGTH) <= 0.5) return { id: w.id, section: { a, b } };
+  }
+  return null;
+}
+
+/**
+ * The segment of a wire the middle of a component is inside of (not at a corner or an end), when that segment runs along the
+ * component's axis: the wire is then too short (a corner or an end under the symbol) to hold it straight, but it still goes through it.
+ */
+function segmentUnder(config: CircuitConfig, c: CircuitComponent) {
+  const horizontal = axisOf(c.rotation).y === 0;
+  for (const w of config.wires) {
+    let walked = 0;
+    for (let i = 2; i < w.points.length; i += 2) {
+      const a = { x: w.points[i - 2], y: w.points[i - 1] };
+      const b = { x: w.points[i], y: w.points[i + 1] };
+      const len = Math.abs(b.x - a.x) + Math.abs(b.y - a.y);
+      const from = walked;
+      walked += len;
+      const lineOk = horizontal ? Math.abs(a.y - b.y) < 0.5 && Math.abs(c.y - a.y) < 0.5 : Math.abs(a.x - b.x) < 0.5 && Math.abs(c.x - a.x) < 0.5;
+      if (!lineOk) continue;
+      const at = horizontal ? c.x : c.y;
+      const lo = horizontal ? Math.min(a.x, b.x) : Math.min(a.y, b.y);
+      const hi = horizontal ? Math.max(a.x, b.x) : Math.max(a.y, b.y);
+      if (at > lo + 0.5 && at < hi - 0.5) return { wire: w, a, b, from, to: walked, middle: from + Math.abs(horizontal ? c.x - a.x : c.y - a.y) };
+    }
+  }
+  return null;
+}
+
+/**
+ * A component about to be put at (x, y): when it would lie on a wire only if it were turned a quarter (a vertical wire, for a
+ * component that is flat), it is turned to follow the wire; otherwise it keeps `rotation`.
+ */
+export function newComponentOnWire(config: CircuitConfig, type: ComponentType, x: number, y: number, rotation = 0, id?: string): CircuitComponent {
+  const asked = newComponent(config, type, x, y, rotation, id);
+  const turned = newComponent(config, type, x, y, rotation + 90, asked.id);
+  if (wireUnder(config, asked)) return asked;
+  if (wireUnder(config, turned)) return turned;
+  if (segmentUnder(config, asked)) return asked;
+  return segmentUnder(config, turned) ? turned : asked;
+}
+
+/**
+ * Adds a component. One put on a wire is put *into* it: the stretch of wire under the component is taken away, so the wire ends on
+ * the two terminals instead of running through the symbol. Where the wire is too short to hold it (a corner under the symbol), the
+ * two ends left are carried to the terminals, the wire bending to follow.
+ */
+export function addComponent(config: CircuitConfig, component: CircuitComponent): CircuitConfig {
+  const next: CircuitConfig = { ...config, components: [...config.components, component] };
+  const under = wireUnder(config, component);
+  if (under) return removeWireSection(next, under.id, under.section);
+  const seg = segmentUnder(config, component);
+  if (!seg) return next;
+  const [t0, t1] = terminalsOf(component);
+  const axis = axisOf(component.rotation);
+  const aligned = (seg.b.x - seg.a.x) * axis.x + (seg.b.y - seg.a.y) * axis.y > 0; // (the wire runs from the first terminal to the second)
+  const length = pathLength(seg.wire.points);
+  const a = Math.max(seg.from, seg.middle - HALF_LENGTH);
+  const b = Math.min(seg.to, seg.middle + HALF_LENGTH);
+  const toBefore = aligned ? t0 : t1;
+  const toAfter = aligned ? t1 : t0;
+  const join = (points: number[], end: 0 | 1, to: P) => {
+    const ps = end === 0 ? [points[0], points[1]] : [points[points.length - 2], points[points.length - 1]];
+    return near({ x: ps[0], y: ps[1] }, to) ? points : moveEndpoint(points, end, to);
+  };
+  const before = a > 0.5 ? newWire(join(subPath(seg.wire.points, 0, a), 1, toBefore), seg.wire.id) : null;
+  const after = length - b > 0.5 ? newWire(join(subPath(seg.wire.points, b, length), 0, toAfter), before ? crypto.randomUUID() : seg.wire.id) : null;
+  const left = [before, after].filter((w): w is NonNullable<typeof w> => !!w);
+  return { ...next, wires: next.wires.flatMap((w) => (w.id === seg.wire.id ? left : [w])) };
+}
 
 // The wires that end on a terminal of `before` follow it to the matching terminal of `after`.
 function carryWires(config: CircuitConfig, before: CircuitComponent, after: CircuitComponent): CircuitConfig {

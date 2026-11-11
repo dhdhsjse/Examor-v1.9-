@@ -5,6 +5,7 @@ import { useId, useState, type ReactNode } from "react";
 import { FILL_COLORS, TEXT_COLORS } from "@/app/_lib/fonts";
 import { DEFAULT_FONT_SIZE, DEFAULT_STROKE, DEFAULT_TEXT_COLOR, MIN_SHAPE_SIZE, isLine, isPicture, resolveStyle, shapeDef, type DashKind, type Order, type ShapeStyle, type ShapeTextAlign, type ShapeVAlign } from "@/app/_lib/shapes";
 import { useT } from "@/app/_lib/uiLang";
+import ColorPopover from "@/app/_components/inspector/ColorPopover";
 import { Segmented } from "@/app/_components/inspector/fields";
 import { FontSelect } from "@/app/_components/rich/FormatBar";
 import { ShapesMenuButton, ShapeThumb } from "./ShapeGallery";
@@ -110,7 +111,14 @@ function ColorRow({ label, value, none, onChange, testId }: { label: string; val
             className={`size-5 rounded border ${value === c ? "ring-2 ring-accent ring-offset-1" : "border-line"}`}
           />
         ))}
-        <input type="color" aria-label={`${label}: ${t("Color")}`} value={/^#[0-9a-f]{6}$/i.test(value ?? "") ? (value as string) : "#ffffff"} onChange={(e) => onChange(e.target.value)} className="size-5 cursor-pointer rounded border border-line bg-white p-0" />
+        {(() => {
+          const hex = /^#[0-9a-f]{6}$/i.test(value ?? "") ? (value as string) : "#ffffff";
+          return (
+            <ColorPopover value={hex} onChange={onChange} label={`${label}: ${t("Color")}`} className="size-5 cursor-pointer rounded border border-line bg-white p-px outline-none focus-visible:ring-2 focus-visible:ring-accent">
+              <span aria-hidden className="block size-full rounded-[2px]" style={{ background: hex }} />
+            </ColorPopover>
+          );
+        })()}
       </div>
     </div>
   );
@@ -307,15 +315,18 @@ export default function ShapeProperties({ item, onChange, geometry, position, on
   );
 }
 
-// A single color to pick (the text color): a button that opens the browser's color chooser.
+// A single color to pick (the text color): a button that opens the color picker.
 function ColorSwatch({ label, value, onChange }: { label: string; value: string; onChange: (c: string) => void }) {
   const id = useId();
+  const hex = /^#[0-9a-f]{6}$/i.test(value) ? value : DEFAULT_STROKE;
   return (
     <div className="flex flex-col gap-1">
       <label htmlFor={id} className="text-xs text-muted">
         {label}
       </label>
-      <input id={id} type="color" value={/^#[0-9a-f]{6}$/i.test(value) ? value : DEFAULT_STROKE} onChange={(e) => onChange(e.target.value)} data-testid="shape-text-color" className="h-7 w-12 cursor-pointer rounded border border-line bg-white p-0.5" />
+      <ColorPopover id={id} value={hex} onChange={onChange} label={label} testId="shape-text-color" className="h-7 w-12 cursor-pointer rounded border border-line bg-white p-0.5 outline-none focus-visible:ring-2 focus-visible:ring-accent">
+        <span aria-hidden className="block size-full rounded-[2px] ring-1 ring-black/10" style={{ background: hex }} />
+      </ColorPopover>
     </div>
   );
 }

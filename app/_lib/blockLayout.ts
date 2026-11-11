@@ -1,6 +1,7 @@
 import { dividerHeight } from "./divider";
 import { RULE_HEIGHT, markHeight } from "./sheet/marks";
 import { fontStack } from "./fonts";
+import { headerDesign } from "./headerDesigns";
 import { isRtl, optionLabel, words } from "./i18n";
 import { LIST_GAP, listMarkers } from "./lists";
 import { linesHeight, measureText, runFont, wrapRich, type Piece, type RichLine, type TextFont } from "./measure";
@@ -19,6 +20,7 @@ import type {
   ExamMeta,
   HeaderStyle,
   HeadingDecor,
+  LegacyHeaderStyle,
   ImageBlock,
   Lang,
   MatchBlock,
@@ -54,7 +56,10 @@ export const TEXT_STYLES: Record<TextStyle, { size: number; line: number; bold: 
   body: { size: 14, line: 20, bold: false },
 };
 
-export const HEADER_HEIGHT: Record<HeaderStyle, number> = {
+// The height of an exam header: its design's (headerDesigns.ts), or an earlier style's.
+export const headerHeight = (style: HeaderStyle) => headerDesign(style)?.height ?? HEADER_HEIGHT[style as LegacyHeaderStyle] ?? HEADER_HEIGHT.classic;
+
+export const HEADER_HEIGHT: Record<LegacyHeaderStyle, number> = {
   classic: 150,
   modern: 136,
   minimal: 112,
@@ -942,7 +947,7 @@ export function blockHeight(b: Block, n: number, meta: ExamMeta): number {
     case "table":
       return tableHeight(b, meta);
     case "header":
-      return HEADER_HEIGHT[b.style] ?? HEADER_HEIGHT.classic;
+      return headerHeight(b.style);
     case "divider":
       return dividerHeight(b);
     case "mark":

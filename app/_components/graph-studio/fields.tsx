@@ -3,6 +3,7 @@
 import { ChevronsUpDown, EyeOff, Trash2 } from "lucide-react";
 import { useId, useState, type ReactNode } from "react";
 import InfoTip from "@/app/_components/InfoTip";
+import ColorPopover from "@/app/_components/inspector/ColorPopover";
 import { MAX_PAPER, MIN_PAPER, type GraphIssue } from "@/app/_lib/graph/grid";
 import { useT } from "@/app/_lib/uiLang";
 
@@ -262,13 +263,14 @@ export function ColorRow({ label, value, onChange, testId }: { label: string; va
   const id = useId();
   return (
     <Row label={label} htmlFor={id}>
-      <input
+      <ColorPopover
         id={id}
-        type="color"
         value={value}
-        onChange={(e) => onChange(e.target.value)}
-        data-testid={testId}
-        className="size-7 cursor-pointer appearance-none rounded-full border-0 bg-transparent p-0 [&::-webkit-color-swatch]:rounded-full [&::-webkit-color-swatch]:border [&::-webkit-color-swatch]:border-black/15 [&::-webkit-color-swatch-wrapper]:p-0"
+        onChange={onChange}
+        label={label}
+        testId={testId}
+        className="size-7 shrink-0 cursor-pointer rounded-full border border-black/15 p-0 outline-none focus-visible:ring-2 focus-visible:ring-accent"
+        style={{ background: value }}
       />
     </Row>
   );

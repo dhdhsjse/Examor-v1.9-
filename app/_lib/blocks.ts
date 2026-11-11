@@ -300,6 +300,8 @@ export function defaultHeaderFields(lang: Lang) {
         level: "الثالثة إعدادي",
         duration: "ساعة واحدة",
         year: "2025/2026",
+        date: "",
+        instructions: "أجب عن جميع الأسئلة بخط واضح. لا يسمح باستعمال الآلة الحاسبة.",
         outOf: 20,
       }
     : {
@@ -310,6 +312,8 @@ export function defaultHeaderFields(lang: Lang) {
         level: "3ème année",
         duration: "1 heure",
         year: "2025/2026",
+        date: "",
+        instructions: "Répondez à toutes les questions sur cette feuille. La calculatrice n'est pas autorisée.",
         outOf: 20,
       };
 }

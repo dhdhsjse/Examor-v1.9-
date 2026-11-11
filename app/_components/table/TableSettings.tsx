@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import ColorPopover from "@/app/_components/inspector/ColorPopover";
 import { Field, NumberInput, Segmented, SmallButton, Toggle } from "@/app/_components/inspector/fields";
 import { MAX_COLS, MAX_ROWS, TABLE_HEADER_FILL, colsOf, resizeTable, rowsOf, type TableBorders, type TableData, type TablePatch } from "@/app/_lib/table";
 import { useT } from "@/app/_lib/uiLang";
@@ -15,10 +16,12 @@ const BORDER_STYLES: { value: TableBorders; label: string }[] = [
 
 function Color({ label, value, onChange, testId }: { label: string; value: string; onChange: (c: string) => void; testId?: string }) {
   return (
-    <label className="flex items-center justify-between gap-2 text-xs text-ink">
+    <div className="flex items-center justify-between gap-2 text-xs text-ink">
       {label}
-      <input type="color" value={value} onChange={(e) => onChange(e.target.value)} data-testid={testId} className="h-6 w-9 cursor-pointer rounded border border-line bg-white p-0.5" />
-    </label>
+      <ColorPopover value={value} onChange={onChange} label={label} testId={testId} className="h-6 w-9 shrink-0 cursor-pointer rounded border border-line bg-white p-0.5 outline-none focus-visible:ring-2 focus-visible:ring-accent">
+        <span aria-hidden className="block size-full rounded-[2px] ring-1 ring-black/10" style={{ background: value }} />
+      </ColorPopover>
+    </div>
   );
 }
 

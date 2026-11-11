@@ -68,6 +68,6 @@ export function ContentEditorSwitch({ block, number, lang, totalPoints, onChange
     case "rule":
       return <RuleEditor b={block} onChange={onChange} />;
     case "header":
-      return <HeaderEditor b={block} totalPoints={totalPoints} onChange={onChange} />;
+      return <HeaderEditor b={block} meta={meta ?? { title: "", lang, templateId: "" }} totalPoints={totalPoints} onChange={onChange} />;
   }
 }

@@ -1,8 +1,10 @@
 "use client";
 
 import { Circle, Line, Rect } from "react-konva";
-import { HEADER_HEIGHT } from "@/app/_lib/blockLayout";
+import { headerHeight } from "@/app/_lib/blockLayout";
 import { fontStack } from "@/app/_lib/fonts";
+import { drawDesign, isDesignStyle } from "@/app/_lib/headerDesigns";
+import { DesignHeaderView } from "./DesignHeaderView";
 import { isRtl, words } from "@/app/_lib/i18n";
 import type { ExamMeta, HeaderBlock, ViewMode } from "@/app/_lib/types";
 import { MODERN_HEADER_STYLES, ModernHeaderView } from "./ModernHeaderViews";
@@ -31,9 +33,9 @@ export default function HeaderView({ b, meta, mode, totalPoints }: Props) {
   const W = b.layout.width - inset.left - inset.right;
   const x0 = -inset.left;
   const x1 = W + inset.right;
-  // Top edge of the paper (≤ 0): colored bands start there.
-  const y0 = b.inset ? -b.layout.y : 0;
-  const H = HEADER_HEIGHT[b.style] ?? HEADER_HEIGHT.classic;
+  // Top edge of the room the header is in (≤ 0): the paper, or inside its border. Colored bands start there.
+  const y0 = b.inset ? Math.min(0, (b.frame?.top ?? 0) - b.layout.y) : 0;
+  const H = headerHeight(b.style);
   const rtl = isRtl(lang);
   const t = words(lang);
   const f = b.fields;
@@ -45,7 +47,13 @@ export default function HeaderView({ b, meta, mode, totalPoints }: Props) {
   const sub = [f.subject, f.level, f.duration].filter(Boolean).join("  ·  ");
   // Graded out of: the total of the questions when the teacher asked for it.
   const outOf = f.autoOutOf && totalPoints > 0 ? totalPoints : f.outOf;
-  const accent = b.accent;
+  // The header's own color, else the paper's theme color (else each style's own).
+  const accent = b.accent || meta.accent || undefined;
+
+  if (isDesignStyle(b.style)) {
+    const ops = drawDesign(b.style, { W, rtl, t, f, title, outOf, x0, x1, y0, family, color: accent, chosenFont: !!b.font?.family });
+    return <DesignHeaderView ops={ops} family={family} rtl={rtl} />;
+  }
 
   const ctx = { W, H, rtl, family, t, f, title, sub, outOf, accent, at, x0, x1, y0 };
   if (MORE_HEADER_STYLES.includes(b.style)) return <MoreHeaderView style={b.style} c={ctx} />;

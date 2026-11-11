@@ -1,7 +1,10 @@
 "use client";
 
 import { Fragment, cloneElement, isValidElement, type ReactElement, type ReactNode } from "react";
+import { Group } from "react-konva";
+import { headerHeight } from "@/app/_lib/blockLayout";
 import type { EditRegion } from "@/app/_lib/editRegions";
+import { boxClip } from "@/app/_lib/pageBorder";
 import { words } from "@/app/_lib/i18n";
 import { FONT_FAMILY, measureText, type TextFont } from "@/app/_lib/measure";
 import { plainText } from "@/app/_lib/richText";
@@ -30,7 +33,7 @@ interface Part {
 
 type OneLineProps = Parameters<typeof OneLine>[0];
 
-const KEYS: HeaderKey[] = ["title", "republic", "authority", "directorate", "school", "subject", "level", "duration", "year"];
+const KEYS: HeaderKey[] = ["title", "republic", "authority", "directorate", "motto", "school", "subject", "level", "duration", "year", "date", "instructions"];
 const SEPS = ["  ·  ", "  —  "];
 
 // What a style draws, as a flat list (the style components are plain functions without hooks).
@@ -76,9 +79,15 @@ export function headerParts(b: HeaderBlock, meta: ExamMeta, mode: ViewMode, tota
   });
 }
 
-// The exam header on the canvas (instead of HeaderView, so the alignments apply).
+// The exam header on the canvas (instead of HeaderView, so the alignments apply). A page header is cut to the room it is in (the paper,
+// or the inside of the page border with its corners, pageBorder.ts `borderBox`): its bands can never cover the border.
 export function HeaderNode(props: { b: HeaderBlock; meta: ExamMeta; mode: ViewMode; totalPoints: number }) {
-  return <>{headerParts(props.b, props.meta, props.mode, props.totalPoints).map((p, k) => cloneElement(p.el, { key: k }))}</>;
+  const { b } = props;
+  const parts = headerParts(b, props.meta, props.mode, props.totalPoints).map((p, k) => cloneElement(p.el, { key: k }));
+  if (!b.inset) return <>{parts}</>;
+  const room = { x0: 0, y0: Math.min(0, (b.frame?.top ?? 0) - b.layout.y), x1: b.layout.width, corner: b.frame?.corner ?? "square", r: b.frame?.r ?? 0 };
+  const bottom = headerHeight(b.style) + 40;
+  return <Group clipFunc={(ctx) => boxClip(ctx as unknown as Parameters<typeof boxClip>[0], room, bottom)}>{parts}</Group>;
 }
 
 // Where each field of the header can be typed in on the page. A text with a label is typed after it.

@@ -359,7 +359,10 @@ export interface GraphBlock extends BlockBase {
   grid: boolean;
 }
 
-export type HeaderStyle =
+// The exam header: one of the designs of the header library (headerDesigns.ts, ids by family), or one of the earlier styles drawn by
+// HeaderView (kept for older files and for "Earlier styles").
+export type HeaderStyle = LegacyHeaderStyle | `classic-${string}` | `modern-${string}` | `color-${string}` | `exam-${string}`;
+export type LegacyHeaderStyle =
   | "classic"
   | "modern"
   | "minimal"
@@ -395,6 +398,9 @@ export interface HeaderFields {
   level: string;
   duration: string;
   year: string;
+  date?: string; // date of the exam (empty = a dotted line to fill in)
+  instructions?: string; // the instructions box of some exam headers
+  motto?: string; // a line above everything (e.g. the Basmala)
   outOf: number; // score is "... / outOf"
   autoOutOf?: boolean; // use the total points of the questions instead of `outOf`
 }
@@ -408,6 +414,9 @@ export interface HeaderBlock extends BlockBase {
   // A page header spans the paper: its texts and boxes stay this far from each edge (the page margins);
   // only its bands and rules run to the edges. Missing = everything inside the block's width.
   inset?: { left: number; right: number };
+  // A page header inside a page border: where the room inside the border starts (`top`, page y; its sides are the block's sides) and how
+  // its top corners are cut (pageBorder.ts `borderBox`). Its bands start there and everything it draws is cut to it. Missing = the paper.
+  frame?: { top: number; corner: "square" | "round" | "scoop"; r: number };
 }
 
 export type TextAlign = "left" | "center" | "right";
@@ -509,6 +518,7 @@ export interface ExamMeta {
   fontSize?: number; // default size of question text (14)
   hidePoints?: boolean; // don't print "(2 pts)" next to the questions
   fullMark?: number; // full mark when there is no exam header (20)
+  accent?: string; // theme color of the paper: the exam headers are drawn in it (missing = each header design's own color)
   answerColor?: string; // correction sheet: color of the answers
   answerSize?: number; // correction sheet: size of the written answers
   chrome?: ChromeRule; // missing in older files

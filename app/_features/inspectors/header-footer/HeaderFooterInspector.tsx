@@ -1,9 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useDeferredValue, useMemo, useState } from "react";
 import { BookmarkIcon, TrashIcon } from "@/app/_components/icons";
+import { HeaderPicker, type HeaderPickItem } from "@/app/_components/HeaderPicker";
 import { HeaderSketch } from "@/app/_components/HeaderSketch";
-import { COLORED } from "@/app/_components/inspector/ContentEditors";
+import { HeaderThumb } from "@/app/_components/HeaderThumb";
+import { isColoredHeader } from "@/app/_components/inspector/ContentEditors";
 import { ChoiceGrid, NumberInput, SmallButton } from "@/app/_components/inspector/fields";
 import { ColorGrid, FontSelect } from "@/app/_components/rich/FormatBar";
 import type { Ctx } from "@/app/_features/core/types";
@@ -138,23 +140,34 @@ function ChromeSection({ ctx, kind, scope, index }: { ctx: Ctx; kind: ChromeKind
   const defaults = defaultTexts(doc, index, kind, template.id, ctx.t);
   const texts = template.fields?.filter((f) => f.key !== "outOf") ?? [];
   const graded = template.fields?.some((f) => f.key === "outOf");
-  const colored = !!template.sketch && COLORED.includes(template.sketch);
+  const colored = !!template.sketch && isColoredHeader(template.sketch);
   const id = (key: string) => `chrome-${kind}-${key}`;
+  // The color: for the whole document it is the paper's theme color (every header follows it); a page can have its own.
+  const setColor = (accent: string | undefined) => {
+    if (!global) return setData("accent", accent);
+    shell.setMeta({ accent }, "accent");
+    if (current.data.accent) setData("accent", undefined);
+  };
+  const pick = (templateId: string) => (templateId === NONE ? change({ enabled: false }) : change({ templateId, enabled: true }));
 
   return (
     <section className="flex flex-col gap-2.5">
       <div className="flex flex-col gap-1">
         <span className="text-xs font-semibold text-muted">{t(kind === "header" ? "Header style" : "Template")}</span>
-        <ChoiceGrid<string>
-          cols={2}
-          value={current.enabled ? template.id : NONE}
-          // Another template keeps the texts it shares with this one (same field keys). "None" turns it off.
-          onChange={(templateId) => (templateId === NONE ? change({ enabled: false }) : change({ templateId, enabled: true }))}
-          options={[
-            { value: NONE, label: t("None"), preview: <span className="text-[9px] text-slate-400">—</span> },
-            ...templates.map((tp) => ({ value: tp.id, label: t(tp.nameKey), preview: <TemplatePreview t={t} template={tp} accent={current.data.accent} /> })),
-          ]}
-        />
+        {kind === "header" ? (
+          <HeaderLibrary ctx={ctx} index={index} config={current} value={current.enabled ? template.id : NONE} onChange={pick} />
+        ) : (
+          <ChoiceGrid<string>
+            cols={2}
+            value={current.enabled ? template.id : NONE}
+            // Another template keeps the texts it shares with this one (same field keys). "None" turns it off.
+            onChange={pick}
+            options={[
+              { value: NONE, label: t("None"), preview: <span className="text-[9px] text-slate-400">—</span> },
+              ...templates.map((tp) => ({ value: tp.id, label: t(tp.nameKey), preview: <TemplatePreview t={t} template={tp} accent={current.data.accent} /> })),
+            ]}
+          />
+        )}
       </div>
 
       {current.enabled && (
@@ -162,8 +175,9 @@ function ChromeSection({ ctx, kind, scope, index }: { ctx: Ctx; kind: ChromeKind
 
         {colored && (
           <div className="flex flex-col gap-1">
-            <span className="text-xs font-semibold text-muted">{t("Color")}</span>
-            <ColorGrid value={current.data.accent || undefined} autoLabel={t("Style's own")} onChange={(accent) => setData("accent", accent)} />
+            <span className="text-xs font-semibold text-muted">{t(global ? "Theme color" : "Color")}</span>
+            <ColorGrid value={current.data.accent || doc.meta.accent || undefined} autoLabel={t("Design's own")} onChange={setColor} />
+            {global && <p className="text-[11px] leading-snug text-faint">{t("Every header design is drawn in this color.")}</p>}
           </div>
         )}
 
@@ -239,6 +253,31 @@ function GradedOutOf({ ctx, data, fallback, onData }: { ctx: Ctx; data: Record<s
       )}
     </div>
   );
+}
+
+// The header library: every design as a live picture of this exam's header (its texts, color, font and language), by family.
+function HeaderLibrary({ ctx, index, config, value, onChange }: { ctx: Ctx; index: number; config: HeaderFooterConfig; value: string; onChange: (id: string) => void }) {
+  const { t } = ctx;
+  // (typing in a field does not hold the panel up: the pictures follow a moment later)
+  const doc = useDeferredValue(ctx.doc);
+  const data = useDeferredValue(config.data);
+  const items = useMemo<HeaderPickItem[]>(() => {
+    const meta = doc.meta;
+    return [
+      { value: NONE, label: t("None"), category: "", preview: <span className="py-2 text-[10px] text-slate-400">{t("No header")}</span> },
+      ...headerTemplates.map((tp) => {
+        const built = buildChrome(doc, index, "header", t, { enabled: true, templateId: tp.id, data });
+        const header = built.find((b): b is HeaderBlock => b.type === "header");
+        return {
+          value: tp.id,
+          label: t(tp.nameKey),
+          category: tp.category ?? "earlier",
+          preview: header ? <HeaderThumb block={header} meta={meta} /> : <TemplatePreview t={t} template={tp} accent={data.accent} />,
+        };
+      }),
+    ];
+  }, [doc, index, data, t]);
+  return <HeaderPicker items={items} value={value} onChange={onChange} t={t} />;
 }
 
 // A small picture of a template: the exam header style, or its text.

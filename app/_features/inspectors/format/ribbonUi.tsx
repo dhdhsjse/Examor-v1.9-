@@ -352,6 +352,10 @@ export function ColorMenu({ title, icon, value, initial, autoLabel, colors, disa
               onChange(c);
               close();
             }}
+            onCustom={(c) => {
+              setLast(c);
+              onChange(c);
+            }}
           />
         </div>
       )}

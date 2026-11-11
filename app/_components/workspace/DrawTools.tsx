@@ -17,6 +17,7 @@ import {
 } from "@/app/_lib/ink/engine";
 import type { InkTools } from "@/app/_lib/ink/useInkTools";
 import { useT } from "@/app/_lib/uiLang";
+import ColorPopover from "@/app/_components/inspector/ColorPopover";
 import InkToolArt from "./InkToolArt";
 
 // The order in the tray: the pencil is the Draw button itself; the brush slides out on its left, the highlighter on its right.
@@ -285,20 +286,15 @@ function InkPanel({ tool, settings, onChange }: { tool: InkTool; settings: InkSe
                 style={{ background: c }}
               />
             ))}
-            <label
-              title={t("Custom color")}
-              className="relative grid size-6 cursor-pointer place-items-center rounded-full border border-line bg-white text-muted hover:bg-hover hover:text-ink"
+            <ColorPopover
+              value={/^#[0-9a-f]{6}$/i.test(settings.color) ? settings.color : "#000000"}
+              onChange={(color) => onChange({ color })}
+              label={t("Custom color")}
+              tabIndex={palette ? 0 : -1}
+              className="relative grid size-6 cursor-pointer place-items-center rounded-full border border-line bg-white text-muted outline-none hover:bg-hover hover:text-ink focus-visible:ring-2 focus-visible:ring-accent"
             >
               <Plus size={12} aria-hidden />
-              <input
-                type="color"
-                tabIndex={palette ? 0 : -1}
-                value={/^#[0-9a-f]{6}$/i.test(settings.color) ? settings.color : "#000000"}
-                onChange={(e) => onChange({ color: e.target.value })}
-                aria-label={t("Custom color")}
-                className="absolute inset-0 cursor-pointer opacity-0"
-              />
-            </label>
+            </ColorPopover>
           </div>
         </div>
       </div>

@@ -5,6 +5,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { DEFAULT_FONT, FILL_COLORS, FONT_CHOICES, TEXT_COLORS, fontStack, installedFonts } from "@/app/_lib/fonts";
 import type { RunStyle, StylePatch } from "@/app/_lib/richText";
 import { useT } from "@/app/_lib/uiLang";
+import ColorPopover from "@/app/_components/inspector/ColorPopover";
 
 // Fonts found on this computer (all of them until the check is done).
 export function useInstalledFonts(): Set<string> | null {
@@ -47,8 +48,9 @@ export function FontSelect({ value, onChange, defaultLabel, className }: { value
 }
 
 // Color swatches + a custom color. `value` undefined = automatic. `colors`: the swatches (text colors by default). `custom` false: the
-// swatches alone (what shows them has its own way to any other color).
-export function ColorGrid({ value, onChange, autoLabel, colors = TEXT_COLORS, custom = true }: { value: string | undefined; onChange: (v: string | undefined) => void; autoLabel?: string; colors?: string[]; custom?: boolean }) {
+// swatches alone (what shows them has its own way to any other color). `onCustom`: a color chosen in the picker of the "+" (it stays
+// open, to try more than one), when that is not the same as a swatch (a menu that closes on a swatch keeps itself open for it).
+export function ColorGrid({ value, onChange, onCustom, autoLabel, colors = TEXT_COLORS, custom = true }: { value: string | undefined; onChange: (v: string | undefined) => void; onCustom?: (v: string) => void; autoLabel?: string; colors?: string[]; custom?: boolean }) {
   const t = useT();
   return (
     <div className="flex flex-wrap items-center gap-1">
@@ -74,10 +76,14 @@ export function ColorGrid({ value, onChange, autoLabel, colors = TEXT_COLORS, cu
         />
       ))}
       {custom && (
-        <label className="relative grid size-5 cursor-pointer place-items-center rounded-[3px] text-muted ring-1 ring-line hover:text-ink hover:ring-faint" title={t("Custom color")}>
+        <ColorPopover
+          value={value ?? colors[0]}
+          onChange={onCustom ?? onChange}
+          label={t("Custom color")}
+          className="relative grid size-5 cursor-pointer place-items-center rounded-[3px] text-muted ring-1 ring-line hover:text-ink hover:ring-faint"
+        >
           <Plus size={12} strokeWidth={2} aria-hidden />
-          <input type="color" value={value ?? colors[0]} onChange={(e) => onChange(e.target.value)} className="absolute inset-0 cursor-pointer opacity-0" />
-        </label>
+        </ColorPopover>
       )}
     </div>
   );
@@ -167,6 +173,10 @@ export default function FormatBar({ style, baseFont, baseSize, onApply, onToggle
             onApply({ color: c ?? null });
             setColors(false);
           }}
+          onCustom={(c) => {
+            setTextPen(c);
+            onApply({ color: c });
+          }}
         />
       </ColorSplit>
       <ColorSplit
@@ -190,6 +200,10 @@ export default function FormatBar({ style, baseFont, baseSize, onApply, onToggle
             if (c) setHlPen(c);
             onApply({ hl: c ?? null });
             setHighlights(false);
+          }}
+          onCustom={(c) => {
+            setHlPen(c);
+            onApply({ hl: c });
           }}
         />
       </ColorSplit>

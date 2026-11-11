@@ -34,6 +34,7 @@ export type HeaderFooterTemplate = {
   kind: "header" | "footer";
   nameKey: string;
   sketch?: HeaderStyle; // preview: the exam header style it uses
+  category?: "classic" | "modern" | "colorful" | "exam" | "earlier"; // headers: its family in the picker
   sample?: string; // preview: its text (English key), for text-only headers and footers
   fields?: HeaderFooterField[]; // texts that can be typed for it (HeaderFooterBuildCtx.data)
   countsPages?: boolean; // shows the page count: rebuilt when pages are added or removed

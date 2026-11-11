@@ -119,6 +119,69 @@ export function borderReach(border: PageBorder | undefined): number {
 
 export const isBorderStyle = (s: string): s is BorderStyle => (BORDER_STYLES as readonly string[]).includes(s);
 
+/**
+ * The room inside a border, the one box a page header is drawn in: its colored bands fill it to its edges and are cut to its corners, so
+ * a header and its border always fit together whatever the design, thickness or distance from the edge.
+ * `corner`: how the top corners of the box are cut, so nothing drawn in it touches the design's corners — "round" follows a rounded border
+ * (a convex corner of radius `r`), "scoop" goes around what a design draws in its corners (a quarter circle of radius `r` taken out of the
+ * corner: the frame of a certificate, corner fans, art deco brackets). Page pixels. Without a border: the paper.
+ */
+export interface BorderBox {
+  x0: number;
+  y0: number;
+  x1: number;
+  y1: number;
+  corner: "square" | "round" | "scoop";
+  r: number;
+}
+const BOX_GAP = 3;
+
+export function borderBox(border: PageBorder | undefined, width: number, height: number): BorderBox {
+  if (!border || !isBorderStyle(border.style)) return { x0: 0, y0: 0, x1: width, y1: height, corner: "square", r: 0 };
+  const t = Math.max(0.5, border.width);
+  const d = border.inset + DEPTH[border.style](t) + BOX_GAP;
+  const box = { x0: d, y0: d, x1: width - d, y1: height - d };
+  // (a corner of the box is further in than the design's corner, so a quarter circle around the box's corner as wide as the design's corner
+  // motif, and a little more, covers all of the motif that is inside the box)
+  switch (border.style) {
+    case "rounded":
+      return { ...box, corner: "round", r: Math.max(0, 14 + 4 * t - (d - border.inset)) };
+    case "certificate":
+      return { ...box, corner: "scoop", r: 14 + 2.5 * t + 0.25 * t + 1 };
+    case "fans":
+      return { ...box, corner: "scoop", r: 3 * Math.max(8, 4 * t) + 0.3 * t + 1 };
+    case "deco":
+      return { ...box, corner: "scoop", r: 13 * t + 0.35 * t + 1 };
+    default:
+      return { ...box, corner: "square", r: 0 };
+  }
+}
+
+/** The outline of the top of a box (its two top corners cut as it says), down to `bottom`: what a page header is cut to. Relative to `(ox, oy)`. */
+export function boxClip(ctx: { beginPath(): void; moveTo(x: number, y: number): void; lineTo(x: number, y: number): void; arc(x: number, y: number, r: number, a0: number, a1: number, ccw?: boolean): void; closePath(): void }, b: { x0: number; y0: number; x1: number; corner: BorderBox["corner"]; r: number }, bottom: number) {
+  const { x0, y0, x1 } = b;
+  const r = Math.min(b.r, (x1 - x0) / 2);
+  ctx.beginPath();
+  if (b.corner === "square" || r <= 0) {
+    ctx.moveTo(x0, y0);
+    ctx.lineTo(x1, y0);
+  } else if (b.corner === "round") {
+    ctx.moveTo(x0, y0 + r);
+    ctx.arc(x0 + r, y0 + r, r, Math.PI, Math.PI * 1.5);
+    ctx.lineTo(x1 - r, y0);
+    ctx.arc(x1 - r, y0 + r, r, Math.PI * 1.5, Math.PI * 2);
+  } else {
+    // a quarter circle taken out of each corner (its center on the corner)
+    ctx.moveTo(x0, y0 + r);
+    ctx.arc(x0, y0, r, Math.PI / 2, 0, true);
+    ctx.lineTo(x1 - r, y0);
+    ctx.arc(x1, y0, r, Math.PI, Math.PI / 2, true);
+  }
+  ctx.lineTo(x1, bottom);
+  ctx.lineTo(x0, bottom);
+  ctx.closePath();
+}
+
 type Cmd = ["M", number, number] | ["L", number, number] | ["A", number, number, number, number] | ["Z"];
 interface Geo {
   t: number;

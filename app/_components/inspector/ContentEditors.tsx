@@ -8,7 +8,10 @@ import { docFromRich } from "@/app/_lib/textboxDoc";
 import { plainText } from "@/app/_lib/richText";
 import type { ExamMeta, HeaderBlock, HeaderFields, HeaderStyle, HeadingDecor, ImageBlock, Lang, TextBlock, TextboxBlock } from "@/app/_lib/types";
 import { useT } from "@/app/_lib/uiLang";
+import { HEADER_DESIGNS, isDesignStyle } from "@/app/_lib/headerDesigns";
+import { HeaderPicker, type HeaderPickItem } from "../HeaderPicker";
 import { HEADER_STYLE_OPTIONS, HeaderSketch } from "../HeaderSketch";
+import { HeaderThumb, demoHeader } from "../HeaderThumb";
 import { ColorGrid } from "../rich/FormatBar";
 import { CaptionControls } from "./CaptionControls";
 import { FigureEditor } from "./FigureEditor";
@@ -115,9 +118,16 @@ export function ImageEditor({ b, lang, meta, onChange, onReplace, onOpenChartStu
 // Header styles drawn in their own color (the teacher can change it).
 export const COLORED: HeaderStyle[] = ["modern", "banner", "elegant", "split", "cards", "playful", "evaluation", "official", "compact",
   "accentbar", "bookmark", "gradient", "geometric", "chips", "editorial", "framed", "infogrid", "duotone", "monogram", "ticket", "floating"];
+// (every design of the header library follows a color)
+export const isColoredHeader = (style: HeaderStyle) => isDesignStyle(style) || COLORED.includes(style);
 
-export function HeaderEditor({ b, totalPoints, onChange }: { b: HeaderBlock; totalPoints: number; onChange: OnChange }) {
+export function HeaderEditor({ b, meta, totalPoints, onChange }: { b: HeaderBlock; meta?: ExamMeta; totalPoints: number; onChange: OnChange }) {
   const t = useT();
+  const paper: ExamMeta = meta ?? { title: "", lang: "fr", templateId: "" };
+  const styleItems: HeaderPickItem[] = [
+    ...HEADER_DESIGNS.map((d) => ({ value: d.id, label: t(d.name), category: d.category, preview: <HeaderThumb block={{ ...demoHeader(d.id as HeaderStyle, paper.lang), fields: b.fields, accent: b.accent }} meta={paper} /> })),
+    ...HEADER_STYLE_OPTIONS.map((o) => ({ value: o.value, label: t(o.label), category: "earlier", preview: <HeaderSketch style={o.value} accent={b.accent} /> })),
+  ];
   const set = (key: keyof HeaderFields, value: string | number | boolean) => onChange({ fields: { ...b.fields, [key]: value } }, `field-${key}`);
   const text = (key: Exclude<keyof HeaderFields, "outOf" | "autoOutOf">, label: string) => (
     <Field label={label}>
@@ -130,13 +140,9 @@ export function HeaderEditor({ b, totalPoints, onChange }: { b: HeaderBlock; tot
   return (
     <>
       <Field group label={t("Header style")}>
-        <ChoiceGrid<HeaderStyle>
-          value={b.style}
-          onChange={(style) => onChange({ style }, "style")}
-          options={HEADER_STYLE_OPTIONS.map((o) => ({ value: o.value, label: t(o.label), preview: <HeaderSketch style={o.value} accent={b.accent} /> }))}
-        />
+        <HeaderPicker items={styleItems} value={b.style} onChange={(style) => onChange({ style: style as HeaderStyle }, "style")} t={t} />
       </Field>
-      {COLORED.includes(b.style) && (
+      {isColoredHeader(b.style) && (
         <Field group label={t("Color")}>
           <ColorGrid value={b.accent} autoLabel={t("Style's own")} onChange={(accent) => onChange({ accent }, "accent")} />
         </Field>

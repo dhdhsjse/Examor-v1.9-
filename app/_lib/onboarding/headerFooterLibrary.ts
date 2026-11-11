@@ -5,6 +5,7 @@ import { blockHeight } from "../blockLayout";
 import { createBlock, defaultHeaderFields } from "../blocks";
 import { decodeStyle, isRich, parseRich, plainText, serializeRich } from "../richText";
 import { mmToPx } from "../a4";
+import { HEADER_DESIGNS, designDefaults, type HeaderDesign } from "../headerDesigns";
 import type { Block, BlockFont, ExamMeta, HeaderFields, HeaderStyle, Lang, PageMargins, TextAlign, TextStyle } from "../types";
 import type { HeaderFooterBuildCtx, HeaderFooterField, HeaderFooterTemplate } from "../onboardingTypes";
 
@@ -144,9 +145,34 @@ const styled = (id: string, nameKey: string, style: HeaderStyle, defaults?: (lan
   kind: "header",
   nameKey,
   sketch: style,
+  category: "earlier",
   fields: style === "algerian" ? ALGERIAN_FIELDS : style === "official" ? OFFICIAL_FIELDS : HEADER_FIELDS,
   build: (c) => [tag(examHeader(c, style, c.margins.top, defaults), "header", id)],
 });
+
+// The texts of the extra fields of the designs.
+const EXTRA_FIELDS: Record<string, HeaderFooterField> = {
+  authority: { key: "authority", label: "Ministry / authority line" },
+  directorate: { key: "directorate", label: "Directorate" },
+  date: { key: "date", label: "Exam date" },
+  instructions: { key: "instructions", label: "Instructions" },
+  motto: { key: "motto", label: "Top line" },
+};
+
+// A design of the header library (headerDesigns.ts).
+const designed = (design: HeaderDesign): HeaderFooterTemplate => {
+  const style = design.id as HeaderStyle;
+  const id = `header.${design.id}`;
+  return {
+    id,
+    kind: "header",
+    nameKey: design.name,
+    sketch: style,
+    category: design.category,
+    fields: [...(design.extra ?? []).filter((k) => k === "motto" || k === "authority").map((k) => EXTRA_FIELDS[k]), ...HEADER_FIELDS, ...(design.extra ?? []).filter((k) => k !== "motto" && k !== "authority").map((k) => EXTRA_FIELDS[k])],
+    build: (c) => [tag(examHeader(c, style, c.margins.top, () => designDefaults(design.id)), "header", id)],
+  };
+};
 
 // A footer of one centered line, in the exam's language. `editable`: the text can be typed instead.
 const centered = (
@@ -166,6 +192,7 @@ const centered = (
 });
 
 export const headerTemplates: HeaderFooterTemplate[] = [
+  ...HEADER_DESIGNS.map(designed),
   styled("header.classic-school", "Classic school header", "classic"),
   styled("header.official", "Official (ministry)", "official"),
   styled("header.modern", "Modern band", "modern"),
@@ -193,6 +220,7 @@ export const headerTemplates: HeaderFooterTemplate[] = [
   {
     id: "header.logo-left",
     kind: "header",
+    category: "earlier",
     nameKey: "Logo and title",
     sample: "[ Logo ]",
     fields: [{ key: "logo", label: "Logo text" }, HEADER_FIELDS[0]],
@@ -205,6 +233,7 @@ export const headerTemplates: HeaderFooterTemplate[] = [
   {
     id: "header.arabic-bismillah",
     kind: "header",
+    category: "earlier",
     nameKey: "Arabic with Bismillah",
     sample: "بسم الله الرحمن الرحيم",
     fields: [{ key: "text", label: "Top line" }, ...HEADER_FIELDS],
@@ -278,9 +307,10 @@ export const defaultHeaderId = "header.classic-school";
 export const defaultFooterId = "footer.page-number";
 
 // The header template drawn with an exam header style (the first one for styles without their own).
-export const headerTemplateForStyle = (style: HeaderStyle) => headerTemplates.find((h) => h.sketch === style) ?? headerTemplates[0];
+const defaultHeader = () => headerTemplates.find((h) => h.id === defaultHeaderId) ?? headerTemplates[0];
+export const headerTemplateForStyle = (style: HeaderStyle) => headerTemplates.find((h) => h.sketch === style) ?? defaultHeader();
 
-export const headerById = (id: string | undefined) => headerTemplates.find((h) => h.id === id) ?? headerTemplates[0];
+export const headerById = (id: string | undefined) => headerTemplates.find((h) => h.id === id) ?? defaultHeader();
 export const footerById = (id: string | undefined) => footerTemplates.find((f) => f.id === id) ?? footerTemplates[0];
 
 // The settings text (HeaderFooterConfig.data key) a header/footer text block shows, if it can be typed.

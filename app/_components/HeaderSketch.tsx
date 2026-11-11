@@ -1,10 +1,12 @@
 "use client";
 
 import type { CSSProperties } from "react";
-import type { HeaderStyle } from "@/app/_lib/types";
+import { isDesignStyle } from "@/app/_lib/headerDesigns";
+import type { HeaderStyle, Lang, LegacyHeaderStyle } from "@/app/_lib/types";
+import { HeaderThumb, demoHeader } from "./HeaderThumb";
 
 // Every exam header style, in the order they are offered. Labels are English keys (translated).
-export const HEADER_STYLE_OPTIONS: { value: HeaderStyle; label: string }[] = [
+export const HEADER_STYLE_OPTIONS: { value: LegacyHeaderStyle; label: string }[] = [
   { value: "classic", label: "Classic" },
   { value: "official", label: "Official" },
   { value: "modern", label: "Modern" },
@@ -32,7 +34,7 @@ export const HEADER_STYLE_OPTIONS: { value: HeaderStyle; label: string }[] = [
 ];
 
 // Default color of the colored styles (what the accent replaces).
-const ACCENTS: Partial<Record<HeaderStyle, string>> = {
+const ACCENTS: Partial<Record<LegacyHeaderStyle, string>> = {
   modern: "#6366f1",
   split: "#4f46e5",
   cards: "#4f46e5",
@@ -61,9 +63,10 @@ function B({ w, c = SOFT, h }: { w: string; c?: string; h?: number }) {
   return <span className="block" style={bar(w, c, h)} />;
 }
 
-// A tiny drawing of a header style (about 24 px high, as wide as its box).
-export function HeaderSketch({ style, accent }: { style: HeaderStyle; accent?: string }) {
-  const a = accent ?? ACCENTS[style] ?? "#64748b";
+// A tiny drawing of a header style (about 24 px high, as wide as its box). A design of the header library is shown as a live picture.
+export function HeaderSketch({ style, accent, lang = "fr" }: { style: HeaderStyle; accent?: string; lang?: Lang }) {
+  if (isDesignStyle(style)) return <HeaderThumb block={demoHeader(style, lang, accent)} meta={{ title: "", lang, templateId: "" }} />;
+  const a = accent ?? ACCENTS[style as LegacyHeaderStyle] ?? "#64748b";
   const ink = "#475569";
 
   switch (style) {

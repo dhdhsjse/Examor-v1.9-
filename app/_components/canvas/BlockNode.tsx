@@ -142,7 +142,8 @@ export default function BlockNode(props: Props) {
   // The click picked another block (Alt+click on blocks over each other): this one neither moves nor types.
   const passedOn = useRef(false);
   const width = block.layout.width;
-  const media = block.type === "image" || block.type === "equation" || block.type === "shape" || block.type === "divider" || block.type === "mark" || block.type === "rule";
+  // (a page header draws its own room, cut to the page border: a white box under it could hide the border's corners)
+  const media = block.type === "image" || block.type === "equation" || block.type === "shape" || block.type === "divider" || block.type === "mark" || block.type === "rule" || (block.type === "header" && !!block.inset);
   const moveCursor = textTool ? "text" : "move";
   const groupRef = useRef<Konva.Group>(null);
 

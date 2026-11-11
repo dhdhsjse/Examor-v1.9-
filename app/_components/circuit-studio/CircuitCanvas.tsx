@@ -7,7 +7,7 @@ import { GRID, routeNext, sectionAt, snapTarget, subPath, type P, type Section }
 import { JUNCTION_RADIUS, WIRE_STROKE, buildCircuitScene } from "@/app/_lib/circuit/scene";
 import { SYMBOL_STROKE, drawComponent, type SymbolShape } from "@/app/_lib/circuit/symbols";
 import { INK } from "@/app/_lib/circuit/svg";
-import { newComponent } from "@/app/_lib/circuit/ops";
+import { newComponentOnWire } from "@/app/_lib/circuit/ops";
 import TableDrawingLayer from "@/app/_components/table-studio/TableDrawingLayer";
 import type { EraserTool } from "@/app/_lib/ink/useEraserTool";
 import type { InkTools } from "@/app/_lib/ink/useInkTools";
@@ -99,7 +99,7 @@ export default function CircuitCanvas({ studio, ink, eraser }: { studio: Circuit
 
   const placing = isPlaceTool(tool) ? tool : null;
   const target = pointer && tool === "wire" ? snapTarget(config, pointer) : null;
-  const ghost = pointer && placing ? drawComponent(newComponent(config, placing, pointer.x, pointer.y, pendingRotation, "ghost")) : null;
+  const ghost = pointer && placing ? drawComponent(newComponentOnWire(config, placing, pointer.x, pointer.y, pendingRotation, "ghost")) : null;
   const preview = draft && target ? routeNext(draft.points, draft.startDir, target.point, shift) : null;
 
   const onBackgroundClick = (e: Konva.KonvaEventObject<MouseEvent>) => {

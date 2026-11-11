@@ -2,7 +2,7 @@
 
 import { useCallback, useState } from "react";
 import { GRID, pathLength, routeNext, type P, type Section, type SnapTarget } from "@/app/_lib/circuit/geometry";
-import { addComponent, addWire, labelsNumbered, moveComponent, moveWire, newComponent, numberLabels, removeComponent, removeWire, removeWireSection, resizeArea, rotateComponent, unnumberLabels, updateComponent } from "@/app/_lib/circuit/ops";
+import { addComponent, addWire, labelsNumbered, moveComponent, moveWire, newComponentOnWire, numberLabels, removeComponent, removeWire, removeWireSection, resizeArea, rotateComponent, unnumberLabels, updateComponent } from "@/app/_lib/circuit/ops";
 import { DEFAULT_CIRCUIT_CONFIG, type CircuitComponent, type CircuitConfig, type ComponentType } from "@/app/_lib/circuit/types";
 import { eraseStrokes } from "@/app/_lib/ink/eraser";
 import { FREEHAND_ID, addShape, duplicateShape, isLine, newShapeId, removeShape, reorderShape, updateShape, type Order, type ShapeItem } from "@/app/_lib/shapes";
@@ -122,7 +122,7 @@ export function useCircuitStudio(initial: CircuitConfig = DEFAULT_CIRCUIT_CONFIG
   // A click with a component tool in hand: one is put there (the tool stays in hand: a circuit has several), and selected.
   const placeComponent = useCallback(
     (type: ComponentType, x: number, y: number) => {
-      const c = newComponent(config, type, x, y, pendingRotation);
+      const c = newComponentOnWire(config, type, x, y, pendingRotation);
       change((cfg) => addComponent(cfg, c), `add:${c.id}`);
       setSelection({ kind: "component", id: c.id });
     },
