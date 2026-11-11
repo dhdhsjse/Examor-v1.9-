@@ -68,7 +68,7 @@ import { frameOf } from "@/app/_lib/sheet/frame";
 import type { TableDrawMode } from "./workspace/TableDrawLayer";
 import { setTableSel, tableSelOf } from "./table/tableSelStore";
 import { cellSel, selRange } from "./table/tableSel";
-import { clearRange, isFixedTable, wholeMerges } from "@/app/_lib/table";
+import { clearRange, colsOf, insertLines, isFixedTable, keyOf, wholeMerges } from "@/app/_lib/table";
 import { inkToShape } from "@/app/_lib/ink/engine";
 import { useInkTools } from "@/app/_lib/ink/useInkTools";
 import { useEraserTool } from "@/app/_lib/ink/useEraserTool";
@@ -601,6 +601,19 @@ export default function Editor({ start }: { start: Start }) {
     const block = editing && doc.blocks.find((b) => b.id === editing.id);
     if (!editing || !block) return;
     const f = editing.field;
+    // A poem (Poetry verse): Enter goes to the other hemistich; Enter in the last one starts a new verse (a row like this one).
+    if (block.type === "table" && block.verse && f.kind === "cell") {
+      if (f.c < colsOf(block) - 1) return setEditing({ id: block.id, field: { kind: "cell", r: f.r, c: f.c + 1 } });
+      const patch = insertLines(block, "row", f.r + 1);
+      if (!patch) return editDone(block.id);
+      const cellStyles = { ...patch.cellStyles };
+      for (let c = 0; c < colsOf(block); c++) {
+        const s = block.cellStyles?.[keyOf(f.r, c)];
+        if (s) cellStyles[keyOf(f.r + 1, c)] = { ...s };
+      }
+      exam.updateBlock(block.id, { ...patch, cellStyles });
+      return setEditing({ id: block.id, field: { kind: "cell", r: f.r + 1, c: 0 } });
+    }
     if (!("i" in f) || !plainText(fieldValue(block, f)).trim()) return editDone(block.id);
     const i = f.i + 1;
     const insert = <T,>(list: T[], item: T) => [...list.slice(0, i), item, ...list.slice(i)];

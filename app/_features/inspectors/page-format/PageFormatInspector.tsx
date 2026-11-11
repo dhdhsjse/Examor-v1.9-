@@ -29,7 +29,7 @@ function customFormat(width: number, height: number): PageFormat {
 }
 
 const card = (on: boolean) =>
-  `flex items-center gap-2.5 rounded-[5px] border p-2 text-start text-xs transition-colors ${
+  `flex min-w-0 items-center gap-2 rounded-[5px] border p-1.5 text-start text-xs transition-colors ${
     on ? "border-accent text-accent" : "border-line bg-white text-ink hover:border-faint"
   }`;
 
@@ -72,7 +72,7 @@ export default function PageFormatInspector({ ctx }: { ctx: Ctx }) {
       <p className="mb-2 text-xs text-muted">{t("Paper and orientation of page {n} only.", { n: index + 1 })}</p>
 
       <Heading>{t("Orientation")}</Heading>
-      <div role="group" aria-label={t("Orientation")} className="mb-3 grid grid-cols-2 gap-2">
+      <div role="group" aria-label={t("Orientation")} className="mb-3 grid grid-cols-[repeat(2,minmax(0,1fr))] gap-2">
         {(["portrait", "landscape"] as const).map((o) => {
           const on = format.orientation === o;
           const Icon = o === "portrait" ? RectangleVertical : RectangleHorizontal;
@@ -94,16 +94,16 @@ export default function PageFormatInspector({ ctx }: { ctx: Ctx }) {
       </div>
 
       <Heading>{t("Paper size")}</Heading>
-      <div role="radiogroup" aria-label={t("Paper size")} className="grid grid-cols-2 gap-2">
+      <div role="radiogroup" aria-label={t("Paper size")} className="grid grid-cols-[repeat(2,minmax(0,1fr))] gap-2">
         {SIZES.map((size) => {
           const on = format.size === size;
           const s = getPageMm({ size, orientation: format.orientation });
           return (
             <button key={size} type="button" role="radio" aria-checked={on} onClick={() => pickSize(size)} className={card(on)}>
               <Sheet width={s.width} height={s.height} on={on} />
-              <span className="flex min-w-0 flex-col">
+              <span className="flex min-w-0 flex-col leading-tight">
                 <span className="font-semibold">{STANDARD_SIZES[size].name}</span>
-                <span className={`whitespace-nowrap text-[11px] tabular-nums ${on ? "text-accent" : "text-faint"}`}>
+                <span className={`truncate text-[11px] tabular-nums ${on ? "text-accent" : "text-faint"}`}>
                   {Math.round(s.width)} × {Math.round(s.height)} mm
                 </span>
               </span>
@@ -112,9 +112,9 @@ export default function PageFormatInspector({ ctx }: { ctx: Ctx }) {
         })}
         <button type="button" role="radio" aria-checked={format.size === "custom"} onClick={pickCustom} className={card(format.size === "custom")}>
           <Sheet width={mm.width} height={mm.height} on={format.size === "custom"} dashed />
-          <span className="flex min-w-0 flex-col">
+          <span className="flex min-w-0 flex-col leading-tight">
             <span className="font-semibold">{t("Custom")}</span>
-            <span className={`whitespace-nowrap text-[11px] tabular-nums ${format.size === "custom" ? "text-accent" : "text-faint"}`}>
+            <span className={`truncate text-[11px] tabular-nums ${format.size === "custom" ? "text-accent" : "text-faint"}`}>
               {format.size === "custom" ? `${Math.round(mm.width)} × ${Math.round(mm.height)} mm` : "…"}
             </span>
           </span>

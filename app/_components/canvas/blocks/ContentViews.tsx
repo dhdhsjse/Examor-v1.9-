@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment } from "react";
-import { Group, Image as KImage, Line, Path, Rect, Shape } from "react-konva";
+import { Group, Image as KImage, Line, Path, Rect, Shape, Text } from "react-konva";
 import { boxFillPath, boxLines } from "@/app/_lib/boxBorder";
 import StudioShapes from "@/app/_components/shapes/StudioShapes";
 import { isRtl } from "@/app/_lib/i18n";
@@ -125,7 +125,9 @@ function StyledLine({ pts, look, color }: { pts: [number, number, number, number
   return <Line points={pts} stroke={stroke} strokeWidth={w} dash={dash} lineCap={look.dash === "dotted" ? "round" : "butt"} />;
 }
 
-function TableBody({ b, meta, hideCell }: { b: TableBlock; meta: ExamMeta; hideCell?: { r: number; c: number } }) {
+const VERSE_GHOST = ["صدر البيت", "عجز البيت"];
+
+function TableBody({ b, meta, hideCell, ghost }: { b: TableBlock; meta: ExamMeta; hideCell?: { r: number; c: number }; ghost?: boolean }) {
   const hidden = (r: number, c: number) => hideCell?.r === r && hideCell?.c === c;
   // In Arabic the first column is on the right.
   const L = layoutTable(b, meta);
@@ -143,6 +145,10 @@ function TableBody({ b, meta, hideCell }: { b: TableBlock; meta: ExamMeta; hideC
           <Group key={`t${cell.r}-${cell.c}`} x={cell.rot === 270 ? cell.x : cell.x + cell.w} y={cell.rot === 270 ? cell.y + cell.h : cell.y} rotation={cell.rot === 270 ? -90 : 90}>
             <RichText lines={cell.text.lines} x={6} y={cell.textY} width={cell.h - 12} rtl={rtl} align={cell.align} />
           </Group>
+        ))}
+        {ghost && b.verse && L.cellBoxes.map((cell) => !hidden(cell.r, cell.c) && !plainText(b.cells[cell.r]?.[cell.c] ?? "") && (
+          // (an empty hemistich: a light example, on screen only)
+          <Text key={`g${cell.r}-${cell.c}`} text={VERSE_GHOST[cell.c % 2]} x={cell.x + 6} y={cell.textY} width={cell.w - 12} align="center" fontFamily={cell.spec.font.family} fontSize={cell.spec.font.size} lineHeight={cell.spec.line / cell.spec.font.size} fill="#b8bcc4" listening={false} />
         ))}
         {L.cellBoxes.map((cell) => !hidden(cell.r, cell.c) && !cell.rot && (
           <RichText key={`t${cell.r}-${cell.c}`} lines={cell.text.lines} x={cell.x + 6} y={cell.textY} width={cell.w - 12} rtl={rtl} align={cell.align} />
@@ -198,11 +204,11 @@ const TableShapes = ({ b }: { b: TableBlock }) => (b.shapes?.length ? <StudioSha
 
 // A table: its cells and lines, then the shapes and pictures over it. A fixed one (with shapes or pictures) is laid out at the width they
 // were put in and drawn scaled to the block's width, like a picture (see tableFrame).
-export function TableView({ b, meta, hideCell }: { b: TableBlock; meta: ExamMeta; hideCell?: { r: number; c: number } }) {
+export function TableView({ b, meta, hideCell, ghost }: { b: TableBlock; meta: ExamMeta; hideCell?: { r: number; c: number }; ghost?: boolean }) {
   const { block, k } = tableFrame(b);
   return (
     <Group listening={false} scaleX={k} scaleY={k}>
-      <TableBody b={block} meta={meta} hideCell={hideCell} />
+      <TableBody b={block} meta={meta} hideCell={hideCell} ghost={ghost} />
       <TableShapes b={block} />
     </Group>
   );

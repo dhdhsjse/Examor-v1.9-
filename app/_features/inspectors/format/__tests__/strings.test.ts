@@ -16,9 +16,7 @@ const files = [
   ...readdirSync(join(__dirname, ".."))
     .filter((f) => f.endsWith(".tsx"))
     .map((f) => join(__dirname, "..", f)),
-  join(root, "_features/inspectors/home/FormattingInspector.tsx"),
   join(root, "_features/inspectors/home/FindReplaceInspector.tsx"),
-  join(root, "_features/inspectors/home/SymbolsInspector.tsx"),
   join(root, "_features/inspectors/textbox/TextboxInspector.tsx"),
   join(root, "_components/rich/FormatBar.tsx"),
 ];

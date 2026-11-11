@@ -91,7 +91,7 @@ function Content({ block: real, number, meta, mode, interactive, selected, total
     case "textbox":
       return <TextboxView b={block} meta={meta} interactive={interactive} frameOnly={typing} />;
     case "table":
-      return <TableView b={block} meta={meta} hideCell={typingCell} />;
+      return <TableView b={block} meta={meta} hideCell={typingCell} ghost={interactive} />;
     case "equation":
       // An empty equation is only a hint on screen: it is not printed.
       return interactive || block.latex.trim() ? <EquationView b={block} /> : null;

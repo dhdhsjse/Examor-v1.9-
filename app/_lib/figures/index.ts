@@ -13,6 +13,7 @@ import { inclineFigure } from "./incline";
 import { lensFigure } from "./lens";
 import { numberLineFigure } from "./numberLine";
 import { quadrilateralFigure } from "./quadrilateral";
+import { PHYSICS_FIGURES } from "./physics";
 import { SCIENCE_FIGURES } from "./sciences";
 import { solidFigure } from "./solid";
 import { thermometerFigure } from "./thermometer";
@@ -40,6 +41,7 @@ export const FIGURES: FigureDef[] = [
   foodChainFigure,
   waterCycleFigure,
   ...SCIENCE_FIGURES,
+  ...PHYSICS_FIGURES,
 ];
 
 // Every figure can change the color of its lines.

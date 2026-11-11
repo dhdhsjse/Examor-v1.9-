@@ -47,7 +47,7 @@ function fieldLabel(t: T, f: EditField): string {
   }
 }
 
-// Home → Find and replace, in the right panel: every text of the exam, the matches listed, a click on one goes to its block. It stays
+// Find and replace, in the right panel: every text of the exam, the matches listed, a click on one goes to its block. It stays
 // open while blocks are selected (Feature.followsSelection), and replaces one match or all of them (one undo step).
 export default function FindReplaceInspector({ ctx }: { ctx: Ctx }) {
   const { t, doc, shell } = ctx;

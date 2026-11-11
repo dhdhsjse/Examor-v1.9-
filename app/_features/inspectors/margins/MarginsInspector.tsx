@@ -97,7 +97,7 @@ export default function MarginsInspector({ ctx }: { ctx: Ctx }) {
 
   return (
     <div className="flex flex-col">
-      <div role="group" aria-label={t("Presets")} className="grid grid-cols-2 gap-2">
+      <div role="group" aria-label={t("Presets")} className="grid grid-cols-[repeat(2,minmax(0,1fr))] gap-2">
         {MARGIN_PRESETS.map((p) => {
           const on = sameMm(shown, p.margins);
           return (
@@ -106,7 +106,7 @@ export default function MarginsInspector({ ctx }: { ctx: Ctx }) {
               type="button"
               aria-pressed={on}
               onClick={() => pick(p.margins)}
-              className={`flex flex-col items-center gap-2 rounded-[5px] border p-2 text-xs transition-colors ${
+              className={`flex min-w-0 flex-col items-center gap-2 rounded-[5px] border p-2 text-xs transition-colors ${
                 on ? "border-accent font-semibold text-accent" : "border-line bg-white text-ink hover:border-faint"
               }`}
             >

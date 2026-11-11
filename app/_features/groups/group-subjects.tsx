@@ -5,7 +5,6 @@ import { subjectFrench } from "@/app/_features/actions/subject-french";
 import { subjectGeneral } from "@/app/_features/actions/subject-general";
 import { subjectMath } from "@/app/_features/actions/subject-math";
 import { subjectPhysics } from "@/app/_features/actions/subject-physics";
-import { subjectSciences } from "@/app/_features/actions/subject-sciences";
 
 // "Subject: Math ▾". The subject is picked once per exam; it decides which tools the toolbox shows.
 export const subjectsGroup: Group = {
@@ -20,5 +19,5 @@ export const subjectsGroup: Group = {
       <ChevronDown size={12} strokeWidth={2} className="text-muted" aria-hidden />
     </span>
   ),
-  features: [subjectGeneral, subjectMath, subjectPhysics, subjectSciences, subjectArabic, subjectFrench],
+  features: [subjectGeneral, subjectMath, subjectPhysics, subjectArabic, subjectFrench],
 };

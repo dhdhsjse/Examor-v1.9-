@@ -14,7 +14,7 @@ const COLORS = ["#1f2937", "#000000", "#1e3a8a", "#7f1d1d", "#14532d", "#92400e"
 const PREVIEW = { w: 300, h: 400, width: 4, inset: 22 };
 
 const card = (on: boolean) =>
-  `flex flex-col items-stretch gap-1.5 rounded-xl p-2 text-xs tracking-[-0.005em] transition-[transform,background-color,box-shadow] duration-150 ease-out outline-none focus-visible:ring-2 focus-visible:ring-accent active:scale-[0.97] ${
+  `flex min-w-0 flex-col items-stretch gap-1.5 rounded-xl p-2 text-xs tracking-[-0.005em] transition-[transform,background-color,box-shadow] duration-150 ease-out outline-none focus-visible:ring-2 focus-visible:ring-accent active:scale-[0.97] ${
     on ? "bg-white font-semibold text-ink shadow-[0_0_0_2px_var(--color-accent,#4f46e5),0_4px_14px_rgba(0,0,0,0.08)]" : "bg-subtle text-muted hover:bg-hover hover:text-ink"
   }`;
 
@@ -48,7 +48,7 @@ export default function PageBorderInspector({ ctx }: { ctx: Ctx }) {
   const { t, shell, doc } = ctx;
   const index = Math.max(0, doc.pages.findIndex((p) => p.id === ctx.activePageId));
   const page = doc.pages[index];
-  const [scope, setScope] = useState<Scope>("all");
+  const [scope, setScope] = useState<Scope>("page");
   if (!page) return null;
 
   const border = page.border;
@@ -69,7 +69,7 @@ export default function PageBorderInspector({ ctx }: { ctx: Ctx }) {
         onChange={setScope}
       />
 
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-[repeat(3,minmax(0,1fr))] gap-2">
         <button type="button" aria-pressed={!border} data-border="none" onClick={() => save(undefined)} className={card(!border)}>
           <Mini style={null} color={color} />
           <span className="truncate text-center">{t("None")}</span>
@@ -79,7 +79,7 @@ export default function PageBorderInspector({ ctx }: { ctx: Ctx }) {
       {BORDER_GROUPS.map((group) => (
         <section key={group.name} aria-label={t(group.name)} className="flex flex-col gap-2">
           <h3 className="text-xs font-semibold text-muted">{t(group.name)}</h3>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-[repeat(3,minmax(0,1fr))] gap-2">
             {group.styles.map((s) => {
               const on = border?.style === s.id;
               return (

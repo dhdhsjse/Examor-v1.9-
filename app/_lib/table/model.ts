@@ -85,6 +85,8 @@ export interface TableExtras {
   firstCol?: boolean;
   /** The columns in the other order: the first one on the side where the last one would be (A B C D… becomes …D C B A). The text keeps the direction of the exam. */
   flip?: boolean;
+  /** A poem's verses (Arabic tools → Poetry verse): cells centred, empty ones show a ghost صدر / عجز, Enter goes on to the next hemistich (a new verse after the last) */
+  verse?: boolean;
   /** Shapes and pictures put over the table, in px of the table's own box (Shapes and image in the Table Studio) */
   shapes?: ShapeItem[];
   /**
@@ -104,7 +106,7 @@ export interface TableData extends TableExtras {
   rowHeights?: number[];
 }
 
-export const EXTRA_FIELDS = ["calc", "merges", "cellStyles", "borders", "borderColor", "banded", "headerFill", "headerColor", "firstCol"] as const;
+export const EXTRA_FIELDS = ["calc", "merges", "cellStyles", "borders", "borderColor", "banded", "headerFill", "headerColor", "firstCol", "verse"] as const;
 
 /** A table with none of the extras: it is laid out and drawn the way tables always were */
 export const isPlainTable = (t: TableExtras) => !EXTRA_FIELDS.some((k) => {
@@ -179,7 +181,7 @@ export function cellLook(t: TableData, r: number, c: number): CellLook {
     size: s.size,
     color: s.color ?? (head || headCol ? t.headerColor : undefined),
     fill: s.fill ?? (head || headCol ? (t.headerFill ?? TABLE_HEADER_FILL) : t.banded && r >= first && (r - first) % 2 === 1 ? t.banded : undefined),
-    align: s.align ?? (head ? "center" : undefined),
+    align: s.align ?? (head || t.verse ? "center" : undefined),
     valign: s.valign ?? "middle",
     rot: s.rot,
   };

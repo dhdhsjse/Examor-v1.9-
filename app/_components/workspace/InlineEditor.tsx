@@ -132,7 +132,7 @@ export default function InlineEditor({ block, field, number, meta, mode, zoom, t
         dir={rtl ? "rtl" : "auto"}
         placeholder={region.bare ? undefined : ghost ?? (region.answer ? t("Model answer…") : t("Type here…"))}
         onKeyDown={(e) => {
-          if (e.key === "Enter" && !e.shiftKey && !e.ctrlKey && LIST_FIELDS.includes(field.kind)) {
+          if (e.key === "Enter" && !e.shiftKey && !e.ctrlKey && (LIST_FIELDS.includes(field.kind) || (block.type === "table" && block.verse && field.kind === "cell"))) {
             e.preventDefault();
             onEnter();
           } else if (e.key === "Escape" || (e.key === "Enter" && (e.ctrlKey || (!region.multiline && !e.shiftKey)))) {

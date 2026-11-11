@@ -19,6 +19,7 @@ import type { ExamDoc, HeaderBlock, HeaderFooterConfig } from "@/app/_lib/types"
 
 type Scope = "global" | "page";
 
+const NONE = "__none__";
 const OFF: HeaderFooterConfig = { enabled: false, templateId: "", data: {} };
 const segment = (on: boolean) =>
   `flex-1 rounded-[4px] px-2 py-1 text-xs transition-colors ${on ? "bg-white font-semibold text-ink ring-1 ring-line" : "text-muted hover:text-ink"}`;
@@ -38,8 +39,7 @@ export default function HeaderFooterInspector({ ctx }: { ctx: Ctx }) {
   const index = Math.max(0, doc.pages.findIndex((p) => p.id === pageId));
   const page = doc.pages[index];
   const loose = !!selected && selected.meta?.role !== "header"; // a header block that is not its page's header
-  const pickedKind = picked?.meta?.role === "footer" ? "footer" : "header";
-  const [scope, setScope] = useState<Scope>(() => (picked && (loose || page?.[pickedKind] !== undefined) ? "page" : "global"));
+  const [scope, setScope] = useState<Scope>("page");
   const own = !!page && (page.header !== undefined || page.footer !== undefined);
   const ownCount = doc.pages.filter((p) => p.header !== undefined || p.footer !== undefined).length;
 
@@ -143,22 +143,22 @@ function ChromeSection({ ctx, kind, scope, index }: { ctx: Ctx; kind: ChromeKind
 
   return (
     <section className="flex flex-col gap-2.5">
-      <label className="flex items-center gap-2 text-xs font-semibold text-ink">
-        <input type="checkbox" checked={current.enabled} onChange={(e) => change({ enabled: e.target.checked })} className="size-4 accent-accent" />
-        {t(kind === "header" ? "Show a header" : "Show a footer")}
-      </label>
+      <div className="flex flex-col gap-1">
+        <span className="text-xs font-semibold text-muted">{t(kind === "header" ? "Header style" : "Template")}</span>
+        <ChoiceGrid<string>
+          cols={2}
+          value={current.enabled ? template.id : NONE}
+          // Another template keeps the texts it shares with this one (same field keys). "None" turns it off.
+          onChange={(templateId) => (templateId === NONE ? change({ enabled: false }) : change({ templateId, enabled: true }))}
+          options={[
+            { value: NONE, label: t("None"), preview: <span className="text-[9px] text-slate-400">—</span> },
+            ...templates.map((tp) => ({ value: tp.id, label: t(tp.nameKey), preview: <TemplatePreview t={t} template={tp} accent={current.data.accent} /> })),
+          ]}
+        />
+      </div>
 
-      <div className={`flex flex-col gap-2.5 transition-opacity ${current.enabled ? "" : "pointer-events-none opacity-45"}`} aria-disabled={!current.enabled}>
-        <div className="flex flex-col gap-1">
-          <span className="text-xs font-semibold text-muted">{t(kind === "header" ? "Header style" : "Template")}</span>
-          <ChoiceGrid<string>
-            cols={2}
-            value={template.id}
-            // Another template keeps the texts it shares with this one (same field keys).
-            onChange={(templateId) => change({ templateId })}
-            options={templates.map((tp) => ({ value: tp.id, label: t(tp.nameKey), preview: <TemplatePreview t={t} template={tp} accent={current.data.accent} /> }))}
-          />
-        </div>
+      {current.enabled && (
+      <div className="flex flex-col gap-2.5">
 
         {colored && (
           <div className="flex flex-col gap-1">
@@ -206,6 +206,7 @@ function ChromeSection({ ctx, kind, scope, index }: { ctx: Ctx; kind: ChromeKind
         {graded && <GradedOutOf ctx={ctx} data={current.data} fallback={Number(defaults.outOf) || 20} onData={setData} />}
         {!template.fields?.length && <p className="text-xs leading-snug text-faint">{t("Filled in automatically on every page.")}</p>}
       </div>
+      )}
     </section>
   );
 }
